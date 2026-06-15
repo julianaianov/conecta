@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <circle cx="100" cy="100" r="100" fill="#F66B0E"/>
+  <rect x="60" y="85" width="80" height="50" rx="4" fill="#fff"/>
+  <rect x="75" y="70" width="15" height="20" fill="#205375"/>
+  <rect x="110" y="70" width="15" height="20" fill="#205375"/>
+  <text x="100" y="165" fill="#fff" font-family="Arial,sans-serif" font-size="9" text-anchor="middle">Recreio Ltda</text>
+</svg>
