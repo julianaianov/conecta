@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-navy: #112b3c;
+  --color-navy-light: #234963;
+  --color-steel: #205375;
+  --color-blue-light: #5483a9;
+  --color-blue-muted: #7ea8c5;
+  --color-orange: #f66b0e;
+  --color-orange-light: #f8833a;
+  --color-off-white: #efefef;
+  --color-neutral-dark: #d1d1d1;
+
+  --font-sans: var(--font-outfit);
+  --font-mono: var(--font-jetbrains);
+}
+
+/* ── Theme variables — light mode ────────────────────────── */
+:root {
+  --th-bg:         #ffffff;
+  --th-bg-alt:     #f4f8fb;
+  --th-surface:    #f8fcfe;
+  --th-card:       #ffffff;
+  --th-card-alt:   #edf5fb;
+  --th-text:       #112b3c;
+  --th-muted:      #3a6680;
+  --th-border:     rgba(32, 83, 117, 0.14);
+  --th-nav:        rgba(255, 255, 255, 0.95);
+  --th-nav-border: rgba(32, 83, 117, 0.10);
+}
+
+/* ── Dark mode ───────────────────────────────────────────── */
+.dark {
+  --th-bg:         #0e1f2e;
+  --th-bg-alt:     #091520;
+  --th-surface:    #0a1825;
+  --th-card:       #0c1e2f;
+  --th-card-alt:   #091825;
+  --th-text:       #f0f6fa;
+  --th-muted:      #7ea8c5;
+  --th-border:     rgba(255, 255, 255, 0.08);
+  --th-nav:        rgba(14, 31, 46, 0.88);
+  --th-nav-border: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Base ────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--th-bg);
+  color: var(--th-text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* ── Noise texture ───────────────────────────────────────── */
+.noise {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -5;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Page gradient ───────────────────────────────────────── */
+.hero-gradient {
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(32, 83, 117, 0.06), transparent),
+    radial-gradient(ellipse 60% 40% at 85% 65%, rgba(246, 107, 14, 0.04), transparent);
+}
+
+.dark .hero-gradient {
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(32, 83, 117, 0.35), transparent),
+    radial-gradient(ellipse 60% 40% at 85% 65%, rgba(246, 107, 14, 0.07), transparent),
+    radial-gradient(ellipse 50% 35% at 10% 80%, rgba(32, 83, 117, 0.12), transparent);
+}
+
+/* ── Hero helpers ────────────────────────────────────────── */
+.hero-bg-photo  { opacity: 0; transition: opacity 0.2s; }
+.dark .hero-bg-photo { opacity: 1; }
+
+.hero-overlay { opacity: 0; }
+.dark .hero-overlay {
+  opacity: 1;
+  background: linear-gradient(
+    to bottom right,
+    rgba(14, 31, 46, 0.92),
+    rgba(14, 31, 46, 0.85),
+    rgba(14, 31, 46, 0.65)
+  );
+}
+
+.hero-text  { color: var(--th-text); }
+.hero-muted { color: var(--th-muted); }
+
+.hero-pill {
+  border: 1px solid rgba(32, 83, 117, 0.22);
+  background: rgba(32, 83, 117, 0.06);
+  color: #205375;
+}
+.dark .hero-pill {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(240, 246, 250, 0.85);
+}
+
+.hero-avatar-border { border-color: rgba(32, 83, 117, 0.25); }
+.dark .hero-avatar-border { border-color: rgba(255, 255, 255, 0.25); }
+
+.hero-online-dot { background: #10b981; border-color: #ffffff; }
+.dark .hero-online-dot { border-color: #0e1f2e; }
+
+/* ── Visibility helpers ──────────────────────────────────── */
+.light-only { display: block; }
+.dark .light-only { display: none; }
+
+.dark-only { display: none; }
+.dark .dark-only { display: flex; }
+
+/* ── Navbar ──────────────────────────────────────────────── */
+.nav-blur {
+  background: var(--th-nav);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: var(--th-nav-border);
+  box-shadow: 0 1px 0 var(--th-nav-border);
+}
+
+/* ── Gradient text ───────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #f66b0e 0%, #e05800 45%, #205375 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .gradient-text {
+  background: linear-gradient(135deg, #f66b0e 0%, #f8833a 50%, #7ea8c5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Reveal animation ────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Phone mockup animations ─────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+.animate-float         { animation: float 4s ease-in-out infinite; }
+.animate-float-delayed { animation: float 4s ease-in-out 2s infinite; }
+
+.phone-glow { animation: pulse-glow 3s ease-in-out infinite; }
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%       { opacity: 0.7; transform: scale(1.05); }
+}
+
+/* ── Network overlay ─────────────────────────────────────── */
+@keyframes network-dash {
+  to { stroke-dashoffset: -28; }
+}
+
+.network-line  { animation: network-dash 12s linear infinite; }
+
+@keyframes network-pulse {
+  0%, 100% { r: 8;  opacity: 0.15; }
+  50%       { r: 14; opacity: 0.35; }
+}
+
+.network-pulse { animation: network-pulse 3s ease-in-out infinite; }
+
+/* ── Map pin ─────────────────────────────────────────────── */
+.map-pin span:first-child { animation: pin-bounce 2s ease-in-out infinite; }
+
+@keyframes pin-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-3px); }
+}
+
+/* ── Feature grid bento ──────────────────────────────────── */
+@media (min-width: 1024px) {
+  .features-bento > :nth-child(1) { grid-column: span 2; }
+  .features-bento > :nth-child(5) { grid-column: span 2; }
+}
+
+/* ── Section divider ─────────────────────────────────────── */
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #f66b0e;
+}

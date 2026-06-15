@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <circle cx="100" cy="100" r="100" fill="#112B3C"/>
+  <rect x="55" y="70" width="90" height="70" rx="4" fill="#5483A9"/>
+  <rect x="70" y="55" width="20" height="25" fill="#778da9"/>
+  <rect x="110" y="55" width="20" height="25" fill="#778da9"/>
+  <text x="100" y="165" fill="#fff" font-family="Arial,sans-serif" font-size="9" text-anchor="middle">Subprefeitura</text>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <rect width="800" height="450" fill="#2e7d32"/>
+  <rect y="300" width="800" height="150" fill="#5d4037"/>
+  <circle cx="200" cy="200" r="30" fill="#81c784"/>
+  <circle cx="350" cy="180" r="25" fill="#66bb6a"/>
+  <circle cx="500" cy="210" r="28" fill="#4caf50"/>
+  <circle cx="620" cy="190" r="22" fill="#a5d6a7"/>
+  <text x="400" y="60" fill="#fff" font-family="Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">PROJETO</text>
+  <text x="400" y="100" fill="#fff" font-family="Arial,sans-serif" font-size="26" font-weight="bold" text-anchor="middle">Horta comunit�ria do Recreio</text>
+  <text x="400" y="130" fill="#e8f5e9" font-family="Arial,sans-serif" font-size="16" text-anchor="middle">Pra�a da Rua Guignard</text>
+</svg>

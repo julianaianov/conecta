@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <rect width="800" height="450" fill="#5483A9"/>
+  <rect x="100" y="200" width="120" height="100" fill="#fff" opacity="0.9"/>
+  <rect x="250" y="180" width="120" height="120" fill="#fff" opacity="0.9"/>
+  <rect x="400" y="200" width="120" height="100" fill="#fff" opacity="0.9"/>
+  <rect x="550" y="190" width="120" height="110" fill="#fff" opacity="0.9"/>
+  <text x="400" y="60" fill="#fff" font-family="Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">EVENTO</text>
+  <text x="400" y="100" fill="#fff" font-family="Arial,sans-serif" font-size="24" font-weight="bold" text-anchor="middle">Feira de Sustentabilidade do Recreio</text>
+  <text x="400" y="130" fill="#e3f2fd" font-family="Arial,sans-serif" font-size="16" text-anchor="middle">Recreio Shopping � dia 15</text>
+</svg>
