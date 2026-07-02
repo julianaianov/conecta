@@ -1,46 +1,62 @@
 @import "tailwindcss";
 
+/* ──────────────────────────────────────────────────────────
+   DM Conecta — Sistema de cores (Manual de Marca V1.0)
+   Azul Petróleo #1B4F72 · Laranja Cívico #F4841A
+   ────────────────────────────────────────────────────────── */
 @theme inline {
-  --color-navy: #112b3c;
-  --color-navy-light: #234963;
-  --color-steel: #205375;
-  --color-blue-light: #5483a9;
-  --color-blue-muted: #7ea8c5;
-  --color-orange: #f66b0e;
-  --color-orange-light: #f8833a;
-  --color-off-white: #efefef;
-  --color-neutral-dark: #d1d1d1;
+  /* Marca — nomes oficiais */
+  --color-petroleo:       #1b4f72;
+  --color-petroleo-deep:  #0d2d42;
+  --color-azul-medio:     #2e7ba8;
+  --color-azul-palido:    #d6eaf8;
+  --color-laranja:        #f4841a;
+  --color-laranja-light:  #f89b45;
+  --color-grafite:        #343a40;
+  --color-cinza:          #868e96;
 
-  --font-sans: var(--font-outfit);
-  --font-mono: var(--font-jetbrains);
+  /* Aliases legados (landing) → mapeados para a marca */
+  --color-navy:        #1b4f72;
+  --color-navy-light:  #163e5a;
+  --color-steel:       #2e7ba8;
+  --color-blue-light:  #5a9bc4;
+  --color-blue-muted:  #9dc4de;
+  --color-orange:      #f4841a;
+  --color-orange-light:#f89b45;
+  --color-off-white:   #f4f8fb;
+  --color-neutral-dark:#d1d1d1;
+
+  --font-sans:    var(--font-dmsans);
+  --font-numeric: var(--font-inter);
+  --font-mono:    var(--font-inter);
 }
 
 /* ── Theme variables — light mode ────────────────────────── */
 :root {
   --th-bg:         #ffffff;
   --th-bg-alt:     #f4f8fb;
-  --th-surface:    #f8fcfe;
+  --th-surface:    #f8fbfe;
   --th-card:       #ffffff;
-  --th-card-alt:   #edf5fb;
-  --th-text:       #112b3c;
-  --th-muted:      #3a6680;
-  --th-border:     rgba(32, 83, 117, 0.14);
+  --th-card-alt:   #eef6fc;
+  --th-text:       #1b4f72;
+  --th-muted:      #4a6f88;
+  --th-border:     rgba(27, 79, 114, 0.14);
   --th-nav:        rgba(255, 255, 255, 0.95);
-  --th-nav-border: rgba(32, 83, 117, 0.10);
+  --th-nav-border: rgba(27, 79, 114, 0.10);
 }
 
 /* ── Dark mode ───────────────────────────────────────────── */
 .dark {
-  --th-bg:         #0e1f2e;
-  --th-bg-alt:     #091520;
-  --th-surface:    #0a1825;
-  --th-card:       #0c1e2f;
-  --th-card-alt:   #091825;
-  --th-text:       #f0f6fa;
-  --th-muted:      #7ea8c5;
-  --th-border:     rgba(255, 255, 255, 0.08);
-  --th-nav:        rgba(14, 31, 46, 0.88);
-  --th-nav-border: rgba(255, 255, 255, 0.05);
+  --th-bg:         #0d2d42;
+  --th-bg-alt:     #0a2333;
+  --th-surface:    #0c2c40;
+  --th-card:       #103451;
+  --th-card-alt:   #0b2a3e;
+  --th-text:       #eef6fb;
+  --th-muted:      #9dc4de;
+  --th-border:     rgba(255, 255, 255, 0.09);
+  --th-nav:        rgba(13, 45, 66, 0.88);
+  --th-nav-border: rgba(255, 255, 255, 0.06);
 }
 
 /* ── Base ────────────────────────────────────────────────── */
@@ -69,15 +85,15 @@ body {
 /* ── Page gradient ───────────────────────────────────────── */
 .hero-gradient {
   background:
-    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(32, 83, 117, 0.06), transparent),
-    radial-gradient(ellipse 60% 40% at 85% 65%, rgba(246, 107, 14, 0.04), transparent);
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(27, 79, 114, 0.06), transparent),
+    radial-gradient(ellipse 60% 40% at 85% 65%, rgba(244, 132, 26, 0.05), transparent);
 }
 
 .dark .hero-gradient {
   background:
-    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(32, 83, 117, 0.35), transparent),
-    radial-gradient(ellipse 60% 40% at 85% 65%, rgba(246, 107, 14, 0.07), transparent),
-    radial-gradient(ellipse 50% 35% at 10% 80%, rgba(32, 83, 117, 0.12), transparent);
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(46, 123, 168, 0.30), transparent),
+    radial-gradient(ellipse 60% 40% at 85% 65%, rgba(244, 132, 26, 0.08), transparent),
+    radial-gradient(ellipse 50% 35% at 10% 80%, rgba(27, 79, 114, 0.14), transparent);
 }
 
 /* ── Hero helpers ────────────────────────────────────────── */
@@ -133,14 +149,14 @@ body {
 
 /* ── Gradient text ───────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #f66b0e 0%, #e05800 45%, #205375 100%);
+  background: linear-gradient(135deg, #f4841a 0%, #e0700a 45%, #1b4f72 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .dark .gradient-text {
-  background: linear-gradient(135deg, #f66b0e 0%, #f8833a 50%, #7ea8c5 100%);
+  background: linear-gradient(135deg, #f4841a 0%, #f89b45 50%, #9dc4de 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -213,5 +229,92 @@ body {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #f66b0e;
+  color: #f4841a;
+}
+
+/* ──────────────────────────────────────────────────────────
+   APP — utilitários da plataforma (feed, mapa, perfil)
+   ────────────────────────────────────────────────────────── */
+
+/* Inter para números, métricas e rankings (Manual §05) */
+.font-numeric { font-family: var(--font-numeric), system-ui, sans-serif; font-feature-settings: "tnum"; }
+
+/* Esconder scrollbar (chips horizontais) */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Superfícies temáticas reutilizáveis */
+.app-bg      { background: var(--th-bg-alt); }
+.app-card    { background: var(--th-card); border: 1px solid var(--th-border); }
+.app-surface { background: var(--th-surface); border: 1px solid var(--th-border); }
+
+/* Gradiente institucional (Petróleo → Azul Médio) — headers, heros */
+.brand-gradient { background: linear-gradient(135deg, #0d2d42 0%, #1b4f72 55%, #2e7ba8 100%); }
+.brand-gradient-accent { background: linear-gradient(135deg, #f4841a 0%, #f89b45 100%); }
+
+/* Malha de fundo do app (claro) */
+.app-mesh {
+  background:
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(46, 123, 168, 0.07), transparent),
+    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(244, 132, 26, 0.05), transparent),
+    var(--th-bg-alt);
+}
+.dark .app-mesh {
+  background:
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(46, 123, 168, 0.16), transparent),
+    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(244, 132, 26, 0.07), transparent),
+    var(--th-bg-alt);
+}
+
+/* Ponto laranja do monograma DM (animação sutil) */
+@keyframes dm-dot-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+
+/* Spinner */
+@keyframes app-spin { to { transform: rotate(360deg); } }
+.app-spinner {
+  width: 1.25rem; height: 1.25rem; border-radius: 9999px;
+  border: 2px solid var(--th-border); border-top-color: #f4841a;
+  animation: app-spin 0.7s linear infinite;
+}
+
+/* Leaflet — herdar fontes e cantos */
+.leaflet-container { font-family: var(--font-sans), system-ui, sans-serif; background: var(--th-card-alt); }
+.leaflet-container a { color: #2e7ba8; }
+
+/* line-clamp utilitário */
+.clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Inputs do app */
+.app-input, .app-textarea {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--th-border);
+  background: var(--th-card);
+  color: var(--th-text);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.9rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.app-input::placeholder, .app-textarea::placeholder { color: var(--th-muted); opacity: 0.7; }
+.app-input:focus, .app-textarea:focus {
+  outline: none;
+  border-color: #f4841a;
+  box-shadow: 0 0 0 3px rgba(244, 132, 26, 0.15);
+}
+.app-textarea { resize: vertical; min-height: 6rem; line-height: 1.6; }
+
+/* Chip de filtro */
+.app-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  white-space: nowrap; border-radius: 9999px;
+  border: 1px solid var(--th-border); background: var(--th-card);
+  color: var(--th-muted); padding: 0.42rem 0.85rem;
+  font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.app-chip:hover { color: var(--th-text); }
+.app-chip[data-active="true"] {
+  background: linear-gradient(135deg, #f4841a, #f89b45);
+  border-color: transparent; color: #fff;
 }

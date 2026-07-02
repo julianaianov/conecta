@@ -1,6 +1,7 @@
 import { DEMO_POSTS, IMAGES, profileAvatar } from "./images";
 
-export const APP_URL = "https://app.dmconecta.org";
+/** Rotas do app dentro do próprio site (string vazia → caminhos locais /login, /feed…). */
+export const APP_URL = "";
 
 export const NAV_LINKS = [
   { href: "#mapa", label: "Mapa" },
