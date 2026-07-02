@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DM Conecta — Plataforma Web
 
-## Getting Started
+Rede social de impacto local. Esta plataforma web (Next.js 16 + React 19 + Tailwind 4)
+replica as funcionalidades do app Flutter (`../flutter_app`), seguindo o **Manual de Marca
+DM Conecta** (DM Sans + Inter, azul petróleo `#1B4F72` / laranja cívico `#F4841A`,
+monograma DM com ponto laranja).
 
-First, run the development server:
+## Como rodar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+A landing page fica em `/`. O app autenticado fica nas rotas abaixo. Use a conta demo
+`maria@recreio.conecta` / `demo123`, ou clique em **"Entrar sem conexão"** no login.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Backend (modo híbrido)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Por padrão a plataforma roda em **modo demo** (dados em memória do Recreio dos Bandeirantes).
+Para conectar ao backend real, copie `.env.example` para `.env.local` e defina:
 
-## Learn More
+```
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
 
-To learn more about Next.js, take a look at the following resources:
+Suba os serviços com `docker-compose up` na raiz do repositório. O cliente tenta a API real
+e **cai automaticamente para o demo** se a rede falhar (espelha o `useDemoFallback` do Flutter).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Rotas do app
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Rota | Tela |
+|------|------|
+| `/login`, `/register` | Autenticação (com modo demo) |
+| `/feed` | Feed com filtros, busca e quick post |
+| `/mapa` | Mapa de demandas (Leaflet/OSM) com pinos por tipo |
+| `/comunidades` | Comunidades |
+| `/perfil`, `/perfil/[id]` | Perfil estilo Orkut (recados, depoimentos, conexões) |
+| `/post/[id]` | Detalhe do post (comentários, apoios) |
+| `/post/[id]/apoiar` | Fluxo de apoio (10 tipos · financeiro multi-step) |
+| `/criar` | Nova publicação |
+| `/meus-apoios` | Painel do apoiador |
 
-## Deploy on Vercel
+## Arquitetura
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/lib/app/types.ts` — modelos de domínio + mapas de cor (espelha os models do Flutter)
+- `src/lib/app/demo.ts` — base de dados demo (10 posts, perfis, comunidades, recados, apoios)
+- `src/lib/app/api.ts` — cliente híbrido (API real ↔ fallback demo)
+- `src/lib/app/auth.tsx` — `AuthProvider` (login, register, loginDemo, checkAuth)
+- `src/components/app/` — design system do app (DMLogo, AppShell, PostCard, OrkutProfile, …)

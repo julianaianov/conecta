@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Padrão intencional: setLoading(true) antes de um fetch assíncrono dentro
+      // de useEffect (data-fetching). Não é o anti-padrão de renders em cascata.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

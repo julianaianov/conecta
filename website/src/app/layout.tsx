@@ -1,29 +1,29 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit, JetBrains_Mono } from "next/font/google";
+import { DM_Sans, Inter } from "next/font/google";
 import "./globals.css";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
+const dmSans = DM_Sans({
+  variable: "--font-dmsans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const jetbrains = JetBrains_Mono({
-  variable: "--font-jetbrains",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "dmconecta — Transformando bairros",
+  title: "DM Conecta — Conecte-se, participe, transforme",
   description:
-    "Conecte seu bairro. Publique problemas, projetos e ações. Apoie causas locais com voluntariado, doações e muito mais.",
+    "Rede social de impacto local. Mapeie demandas, conecte sua comunidade ao poder público e a quem pode ajudar. Apoie causas com voluntariado, doações e patrocínios.",
   metadataBase: new URL("https://dmconecta.org"),
   openGraph: {
-    title: "dmconecta — Transformando bairros",
-    description: "Plataforma comunitária para conectar cidadãos, ONGs e governo local.",
+    title: "DM Conecta — Conecte-se, participe, transforme",
+    description: "Rede social de impacto local que conecta moradores, associações, poder público e iniciativa privada.",
     url: "https://dmconecta.org",
-    siteName: "dmconecta",
+    siteName: "DM Conecta",
     locale: "pt_BR",
     type: "website",
     images: [
@@ -38,14 +38,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f0f5f9",
+  themeColor: "#1b4f72",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${outfit.variable} ${jetbrains.variable}`}>
+    <html lang="pt-BR" className={`${dmSans.variable} ${inter.variable}`}>
       <head>
         {/* Prevent theme flash on first load */}
         <script
