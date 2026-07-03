@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/app/auth";
 import { DMLogo } from "@/components/app/DMLogo";
 import { Button } from "@/components/app/Button";
 import { Icon } from "@/components/app/Icon";
+import { AuthShowcase } from "@/components/app/AuthShowcase";
 import { Field } from "../login/page";
 import { ROLE_LABELS, ROLE_COLORS, type UserRole } from "@/lib/app/types";
 
@@ -45,13 +46,20 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="app-mesh flex min-h-dvh flex-col justify-center px-6 py-10">
-      <div className="mx-auto w-full max-w-md">
-        <div className="mb-7 flex justify-center">
-          <Link href="/" style={{ color: "var(--th-text)" }}><DMLogo size={34} tone="petroleo" /></Link>
-        </div>
+    <div className="flex min-h-dvh" style={{ background: "var(--th-bg)" }}>
+      {/* Vitrine da comunidade (desktop) */}
+      <AuthShowcase />
 
-        <div className="app-card rounded-2xl p-6 sm:p-8" style={{ boxShadow: "0 20px 50px rgba(13,45,66,0.10)" }}>
+      {/* Divisória vertical sutil */}
+      <div className="hidden w-px lg:block" style={{ background: "var(--th-border)" }} />
+
+      {/* Form */}
+      <div className="flex w-full flex-col justify-center px-6 py-10 lg:w-1/2 lg:px-20 xl:px-24">
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-8 lg:hidden">
+            <Link href="/" style={{ color: "var(--th-text)" }}><DMLogo size={34} tone="petroleo" /></Link>
+          </div>
+
           <h2 className="text-2xl font-bold" style={{ color: "var(--th-text)" }}>Criar conta</h2>
           <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>Junte-se ao ecossistema de impacto local.</p>
 
