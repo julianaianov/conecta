@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <rect width="800" height="450" fill="#F8833A"/>
+  <rect x="150" y="180" width="500" height="200" rx="12" fill="#fff3e0" stroke="#e65100" stroke-width="4"/>
+  <text x="400" y="290" fill="#e65100" font-family="Arial,sans-serif" font-size="48" text-anchor="middle">=�</text>
+  <text x="400" y="60" fill="#fff" font-family="Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">NECESSIDADE</text>
+  <text x="400" y="100" fill="#fff" font-family="Arial,sans-serif" font-size="24" font-weight="bold" text-anchor="middle">Doa��o de cestas b�sicas</text>
+  <text x="400" y="130" fill="#fff3e0" font-family="Arial,sans-serif" font-size="16" text-anchor="middle">Subprefeitura do Recreio � 40 fam�lias</text>
+</svg>

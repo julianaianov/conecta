@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5483A9"/>
+      <stop offset="60%" stop-color="#7ea8c5"/>
+      <stop offset="100%" stop-color="#f4e4bc"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#sky)"/>
+  <rect y="320" width="800" height="130" fill="#e8c872"/>
+  <circle cx="650" cy="80" r="40" fill="#ffe082" opacity="0.9"/>
+  <text x="400" y="60" fill="#205375" font-family="Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">PROJETO</text>
+  <text x="400" y="100" fill="#112B3C" font-family="Arial,sans-serif" font-size="24" font-weight="bold" text-anchor="middle">Mutir�o de limpeza da Praia do Recreio</text>
+  <text x="400" y="130" fill="#205375" font-family="Arial,sans-serif" font-size="16" text-anchor="middle">Associa��o Recreio Verde</text>
+</svg>

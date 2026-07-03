@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <rect width="800" height="450" fill="#7ea8c5"/>
+  <rect y="320" width="800" height="130" fill="#5d4037"/>
+  <circle cx="250" cy="280" r="40" fill="#333"/>
+  <circle cx="400" cy="280" r="40" fill="#333"/>
+  <rect x="220" y="240" width="60" height="8" fill="#F66B0E"/>
+  <rect x="370" y="240" width="60" height="8" fill="#F66B0E"/>
+  <text x="400" y="50" fill="#112B3C" font-family="Arial,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">Ciclistas da Orla</text>
+</svg>
