@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/app/auth";
-import { DMLogo } from "@/components/app/DMLogo";
 import { Button } from "@/components/app/Button";
 import { Icon } from "@/components/app/Icon";
 import { AuthShowcase } from "@/components/app/AuthShowcase";
@@ -46,21 +45,17 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-dvh" style={{ background: "var(--th-bg)" }}>
-      {/* Vitrine da comunidade (desktop) */}
+    <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--th-bg)" }}>
+      {/* Vitrine: banner no mobile + painel lateral no desktop */}
       <AuthShowcase />
 
       {/* Divisória vertical sutil */}
       <div className="hidden w-px lg:block" style={{ background: "var(--th-border)" }} />
 
       {/* Form */}
-      <div className="flex w-full flex-col justify-center px-6 py-10 lg:w-1/2 lg:px-20 xl:px-24">
+      <div className="flex w-full flex-1 flex-col justify-center px-6 py-10 lg:w-1/2 lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-md">
-          <div className="mb-8 lg:hidden">
-            <Link href="/" style={{ color: "var(--th-text)" }}><DMLogo size={34} tone="petroleo" /></Link>
-          </div>
-
-          <h2 className="text-2xl font-bold" style={{ color: "var(--th-text)" }}>Criar conta</h2>
+          <h2 className="mt-6 text-2xl font-bold lg:mt-0" style={{ color: "var(--th-text)" }}>Criar conta</h2>
           <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>Junte-se ao ecossistema de impacto local.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">

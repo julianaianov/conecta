@@ -40,7 +40,7 @@ export default function MapPage() {
         <div>
           <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Mapa de demandas</h1>
           <p className="text-sm" style={{ color: "var(--th-muted)" }}>
-            <span className="font-numeric font-bold" style={{ color: "#f4841a" }}>{posts.length}</span> demandas mapeadas · Recreio dos Bandeirantes
+            <span className="font-numeric font-bold" style={{ color: "#f4841a" }}>{posts.length}</span> demandas mapeadas · seu bairro
           </p>
         </div>
         {loading && <span className="app-spinner" style={{ width: 22, height: 22 }} />}

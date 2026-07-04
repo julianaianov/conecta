@@ -43,7 +43,7 @@ export function Community() {
                   />
                 ))}
               </div>
-              <span className="text-xs font-medium text-white">+120 no Recreio</span>
+              <span className="text-xs font-medium text-white">+120 no bairro</span>
             </div>
           </div>
 
@@ -53,10 +53,10 @@ export function Community() {
           <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
             Grupos do demo
             <br />
-            no Recreio dos Bandeirantes
+            no seu bairro
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-blue-muted">
-            Moradores do Recreio, Mutirão Recreio Verde, Ciclistas da Orla e Feira de
+            Moradores do bairro, Mutirão Bairro Verde, Ciclistas da Orla e Feira de
             Sustentabilidade — os mesmos grupos do app.
           </p>
 
@@ -74,7 +74,7 @@ export function Community() {
           <div className="relative overflow-hidden rounded-3xl border border-white/10">
             <AppImage
               src={IMAGES.communityCta}
-              alt="Horta comunitária do Recreio — projeto demo do dmconecta"
+              alt="Horta comunitária do bairro — projeto demo do dmconecta"
               fill
               className="object-cover"
               sizes="(max-width: 1024px) 100vw, 50vw"
@@ -83,7 +83,7 @@ export function Community() {
             <div className="relative p-8 lg:p-10">
               <h3 className="text-2xl font-bold text-white">Comece agora</h3>
               <p className="mt-2 text-blue-muted">
-                Entre com a conta demo do Recreio ou crie a sua
+                Entre com a conta demo do bairro ou crie a sua
               </p>
 
               <div className="mt-8 space-y-4">

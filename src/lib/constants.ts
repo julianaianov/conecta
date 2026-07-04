@@ -38,7 +38,7 @@ export const FEATURES = [
     accent: true,
     icon: "map",
     image: IMAGES.mapFeature,
-    caption: "Ex.: Mutirão na Praia do Recreio",
+    caption: "Ex.: Mutirão na praia do bairro",
   },
   {
     title: "Sistema de apoios",
@@ -58,7 +58,7 @@ export const FEATURES = [
     accent: false,
     icon: "community",
     image: IMAGES.communitiesFeature,
-    caption: "Ex.: Mutirão Recreio Verde",
+    caption: "Ex.: Mutirão Bairro Verde",
   },
   {
     title: "Perfis verificados",
@@ -69,7 +69,7 @@ export const FEATURES = [
     accent: true,
     icon: "shield",
     image: IMAGES.profilesFeature,
-    caption: "Ex.: Horta comunitária do Recreio",
+    caption: "Ex.: Horta comunitária do bairro",
   },
 ] as const;
 
@@ -96,7 +96,7 @@ export const STEPS = [
     description:
       "Acompanhe o progresso, celebre resultados e inspire outras iniciativas no bairro.",
     image: IMAGES.stepTransform,
-    example: "Horta comunitária do Recreio",
+    example: "Horta comunitária do bairro",
   },
 ] as const;
 
