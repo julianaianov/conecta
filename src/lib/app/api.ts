@@ -180,9 +180,9 @@ export const api = {
   loginDemo(email?: string, password?: string): User {
     const entry = email ? DEMO_USERS[email.toLowerCase().trim()] : undefined;
     if (email && (!entry || (password && entry.password !== password))) {
-      throw new Error("Credenciais inválidas. Use uma conta demo (ex.: maria@recreio.conecta / demo123).");
+      throw new Error("Credenciais inválidas. Use uma conta demo (ex.: maria@bairro.conecta / demo123).");
     }
-    const u = entry ?? DEMO_USERS["maria@recreio.conecta"];
+    const u = entry ?? DEMO_USERS["maria@bairro.conecta"];
     const user: User = { id: u.id, email: u.email, name: u.name, role: u.role, avatarUrl: u.avatarUrl };
     persist(user, DEMO_TOKEN, true);
     return user;

@@ -31,7 +31,7 @@ export const MAP_ACTIVITIES: MapActivity[] = [
     category: "problem",
     pinIcon: "!",
     title: "Iluminação pública",
-    subtitle: "Praça do Skate · Recreio",
+    subtitle: "Praça do Skate · no bairro",
     badge: "Problema",
     badgeBg: "#FFEBEE",
     badgeText: "#C62828",
