@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AtomLogo } from "./AtomLogo";
+import { DMLogo } from "./app/DMLogo";
 import { ThemeToggle } from "./ThemeToggle";
 import { APP_URL, NAV_LINKS } from "@/lib/constants";
 
@@ -51,12 +51,8 @@ export function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 lg:px-8">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2" style={{ color: "var(--th-text)" }}>
-          <AtomLogo size={30} className="text-orange" />
-          <span className="text-base font-bold tracking-wide">
-            <span className="text-orange">dm</span>
-            <span>conecta</span>
-          </span>
+        <Link href="/" className="flex items-center" style={{ color: "var(--th-text)" }}>
+          <DMLogo size={30} tone="petroleo" />
         </Link>
 
         {/* Nav links — center */}

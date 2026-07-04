@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { APP_URL } from "@/lib/constants";
-import { AtomLogo } from "./AtomLogo";
+import { DMLogo } from "./app/DMLogo";
 
 export function Footer() {
   return (
@@ -9,12 +9,8 @@ export function Footer() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2.5" style={{ color: "var(--th-text)" }}>
-              <AtomLogo size={32} className="text-orange" />
-              <span className="text-lg font-bold tracking-wide">
-                <span className="text-orange">dm</span>
-                <span>conecta</span>
-              </span>
+            <Link href="/" className="flex items-center" style={{ color: "var(--th-text)" }}>
+              <DMLogo size={32} tone="petroleo" />
             </Link>
             <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--th-muted)" }}>
               A rede social de impacto local. Conectando bairros, transformando realidades.
@@ -83,7 +79,7 @@ export function Footer() {
       <div style={{ borderColor: "var(--th-border)" }} className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-5 py-6 text-sm sm:flex-row lg:px-8"
           style={{ color: "var(--th-muted)" }}>
-          <p>&copy; {new Date().getFullYear()} dmconecta. Todos os direitos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} DM Conecta. Todos os direitos reservados.</p>
           <p className="text-xs">Feito com ♥ para comunidades de todo o Brasil</p>
         </div>
       </div>

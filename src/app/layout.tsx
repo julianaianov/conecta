@@ -31,7 +31,7 @@ export const metadata: Metadata = {
         url: "https://images.unsplash.com/photo-1483729557144-040aa7a153b0?w=1200&q=80",
         width: 1200,
         height: 630,
-        alt: "dmconecta — bairros conectados",
+        alt: "DM Conecta — bairros conectados",
       },
     ],
   },

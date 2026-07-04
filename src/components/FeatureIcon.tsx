@@ -18,8 +18,8 @@ export function FeatureIcon({ name, accent = false, className }: FeatureIconProp
       return (
         <svg className={base} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <rect x="3" y="3" width="18" height="18" rx="2" />
-          <path d="M12 8v8M8 12h8" stroke={accent ? "#F7941D" : "currentColor"} />
-          <circle cx="12" cy="12" r="2" fill={accent ? "#F7941D" : "currentColor"} />
+          <path d="M12 8v8M8 12h8" stroke={accent ? "#F4841A" : "currentColor"} />
+          <circle cx="12" cy="12" r="2" fill={accent ? "#F4841A" : "currentColor"} />
         </svg>
       );
     case "support":

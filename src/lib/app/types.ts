@@ -64,7 +64,7 @@ export const MAP_PIN_COLORS: Record<PostType, string> = {
   problem: "#e53935", // urgentes
   project: "#2e9e5b", // projetos sociais
   action: "#2e7ba8", // ações ambientais
-  need: "#f4b400", // oportunidades
+  need: "#f89b45", // oportunidades
   event: "#1b4f72",
   message: "#5a9bc4",
 };
