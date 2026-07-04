@@ -46,7 +46,7 @@ export default function FeedPage() {
   }, [posts, search]);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)_280px]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)_280px]">
       {/* Sidebar esquerda */}
       <aside className="hidden lg:block">
         <div className="sticky top-20 space-y-4">
@@ -70,7 +70,7 @@ export default function FeedPage() {
       </aside>
 
       {/* Coluna central */}
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4">
         {/* Quick post */}
         <Card>
           <div className="flex items-center gap-3">
