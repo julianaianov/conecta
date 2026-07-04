@@ -22,7 +22,7 @@ export function AuthShowcase() {
 
 /* ── Banner do topo (só mobile) ─────────────────────────────── */
 function MobileBanner() {
-  const photos = [BANNER_PHOTOS.surfSocial, BANNER_PHOTOS.horta, BANNER_PHOTOS.patrocinio];
+  const photos = [BANNER_PHOTOS.stakeholderVoluntarios, BANNER_PHOTOS.stakeholderProjetos, BANNER_PHOTOS.stakeholderEmpresas];
   return (
     <div className="relative h-52 w-full overflow-hidden rounded-b-3xl lg:hidden">
       <div className="absolute inset-0 grid grid-cols-3 gap-1">
@@ -92,7 +92,7 @@ function Collage() {
         className="absolute left-0 top-16 h-52 w-44 overflow-hidden rounded-3xl"
         style={{ transform: "rotate(-7deg)", boxShadow: "0 24px 50px rgba(13,45,66,0.20)", border: "5px solid #fff" }}
       >
-        <AppImage src={BANNER_PHOTOS.horta} alt="Horta comunitária" fill className="object-cover" sizes="200px" />
+        <AppImage src={BANNER_PHOTOS.stakeholderProjetos} alt="Projetos e coletivos do bairro" fill className="object-cover" sizes="200px" />
         <span className="absolute left-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-xl text-white" style={{ background: "linear-gradient(135deg,#0d2d42,#1b4f72)" }}>
           <Icon name="leaf" size={17} />
         </span>
@@ -102,7 +102,7 @@ function Collage() {
         className="absolute right-2 top-0 h-[22rem] w-60 overflow-hidden rounded-[1.75rem]"
         style={{ transform: "rotate(3deg)", boxShadow: "0 30px 60px rgba(13,45,66,0.28)", border: "6px solid #fff" }}
       >
-        <AppImage src={BANNER_PHOTOS.patrocinio} alt="Parceria pelo bairro" fill className="object-cover" sizes="260px" />
+        <AppImage src={BANNER_PHOTOS.stakeholderVoluntarios} alt="Moradores e voluntários" fill className="object-cover" sizes="260px" />
         <div className="absolute inset-x-3 top-3 flex gap-1.5">
           <span className="h-1 flex-1 rounded-full" style={{ background: "#f4841a" }} />
           <span className="h-1 flex-1 rounded-full" style={{ background: "rgba(255,255,255,0.55)" }} />
@@ -112,8 +112,8 @@ function Collage() {
           <Icon name="location" size={12} style={{ color: "#f4841a" }} /> Seu bairro
         </span>
         <figcaption className="absolute inset-x-0 bottom-0 p-3 text-white" style={{ background: "linear-gradient(to top, rgba(13,45,66,0.85), transparent)" }}>
-          <p className="text-[13px] font-bold leading-tight">Parceria pelo bairro</p>
-          <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.85)" }}>+128 vizinhos participando</p>
+          <p className="text-[13px] font-bold leading-tight">Vizinhos em ação</p>
+          <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.85)" }}>+128 participando no bairro</p>
         </figcaption>
       </figure>
 
@@ -121,7 +121,7 @@ function Collage() {
         className="absolute bottom-2 left-6 h-40 w-52 overflow-hidden rounded-3xl"
         style={{ transform: "rotate(4deg)", boxShadow: "0 24px 50px rgba(13,45,66,0.22)", border: "5px solid #fff" }}
       >
-        <AppImage src={BANNER_PHOTOS.feira} alt="Feira verde e comércio local" fill className="object-cover" sizes="220px" />
+        <AppImage src={BANNER_PHOTOS.stakeholderEmpresas} alt="Empresas parceiras" fill className="object-cover" sizes="220px" />
         <div className="absolute inset-x-3 bottom-3 flex items-center gap-2">
           <span className="h-1.5 flex-1 rounded-full bg-white/50">
             <span className="block h-full w-2/3 rounded-full" style={{ background: "#f4841a" }} />
@@ -141,7 +141,7 @@ function Collage() {
       </span>
 
       <span className="absolute bottom-6 right-10 h-20 w-20 overflow-hidden rounded-full" style={{ border: "4px solid #fff", boxShadow: "0 16px 34px rgba(13,45,66,0.28)", outline: "3px solid #f4841a", outlineOffset: "-1px" }}>
-        <AppImage src={BANNER_PHOTOS.avatarMaria} alt="Moradora participante" fill className="object-cover" sizes="80px" />
+        <AppImage src={BANNER_PHOTOS.stakeholderOngs} alt="Participante da comunidade" fill className="object-cover" sizes="80px" />
       </span>
     </div>
   );
