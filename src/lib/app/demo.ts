@@ -1,7 +1,7 @@
 /**
  * DM Conecta — base de dados demo (modo offline / fallback).
  * Espelha core/demo/{demo_data,demo_social,demo_auth}.dart do app Flutter.
- * Recreio dos Bandeirantes · Rio de Janeiro. Mutação em memória (sem persistência).
+ * Bairros do Brasil. Mutação em memória (sem persistência).
  */
 import { BANNER_PHOTOS } from "../banner-photos";
 import { POST_IDS, USER_IDS, COMMUNITY_IDS } from "../demo-catalog";
@@ -19,7 +19,7 @@ import {
 } from "./types";
 
 export const DEMO_TOKEN = "demo_offline_token_conecta";
-export const DEMO_CREDENTIALS = { email: "maria@recreio.conecta", password: "demo123" };
+export const DEMO_CREDENTIALS = { email: "maria@bairro.conecta", password: "demo123" };
 
 let _seq = 1000;
 export const nextId = (prefix = "demo") => `${prefix}-${++_seq}`;
@@ -40,26 +40,26 @@ export const DEMO_USERS: Record<string, User & { password: string }> = {
     avatarUrl: BANNER_PHOTOS.avatarMaria,
     password: "demo123",
   },
-  "ong@recreio.conecta": {
+  "ong@bairro.conecta": {
     id: USER_IDS.associacao,
-    email: "ong@recreio.conecta",
-    name: "Associação Recreio Verde",
+    email: "ong@bairro.conecta",
+    name: "Associação Bairro Verde",
     role: "association",
     avatarUrl: BANNER_PHOTOS.avatarAssociacao,
     password: "demo123",
   },
-  "prefeitura@recreio.conecta": {
+  "prefeitura@bairro.conecta": {
     id: USER_IDS.subprefeitura,
-    email: "prefeitura@recreio.conecta",
-    name: "Subprefeitura do Recreio",
+    email: "prefeitura@bairro.conecta",
+    name: "Subprefeitura Regional",
     role: "government",
     avatarUrl: BANNER_PHOTOS.avatarPrefeitura,
     password: "demo123",
   },
-  "empresa@recreio.conecta": {
+  "empresa@bairro.conecta": {
     id: USER_IDS.empresa,
-    email: "empresa@recreio.conecta",
-    name: "Recreio Construções Ltda",
+    email: "empresa@bairro.conecta",
+    name: "Construtora Nova Ltda",
     role: "business",
     avatarUrl: BANNER_PHOTOS.avatarEmpresa,
     password: "demo123",
@@ -76,9 +76,9 @@ export const DEMO_USER: User = {
 
 const AUTHORS = {
   maria: { id: USER_IDS.maria, name: "Maria Silva", avatar: BANNER_PHOTOS.avatarMaria },
-  assoc: { id: USER_IDS.associacao, name: "Associação Recreio Verde", avatar: BANNER_PHOTOS.avatarAssociacao },
-  pref: { id: USER_IDS.subprefeitura, name: "Subprefeitura do Recreio", avatar: BANNER_PHOTOS.avatarPrefeitura },
-  empresa: { id: USER_IDS.empresa, name: "Recreio Construções Ltda", avatar: BANNER_PHOTOS.avatarEmpresa },
+  assoc: { id: USER_IDS.associacao, name: "Associação Bairro Verde", avatar: BANNER_PHOTOS.avatarAssociacao },
+  pref: { id: USER_IDS.subprefeitura, name: "Subprefeitura Regional", avatar: BANNER_PHOTOS.avatarPrefeitura },
+  empresa: { id: USER_IDS.empresa, name: "Construtora Nova Ltda", avatar: BANNER_PHOTOS.avatarEmpresa },
 };
 
 const base = (n: string) => ({ neighborhood: n, city: DEFAULT_CITY });
@@ -91,8 +91,8 @@ let POSTS: Post[] = [
     type: "problem", status: "active",
     title: "Buraco na Av. das Américas",
     description:
-      "Buraco grande na altura do Recreio Shopping já causou acidentes com motos. Precisa de reparo urgente antes que alguém se machuque de verdade.",
-    latitude: -23.0245, longitude: -43.458, ...base(DEFAULT_NEIGHBORHOOD),
+      "Buraco grande na altura do shopping do bairro já causou acidentes com motos. Precisa de reparo urgente antes que alguém se machuque de verdade.",
+    latitude: -23.0245, longitude: -43.458, ...base("Jardim América"),
     images: [BANNER_PHOTOS.buracoRua], tags: ["infraestrutura", "urgente", "vias"],
     reactionsCount: 12, commentsCount: 2, viewsCount: 87, createdAt: iso(1, 8),
   },
@@ -100,10 +100,10 @@ let POSTS: Post[] = [
     id: POST_IDS.mutiraoPraia,
     authorId: AUTHORS.assoc.id, authorName: AUTHORS.assoc.name, authorAvatar: AUTHORS.assoc.avatar,
     type: "project", status: "active",
-    title: "Mutirão de limpeza da Praia do Recreio",
+    title: "Mutirão de limpeza da praia",
     description:
       "Todo sábado de manhã nos reunimos para limpar a faixa de areia e a orla. Traga luvas, água e disposição. Já recolhemos mais de 2 toneladas de resíduos!",
-    latitude: -23.029, longitude: -43.465, ...base(DEFAULT_NEIGHBORHOOD),
+    latitude: -23.029, longitude: -43.465, ...base("Vila do Mar"),
     images: [BANNER_PHOTOS.mutiraoPraia], tags: ["meio-ambiente", "voluntariado", "orla"],
     reactionsCount: 28, commentsCount: 3, viewsCount: 142, createdAt: iso(2, 10),
   },
@@ -114,7 +114,7 @@ let POSTS: Post[] = [
     title: "Iluminação precária na Av. Gen. Barreto",
     description:
       "Vários postes apagados há semanas deixam a avenida perigosa à noite. Moradores evitam caminhar no trecho. Pedimos atenção da subprefeitura.",
-    latitude: -23.026, longitude: -43.461, ...base(DEFAULT_NEIGHBORHOOD),
+    latitude: -23.026, longitude: -43.461, ...base("Centro"),
     images: [BANNER_PHOTOS.iluminacao], tags: ["segurança", "iluminação"],
     reactionsCount: 19, commentsCount: 1, viewsCount: 96, createdAt: iso(3, 19),
   },
@@ -122,10 +122,10 @@ let POSTS: Post[] = [
     id: POST_IDS.hortaComunitaria,
     authorId: AUTHORS.assoc.id, authorName: AUTHORS.assoc.name, authorAvatar: AUTHORS.assoc.avatar,
     type: "project", status: "in_progress",
-    title: "Horta comunitária do Recreio",
+    title: "Horta comunitária do bairro",
     description:
       "Estamos transformando um terreno ocioso em horta comunitária. Já temos canteiros de temperos e hortaliças. Buscamos doação de mudas, terra adubada e ferramentas.",
-    latitude: -23.0255, longitude: -43.454, ...base(DEFAULT_NEIGHBORHOOD),
+    latitude: -23.0255, longitude: -43.454, ...base("Boa Vista"),
     images: [BANNER_PHOTOS.horta], tags: ["sustentabilidade", "alimentação", "comunidade"],
     reactionsCount: 35, commentsCount: 2, viewsCount: 210, createdAt: iso(5, 9),
   },
@@ -136,7 +136,7 @@ let POSTS: Post[] = [
     title: "Doação de cestas básicas — famílias afetadas",
     description:
       "40 famílias da região foram afetadas pelas chuvas. Precisamos de cestas básicas, água potável e itens de higiene. Pontos de coleta na subprefeitura.",
-    latitude: -23.023, longitude: -43.451, ...base(DEFAULT_NEIGHBORHOOD),
+    latitude: -23.023, longitude: -43.451, ...base("Vila Nova"),
     images: [BANNER_PHOTOS.cestas], tags: ["assistência", "doação", "emergência"],
     reactionsCount: 41, commentsCount: 1, viewsCount: 178, createdAt: iso(2, 14),
   },
@@ -144,10 +144,10 @@ let POSTS: Post[] = [
     id: POST_IDS.feiraSustentabilidade,
     authorId: AUTHORS.empresa.id, authorName: AUTHORS.empresa.name, authorAvatar: AUTHORS.empresa.avatar,
     type: "event", status: "active",
-    title: "Feira de Sustentabilidade do Recreio",
+    title: "Feira de Sustentabilidade do bairro",
     description:
-      "Dia 15, no Recreio Shopping: feira com produtores locais, oficinas de compostagem, troca de mudas e food trucks. Entrada gratuita. Venha participar!",
-    latitude: -23.024, longitude: -43.4575, ...base(DEFAULT_NEIGHBORHOOD),
+      "Dia 15, no shopping do bairro: feira com produtores locais, oficinas de compostagem, troca de mudas e food trucks. Entrada gratuita. Venha participar!",
+    latitude: -23.024, longitude: -43.4575, ...base("Parque das Árvores"),
     images: [BANNER_PHOTOS.feira], tags: ["evento", "sustentabilidade", "cultura"],
     reactionsCount: 22, commentsCount: 0, viewsCount: 134, createdAt: iso(4, 11),
   },
@@ -158,7 +158,7 @@ let POSTS: Post[] = [
     title: "Plantio de mudas nativas na orla",
     description:
       "Ação de reflorestamento da restinga com espécies nativas. Plantamos 120 mudas no último encontro. Próxima ação no domingo às 8h.",
-    latitude: -23.0285, longitude: -43.464, ...base(DEFAULT_NEIGHBORHOOD),
+    latitude: -23.0285, longitude: -43.464, ...base("Vila do Mar"),
     images: [BANNER_PHOTOS.plantio], tags: ["meio-ambiente", "reflorestamento"],
     reactionsCount: 17, commentsCount: 0, viewsCount: 88, createdAt: iso(6, 8),
   },
@@ -169,7 +169,7 @@ let POSTS: Post[] = [
     title: "Alagamento na Rua Guignard",
     description:
       "A rua alagava a cada chuva forte. Após mobilização dos moradores, a subprefeitura desobstruiu os bueiros e o problema foi resolvido. Obrigada a todos!",
-    latitude: -23.0265, longitude: -43.4605, ...base(DEFAULT_NEIGHBORHOOD),
+    latitude: -23.0265, longitude: -43.4605, ...base("Jardim das Flores"),
     images: [BANNER_PHOTOS.alagamento], tags: ["infraestrutura", "drenagem", "resolvido"],
     reactionsCount: 31, commentsCount: 0, viewsCount: 156, createdAt: iso(9, 16),
   },
@@ -179,8 +179,8 @@ let POSTS: Post[] = [
     type: "event", status: "active",
     title: "Campeonato de futebol comunitário",
     description:
-      "Inscrições abertas para o campeonato de várzea do Recreio. Times de até 12 jogadores. Premiação para os três primeiros. Patrocínio Recreio Construções.",
-    latitude: -23.022, longitude: -43.453, ...base(DEFAULT_NEIGHBORHOOD),
+      "Inscrições abertas para o campeonato de várzea do bairro. Times de até 12 jogadores. Premiação para os três primeiros. Patrocínio Construtora Nova.",
+    latitude: -23.022, longitude: -43.453, ...base("São José"),
     images: [BANNER_PHOTOS.futebol], tags: ["esporte", "evento", "juventude"],
     reactionsCount: 26, commentsCount: 0, viewsCount: 119, createdAt: iso(3, 18),
   },
@@ -191,7 +191,7 @@ let POSTS: Post[] = [
     title: "Voluntários para reforço escolar",
     description:
       "Buscamos voluntários para aulas de reforço de matemática e português para crianças do ensino fundamental. 2h por semana fazem toda a diferença.",
-    latitude: -23.0235, longitude: -43.4555, ...base(DEFAULT_NEIGHBORHOOD),
+    latitude: -23.0235, longitude: -43.4555, ...base("Nova Aliança"),
     images: [BANNER_PHOTOS.reforco], tags: ["educação", "voluntariado", "crianças"],
     reactionsCount: 23, commentsCount: 0, viewsCount: 101, createdAt: iso(4, 15),
   },
@@ -224,10 +224,10 @@ const COMMENTS: Record<string, Comment[]> = {
 const SUPPORTS: Record<string, SupportRecord[]> = {
   [POST_IDS.mutiraoPraia]: [
     {
-      id: nextId("s"), postId: POST_IDS.mutiraoPraia, postTitle: "Mutirão de limpeza da Praia do Recreio", postType: "project",
+      id: nextId("s"), postId: POST_IDS.mutiraoPraia, postTitle: "Mutirão de limpeza da praia", postType: "project",
       userId: AUTHORS.maria.id, userName: AUTHORS.maria.name, type: "volunteering",
       message: "Posso ajudar nos sábados de manhã.", details: { horas: "4h por semana", disponibilidade: "Sábados, manhã" },
-      status: "confirmed", ...base(DEFAULT_NEIGHBORHOOD), createdAt: iso(2, 12),
+      status: "confirmed", ...base("Jardim das Flores"), createdAt: iso(2, 12),
     },
   ],
   [POST_IDS.buracoAmericas]: [
@@ -235,7 +235,7 @@ const SUPPORTS: Record<string, SupportRecord[]> = {
       id: nextId("s"), postId: POST_IDS.buracoAmericas, postTitle: "Buraco na Av. das Américas", postType: "problem",
       userId: AUTHORS.maria.id, userName: AUTHORS.maria.name, type: "financial",
       message: "Contribuição para sinalização provisória.", amount: 50, paymentMethod: "pix",
-      details: {}, status: "confirmed", ...base(DEFAULT_NEIGHBORHOOD), createdAt: iso(1, 9),
+      details: {}, status: "confirmed", ...base("Boa Vista"), createdAt: iso(1, 9),
     },
   ],
 };
@@ -244,25 +244,25 @@ const SUPPORTS: Record<string, SupportRecord[]> = {
 const PROFILES: Record<string, Profile> = {
   [USER_IDS.maria]: {
     userId: USER_IDS.maria, name: "Maria Silva", email: DEMO_CREDENTIALS.email, role: "citizen",
-    bio: "Moradora do Recreio há 15 anos. Acredito que pequenas ações transformam o bairro.",
+    bio: "Moradora do bairro há 15 anos. Acredito que pequenas ações transformam o bairro.",
     status: "Conectando vizinhos 💪", city: DEFAULT_CITY, neighborhood: DEFAULT_NEIGHBORHOOD,
     avatarUrl: BANNER_PHOTOS.avatarMaria, coverUrl: BANNER_PHOTOS.iluminacao, memberSince: iso(400), friendCount: 38,
   },
   [USER_IDS.associacao]: {
-    userId: USER_IDS.associacao, name: "Associação Recreio Verde", email: "ong@recreio.conecta", role: "association",
-    bio: "Associação de moradores dedicada à sustentabilidade e à vida comunitária no Recreio.",
+    userId: USER_IDS.associacao, name: "Associação Bairro Verde", email: "ong@bairro.conecta", role: "association",
+    bio: "Associação de moradores dedicada à sustentabilidade e à vida comunitária no bairro.",
     status: "Mutirão todo sábado 🌱", city: DEFAULT_CITY, neighborhood: DEFAULT_NEIGHBORHOOD,
     website: "recreioverde.org.br", avatarUrl: BANNER_PHOTOS.avatarAssociacao, coverUrl: BANNER_PHOTOS.mutiraoPraia,
     memberSince: iso(700), friendCount: 124,
   },
   [USER_IDS.subprefeitura]: {
-    userId: USER_IDS.subprefeitura, name: "Subprefeitura do Recreio", email: "prefeitura@recreio.conecta", role: "government",
+    userId: USER_IDS.subprefeitura, name: "Subprefeitura Regional", email: "prefeitura@bairro.conecta", role: "government",
     bio: "Canal oficial da gestão pública local. Aqui ouvimos e respondemos às demandas do território.",
     status: "Atendimento à população", city: DEFAULT_CITY, neighborhood: DEFAULT_NEIGHBORHOOD,
     avatarUrl: BANNER_PHOTOS.avatarPrefeitura, coverUrl: BANNER_PHOTOS.stakeholderPrefeitura, memberSince: iso(900), friendCount: 56,
   },
   [USER_IDS.empresa]: {
-    userId: USER_IDS.empresa, name: "Recreio Construções Ltda", email: "empresa@recreio.conecta", role: "business",
+    userId: USER_IDS.empresa, name: "Construtora Nova Ltda", email: "empresa@bairro.conecta", role: "business",
     bio: "Empresa local comprometida com o desenvolvimento do bairro. Patrocinamos projetos de impacto.",
     status: "Investimento social com ESG", city: DEFAULT_CITY, neighborhood: DEFAULT_NEIGHBORHOOD,
     website: "recreioconstrucoes.com.br", avatarUrl: BANNER_PHOTOS.avatarEmpresa, coverUrl: BANNER_PHOTOS.stakeholderEmpresas,
@@ -274,29 +274,29 @@ const av = (id: string) => PROFILES[id]?.avatarUrl ?? null;
 
 // ── Recados (scraps) ───────────────────────────────────────
 let SCRAPS: Scrap[] = [
-  { id: nextId("scr"), authorId: USER_IDS.associacao, authorName: "Associação Recreio Verde", authorAvatar: av(USER_IDS.associacao), targetUserId: USER_IDS.maria, content: "Obrigada por sempre apoiar nossos mutirões, Maria! 🌟", createdAt: iso(3, 10) },
-  { id: nextId("scr"), authorId: USER_IDS.subprefeitura, authorName: "Subprefeitura do Recreio", authorAvatar: av(USER_IDS.subprefeitura), targetUserId: USER_IDS.maria, content: "Recebemos seu registro sobre a iluminação. Já estamos atuando.", createdAt: iso(2, 17) },
+  { id: nextId("scr"), authorId: USER_IDS.associacao, authorName: "Associação Bairro Verde", authorAvatar: av(USER_IDS.associacao), targetUserId: USER_IDS.maria, content: "Obrigada por sempre apoiar nossos mutirões, Maria! 🌟", createdAt: iso(3, 10) },
+  { id: nextId("scr"), authorId: USER_IDS.subprefeitura, authorName: "Subprefeitura Regional", authorAvatar: av(USER_IDS.subprefeitura), targetUserId: USER_IDS.maria, content: "Recebemos seu registro sobre a iluminação. Já estamos atuando.", createdAt: iso(2, 17) },
   { id: nextId("scr"), authorId: USER_IDS.maria, authorName: "Maria Silva", authorAvatar: av(USER_IDS.maria), targetUserId: USER_IDS.associacao, content: "Conta comigo no próximo plantio! 🌱", createdAt: iso(4, 9) },
-  { id: nextId("scr"), authorId: USER_IDS.empresa, authorName: "Recreio Construções Ltda", authorAvatar: av(USER_IDS.empresa), targetUserId: USER_IDS.associacao, content: "Vamos patrocinar a horta comunitária. Falamos essa semana?", createdAt: iso(3, 15) },
+  { id: nextId("scr"), authorId: USER_IDS.empresa, authorName: "Construtora Nova Ltda", authorAvatar: av(USER_IDS.empresa), targetUserId: USER_IDS.associacao, content: "Vamos patrocinar a horta comunitária. Falamos essa semana?", createdAt: iso(3, 15) },
   { id: nextId("scr"), authorId: USER_IDS.maria, authorName: "Maria Silva", authorAvatar: av(USER_IDS.maria), targetUserId: USER_IDS.subprefeitura, content: "Parabéns pela rapidez na Rua Guignard!", createdAt: iso(8, 11) },
-  { id: nextId("scr"), authorId: USER_IDS.associacao, authorName: "Associação Recreio Verde", authorAvatar: av(USER_IDS.associacao), targetUserId: USER_IDS.empresa, content: "Agradecemos o apoio de sempre. Parceria que transforma!", createdAt: iso(5, 14) },
-  { id: nextId("scr"), authorId: USER_IDS.subprefeitura, authorName: "Subprefeitura do Recreio", authorAvatar: av(USER_IDS.subprefeitura), targetUserId: USER_IDS.empresa, content: "Ótimo trabalho no campeonato comunitário.", createdAt: iso(2, 16) },
+  { id: nextId("scr"), authorId: USER_IDS.associacao, authorName: "Associação Bairro Verde", authorAvatar: av(USER_IDS.associacao), targetUserId: USER_IDS.empresa, content: "Agradecemos o apoio de sempre. Parceria que transforma!", createdAt: iso(5, 14) },
+  { id: nextId("scr"), authorId: USER_IDS.subprefeitura, authorName: "Subprefeitura Regional", authorAvatar: av(USER_IDS.subprefeitura), targetUserId: USER_IDS.empresa, content: "Ótimo trabalho no campeonato comunitário.", createdAt: iso(2, 16) },
 ];
 
 // ── Depoimentos ────────────────────────────────────────────
 let TESTIMONIALS: Testimonial[] = [
-  { id: nextId("t"), authorId: USER_IDS.associacao, authorName: "Associação Recreio Verde", authorAvatar: av(USER_IDS.associacao), targetUserId: USER_IDS.maria, content: "Maria é uma das moradoras mais engajadas do bairro. Sempre presente nas ações.", createdAt: iso(10, 10) },
-  { id: nextId("t"), authorId: USER_IDS.maria, authorName: "Maria Silva", authorAvatar: av(USER_IDS.maria), targetUserId: USER_IDS.associacao, content: "A associação é o coração verde do Recreio. Trabalho sério e transparente.", createdAt: iso(12, 11) },
+  { id: nextId("t"), authorId: USER_IDS.associacao, authorName: "Associação Bairro Verde", authorAvatar: av(USER_IDS.associacao), targetUserId: USER_IDS.maria, content: "Maria é uma das moradoras mais engajadas do bairro. Sempre presente nas ações.", createdAt: iso(10, 10) },
+  { id: nextId("t"), authorId: USER_IDS.maria, authorName: "Maria Silva", authorAvatar: av(USER_IDS.maria), targetUserId: USER_IDS.associacao, content: "A associação é o coração verde do bairro. Trabalho sério e transparente.", createdAt: iso(12, 11) },
   { id: nextId("t"), authorId: USER_IDS.maria, authorName: "Maria Silva", authorAvatar: av(USER_IDS.maria), targetUserId: USER_IDS.subprefeitura, content: "Quando há diálogo, as coisas acontecem. Obrigada pela escuta.", createdAt: iso(9, 12) },
-  { id: nextId("t"), authorId: USER_IDS.associacao, authorName: "Associação Recreio Verde", authorAvatar: av(USER_IDS.associacao), targetUserId: USER_IDS.empresa, content: "Patrocinador comprometido de verdade com o impacto local.", createdAt: iso(7, 9) },
+  { id: nextId("t"), authorId: USER_IDS.associacao, authorName: "Associação Bairro Verde", authorAvatar: av(USER_IDS.associacao), targetUserId: USER_IDS.empresa, content: "Patrocinador comprometido de verdade com o impacto local.", createdAt: iso(7, 9) },
 ];
 
 // ── Comunidades ────────────────────────────────────────────
 const COMMUNITIES: Community[] = [
-  { id: COMMUNITY_IDS.moradores, name: "Moradores do Recreio", description: "Grupo oficial de moradores do Recreio dos Bandeirantes.", category: "Bairro", memberCount: 1247, imageUrl: BANNER_PHOTOS.communityBairro },
-  { id: COMMUNITY_IDS.mutiraoVerde, name: "Mutirão Recreio Verde", description: "Voluntários de limpeza e sustentabilidade na orla.", category: "Ambiental", memberCount: 389, imageUrl: BANNER_PHOTOS.communityOrla },
-  { id: COMMUNITY_IDS.ciclistasOrla, name: "Ciclistas da Orla", description: "Pedal, segurança e mobilidade no Recreio.", category: "Mobilidade", memberCount: 156, imageUrl: BANNER_PHOTOS.communityMobilidade },
-  { id: COMMUNITY_IDS.feiraSustentabilidade, name: "Feira de Sustentabilidade", description: "Organização do evento anual no Recreio Shopping.", category: "Eventos", memberCount: 78, imageUrl: BANNER_PHOTOS.communityEvento },
+  { id: COMMUNITY_IDS.moradores, name: "Moradores do bairro", description: "Grupo oficial de moradores do bairro.", category: "Bairro", memberCount: 1247, imageUrl: BANNER_PHOTOS.communityBairro },
+  { id: COMMUNITY_IDS.mutiraoVerde, name: "Mutirão Bairro Verde", description: "Voluntários de limpeza e sustentabilidade na orla.", category: "Ambiental", memberCount: 389, imageUrl: BANNER_PHOTOS.communityOrla },
+  { id: COMMUNITY_IDS.ciclistasOrla, name: "Ciclistas da Orla", description: "Pedal, segurança e mobilidade no bairro.", category: "Mobilidade", memberCount: 156, imageUrl: BANNER_PHOTOS.communityMobilidade },
+  { id: COMMUNITY_IDS.feiraSustentabilidade, name: "Feira de Sustentabilidade", description: "Organização do evento anual no shopping do bairro.", category: "Eventos", memberCount: 78, imageUrl: BANNER_PHOTOS.communityEvento },
 ];
 
 // Amizades (bidirecional)

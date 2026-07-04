@@ -53,22 +53,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh" style={{ background: "var(--th-bg)" }}>
-      {/* Vitrine da comunidade (desktop) */}
+    <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--th-bg)" }}>
+      {/* Vitrine: banner no mobile + painel lateral no desktop */}
       <AuthShowcase />
 
       {/* Divisória vertical sutil, como no Facebook */}
       <div className="hidden w-px lg:block" style={{ background: "var(--th-border)" }} />
 
       {/* Form */}
-      <div className="flex w-full flex-col justify-center px-6 py-10 lg:w-1/2 lg:px-20 xl:px-28">
+      <div className="flex w-full flex-1 flex-col justify-center px-6 py-10 lg:w-1/2 lg:px-20 xl:px-28">
         <div className="mx-auto w-full max-w-md">
-          <div className="mb-8 flex justify-center lg:hidden">
-            <Link href="/" style={{ color: "var(--th-text)" }}>
-              <DMLogo size={36} tone="petroleo" />
-            </Link>
-          </div>
-
           <h2 className="text-3xl font-bold" style={{ color: "var(--th-text)", letterSpacing: "-0.02em" }}>Entrar na Conecta</h2>
           <p className="mt-1.5 text-[15px]" style={{ color: "var(--th-muted)" }}>Acesse sua conta para participar do seu bairro.</p>
 
@@ -113,7 +107,7 @@ export default function LoginPage() {
               <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>Modo demonstração</p>
             </div>
             <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
-              Explore sem backend, com dados do Recreio. Conta: <b>{DEMO_CREDENTIALS.email}</b> / <b>{DEMO_CREDENTIALS.password}</b>
+              Explore sem backend, com dados de exemplo. Conta: <b>{DEMO_CREDENTIALS.email}</b> / <b>{DEMO_CREDENTIALS.password}</b>
             </p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <Button variant="secondary" size="sm" block onClick={handleDemo} loading={loading === "demo"} icon="bolt">Entrar sem conexão</Button>

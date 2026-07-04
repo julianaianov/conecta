@@ -160,7 +160,7 @@ export const PAYMENT_METHODS: { method: PaymentMethod; label: string; subtitle: 
 
 export const PAYMENT_CONFIG = {
   pixKey: "recreio.verde@pix.demo",
-  pixName: "Associação Recreio Verde",
+  pixName: "Associação Bairro Verde",
 };
 
 export interface SupportSummaryItem {
@@ -233,6 +233,6 @@ export interface Community {
 }
 
 // ── Defaults ───────────────────────────────────────────────
-export const DEFAULT_NEIGHBORHOOD = "Recreio dos Bandeirantes";
+export const DEFAULT_NEIGHBORHOOD = "Centro";
 export const DEFAULT_CITY = "Rio de Janeiro";
 export const MAP_CENTER: [number, number] = [-23.0247, -43.4567];

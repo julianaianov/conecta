@@ -27,22 +27,16 @@ export default function RecoverPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-dvh" style={{ background: "var(--th-bg)" }}>
-      {/* Vitrine da comunidade (desktop) */}
+    <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--th-bg)" }}>
+      {/* Vitrine: banner no mobile + painel lateral no desktop */}
       <AuthShowcase />
 
       {/* Divisória vertical sutil */}
       <div className="hidden w-px lg:block" style={{ background: "var(--th-border)" }} />
 
       {/* Form */}
-      <div className="flex w-full flex-col justify-center px-6 py-10 lg:w-1/2 lg:px-20 xl:px-28">
+      <div className="flex w-full flex-1 flex-col justify-center px-6 py-10 lg:w-1/2 lg:px-20 xl:px-28">
         <div className="mx-auto w-full max-w-md">
-          <div className="mb-8 flex justify-center lg:hidden">
-            <Link href="/" style={{ color: "var(--th-text)" }}>
-              <DMLogo size={36} tone="petroleo" />
-            </Link>
-          </div>
-
           {sent ? (
             <div className="text-center">
               <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white" style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)", boxShadow: "0 10px 26px rgba(244,132,26,0.32)" }}>
