@@ -221,9 +221,9 @@ export function profileAvatar(id: string): string {
 }
 
 export const TYPE_COLORS: Record<PostType, string> = {
-  problem: "#F66B0E",
-  project: "#205375",
-  need: "#F8833A",
-  event: "#5483A9",
-  action: "#112B3C",
+  problem: "#E53935",
+  project: "#2E9E5B",
+  need: "#F4841A",
+  event: "#1B4F72",
+  action: "#2E7BA8",
 };

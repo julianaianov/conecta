@@ -117,7 +117,7 @@ body {
 .hero-pill {
   border: 1px solid rgba(32, 83, 117, 0.22);
   background: rgba(32, 83, 117, 0.06);
-  color: #205375;
+  color: #1b4f72;
 }
 .dark .hero-pill {
   border-color: rgba(255, 255, 255, 0.15);

@@ -8,9 +8,9 @@ export function NetworkOverlay({ className = "" }: { className?: string }) {
     >
       <defs>
         <linearGradient id="net-line" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#5483A9" stopOpacity="0" />
-          <stop offset="50%" stopColor="#F66B0E" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#5483A9" stopOpacity="0" />
+          <stop offset="0%" stopColor="#2E7BA8" stopOpacity="0" />
+          <stop offset="50%" stopColor="#F4841A" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#2E7BA8" stopOpacity="0" />
         </linearGradient>
         <filter id="net-glow">
           <feGaussianBlur stdDeviation="2" result="blur" />
@@ -49,8 +49,8 @@ export function NetworkOverlay({ className = "" }: { className?: string }) {
         [800, 280],
       ].map(([cx, cy], i) => (
         <g key={`${cx}-${cy}`}>
-          <circle cx={cx} cy={cy} r="8" fill="#F66B0E" opacity="0.25" className="network-pulse" style={{ animationDelay: `${i * 0.3}s` }} />
-          <circle cx={cx} cy={cy} r="4" fill="#F8833A" filter="url(#net-glow)" />
+          <circle cx={cx} cy={cy} r="8" fill="#F4841A" opacity="0.25" className="network-pulse" style={{ animationDelay: `${i * 0.3}s` }} />
+          <circle cx={cx} cy={cy} r="4" fill="#F89B45" filter="url(#net-glow)" />
         </g>
       ))}
     </svg>
