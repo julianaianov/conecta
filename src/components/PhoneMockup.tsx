@@ -1,7 +1,7 @@
 import { MAP_ACTIVITIES, BANNER_PHOTOS } from "@/lib/banner-data";
 import { ActivityPinIcon, MapPinMarker } from "./MapPinMarker";
 import { AppImage } from "./AppImage";
-import { AtomLogo } from "./AtomLogo";
+import { DMLogo } from "./app/DMLogo";
 import { Reveal } from "./Reveal";
 
 export function PhoneMockup() {
@@ -14,12 +14,9 @@ export function PhoneMockup() {
 
         <div className="relative overflow-hidden rounded-[2rem] bg-[#0d2840] pb-16">
           {/* Header app */}
-          <div className="flex items-center justify-between bg-[#112B3C] px-4 py-3 pt-7">
-            <div className="flex items-center gap-2">
-              <AtomLogo size={22} className="text-orange" />
-              <span className="text-sm font-bold text-white">
-                <span className="text-orange">dm</span>conecta
-              </span>
+          <div className="flex items-center justify-between bg-[#0D2D42] px-4 py-3 pt-7">
+            <div className="flex items-center text-white">
+              <DMLogo size={22} tone="light" />
             </div>
             <span className="relative text-white">
               <BellIcon />
@@ -72,7 +69,7 @@ export function PhoneMockup() {
           </div>
 
           {/* Bottom nav */}
-          <div className="absolute bottom-0 left-0 right-0 flex items-end justify-around border-t border-white/10 bg-[#112B3C] px-2 py-2">
+          <div className="absolute bottom-0 left-0 right-0 flex items-end justify-around border-t border-white/10 bg-[#0D2D42] px-2 py-2">
             <NavItem icon="home" label="Início" />
             <NavItem icon="search" label="Explorar" />
             <div className="-mt-5 flex h-12 w-12 items-center justify-center rounded-full bg-blue-light text-2xl font-light text-white shadow-lg">
