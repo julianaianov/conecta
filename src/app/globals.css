@@ -147,19 +147,13 @@ body {
   box-shadow: 0 1px 0 var(--th-nav-border);
 }
 
-/* ── Gradient text ───────────────────────────────────────── */
+/* ── Título de destaque (cor sólida — sem degradê) ───────── */
 .gradient-text {
-  background: linear-gradient(135deg, #f4841a 0%, #e0700a 45%, #1b4f72 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #f4841a;
 }
 
 .dark .gradient-text {
-  background: linear-gradient(135deg, #f4841a 0%, #f89b45 50%, #9dc4de 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #f89b45;
 }
 
 /* ── Reveal animation ────────────────────────────────────── */
@@ -265,9 +259,6 @@ body {
     radial-gradient(ellipse 60% 40% at 0% 100%, rgba(244, 132, 26, 0.07), transparent),
     var(--th-bg-alt);
 }
-
-/* Ponto laranja do monograma DM (animação sutil) */
-@keyframes dm-dot-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 
 /* Spinner */
 @keyframes app-spin { to { transform: rotate(360deg); } }

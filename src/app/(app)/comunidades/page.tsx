@@ -15,7 +15,7 @@ export default function CommunitiesPage() {
   return (
     <div>
       <div className="mb-4">
-        <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Comunidades</h1>
+        <h1 className="text-xl font-bold" style={{ color: "#f4841a" }}>Comunidades</h1>
         <p className="text-sm" style={{ color: "var(--th-muted)" }}>Organize grupos por bairro, causa ou interesse.</p>
       </div>
 
