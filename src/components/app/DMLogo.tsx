@@ -1,6 +1,6 @@
 /**
  * Logo DM Conecta (Manual de Marca §03).
- * Monograma "DM" com o ponto laranja obrigatório + wordmark "Conecta".
+ * Monograma "DM" + wordmark "Conecta".
  * `tone`: petroleo (badge azul), light (sobre fundo escuro), plain (monocromático/currentColor).
  */
 
@@ -18,7 +18,6 @@ export function DMMonogram({ size = 36, tone = "petroleo", className = "" }: Mar
         ? { background: "rgba(255,255,255,0.12)", color: "#fff" }
         : { background: "transparent", color: "currentColor" };
   const radius = size * 0.28;
-  const dot = Math.max(4, size * 0.16);
   return (
     <span
       className={`relative inline-flex items-center justify-center font-bold ${className}`}
@@ -33,18 +32,7 @@ export function DMMonogram({ size = 36, tone = "petroleo", className = "" }: Mar
       }}
       aria-hidden="true"
     >
-      <span style={{ transform: `translateX(${size * 0.02}px)` }}>DM</span>
-      <span
-        style={{
-          position: "absolute",
-          right: size * 0.12,
-          bottom: size * 0.16,
-          width: dot,
-          height: dot,
-          borderRadius: 9999,
-          background: "#f4841a",
-        }}
-      />
+      <span>DM</span>
     </span>
   );
 }

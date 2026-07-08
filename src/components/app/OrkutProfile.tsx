@@ -210,7 +210,7 @@ export function OrkutProfile({ userId }: { userId: string }) {
       <button onClick={() => router.back()} className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold md:hidden" style={{ color: "var(--th-muted)" }}>
         <Icon name="arrowLeft" size={18} /> Voltar
       </button>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="mx-auto grid max-w-2xl grid-cols-1 gap-4 lg:mx-0 lg:max-w-none lg:grid-cols-[300px_minmax(0,1fr)]">
         <div className="min-w-0 space-y-4">{infoCard}{communitiesPanel}{friendsPanel}</div>
         <div className="min-w-0 space-y-4">{postsPanel}{scrapsPanel}{testimonialsPanel}</div>
       </div>

@@ -9,10 +9,11 @@ desta paleta ou de um segundo logo.
 
 ## 1. Logo
 
-**Logo oficial:** monograma **"DM"** com o **ponto laranja obrigatório** + wordmark
-**"Conecta"**. Componente: [`DMLogo`](../src/components/app/DMLogo.tsx).
+**Logo oficial:** monograma **"DM"** + wordmark **"Conecta"**.
+Componente: [`DMLogo`](../src/components/app/DMLogo.tsx).
 
 - Nome por extenso: **"DM Conecta"** (nunca "dmconecta" minúsculo).
+- ❌ Não usar o ponto laranja no monograma (removido na V1.1).
 - ❌ Não usar símbolo de átomo, nem outro monograma.
 
 **Tons (`tone`):**
