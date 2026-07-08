@@ -38,7 +38,7 @@ export default function MapPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Mapa de demandas</h1>
+          <h1 className="text-xl font-bold" style={{ color: "#f4841a" }}>Mapa de demandas</h1>
           <p className="text-sm" style={{ color: "var(--th-muted)" }}>
             <span className="font-numeric font-bold" style={{ color: "#f4841a" }}>{posts.length}</span> demandas mapeadas · seu bairro
           </p>

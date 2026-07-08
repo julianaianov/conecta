@@ -24,10 +24,10 @@ export function Stakeholders() {
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
           {STAKEHOLDERS.map((item, i) => (
-            <Reveal key={item.title} delay={i * 60}>
+            <Reveal key={item.title} delay={i * 60} className="h-full">
               <div
                 style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}
-                className="group flex flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-orange/40 hover:shadow-xl"
+                className="group flex h-full flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-orange/40 hover:shadow-xl"
               >
                 {/* Image — taller card */}
                 <div className="relative h-36 w-full overflow-hidden sm:h-40">

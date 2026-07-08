@@ -69,8 +69,8 @@ export default function FeedPage() {
         </div>
       </aside>
 
-      {/* Coluna central */}
-      <div className="min-w-0 space-y-4">
+      {/* Coluna central — largura confortável em telas médias (md), cheia no grid a partir de lg */}
+      <div className="mx-auto w-full min-w-0 max-w-2xl space-y-4 lg:mx-0 lg:max-w-none">
         {/* Quick post */}
         <Card>
           <div className="flex items-center gap-3">

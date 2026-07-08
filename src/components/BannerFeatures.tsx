@@ -1,6 +1,14 @@
 import { BANNER_FEATURES } from "@/lib/banner-data";
-import { FeatureIcon } from "./FeatureIcon";
+import { Icon, type IconName } from "./app/Icon";
 import { Reveal } from "./Reveal";
+
+/** Mapeia os ícones do banner para o conjunto unificado do app (Manual §02). */
+const FEATURE_ICONS: Record<string, IconName> = {
+  map: "map",
+  feed: "megaphone",
+  support: "volunteer",
+  shield: "shield",
+};
 
 export function BannerFeatures() {
   return (
@@ -27,7 +35,7 @@ export function BannerFeatures() {
                     style={{ background: "var(--th-surface)", borderColor: "var(--th-border)" }}
                     className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border transition-all group-hover:border-orange/30"
                   >
-                    <FeatureIcon name={feature.icon} accent={feature.icon === "map"} className="h-7 w-7" />
+                    <Icon name={FEATURE_ICONS[feature.icon]} size={28} style={{ color: "#f4841a" }} />
                   </div>
                   <h3
                     className="text-xs font-extrabold uppercase tracking-wide sm:text-sm"

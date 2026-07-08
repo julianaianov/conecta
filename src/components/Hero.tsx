@@ -115,11 +115,11 @@ export function Hero() {
 
       {/* ── Photo showcase ── */}
       <div className="mx-auto mt-16 w-full max-w-5xl px-5 lg:px-8">
-        <div className="grid grid-cols-3 gap-3 sm:gap-5">
-          {SHOWCASE.map((photo, i) => (
+        <div className="grid grid-cols-3 items-stretch gap-3 sm:gap-5">
+          {SHOWCASE.map((photo) => (
             <div
               key={photo.src}
-              className={`relative overflow-hidden rounded-2xl ${i === 1 ? "mt-8 sm:mt-14" : ""}`}
+              className="relative overflow-hidden rounded-2xl"
               style={{
                 aspectRatio: "4/3",
                 border: "2.5px solid rgba(255,255,255,0.85)",
