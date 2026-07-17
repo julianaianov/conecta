@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/app/auth";
+import { can } from "@/lib/app/types";
 import { DMLogo } from "./DMLogo";
 import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./Avatar";
@@ -21,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, demoMode, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const canPublish = can(user?.role, "publish");
 
   const isActive = (href: string) =>
     href === "/perfil" ? pathname === "/perfil" : pathname === href || pathname.startsWith(href + "/");
@@ -68,13 +70,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 MODO DEMO
               </span>
             )}
-            <Link
-              href="/criar"
-              className="hidden h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white md:inline-flex"
-              style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}
-            >
-              <Icon name="plus" size={18} /> Publicar
-            </Link>
+            {canPublish && (
+              <Link
+                href="/criar"
+                className="hidden h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white md:inline-flex"
+                style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}
+              >
+                <Icon name="plus" size={18} /> Publicar
+              </Link>
+            )}
             <ThemeToggle />
             <button
               type="button"
@@ -124,15 +128,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="relative mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
           <BottomItem item={NAV[0]} active={isActive(NAV[0].href)} />
           <BottomItem item={NAV[1]} active={isActive(NAV[1].href)} />
+          {/* Célula mantida mesmo sem o FAB para não desalinhar a grade de 5 colunas */}
           <div className="flex justify-center">
-            <Link
-              href="/criar"
-              className="-mt-8 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
-              style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)", boxShadow: "0 8px 20px rgba(244,132,26,0.4)" }}
-              aria-label="Publicar"
-            >
-              <Icon name="plus" size={26} />
-            </Link>
+            {canPublish && (
+              <Link
+                href="/criar"
+                className="-mt-8 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
+                style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)", boxShadow: "0 8px 20px rgba(244,132,26,0.4)" }}
+                aria-label="Publicar"
+              >
+                <Icon name="plus" size={26} />
+              </Link>
+            )}
           </div>
           <BottomItem item={NAV[2]} active={isActive(NAV[2].href)} />
           <BottomItem item={NAV[3]} active={isActive(NAV[3].href)} />

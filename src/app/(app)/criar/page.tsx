@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import {
-  DEFAULT_CITY, DEFAULT_NEIGHBORHOOD, POST_TYPE_COLORS, POST_TYPE_LABELS, type PostType,
+  DEFAULT_CITY, DEFAULT_NEIGHBORHOOD, POST_TYPE_COLORS, POST_TYPE_LABELS,
+  can, normalizeRole, ROLE_LABELS, ROLE_RESTRICTIONS, type PostType,
 } from "@/lib/app/types";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Button } from "@/components/app/Button";
@@ -31,10 +32,11 @@ export default function CreatePostPage() {
   const [city, setCity] = useState(DEFAULT_CITY);
   const [tags, setTags] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const canPublish = can(user?.role, "publish");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !canPublish) return;
     setSubmitting(true);
     try {
       const post = await api.createPost(
@@ -47,6 +49,28 @@ export default function CreatePostPage() {
       );
       router.push(`/post/${post.id}`);
     } finally { setSubmitting(false); }
+  }
+
+  if (user && !canPublish) {
+    const role = normalizeRole(user.role);
+    return (
+      <div className="mx-auto max-w-xl">
+        <button onClick={() => router.back()} className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--th-muted)" }}>
+          <Icon name="arrowLeft" size={18} /> Voltar
+        </button>
+        <Card>
+          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Publicação indisponível</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>
+            {ROLE_RESTRICTIONS[role] ??
+              `Perfis do tipo "${ROLE_LABELS[role]}" não publicam demandas, projetos ou eventos.`}
+          </p>
+          <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>
+            Você continua podendo curtir, comentar, compartilhar e se conectar com as comunidades pelo feed.
+          </p>
+          <Button className="mt-4" onClick={() => router.push("/feed")}>Voltar ao feed</Button>
+        </Card>
+      </div>
+    );
   }
 
   return (

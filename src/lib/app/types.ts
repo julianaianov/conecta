@@ -5,27 +5,149 @@
  */
 
 // ── Papéis de usuário ──────────────────────────────────────
-export type UserRole =
-  | "citizen"
-  | "organization"
-  | "association"
-  | "government"
-  | "business";
+/** As 4 categorias de perfil. Cada uma agrupa subperfis (ver ROLE_PROFILES). */
+export type UserRole = "community" | "citizen" | "partner" | "institutional";
+
+export const ROLES: UserRole[] = ["community", "citizen", "partner", "institutional"];
 
 export const ROLE_LABELS: Record<UserRole, string> = {
+  community: "Comunidade",
   citizen: "Cidadão / Morador",
-  organization: "ONG",
-  association: "Associação",
-  government: "Governo / Prefeitura",
-  business: "Empresa / Patrocinador",
+  partner: "Parceiro",
+  institutional: "Institucional",
 };
 
 export const ROLE_COLORS: Record<UserRole, string> = {
+  community: "#1b4f72",
   citizen: "#2e7ba8",
-  organization: "#5a9bc4",
-  association: "#1b4f72",
-  government: "#0d2d42",
-  business: "#f4841a",
+  partner: "#f4841a",
+  institutional: "#0d2d42",
+};
+
+export const ROLE_ICONS: Record<UserRole, string> = {
+  community: "users",
+  citizen: "person",
+  partner: "building",
+  institutional: "shield",
+};
+
+/**
+ * Papéis anteriores (5 opções) que ainda existem em contas antigas e no JWT.
+ * Lidos de volta como as 4 categorias atuais.
+ */
+const LEGACY_ROLE_MAP: Record<string, UserRole> = {
+  organization: "community",
+  association: "community",
+  business: "partner",
+  government: "institutional",
+  citizen: "citizen",
+};
+
+/** Normaliza qualquer role vinda da API/localStorage para as 4 categorias. */
+export function normalizeRole(role: string | null | undefined): UserRole {
+  if (!role) return "citizen";
+  if ((ROLES as string[]).includes(role)) return role as UserRole;
+  return LEGACY_ROLE_MAP[role] ?? "citizen";
+}
+
+// ── Subperfis ──────────────────────────────────────────────
+export type ProfileType =
+  // Comunidade
+  | "associacao" | "ong" | "projeto_social" | "coletivo" | "lider_comunitario" | "representante_bairro"
+  // Cidadão / Morador
+  | "morador" | "voluntario" | "jovem" | "participante"
+  // Parceiro
+  | "empresa" | "patrocinador" | "comercio_local" | "marca"
+  // Institucional
+  | "prefeitura" | "secretaria" | "politico" | "imprensa";
+
+export const ROLE_PROFILES: Record<UserRole, { type: ProfileType; label: string }[]> = {
+  community: [
+    { type: "associacao", label: "Associação" },
+    { type: "ong", label: "ONG" },
+    { type: "projeto_social", label: "Projeto Social" },
+    { type: "coletivo", label: "Coletivo" },
+    { type: "lider_comunitario", label: "Líder Comunitário" },
+    { type: "representante_bairro", label: "Representante de Bairro" },
+  ],
+  citizen: [
+    { type: "morador", label: "Morador" },
+    { type: "voluntario", label: "Voluntário" },
+    { type: "jovem", label: "Jovens" },
+    { type: "participante", label: "Participante da comunidade" },
+  ],
+  partner: [
+    { type: "empresa", label: "Empresa" },
+    { type: "patrocinador", label: "Patrocinador" },
+    { type: "comercio_local", label: "Comércio local" },
+    { type: "marca", label: "Marca" },
+  ],
+  institutional: [
+    { type: "prefeitura", label: "Prefeitura" },
+    { type: "secretaria", label: "Secretaria" },
+    { type: "politico", label: "Político" },
+    { type: "imprensa", label: "Imprensa" },
+  ],
+};
+
+export const PROFILE_LABELS: Record<ProfileType, string> = Object.fromEntries(
+  Object.values(ROLE_PROFILES).flatMap((list) => list.map((p) => [p.type, p.label])),
+) as Record<ProfileType, string>;
+
+/** A qual categoria um subperfil pertence. */
+export const PROFILE_ROLE: Record<ProfileType, UserRole> = Object.fromEntries(
+  Object.entries(ROLE_PROFILES).flatMap(([role, list]) => list.map((p) => [p.type, role])),
+) as Record<ProfileType, UserRole>;
+
+// ── Permissões ─────────────────────────────────────────────
+/**
+ * Capacidades aplicadas no app. As listas de permissões da especificação
+ * descrevem o que cada categoria faz de característico, não uma whitelist
+ * fechada — por isso `interact` (curtir/comentar/compartilhar) e a leitura do
+ * feed/mapa valem para todos, e só o que a spec distingue é bloqueado.
+ */
+export type Permission =
+  | "publish"        // publicar demandas, projetos e eventos
+  | "update_results" // atualizar resultados dos próprios projetos
+  | "interact"       // curtir, comentar, compartilhar
+  | "connect"        // solicitar conexão / contato
+  | "support"        // apoiar projetos
+  | "express_interest"
+  | "ranking";
+
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  community: ["publish", "update_results", "interact", "connect"],
+  citizen: ["interact", "connect", "support"],
+  partner: ["interact", "connect", "express_interest", "ranking"],
+  institutional: ["publish", "interact", "connect"],
+};
+
+export function can(role: string | null | undefined, permission: Permission): boolean {
+  return ROLE_PERMISSIONS[normalizeRole(role)].includes(permission);
+}
+
+/** Texto exibido no cadastro — espelha a especificação de Tipos de Perfis. */
+export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
+  community: [
+    "Criar perfil", "Publicar demandas", "Publicar projetos", "Publicar eventos",
+    "Receber solicitações de conexão", "Atualizar resultados",
+  ],
+  citizen: [
+    "Criar perfil", "Curtir", "Comentar", "Compartilhar",
+    "Solicitar conexão", "Apoiar projetos",
+  ],
+  partner: [
+    "Visualizar demandas", "Solicitar conexão", "Demonstrar interesse",
+    "Participar do ranking",
+  ],
+  institutional: [
+    "Visualizar mapa", "Interagir", "Solicitar contato",
+    "Publicar respostas institucionais",
+  ],
+};
+
+export const ROLE_RESTRICTIONS: Partial<Record<UserRole, string>> = {
+  citizen: "Não publica oficialmente em nome de comunidades",
 };
 
 export interface User {
@@ -33,6 +155,7 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  profileType?: ProfileType | null;
   avatarUrl?: string | null;
 }
 
@@ -192,6 +315,7 @@ export interface Profile {
   name: string;
   email?: string;
   role: UserRole | string;
+  profileType?: ProfileType | null;
   bio?: string | null;
   status?: string | null;
   city?: string | null;

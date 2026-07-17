@@ -3,7 +3,7 @@
 /** Contexto de autenticação — DM Conecta (espelha AuthProvider do Flutter). */
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, getStoredUser, isDemoMode } from "./api";
-import type { User, UserRole } from "./types";
+import type { User, UserRole, ProfileType } from "./types";
 
 type AuthStatus = "unknown" | "authenticated" | "unauthenticated";
 
@@ -13,7 +13,7 @@ interface AuthContextValue {
   demoMode: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginDemo: (email?: string, password?: string) => Promise<void>;
-  register: (input: { name: string; email: string; password: string; role: UserRole }) => Promise<void>;
+  register: (input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("authenticated");
   }, []);
 
-  const register = useCallback(async (input: { name: string; email: string; password: string; role: UserRole }) => {
+  const register = useCallback(async (input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }) => {
     const u = await api.register(input);
     setUser(u);
     setDemoMode(isDemoMode());

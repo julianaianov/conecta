@@ -33,9 +33,13 @@ export function BannerFeatures() {
                 >
                   <div
                     style={{ background: "var(--th-surface)", borderColor: "var(--th-border)" }}
-                    className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border transition-all group-hover:border-orange/30"
+                    className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border transition-all duration-300 ease-out group-hover:-translate-y-1 group-hover:border-orange/40 group-hover:bg-orange/10 group-hover:shadow-lg group-hover:shadow-orange/20 group-active:translate-y-0 group-active:scale-95 sm:h-14 sm:w-14 lg:h-16 lg:w-16"
                   >
-                    <Icon name={FEATURE_ICONS[feature.icon]} size={28} style={{ color: "#f4841a" }} />
+                    <Icon
+                      name={FEATURE_ICONS[feature.icon]}
+                      className="h-6 w-6 transition-transform duration-300 ease-out group-hover:scale-110 sm:h-7 sm:w-7 lg:h-8 lg:w-8"
+                      style={{ color: "#f4841a" }}
+                    />
                   </div>
                   <h3
                     className="text-xs font-extrabold uppercase tracking-wide sm:text-sm"

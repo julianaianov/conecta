@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
-import { ROLE_LABELS, type Post, type PostType, type Community, type UserRole } from "@/lib/app/types";
+import { ROLE_LABELS, normalizeRole, type Post, type PostType, type Community } from "@/lib/app/types";
 import { PostCard } from "@/components/app/PostCard";
 import { Avatar } from "@/components/app/Avatar";
 import { Icon } from "@/components/app/Icon";
@@ -54,7 +54,7 @@ export default function FeedPage() {
             <div className="flex flex-col items-center text-center">
               <Avatar name={user?.name ?? ""} src={user?.avatarUrl} id={user?.id} size={64} />
               <p className="mt-2 text-sm font-bold" style={{ color: "var(--th-text)" }}>{user?.name}</p>
-              <p className="text-xs" style={{ color: "var(--th-muted)" }}>{ROLE_LABELS[(user?.role as UserRole) ?? "citizen"]}</p>
+              <p className="text-xs" style={{ color: "var(--th-muted)" }}>{ROLE_LABELS[normalizeRole(user?.role)]}</p>
               <Link href="/perfil" className="mt-3 w-full rounded-lg border py-2 text-xs font-semibold" style={{ borderColor: "var(--th-border)", color: "var(--th-text)" }}>
                 Ver meu perfil
               </Link>

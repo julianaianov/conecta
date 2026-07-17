@@ -86,17 +86,17 @@ export const STEPS = [
     number: "02",
     title: "Conecte",
     description:
-      "Receba apoios de vizinhos, ONGs e parceiros. Voluntariado, doações ou expertise — você escolhe.",
+      "Transforme investimento em impacto social e ambiental. Conecte sua empresa a projetos reais por meio de patrocínio, doações, voluntariado corporativo e ações ESG.",
     image: IMAGES.stepConnect,
-    example: "Mutirão de limpeza da praia",
+    example: "🤝 Sua marca + Associação/Ong + comunidade",
   },
   {
     number: "03",
     title: "Transforme",
     description:
-      "Acompanhe o progresso, celebre resultados e inspire outras iniciativas no bairro.",
+      "Receba apoios de vizinhos, ONGs e parceiros. Voluntariado, doações ou expertise — você escolhe.",
     image: IMAGES.stepTransform,
-    example: "Horta comunitária do bairro",
+    example: "🌱 Mutirão de limpeza da praia à regeneração da natureza",
   },
 ] as const;
 

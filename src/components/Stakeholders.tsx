@@ -1,5 +1,6 @@
 import { STAKEHOLDERS } from "@/lib/banner-data";
 import { AppImage } from "./AppImage";
+import { CountUp } from "./CountUp";
 import { Reveal } from "./Reveal";
 
 export function Stakeholders() {
@@ -70,7 +71,7 @@ export function Stakeholders() {
             className="mt-10 grid grid-cols-2 gap-4 rounded-2xl border p-6 sm:grid-cols-4"
           >
             <StatItem value="+1.200" label="Membros ativos" />
-            <StatItem value="∞" label="Bairros suportados" />
+            <StatItem value="165" label="Bairros suportados" />
             <StatItem value="50+" label="Projetos publicados" />
             <StatItem value="6" label="Tipos de perfil" />
           </div>
@@ -83,7 +84,7 @@ export function Stakeholders() {
 function StatItem({ value, label }: { value: string; label: string }) {
   return (
     <div className="text-center">
-      <div className="text-2xl font-extrabold text-orange">{value}</div>
+      <CountUp value={value} className="block text-2xl font-extrabold text-orange" />
       <div className="mt-0.5 text-sm" style={{ color: "var(--th-muted)" }}>{label}</div>
     </div>
   );

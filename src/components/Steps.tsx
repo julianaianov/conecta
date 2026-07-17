@@ -22,7 +22,7 @@ export function Steps() {
           </div>
         </Reveal>
 
-        <div className="relative grid gap-8 md:grid-cols-3 md:gap-6">
+        <div className="relative grid items-stretch gap-8 md:grid-cols-3 md:gap-6 lg:gap-8">
           <div
             className="absolute left-0 right-0 top-[88px] hidden h-px md:block"
             style={{ background: "linear-gradient(to right, transparent, var(--th-border), transparent)" }}
@@ -30,8 +30,8 @@ export function Steps() {
           />
 
           {STEPS.map((step, i) => (
-            <Reveal key={step.number} delay={i * 120}>
-              <div className="group relative flex flex-col">
+            <Reveal key={step.number} delay={i * 120} className="h-full">
+              <div className="group relative flex h-full flex-col">
                 <div
                   style={{ borderColor: "var(--th-border)" }}
                   className="relative mb-6 h-48 w-full overflow-hidden rounded-2xl border"
@@ -53,9 +53,12 @@ export function Steps() {
                   </div>
                 </div>
 
-                <h3 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>{step.title}</h3>
-                <p className="mt-1 text-xs font-semibold text-orange">{step.example}</p>
-                <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--th-muted)" }}>{step.description}</p>
+                <div className="flex flex-1 flex-col">
+                  <h3 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>{step.title}</h3>
+                  {/* min-h reserva 2 linhas: sem isso os destaques mais longos quebram e desalinham as descrições entre as colunas */}
+                  <p className="mt-1 text-xs font-semibold leading-4 text-orange md:min-h-8">{step.example}</p>
+                  <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--th-muted)" }}>{step.description}</p>
+                </div>
               </div>
             </Reveal>
           ))}
