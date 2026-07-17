@@ -3,15 +3,16 @@ export const BANNER_PHOTOS = {
   rioSunset:   "/images/stock/rio-sunset.jpg",
   mapCoastal:  "/images/stock/map-light.jpg",
 
-  iluminacao:    "/images/stock/iluminacao.jpg",
+  iluminacao:     "/images/uploads/iluminacao-precaria.jpg", // rua escura / iluminação precária
+  iluminacaoPraca:"/images/uploads/iluminacao-praca.jpg",    // praça/skate bem iluminada à noite
   surfSocial:    "/images/stock/voluntarios.jpg",
-  mutiraoPraia:  "/images/posts/mutirao.svg",
+  mutiraoPraia:  "/images/uploads/mutirao-praia.jpg",
   patrocinio:    "/images/stock/parceria.jpg",
 
-  buracoRua:  "/images/posts/buraco.svg",
+  buracoRua:  "/images/uploads/buraco-asfalto.jpg",
   horta:      "/images/stock/horta.jpg",
-  cestas:     "/images/posts/cestas.svg",
-  feira:      "/images/stock/feira-verde.jpg",
+  cestas:     "/images/uploads/cestas-basicas.jpg",
+  feira:      "/images/uploads/feira-sustentabilidade.jpg",
   plantio:    "/images/posts/mutirao.svg",
   alagamento: "/images/posts/buraco.svg",
   futebol:    "/images/stock/voluntarios.jpg",
@@ -31,9 +32,9 @@ export const BANNER_PHOTOS = {
   avatarEmpresa:    "/images/stock/avatar-empresa.jpg",
 
   communityBairro:     "/images/communities/moradores.svg",
-  communityOrla:       "/images/posts/mutirao.svg",
+  communityOrla:       "/images/uploads/mutirao-praia.jpg",
   communityMobilidade: "/images/communities/ciclistas.svg",
-  communityEvento:     "/images/stock/feira-verde.jpg",
+  communityEvento:     "/images/uploads/feira-sustentabilidade.jpg",
   ctaVoluntarios:      "/images/stock/voluntarios.jpg",
 } as const;
 

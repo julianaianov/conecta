@@ -35,7 +35,7 @@ export const MAP_ACTIVITIES: MapActivity[] = [
     badge: "Problema",
     badgeBg: "#FFEBEE",
     badgeText: "#C62828",
-    image: BANNER_PHOTOS.iluminacao,
+    image: BANNER_PHOTOS.iluminacaoPraca,
     x: 38,
     y: 42,
   },
