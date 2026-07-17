@@ -8,9 +8,12 @@ import { Button } from "@/components/app/Button";
 import { Icon } from "@/components/app/Icon";
 import { AuthShowcase } from "@/components/app/AuthShowcase";
 import { Field } from "../login/page";
-import { ROLE_LABELS, ROLE_COLORS, type UserRole } from "@/lib/app/types";
-
-const ROLES: UserRole[] = ["citizen", "organization", "association", "government", "business"];
+import {
+  ROLES, ROLE_LABELS, ROLE_COLORS, ROLE_ICONS, ROLE_PROFILES,
+  ROLE_PERMISSION_LABELS, ROLE_RESTRICTIONS,
+  type UserRole, type ProfileType,
+} from "@/lib/app/types";
+import type { IconName } from "@/components/app/Icon";
 
 export default function RegisterPage() {
   const { register, status } = useAuth();
@@ -23,9 +26,16 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("citizen");
+  const [profileType, setProfileType] = useState<ProfileType | null>(null);
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** Trocar de categoria zera o subperfil — os subperfis não se repetem entre categorias. */
+  function selectRole(next: UserRole) {
+    setRole(next);
+    setProfileType(null);
+  }
 
   useEffect(() => {
     if (status === "authenticated") router.replace("/feed");
@@ -45,10 +55,14 @@ export default function RegisterPage() {
       setError("A senha precisa ter pelo menos 6 caracteres.");
       return;
     }
+    if (!profileType) {
+      setError(`Escolha um perfil dentro de "${ROLE_LABELS[role]}".`);
+      return;
+    }
     setLoading(true);
     try {
       const fullName = [name.trim(), surname.trim()].filter(Boolean).join(" ");
-      await register({ name: fullName, email, password, role });
+      await register({ name: fullName, email, password, role, profileType });
       router.replace("/feed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível cadastrar.");
@@ -110,26 +124,68 @@ export default function RegisterPage() {
 
             <div>
               <span className="mb-2 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>Tipo de perfil</span>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div role="radiogroup" aria-label="Tipo de perfil" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {ROLES.map((r) => {
                   const active = role === r;
                   return (
                     <button
-                      key={r} type="button" onClick={() => setRole(r)}
+                      key={r} type="button" role="radio" aria-checked={active} onClick={() => selectRole(r)}
                       className="flex items-center gap-3 rounded-xl border p-3 text-left transition-all"
                       style={{
                         borderColor: active ? ROLE_COLORS[r] : "var(--th-border)",
                         background: active ? `${ROLE_COLORS[r]}14` : "var(--th-card)",
                       }}
                     >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: `${ROLE_COLORS[r]}1f`, color: ROLE_COLORS[r] }}>
-                        <Icon name={r === "citizen" ? "person" : r === "government" ? "building" : r === "business" ? "building" : r === "organization" ? "volunteer" : "users"} size={18} />
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: `${ROLE_COLORS[r]}1f`, color: ROLE_COLORS[r] }}>
+                        <Icon name={ROLE_ICONS[r] as IconName} size={18} />
                       </span>
                       <span className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>{ROLE_LABELS[r]}</span>
-                      {active && <Icon name="check" size={16} className="ml-auto" style={{ color: ROLE_COLORS[r] }} />}
+                      {active && <Icon name="check" size={16} className="ml-auto shrink-0" style={{ color: ROLE_COLORS[r] }} />}
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Subperfis + permissões da categoria escolhida */}
+              <div className="mt-3 rounded-xl border p-3" style={{ borderColor: "var(--th-border)", background: "var(--th-card)" }}>
+                <span id="subperfil-label" className="block text-xs font-semibold" style={{ color: "var(--th-muted)" }}>
+                  Seu perfil em {ROLE_LABELS[role]}
+                </span>
+                <div role="radiogroup" aria-labelledby="subperfil-label" className="mt-2 flex flex-wrap gap-2">
+                  {ROLE_PROFILES[role].map((p) => {
+                    const active = profileType === p.type;
+                    return (
+                      <button
+                        key={p.type} type="button" role="radio" aria-checked={active}
+                        onClick={() => setProfileType(p.type)}
+                        className="rounded-full border px-3 py-1.5 text-xs font-semibold transition-all"
+                        style={{
+                          borderColor: active ? ROLE_COLORS[role] : "var(--th-border)",
+                          background: active ? ROLE_COLORS[role] : "transparent",
+                          color: active ? "#fff" : "var(--th-text)",
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
+                  {ROLE_PERMISSION_LABELS[role].map((label) => (
+                    <li key={label} className="flex items-center gap-1 text-xs" style={{ color: "var(--th-muted)" }}>
+                      <Icon name="check" size={12} style={{ color: ROLE_COLORS[role] }} />
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+
+                {ROLE_RESTRICTIONS[role] && (
+                  <p className="mt-2 flex items-start gap-1 text-xs" style={{ color: "var(--th-muted)" }}>
+                    <Icon name="info" size={12} className="mt-0.5 shrink-0" />
+                    {ROLE_RESTRICTIONS[role]}
+                  </p>
+                )}
               </div>
             </div>
 

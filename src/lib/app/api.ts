@@ -5,8 +5,9 @@
  * Social (recados/depoimentos/comunidades/amizades) é sempre demo (sem backend).
  */
 import {
+  normalizeRole,
   type Post, type Comment, type SupportRecord, type SupportSummaryItem,
-  type User, type Profile, type UserRole, type PostType, type PostStatus,
+  type User, type Profile, type UserRole, type ProfileType, type PostType, type PostStatus,
   type SupportType, type PaymentMethod, type Community, type Scrap, type Testimonial,
 } from "./types";
 import { demo, DEMO_TOKEN, DEMO_USERS } from "./demo";
@@ -148,7 +149,8 @@ function mapUser(r: RawPost): User {
     id: String(r.id),
     email: String(r.email ?? ""),
     name: String(r.name ?? ""),
-    role: (r.role as UserRole) ?? "citizen",
+    role: normalizeRole(r.role as string | null),
+    profileType: (r.profile_type ?? r.profileType ?? null) as ProfileType | null,
     avatarUrl: (r.avatar_url ?? r.avatarUrl ?? null) as string | null,
   };
 }
@@ -188,12 +190,15 @@ export const api = {
     return user;
   },
 
-  async register(input: { name: string; email: string; password: string; role: UserRole }): Promise<User> {
+  async register(input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }): Promise<User> {
     if (HAS_API) {
       try {
         const data = await request<{ user: RawPost; token: string }>("/api/auth/register", {
           method: "POST",
-          body: JSON.stringify(input),
+          body: JSON.stringify({
+            name: input.name, email: input.email, password: input.password,
+            role: input.role, profile_type: input.profileType,
+          }),
         });
         const user = mapUser(data.user);
         persist(user, data.token, false);
@@ -203,7 +208,10 @@ export const api = {
       }
     }
     // fallback demo: cria sessão local
-    const user: User = { id: `local-${Date.now()}`, email: input.email, name: input.name, role: input.role, avatarUrl: null };
+    const user: User = {
+      id: `local-${Date.now()}`, email: input.email, name: input.name,
+      role: input.role, profileType: input.profileType, avatarUrl: null,
+    };
     persist(user, DEMO_TOKEN, true);
     return user;
   },
@@ -377,7 +385,8 @@ export const api = {
       return {
         userId,
         name: String(r.name ?? d?.name ?? "Usuário"),
-        role: (r.role as string) ?? d?.role ?? "citizen",
+        role: normalizeRole((r.role as string) ?? d?.role),
+        profileType: (r.profile_type ?? d?.profileType ?? null) as ProfileType | null,
         bio: (r.bio as string) ?? d?.bio ?? null,
         status: d?.status ?? null,
         city: (r.city as string) ?? d?.city ?? null,
@@ -399,7 +408,7 @@ export const api = {
     const u = getStoredUser();
     if (!u || u.id !== userId) return null;
     return {
-      userId, name: u.name, role: u.role, email: u.email,
+      userId, name: u.name, role: u.role, profileType: u.profileType ?? null, email: u.email,
       bio: null, status: null, city: null, neighborhood: null, website: null,
       avatarUrl: u.avatarUrl ?? null, coverUrl: null, friendCount: 0,
     };
