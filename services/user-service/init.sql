@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   city       VARCHAR(100),
   state      VARCHAR(100),
   role       VARCHAR(50) NOT NULL DEFAULT 'citizen',
+  profile_type VARCHAR(50),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

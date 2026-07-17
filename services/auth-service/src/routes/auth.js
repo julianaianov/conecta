@@ -6,6 +6,16 @@ const { body, validationResult } = require('express-validator');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
 const sign = (payload, expiresIn) => jwt.sign(payload, JWT_SECRET, { expiresIn });
 
+// As 4 categorias de perfil e seus subperfis (espelha src/lib/app/types.ts).
+const ROLE_PROFILES = {
+  community:     ['associacao', 'ong', 'projeto_social', 'coletivo', 'lider_comunitario', 'representante_bairro'],
+  citizen:       ['morador', 'voluntario', 'jovem', 'participante'],
+  partner:       ['empresa', 'patrocinador', 'comercio_local', 'marca'],
+  institutional: ['prefeitura', 'secretaria', 'politico', 'imprensa'],
+};
+const ROLES = Object.keys(ROLE_PROFILES);
+const PROFILE_TYPES = Object.values(ROLE_PROFILES).flat();
+
 module.exports = (pool) => {
   const router = express.Router();
 
@@ -14,20 +24,26 @@ module.exports = (pool) => {
     body('email').isEmail().normalizeEmail(),
     body('password').isLength({ min: 6 }),
     body('name').notEmpty().trim(),
-    body('role').isIn(['citizen', 'organization', 'association', 'government', 'business']),
+    body('role').isIn(ROLES),
+    body('profile_type').isIn(PROFILE_TYPES),
   ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { email, password, name, role } = req.body;
+    const { email, password, name, role, profile_type: profileType } = req.body;
+    // O subperfil precisa pertencer à categoria enviada — senão daria para
+    // registrar um "citizen" com o subperfil "prefeitura".
+    if (!ROLE_PROFILES[role].includes(profileType)) {
+      return res.status(400).json({ error: `Subperfil "${profileType}" não pertence à categoria "${role}"` });
+    }
     try {
       const dup = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
       if (dup.rows.length) return res.status(409).json({ error: 'Email já cadastrado' });
 
       const hash = await bcrypt.hash(password, 10);
       const { rows } = await pool.query(
-        'INSERT INTO users (email,password_hash,name,role) VALUES ($1,$2,$3,$4) RETURNING id,email,name,role,created_at',
-        [email, hash, name, role]
+        'INSERT INTO users (email,password_hash,name,role,profile_type) VALUES ($1,$2,$3,$4,$5) RETURNING id,email,name,role,profile_type,created_at',
+        [email, hash, name, role, profileType]
       );
       const user = rows[0];
       res.status(201).json({

@@ -7,7 +7,7 @@ import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { formatDate, timeAgo } from "@/lib/app/format";
 import {
-  ROLE_LABELS, type Post, type Profile, type Scrap, type Testimonial, type Community, type Profile as P, type UserRole,
+  ROLE_LABELS, normalizeRole, PROFILE_LABELS, type Post, type Profile, type Scrap, type Testimonial, type Community, type Profile as P, type ProfileType,
 } from "@/lib/app/types";
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
@@ -64,7 +64,7 @@ export function OrkutProfile({ userId }: { userId: string }) {
   if (loading) return <div className="flex justify-center py-24"><span className="app-spinner" style={{ width: 30, height: 30 }} /></div>;
   if (!profile) return <p className="py-20 text-center" style={{ color: "var(--th-muted)" }}>Perfil não encontrado.</p>;
 
-  const role = profile.role as UserRole;
+  const role = normalizeRole(profile.role);
 
   const infoCard = (
     <Panel accent="#1b4f72">
@@ -79,7 +79,11 @@ export function OrkutProfile({ userId }: { userId: string }) {
         </div>
       </div>
       <h1 className="mt-2 text-lg font-bold leading-tight" style={{ color: "var(--th-text)" }}>{profile.name}</h1>
-      <p className="text-xs font-semibold" style={{ color: "#2e7ba8" }}>{ROLE_LABELS[role] ?? profile.role}</p>
+      <p className="text-xs font-semibold" style={{ color: "#2e7ba8" }}>
+        {[ROLE_LABELS[role], profile.profileType && PROFILE_LABELS[profile.profileType as ProfileType]]
+          .filter(Boolean)
+          .join(" · ")}
+      </p>
       {profile.status && <p className="mt-1 text-sm italic" style={{ color: "var(--th-muted)" }}>“{profile.status}”</p>}
 
       <div className="mt-3 space-y-1.5 text-sm" style={{ color: "var(--th-muted)" }}>

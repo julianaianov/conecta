@@ -49,7 +49,7 @@ const P: Record<IconName, React.ReactNode> = {
   payments: <><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 9v6M18 9v6" /></>,
   inventory: <><path d="M3 7 12 3l9 4-9 4-9-4Z" /><path d="M3 7v10l9 4 9-4V7M12 11v10" /></>,
   construction: <><rect x="3" y="14" width="18" height="6" rx="1" /><path d="M5 14 8 4l8 2-1.5 8M11 5l1.5 9" /></>,
-  volunteer: <path d="M12 21s-7-4.5-9.5-9C1 9 2.5 5.5 6 5.5c2 0 3 1.5 4 3 1-1.5 2-3 4-3 3.5 0 5 3.5 3.5 6.5C19 16.5 12 21 12 21Z" />,
+  volunteer: <path d="M12 20.5c1.9-1.8 8-5.9 8-11A4.5 4.5 0 0 0 12 6.8 4.5 4.5 0 0 0 4 9.5c0 5.1 6.1 9.2 8 11Z" />,
   handyman: <path d="m14 7 3-3 4 4-3 3M14 7l-9 9-2 5 5-2 9-9M14 7l3 3" />,
   home_work: <><path d="M3 21V10l6-4 6 4v11" /><path d="M3 21h18M15 21V8l4 2v11M8 13h2M8 17h2" /></>,
   restaurant: <><path d="M5 3v7a2 2 0 0 0 4 0V3M7 10v11M16 3c-1.5 0-2.5 2-2.5 5s1 4 2.5 4 2.5-1 2.5-4-1-5-2.5-5Zm0 9v9" /></>,

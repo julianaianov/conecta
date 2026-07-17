@@ -2,6 +2,7 @@ import Link from "next/link";
 import { APP_URL } from "@/lib/constants";
 import { DEMO_PROFILES } from "@/lib/images";
 import { AppImage } from "./AppImage";
+import { CountUp } from "./CountUp";
 
 const SHOWCASE = [
   {
@@ -152,7 +153,7 @@ export function Hero() {
               className="flex flex-col items-center py-5"
               style={{ background: "var(--th-card-alt)" }}
             >
-              <span className="text-2xl font-extrabold text-orange">{stat.value}</span>
+              <CountUp value={stat.value} className="text-2xl font-extrabold text-orange" />
               <span className="mt-0.5 text-xs" style={{ color: "var(--th-muted)" }}>
                 {stat.label}
               </span>
