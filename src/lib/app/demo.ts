@@ -14,6 +14,10 @@ import {
   type Community,
   type SupportRecord,
   type User,
+  type AppNotification,
+  type RankCategory,
+  type RankEntry,
+  SUPPORT_TYPE_META,
   DEFAULT_CITY,
   DEFAULT_NEIGHBORHOOD,
 } from "./types";
@@ -312,6 +316,90 @@ function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
 }
 
+// ── Ranking (sempre demo) ──────────────────────────────────
+/**
+ * Dados do ranking. Cada entrada guarda as métricas brutas (valor + projetos);
+ * os pontos são derivados por fórmulas documentadas — não são números mágicos.
+ * Os três usuários demo canônicos (empresa, associação, Maria) entram nas suas
+ * abas com o avatar real, então quem loga como eles se vê no ranking.
+ */
+const brl = (v: number) =>
+  v >= 1000 ? `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil` : `R$ ${v}`;
+
+/** Parceiros: pontos = valor doado + 80/projeto apoiado + 40/tipo de apoio. */
+const RANK_PARTNERS: { userId: string; name: string; avatarUrl?: string; city: string; amount: number; projects: number; types: number }[] = [
+  { userId: USER_IDS.empresa, name: "Construtora Nova Ltda", avatarUrl: BANNER_PHOTOS.avatarEmpresa, city: "Recreio", amount: 4200, projects: 7, types: 4 },
+  { userId: "rk-p2", name: "Supermercado Bom Preço", city: "Barra", amount: 3100, projects: 9, types: 3 },
+  { userId: "rk-p3", name: "Farmácia Saúde+", city: "Jacarepaguá", amount: 2400, projects: 5, types: 3 },
+  { userId: "rk-p4", name: "Auto Peças RJ", city: "Recreio", amount: 1800, projects: 4, types: 2 },
+  { userId: "rk-p5", name: "Padaria Pão Quente", city: "Recreio", amount: 900, projects: 6, types: 2 },
+  { userId: "rk-p6", name: "Studio Fitness Vida", city: "Barra", amount: 750, projects: 3, types: 2 },
+];
+
+/** Comunidades: pontos = 150/projeto publicado + 12/apoio recebido. */
+const RANK_COMMUNITIES: { userId: string; name: string; avatarUrl?: string; city: string; projects: number; supports: number; members: number }[] = [
+  { userId: USER_IDS.associacao, name: "Associação Bairro Verde", avatarUrl: BANNER_PHOTOS.avatarAssociacao, city: "Recreio", projects: 12, supports: 340, members: 124 },
+  { userId: "rk-c2", name: "ONG Mar Limpo", city: "Recreio", projects: 9, supports: 280, members: 96 },
+  { userId: "rk-c3", name: "Coletivo Cultural Recreio", city: "Recreio", projects: 8, supports: 190, members: 71 },
+  { userId: "rk-c4", name: "Projeto Semear", city: "Jacarepaguá", projects: 6, supports: 155, members: 58 },
+  { userId: "rk-c5", name: "Instituto Criança Feliz", city: "Barra", projects: 5, supports: 120, members: 44 },
+];
+
+/** Voluntários: pontos = 60/participação + 40/projeto + 2/hora doada. */
+const RANK_VOLUNTEERS: { userId: string; name: string; avatarUrl?: string; city: string; participations: number; projects: number; hours: number }[] = [
+  { userId: USER_IDS.maria, name: "Maria Silva", avatarUrl: BANNER_PHOTOS.avatarMaria, city: "Recreio", participations: 18, projects: 9, hours: 64 },
+  { userId: "rk-v2", name: "João Pereira", city: "Recreio", participations: 15, projects: 8, hours: 52 },
+  { userId: "rk-v3", name: "Ana Beatriz", city: "Barra", participations: 13, projects: 7, hours: 48 },
+  { userId: "rk-v4", name: "Carlos Mendes", city: "Jacarepaguá", participations: 10, projects: 5, hours: 36 },
+  { userId: "rk-v5", name: "Fernanda Lima", city: "Recreio", participations: 8, projects: 4, hours: 30 },
+];
+
+function rankBy<T>(rows: T[], points: (r: T) => number, entry: (r: T, points: number) => Omit<RankEntry, "rank">): RankEntry[] {
+  return rows
+    .map((r) => entry(r, points(r)))
+    .sort((a, b) => b.points - a.points)
+    .map((e, i) => ({ ...e, rank: i + 1 }));
+}
+
+const RANKING: Record<RankCategory, RankEntry[]> = {
+  partner: rankBy(
+    RANK_PARTNERS,
+    (r) => Math.round(r.amount) + r.projects * 80 + r.types * 40,
+    (r, points) => ({
+      userId: r.userId, name: r.name, avatarUrl: r.avatarUrl ?? null, role: "partner", city: r.city, points,
+      highlights: [
+        { icon: "payments", label: `${brl(r.amount)} apoiados` },
+        { icon: "heart", label: `${r.projects} projetos` },
+        { icon: "star", label: `${r.types} tipos de apoio` },
+      ],
+    }),
+  ),
+  community: rankBy(
+    RANK_COMMUNITIES,
+    (r) => r.projects * 150 + r.supports * 12,
+    (r, points) => ({
+      userId: r.userId, name: r.name, avatarUrl: r.avatarUrl ?? null, role: "community", city: r.city, points,
+      highlights: [
+        { icon: "megaphone", label: `${r.projects} projetos` },
+        { icon: "heart", label: `${r.supports} apoios recebidos` },
+        { icon: "users", label: `${r.members} membros` },
+      ],
+    }),
+  ),
+  volunteer: rankBy(
+    RANK_VOLUNTEERS,
+    (r) => r.participations * 60 + r.projects * 40 + r.hours * 2,
+    (r, points) => ({
+      userId: r.userId, name: r.name, avatarUrl: r.avatarUrl ?? null, role: "citizen", city: r.city, points,
+      highlights: [
+        { icon: "volunteer", label: `${r.participations} participações` },
+        { icon: "heart", label: `${r.projects} projetos` },
+        { icon: "clock", label: `${r.hours}h voluntárias` },
+      ],
+    }),
+  ),
+};
+
 export const demo = {
   user: () => clone(DEMO_USER),
 
@@ -425,6 +513,46 @@ export const demo = {
     return clone(all);
   },
 
+  /**
+   * Notificações derivadas: comentários, apoios e reações que outras pessoas
+   * deixaram nas publicações do próprio usuário. Não há tabela de notificações
+   * no backend — a lista é montada a partir dos dados existentes.
+   */
+  notifications(userId: string): AppNotification[] {
+    const myPostIds = new Set(POSTS.filter((p) => p.authorId === userId).map((p) => p.id));
+    const titleOf = (postId: string) => POSTS.find((p) => p.id === postId)?.title ?? "sua publicação";
+    const out: AppNotification[] = [];
+
+    for (const [postId, list] of Object.entries(COMMENTS)) {
+      if (!myPostIds.has(postId)) continue;
+      for (const c of list) {
+        if (c.authorId === userId) continue; // não notifica você sobre você mesmo
+        out.push({
+          id: `n-${c.id}`, kind: "comment", actorName: c.authorName,
+          postId, postTitle: titleOf(postId),
+          summary: `comentou em «${titleOf(postId)}»`, icon: "comment", createdAt: c.createdAt,
+        });
+      }
+    }
+
+    for (const [postId, list] of Object.entries(SUPPORTS)) {
+      if (!myPostIds.has(postId)) continue;
+      for (const s of list) {
+        if (s.userId === userId) continue;
+        const label = SUPPORT_TYPE_META[s.type]?.label ?? "apoio";
+        out.push({
+          id: `n-${s.id}`, kind: "support", actorName: s.userName ?? "Alguém",
+          postId, postTitle: titleOf(postId),
+          summary: `apoiou «${titleOf(postId)}» com ${label}`,
+          icon: SUPPORT_TYPE_META[s.type]?.icon ?? "heart", createdAt: s.createdAt,
+        });
+      }
+    }
+
+    out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return clone(out);
+  },
+
   getProfile(userId: string): Profile | null {
     return PROFILES[userId] ? clone(PROFILES[userId]) : null;
   },
@@ -459,5 +587,9 @@ export const demo = {
 
   friendsOf(userId: string): Profile[] {
     return clone((FRIENDS[userId] ?? []).map((id) => PROFILES[id]).filter(Boolean));
+  },
+
+  ranking(): Record<RankCategory, RankEntry[]> {
+    return clone(RANKING);
   },
 };
