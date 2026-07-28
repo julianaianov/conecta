@@ -9,6 +9,7 @@ import {
   type Post, type Comment, type SupportRecord, type SupportSummaryItem,
   type User, type Profile, type UserRole, type ProfileType, type PostType, type PostStatus,
   type SupportType, type PaymentMethod, type Community, type Scrap, type Testimonial,
+  type AppNotification, type RankCategory, type RankEntry,
 } from "./types";
 import { demo, DEMO_TOKEN, DEMO_USERS } from "./demo";
 
@@ -373,6 +374,11 @@ export const api = {
     );
   },
 
+  // ── NOTIFICAÇÕES (derivadas — sem backend dedicado) ──────
+  async notifications(userId: string): Promise<AppNotification[]> {
+    return demo.notifications(userId);
+  },
+
   // ── PROFILE ──────────────────────────────────────────────
   async getProfile(userId: string): Promise<Profile | null> {
     // user-service tem GET /:id, mas os campos sociais (bio/cover/status) do demo
@@ -441,5 +447,10 @@ export const api = {
   },
   friendsOf(userId: string): Promise<Profile[]> {
     return Promise.resolve(demo.friendsOf(userId));
+  },
+
+  /** Ranking — sempre demo (não há endpoint no backend). */
+  ranking(): Promise<Record<RankCategory, RankEntry[]>> {
+    return Promise.resolve(demo.ranking());
   },
 };

@@ -13,9 +13,9 @@ interface MarkProps {
 export function DMMonogram({ size = 36, tone = "petroleo", className = "" }: MarkProps) {
   const badge =
     tone === "petroleo"
-      ? { background: "linear-gradient(135deg,#0d2d42,#1b4f72)", color: "#f4841a" }
+      ? { background: "linear-gradient(135deg,#f4841a,#f89b45)", color: "#fff" }
       : tone === "light"
-        ? { background: "rgba(255,255,255,0.12)", color: "#f4841a" }
+        ? { background: "rgba(255,255,255,0.12)", color: "#fff" }
         : { background: "transparent", color: "currentColor" };
   const radius = size * 0.28;
   return (

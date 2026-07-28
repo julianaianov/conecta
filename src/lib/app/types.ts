@@ -309,6 +309,61 @@ export interface SupportRecord {
   createdAt: string;
 }
 
+// ── Ranking ────────────────────────────────────────────────
+/** As abas do ranking. `partner` reflete a permissão "Participar do ranking". */
+export type RankCategory = "partner" | "community" | "volunteer";
+
+export interface RankHighlight {
+  icon: string; // chave de ícone (ver Icon component)
+  label: string;
+}
+
+export interface RankEntry {
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+  role: UserRole;
+  profileType?: ProfileType | null;
+  city?: string | null;
+  /** pontuação calculada a partir de valor + projetos (ver demo.ranking). */
+  points: number;
+  /** posição 1-based, preenchida após a ordenação. */
+  rank: number;
+  /** métricas que compõem os pontos, prontas para exibição. */
+  highlights: RankHighlight[];
+}
+
+export interface RankBoard {
+  category: RankCategory;
+  label: string;
+  /** subtítulo curto da aba. */
+  subtitle: string;
+  /** como os pontos são calculados — exibido ao usuário. */
+  metric: string;
+  entries: RankEntry[];
+}
+
+export const RANK_CATEGORIES: { category: RankCategory; label: string; icon: string }[] = [
+  { category: "partner", label: "Parceiros", icon: "building" },
+  { category: "community", label: "Comunidades", icon: "users" },
+  { category: "volunteer", label: "Voluntários", icon: "volunteer" },
+];
+
+// ── Notificações ───────────────────────────────────────────
+export type NotificationKind = "comment" | "support" | "reaction";
+
+export interface AppNotification {
+  id: string;
+  kind: NotificationKind;
+  actorName: string;
+  postId: string;
+  postTitle: string;
+  /** resumo pronto para exibição, ex.: "comentou em «Buraco na Av.»" */
+  summary: string;
+  icon: string; // chave de ícone (ver Icon component)
+  createdAt: string;
+}
+
 // ── Social (estilo Orkut) ──────────────────────────────────
 export interface Profile {
   userId: string;

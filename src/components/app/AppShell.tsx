@@ -8,6 +8,7 @@ import { can } from "@/lib/app/types";
 import { DMLogo } from "./DMLogo";
 import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./Avatar";
+import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "../ThemeToggle";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
@@ -15,6 +16,9 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/mapa", label: "Mapa", icon: "map" },
   { href: "/comunidades", label: "Comunidades", icon: "groups" },
   { href: "/perfil", label: "Perfil", icon: "person" },
+  // A barra inferior do mobile usa NAV[0..3] por índice; itens a partir daqui
+  // aparecem só no menu do topo (desktop) e no dropdown da conta (mobile).
+  { href: "/ranking", label: "Ranking", icon: "trophy" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -80,15 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             )}
             <ThemeToggle />
-            <button
-              type="button"
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg border"
-              style={{ borderColor: "var(--th-border)", color: "var(--th-muted)", background: "var(--th-surface)" }}
-              aria-label="Notificações"
-            >
-              <Icon name="bell" size={17} />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full" style={{ background: "#f4841a" }} />
-            </button>
+            <NotificationBell userId={user?.id ?? "guest"} />
 
             {/* avatar + menu */}
             <div className="relative">
@@ -107,6 +103,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>{user?.email}</p>
                     </div>
                     <MenuItem icon="person" label="Meu perfil" onClick={() => { setMenuOpen(false); router.push("/perfil"); }} />
+                    <MenuItem icon="trophy" label="Ranking" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
                     <MenuItem icon="heart" label="Meus apoios" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
                     <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />
                   </div>
