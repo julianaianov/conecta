@@ -52,9 +52,11 @@ export const IMAGES = {
 
   stepPublish: BANNER_PHOTOS.iluminacao,
 
-  stepConnect: BANNER_PHOTOS.mutiraoPraia,
+  // Passo 2 "Conecte" (marca + ONG + comunidade, patrocínio/ESG) → foto de parceria
+  stepConnect: BANNER_PHOTOS.patrocinio,
 
-  stepTransform: BANNER_PHOTOS.horta,
+  // Passo 3 "Transforme" (mutirão de limpeza da praia → regeneração) → foto do mutirão
+  stepTransform: BANNER_PHOTOS.mutiraoPraia,
 
 } as const;
 
