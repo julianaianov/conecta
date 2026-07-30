@@ -1,11 +1,11 @@
 /** Fotos locais do projeto dmconecta — public/images/ */
 export const BANNER_PHOTOS = {
-  rioSunset:   "/images/stock/rio-sunset.jpg",
+  rioSunset:   "/images/uploads/feira-sustentabilidade.jpg", // rio-sunset.jpg estava quebrado (404)
   mapCoastal:  "/images/stock/map-light.jpg",
 
   iluminacao:     "/images/uploads/iluminacao-precaria.jpg", // rua escura / iluminação precária
   iluminacaoPraca:"/images/uploads/iluminacao-praca.jpg",    // praça/skate bem iluminada à noite
-  surfSocial:    "/images/stock/voluntarios.jpg",
+  surfSocial:    "/images/uploads/mutirao-praia.jpg",        // era voluntarios.jpg (cozinha)
   mutiraoPraia:  "/images/uploads/mutirao-praia.jpg",
   patrocinio:    "/images/stock/parceria.jpg",
 
@@ -13,10 +13,10 @@ export const BANNER_PHOTOS = {
   horta:      "/images/stock/horta.jpg",
   cestas:     "/images/uploads/cestas-basicas.jpg",
   feira:      "/images/uploads/feira-sustentabilidade.jpg",
-  plantio:    "/images/posts/mutirao.svg",
-  alagamento: "/images/posts/buraco.svg",
-  futebol:    "/images/stock/voluntarios.jpg",
-  reforco:    "/images/stock/voluntarios.jpg",
+  plantio:    "/images/stock/feira-verde.jpg",               // mãos com muda → plantio de mudas
+  alagamento: "/images/uploads/buraco-asfalto.jpg",          // via/infra → alagamento na rua
+  futebol:    "/images/stock/parceria.jpg",                  // era cozinha → patrocínio do campeonato
+  reforco:    "/images/stakeholders/voluntarios.png",        // era cozinha → moradores e voluntários
 
   /** 6 círculos de stakeholders */
   stakeholderAssociacoes: "/images/stakeholders/associacoes.png",
@@ -31,11 +31,11 @@ export const BANNER_PHOTOS = {
   avatarPrefeitura: "/images/stock/avatar-governo.jpg",
   avatarEmpresa:    "/images/stock/avatar-empresa.jpg",
 
-  communityBairro:     "/images/communities/moradores.svg",
+  communityBairro:     "/images/stakeholders/voluntarios.png",   // moradores e voluntários (era SVG)
   communityOrla:       "/images/uploads/mutirao-praia.jpg",
-  communityMobilidade: "/images/communities/ciclistas.svg",
+  communityMobilidade: "/images/stock/map-light.jpg",            // rotas/mobilidade (era SVG)
   communityEvento:     "/images/uploads/feira-sustentabilidade.jpg",
-  ctaVoluntarios:      "/images/stock/voluntarios.jpg",
+  ctaVoluntarios:      "/images/uploads/mutirao-praia.jpg",       // era voluntarios.jpg (cozinha)
 } as const;
 
 export const mapLight = BANNER_PHOTOS.mapCoastal;
