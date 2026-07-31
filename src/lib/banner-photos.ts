@@ -10,7 +10,7 @@ export const BANNER_PHOTOS = {
   patrocinio:    "/images/stock/parceria.jpg",
 
   buracoRua:  "/images/uploads/buraco-asfalto.jpg",
-  horta:      "/images/stock/horta.jpg",
+  horta:      "/images/horta.jpeg",
   cestas:     "/images/uploads/cestas-basicas.jpg",
   feira:      "/images/uploads/feira-sustentabilidade.jpg",
   plantio:    "/images/stock/feira-verde.jpg",               // mãos com muda → plantio de mudas
