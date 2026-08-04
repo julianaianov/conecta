@@ -50,13 +50,13 @@ export const IMAGES = {
 
   profilesFeature: BANNER_PHOTOS.horta,
 
-  stepPublish: BANNER_PHOTOS.iluminacao,
+  // Os 3 passos mostram telas reais do app (capturadas em /perfil, /post/[id]/apoiar e /ranking)
+  // em vez de fotos de banco — quem chega na landing já vê o produto.
+  stepPublish: "/images/screens/app-publique.jpg",
 
-  // Passo 2 "Conecte" (marca + ONG + comunidade, patrocínio/ESG) → foto de parceria
-  stepConnect: BANNER_PHOTOS.patrocinio,
+  stepConnect: "/images/screens/app-conecte.jpg",
 
-  // Passo 3 "Transforme" (mutirão de limpeza da praia → regeneração) → foto do mutirão
-  stepTransform: BANNER_PHOTOS.mutiraoPraia,
+  stepTransform: "/images/screens/app-transforme.jpg",
 
 } as const;
 
