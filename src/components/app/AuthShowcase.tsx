@@ -8,34 +8,42 @@ import { BANNER_PHOTOS } from "@/lib/banner-photos";
  * Vitrine das telas de auth (login/cadastro/recuperar) — inspirada no login
  * do Facebook, adaptada ao DM Conecta.
  *   • Desktop (lg+): painel lateral claro com título grande + colagem de cards.
- *   • Mobile (<lg): banner no topo do formulário com fotos da comunidade.
+ *   • Mobile (<lg): banner no topo do formulário com fotos das conexões.
+ * `photos={false}` mantém tipografia e marca, sem nenhuma foto (usado no login).
  * Manual de Marca: Petróleo #1B4F72 · Laranja #F4841A.
  */
-export function AuthShowcase() {
+export function AuthShowcase({ photos = true }: { photos?: boolean } = {}) {
   return (
     <>
-      <MobileBanner />
-      <DesktopPanel />
+      <MobileBanner photos={photos} />
+      <DesktopPanel photos={photos} />
     </>
   );
 }
 
 /* ── Banner do topo (só mobile) ─────────────────────────────── */
-function MobileBanner() {
-  const photos = [BANNER_PHOTOS.stakeholderVoluntarios, BANNER_PHOTOS.stakeholderProjetos, BANNER_PHOTOS.stakeholderEmpresas];
+function MobileBanner({ photos }: { photos: boolean }) {
+  const shots = [BANNER_PHOTOS.stakeholderVoluntarios, BANNER_PHOTOS.stakeholderProjetos, BANNER_PHOTOS.stakeholderEmpresas];
   return (
-    <div className="relative h-52 w-full overflow-hidden rounded-b-3xl lg:hidden">
-      <div className="absolute inset-0 grid grid-cols-3 gap-1">
-        {photos.map((src, i) => (
-          <div key={src} className={`relative ${i === 0 ? "col-span-2" : ""}`}>
-            <AppImage src={src} alt="Comunidade" fill className="object-cover" sizes="100vw" />
+    <div
+      className="relative h-52 w-full overflow-hidden rounded-b-3xl lg:hidden"
+      style={photos ? undefined : { background: "linear-gradient(135deg,#0d2d42,#1b4f72)" }}
+    >
+      {photos && (
+        <>
+          <div className="absolute inset-0 grid grid-cols-3 gap-1">
+            {shots.map((src, i) => (
+              <div key={src} className={`relative ${i === 0 ? "col-span-2" : ""}`}>
+                <AppImage src={src} alt="Conexão" fill className="object-cover" sizes="100vw" />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div
-        className="absolute inset-0"
-        style={{ background: "linear-gradient(to top, rgba(13,45,66,0.95) 8%, rgba(13,45,66,0.55) 55%, rgba(27,79,114,0.25) 100%)" }}
-      />
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to top, rgba(13,45,66,0.95) 8%, rgba(13,45,66,0.55) 55%, rgba(27,79,114,0.25) 100%)" }}
+          />
+        </>
+      )}
       <div className="relative z-10 flex h-full flex-col justify-between p-5">
         <Link href="/" aria-label="Início" className="self-start">
           <DMLogo size={30} tone="light" />
@@ -55,7 +63,7 @@ function MobileBanner() {
 }
 
 /* ── Painel lateral (só desktop) ────────────────────────────── */
-function DesktopPanel() {
+function DesktopPanel({ photos }: { photos: boolean }) {
   return (
     <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 lg:flex xl:p-16" style={{ background: "var(--th-bg)" }}>
       <div className="pointer-events-none absolute -left-24 top-0 h-96 w-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(27,79,114,0.06), transparent 70%)" }} />
@@ -75,7 +83,7 @@ function DesktopPanel() {
         o bairro.
       </h1>
 
-      <Collage />
+      {photos && <Collage />}
 
       <p className="relative z-10 text-sm font-medium" style={{ color: "var(--th-muted)" }}>
         Rede social de impacto local · do seu bairro à sua cidade
@@ -141,7 +149,7 @@ function Collage() {
       </span>
 
       <span className="absolute bottom-6 right-10 h-20 w-20 overflow-hidden rounded-full" style={{ border: "4px solid #fff", boxShadow: "0 16px 34px rgba(13,45,66,0.28)", outline: "3px solid #f4841a", outlineOffset: "-1px" }}>
-        <AppImage src={BANNER_PHOTOS.stakeholderOngs} alt="Participante da comunidade" fill className="object-cover" sizes="80px" />
+        <AppImage src={BANNER_PHOTOS.stakeholderOngs} alt="Participante da conexão" fill className="object-cover" sizes="80px" />
       </span>
     </div>
   );
