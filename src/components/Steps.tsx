@@ -43,7 +43,8 @@ export function Steps() {
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     sizes="(max-width: 768px) 100vw, 33vw"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                  {/* véu leve: as imagens agora são telas do app (claras), o degradê forte de foto escurecia a UI */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
 
                   <div
                     style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}
