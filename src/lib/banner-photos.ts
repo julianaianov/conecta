@@ -15,7 +15,7 @@ export const BANNER_PHOTOS = {
   feira:      "/images/uploads/feira-sustentabilidade.jpg",
   plantio:    "/images/stock/feira-verde.jpg",               // mãos com muda → plantio de mudas
   alagamento: "/images/uploads/buraco-asfalto.jpg",          // via/infra → alagamento na rua
-  futebol:    "/images/stock/parceria.jpg",                  // era cozinha → patrocínio do campeonato
+  futebol:    "/images/uploads/futebol-comunitario.jpg",     // campo de várzea iluminado à noite, morro ao fundo
   reforco:    "/images/stakeholders/voluntarios.png",        // era cozinha → moradores e voluntários
 
   /** 6 círculos de stakeholders */
