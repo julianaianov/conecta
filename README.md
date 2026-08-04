@@ -34,7 +34,7 @@ e **cai automaticamente para o demo** se a rede falhar (espelha o `useDemoFallba
 | `/login`, `/register` | Autenticação (com modo demo) |
 | `/feed` | Feed com filtros, busca e quick post |
 | `/mapa` | Mapa de demandas (Leaflet/OSM) com pinos por tipo |
-| `/comunidades` | Comunidades |
+| `/conexoes` | Conexões |
 | `/perfil`, `/perfil/[id]` | Perfil estilo Orkut (recados, depoimentos, conexões) |
 | `/post/[id]` | Detalhe do post (comentários, apoios) |
 | `/post/[id]/apoiar` | Fluxo de apoio (10 tipos · financeiro multi-step) |
@@ -44,7 +44,7 @@ e **cai automaticamente para o demo** se a rede falhar (espelha o `useDemoFallba
 ## Arquitetura
 
 - `src/lib/app/types.ts` — modelos de domínio + mapas de cor (espelha os models do Flutter)
-- `src/lib/app/demo.ts` — base de dados demo (10 posts, perfis, comunidades, recados, apoios)
+- `src/lib/app/demo.ts` — base de dados demo (10 posts, perfis, conexões, recados, apoios)
 - `src/lib/app/api.ts` — cliente híbrido (API real ↔ fallback demo)
 - `src/lib/app/auth.tsx` — `AuthProvider` (login, register, loginDemo, checkAuth)
 - `src/components/app/` — design system do app (DMLogo, AppShell, PostCard, OrkutProfile, …)

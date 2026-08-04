@@ -106,10 +106,10 @@ export function OrkutProfile({ userId }: { userId: string }) {
   );
 
   const communitiesPanel = (
-    <Panel accent="#2e7ba8" icon="groups" title={`Comunidades (${communities.length})`}>
+    <Panel accent="#2e7ba8" icon="groups" title={`Conexões (${communities.length})`}>
       <div className="grid grid-cols-4 gap-2">
         {communities.map((c) => (
-          <Link key={c.id} href="/comunidades" className="text-center">
+          <Link key={c.id} href="/conexoes" className="text-center">
             <Avatar name={c.name} src={c.imageUrl} id={c.id} size={44} className="mx-auto" />
             <p className="mt-1 truncate text-[10px]" style={{ color: "var(--th-muted)" }}>{c.name.split(" ")[0]}</p>
           </Link>
@@ -119,7 +119,7 @@ export function OrkutProfile({ userId }: { userId: string }) {
   );
 
   const friendsPanel = (
-    <Panel accent="#f4841a" icon="users" title={`Conexões (${friends.length})`}>
+    <Panel accent="#f4841a" icon="users" title={`Amigos (${friends.length})`}>
       <div className="grid grid-cols-4 gap-2">
         {friends.map((f) => (
           <Link key={f.userId} href={`/perfil/${f.userId}`} className="text-center">
