@@ -5,7 +5,7 @@ import { Reveal } from "./Reveal";
 
 export function Stakeholders() {
   return (
-    <section id="comunidade" className="py-20 lg:py-28">
+    <section id="conexoes" className="py-20 lg:py-28">
       <div className="mx-auto max-w-6xl px-5 lg:px-8">
         <Reveal>
           <div className="mx-auto mb-12 max-w-xl text-center">

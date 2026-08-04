@@ -2,7 +2,7 @@
  * DM Conecta — cliente de API híbrido.
  * Tenta o gateway real (NEXT_PUBLIC_API_URL → nginx :8080) e cai para os dados
  * demo em memória quando indisponível, espelhando o useDemoFallback do app Flutter.
- * Social (recados/depoimentos/comunidades/amizades) é sempre demo (sem backend).
+ * Social (recados/depoimentos/conexões/amizades) é sempre demo (sem backend).
  */
 import {
   normalizeRole,

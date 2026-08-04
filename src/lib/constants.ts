@@ -6,7 +6,7 @@ export const APP_URL = "";
 export const NAV_LINKS = [
   { href: "#mapa", label: "Mapa" },
   { href: "#recursos", label: "Recursos" },
-  { href: "#comunidade", label: "Comunidade" },
+  { href: "#conexoes", label: "Conexões" },
 ] as const;
 
 export const TRUST_ROLES = [
@@ -51,7 +51,7 @@ export const FEATURES = [
     caption: "Ex.: Doação de cestas básicas",
   },
   {
-    title: "Comunidades",
+    title: "Conexões",
     description:
       "Organize grupos por interesse, bairro ou causa. Construa rede e engajamento duradouro.",
     large: false,
@@ -88,7 +88,7 @@ export const STEPS = [
     description:
       "Transforme investimento em impacto social e ambiental. Conecte sua empresa a projetos reais por meio de patrocínio, doações, voluntariado corporativo e ações ESG.",
     image: IMAGES.stepConnect,
-    example: "🤝 Sua marca + Associação/Ong + comunidade",
+    example: "🤝 Sua marca + Associação/Ong + conexões",
   },
   {
     number: "03",
