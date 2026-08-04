@@ -65,7 +65,7 @@ export default function CreatePostPage() {
               `Perfis do tipo "${ROLE_LABELS[role]}" não publicam demandas, projetos ou eventos.`}
           </p>
           <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>
-            Você continua podendo curtir, comentar, compartilhar e se conectar com as comunidades pelo feed.
+            Você continua podendo curtir, comentar, compartilhar e se conectar com as conexões pelo feed.
           </p>
           <Button className="mt-4" onClick={() => router.push("/feed")}>Voltar ao feed</Button>
         </Card>

@@ -119,7 +119,7 @@ export const STAKEHOLDERS = [
   {
     title: "Projetos e coletivos",
     titleColor: "#F4841A",
-    description: "Divulgue suas ações e amplie seu impacto na comunidade.",
+    description: "Divulgue suas ações e amplie seu impacto nas suas conexões.",
     image: BANNER_PHOTOS.stakeholderProjetos,
   },
   {

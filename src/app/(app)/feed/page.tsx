@@ -64,7 +64,7 @@ export default function FeedPage() {
             <p className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Atalhos</p>
             <ShortcutLink href="/mapa" icon="map" label="Mapa de demandas" />
             <ShortcutLink href="/meus-apoios" icon="heart" label="Meus apoios" />
-            <ShortcutLink href="/comunidades" icon="groups" label="Comunidades" />
+            <ShortcutLink href="/conexoes" icon="groups" label="Conexões" />
           </Card>
         </div>
       </aside>
@@ -124,12 +124,12 @@ export default function FeedPage() {
         <div className="sticky top-20">
           <Card>
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Comunidades</p>
-              <Link href="/comunidades" className="text-xs font-semibold" style={{ color: "#f4841a" }}>Ver todas</Link>
+              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Conexões</p>
+              <Link href="/conexoes" className="text-xs font-semibold" style={{ color: "#f4841a" }}>Ver todas</Link>
             </div>
             <div className="space-y-3">
               {communities.map((c) => (
-                <Link key={c.id} href="/comunidades" className="flex items-center gap-3">
+                <Link key={c.id} href="/conexoes" className="flex items-center gap-3">
                   <Avatar name={c.name} src={c.imageUrl} id={c.id} size={38} />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold" style={{ color: "var(--th-text)" }}>{c.name}</p>

@@ -11,7 +11,7 @@ export type UserRole = "community" | "citizen" | "partner" | "institutional";
 export const ROLES: UserRole[] = ["community", "citizen", "partner", "institutional"];
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  community: "Comunidade",
+  community: "Conexão",
   citizen: "Cidadão / Morador",
   partner: "Parceiro",
   institutional: "Institucional",
@@ -52,7 +52,7 @@ export function normalizeRole(role: string | null | undefined): UserRole {
 
 // ── Subperfis ──────────────────────────────────────────────
 export type ProfileType =
-  // Comunidade
+  // Conexão
   | "associacao" | "ong" | "projeto_social" | "coletivo" | "lider_comunitario" | "representante_bairro"
   // Cidadão / Morador
   | "morador" | "voluntario" | "jovem" | "participante"
@@ -74,7 +74,7 @@ export const ROLE_PROFILES: Record<UserRole, { type: ProfileType; label: string 
     { type: "morador", label: "Morador" },
     { type: "voluntario", label: "Voluntário" },
     { type: "jovem", label: "Jovens" },
-    { type: "participante", label: "Participante da comunidade" },
+    { type: "participante", label: "Participante das conexões" },
   ],
   partner: [
     { type: "empresa", label: "Empresa" },
@@ -147,7 +147,7 @@ export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
 };
 
 export const ROLE_RESTRICTIONS: Partial<Record<UserRole, string>> = {
-  citizen: "Não publica oficialmente em nome de comunidades",
+  citizen: "Não publica oficialmente em nome de conexões",
 };
 
 export interface User {
@@ -345,7 +345,7 @@ export interface RankBoard {
 
 export const RANK_CATEGORIES: { category: RankCategory; label: string; icon: string }[] = [
   { category: "partner", label: "Parceiros", icon: "building" },
-  { category: "community", label: "Comunidades", icon: "users" },
+  { category: "community", label: "Conexões", icon: "users" },
   { category: "volunteer", label: "Voluntários", icon: "volunteer" },
 ];
 

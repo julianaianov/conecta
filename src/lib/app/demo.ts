@@ -130,7 +130,7 @@ let POSTS: Post[] = [
     description:
       "Estamos transformando um terreno ocioso em horta comunitária. Já temos canteiros de temperos e hortaliças. Buscamos doação de mudas, terra adubada e ferramentas.",
     latitude: -23.0255, longitude: -43.454, ...base("Boa Vista"),
-    images: [BANNER_PHOTOS.horta], tags: ["sustentabilidade", "alimentação", "comunidade"],
+    images: [BANNER_PHOTOS.horta], tags: ["sustentabilidade", "alimentação", "conexão"],
     reactionsCount: 35, commentsCount: 2, viewsCount: 210, createdAt: iso(5, 9),
   },
   {
@@ -295,7 +295,7 @@ let TESTIMONIALS: Testimonial[] = [
   { id: nextId("t"), authorId: USER_IDS.associacao, authorName: "Associação Bairro Verde", authorAvatar: av(USER_IDS.associacao), targetUserId: USER_IDS.empresa, content: "Patrocinador comprometido de verdade com o impacto local.", createdAt: iso(7, 9) },
 ];
 
-// ── Comunidades ────────────────────────────────────────────
+// ── Conexões ────────────────────────────────────────────
 const COMMUNITIES: Community[] = [
   { id: COMMUNITY_IDS.moradores, name: "Moradores do bairro", description: "Grupo oficial de moradores do bairro.", category: "Bairro", memberCount: 1247, imageUrl: BANNER_PHOTOS.communityBairro },
   { id: COMMUNITY_IDS.mutiraoVerde, name: "Mutirão Bairro Verde", description: "Voluntários de limpeza e sustentabilidade na orla.", category: "Ambiental", memberCount: 389, imageUrl: BANNER_PHOTOS.communityOrla },
@@ -336,7 +336,7 @@ const RANK_PARTNERS: { userId: string; name: string; avatarUrl?: string; city: s
   { userId: "rk-p6", name: "Studio Fitness Vida", city: "Barra", amount: 750, projects: 3, types: 2 },
 ];
 
-/** Comunidades: pontos = 150/projeto publicado + 12/apoio recebido. */
+/** Conexões: pontos = 150/projeto publicado + 12/apoio recebido. */
 const RANK_COMMUNITIES: { userId: string; name: string; avatarUrl?: string; city: string; projects: number; supports: number; members: number }[] = [
   { userId: USER_IDS.associacao, name: "Associação Bairro Verde", avatarUrl: BANNER_PHOTOS.avatarAssociacao, city: "Recreio", projects: 12, supports: 340, members: 124 },
   { userId: "rk-c2", name: "ONG Mar Limpo", city: "Recreio", projects: 9, supports: 280, members: 96 },

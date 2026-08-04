@@ -6,7 +6,7 @@ import { Reveal } from "./Reveal";
 
 export function Community() {
   return (
-    <section id="comunidade" className="py-24 lg:py-32">
+    <section id="conexoes" className="py-24 lg:py-32">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 lg:grid-cols-2 lg:gap-16 lg:px-8">
         <Reveal>
           <div className="relative mb-8 grid grid-cols-2 gap-3 lg:mb-0">
@@ -48,7 +48,7 @@ export function Community() {
           </div>
 
           <span className="text-sm font-semibold uppercase tracking-widest text-orange">
-            Comunidades
+            Conexões
           </span>
           <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
             Grupos do demo

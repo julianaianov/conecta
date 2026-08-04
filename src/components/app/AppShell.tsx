@@ -14,7 +14,7 @@ import { ThemeToggle } from "../ThemeToggle";
 const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/feed", label: "Início", icon: "home" },
   { href: "/mapa", label: "Mapa", icon: "map" },
-  { href: "/comunidades", label: "Comunidades", icon: "groups" },
+  { href: "/conexoes", label: "Conexões", icon: "groups" },
   { href: "/perfil", label: "Perfil", icon: "person" },
   // A barra inferior do mobile usa NAV[0..3] por índice; itens a partir daqui
   // aparecem só no menu do topo (desktop) e no dropdown da conta (mobile).

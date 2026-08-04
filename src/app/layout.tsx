@@ -17,7 +17,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "DM Conecta — Conecte-se, participe, transforme",
   description:
-    "Rede social de impacto local. Mapeie demandas, conecte sua comunidade ao poder público e a quem pode ajudar. Apoie causas com voluntariado, doações e patrocínios.",
+    "Rede social de impacto local. Mapeie demandas, conecte suas conexões ao poder público e a quem pode ajudar. Apoie causas com voluntariado, doações e patrocínios.",
   metadataBase: new URL("https://dmconecta.org"),
   openGraph: {
     title: "DM Conecta — Conecte-se, participe, transforme",

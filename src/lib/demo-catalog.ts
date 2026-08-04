@@ -1,6 +1,6 @@
 /**
  * Catálogo visual do dmconecta — espelha os dados demo do app (seu bairro).
- * Cada imagem está ligada a uma publicação, perfil ou comunidade do sistema.
+ * Cada imagem está ligada a uma publicação, perfil ou conexão do sistema.
  */
 
 import { BANNER_PHOTOS } from "./banner-photos";

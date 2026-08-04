@@ -80,7 +80,7 @@ export function Footer() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-5 py-6 text-sm sm:flex-row lg:px-8"
           style={{ color: "var(--th-muted)" }}>
           <p>&copy; {new Date().getFullYear()} DM Conecta. Todos os direitos reservados.</p>
-          <p className="text-xs">Feito com ♥ para comunidades de todo o Brasil</p>
+          <p className="text-xs">Feito com ♥ para conexões de todo o Brasil</p>
         </div>
       </div>
     </footer>
