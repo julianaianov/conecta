@@ -55,7 +55,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--th-bg)" }}>
       {/* Vitrine: banner no mobile + painel lateral no desktop */}
-      <AuthShowcase />
+      <AuthShowcase photos={false} />
 
       {/* Divisória vertical sutil, como no Facebook */}
       <div className="hidden w-px lg:block" style={{ background: "var(--th-border)" }} />
