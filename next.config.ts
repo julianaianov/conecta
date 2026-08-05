@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // A tela de Comunidades virou Conexões — links antigos continuam válidos.
+  async redirects() {
+    return [{ source: "/comunidades", destination: "/conexoes", permanent: true }];
+  },
 };
 
 export default nextConfig;
