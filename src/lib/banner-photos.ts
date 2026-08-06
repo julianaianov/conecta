@@ -1,6 +1,6 @@
 /** Fotos locais do projeto dmconecta — public/images/ */
 export const BANNER_PHOTOS = {
-  rioSunset:   "/images/uploads/feira-sustentabilidade.jpg", // rio-sunset.jpg estava quebrado (404)
+  rioSunset:   "/images/comunidade.jpeg",                    // rua do morro ao entardecer (rio-sunset.jpg estava quebrado)
   mapCoastal:  "/images/stock/map-light.jpg",
 
   iluminacao:     "/images/uploads/iluminacao-precaria.jpg", // rua escura / iluminação precária
@@ -14,7 +14,7 @@ export const BANNER_PHOTOS = {
   cestas:     "/images/uploads/cestas-basicas.jpg",
   feira:      "/images/uploads/feira-sustentabilidade.jpg",
   plantio:    "/images/stock/feira-verde.jpg",               // mãos com muda → plantio de mudas
-  alagamento: "/images/uploads/buraco-asfalto.jpg",          // via/infra → alagamento na rua
+  alagamento: "/images/alagamento.jpeg",                     // rua alagada na chuva (era a foto do buraco)
   futebol:    "/images/uploads/futebol-comunitario.jpg",     // campo de várzea iluminado à noite, morro ao fundo
   reforco:    "/images/stakeholders/voluntarios.png",        // era cozinha → moradores e voluntários
 
@@ -31,9 +31,9 @@ export const BANNER_PHOTOS = {
   avatarPrefeitura: "/images/stock/avatar-governo.jpg",
   avatarEmpresa:    "/images/stock/avatar-empresa.jpg",
 
-  communityBairro:     "/images/stakeholders/voluntarios.png",   // moradores e voluntários (era SVG)
+  communityBairro:     "/images/comunidade.jpeg",                // rua do bairro ao entardecer
   communityOrla:       "/images/uploads/mutirao-praia.jpg",
-  communityMobilidade: "/images/stock/map-light.jpg",            // rotas/mobilidade (era SVG)
+  communityMobilidade: "/images/ciclistas.jpeg",                 // pedal na ciclovia da orla ao pôr do sol
   communityEvento:     "/images/uploads/feira-sustentabilidade.jpg",
   ctaVoluntarios:      "/images/uploads/mutirao-praia.jpg",       // era voluntarios.jpg (cozinha)
 } as const;
