@@ -16,7 +16,7 @@ export const BANNER_PHOTOS = {
   plantio:    "/images/stock/feira-verde.jpg",               // mãos com muda → plantio de mudas
   alagamento: "/images/alagamento.jpeg",                     // rua alagada na chuva (era a foto do buraco)
   futebol:    "/images/uploads/futebol-comunitario.jpg",     // campo de várzea iluminado à noite, morro ao fundo
-  reforco:    "/images/stakeholders/voluntarios.png",        // era cozinha → moradores e voluntários
+  reforco:    "/images/voluntario-refoco-escolar.jpeg",      // voluntária dando reforço escolar
 
   /** 6 círculos de stakeholders */
   stakeholderAssociacoes: "/images/stakeholders/associacoes.png",
