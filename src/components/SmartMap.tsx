@@ -73,11 +73,13 @@ export function SmartMap() {
                     >
                       <ActivityPinIcon category={activity.category} icon={activity.pinIcon} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold" style={{ color: "var(--th-text)" }}>{activity.title}</p>
+                        {/* sem truncate: em telas estreitas o badge roubava a largura e cortava
+                            títulos como "Mutirão de Limpeza da Praia" no meio */}
+                        <p className="text-sm font-bold leading-snug" style={{ color: "var(--th-text)" }}>{activity.title}</p>
                         <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>{activity.subtitle}</p>
                       </div>
                       <span
-                        className="shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-bold"
+                        className="shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-[10px] font-bold"
                         style={{ backgroundColor: activity.badgeBg, color: activity.badgeText }}
                       >
                         {activity.badge}
