@@ -62,6 +62,11 @@
 /* ── Base ────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
+  /* iOS Safari ignora overflow-x no body sozinho e deixa arrastar a página de
+     lado. `clip` corta de verdade e, ao contrário de `hidden`, não vira
+     contêiner de rolagem — a navbar sticky continua funcionando. */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -69,6 +74,7 @@ body {
   color: var(--th-text);
   font-family: var(--font-sans), system-ui, sans-serif;
   overflow-x: hidden;
+  overflow-x: clip;
   transition: background-color 0.2s, color 0.2s;
 }
 
