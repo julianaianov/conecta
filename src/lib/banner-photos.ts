@@ -3,7 +3,7 @@ export const BANNER_PHOTOS = {
   rioSunset:   "/images/comunidade.jpeg",                    // rua do morro ao entardecer (rio-sunset.jpg estava quebrado)
   mapCoastal:  "/images/stock/map-light.jpg",
 
-  iluminacao:     "/images/uploads/iluminacao-precaria.jpg", // rua escura / iluminação precária
+  iluminacao:     "/images/iluminacao.jpeg",                 // rua escura à noite, poucos postes acesos
   iluminacaoPraca:"/images/uploads/iluminacao-praca.jpg",    // praça/skate bem iluminada à noite
   surfSocial:    "/images/uploads/mutirao-praia.jpg",        // era voluntarios.jpg (cozinha)
   mutiraoPraia:  "/images/uploads/mutirao-praia.jpg",
