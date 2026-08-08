@@ -9,7 +9,7 @@ export const BANNER_PHOTOS = {
   mutiraoPraia:  "/images/uploads/mutirao-praia.jpg",
   patrocinio:    "/images/stock/parceria.jpg",
 
-  buracoRua:  "/images/uploads/buraco-asfalto.jpg",
+  buracoRua:  "/images/buraco.jpeg",                          // cratera na via sinalizada com cones
   horta:      "/images/horta.jpeg",
   cestas:     "/images/uploads/cestas-basicas.jpg",
   feira:      "/images/uploads/feira-sustentabilidade.jpg",
