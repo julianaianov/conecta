@@ -250,7 +250,7 @@ const PROFILES: Record<string, Profile> = {
     userId: USER_IDS.maria, name: "Maria Silva", email: DEMO_CREDENTIALS.email, role: "citizen", profileType: "morador",
     bio: "Moradora do bairro há 15 anos. Acredito que pequenas ações transformam o bairro.",
     status: "Conectando vizinhos 💪", city: DEFAULT_CITY, neighborhood: DEFAULT_NEIGHBORHOOD,
-    avatarUrl: BANNER_PHOTOS.avatarMaria, coverUrl: BANNER_PHOTOS.iluminacao, memberSince: iso(400), friendCount: 38,
+    avatarUrl: BANNER_PHOTOS.avatarMaria, coverUrl: BANNER_PHOTOS.communityBairro, memberSince: iso(400), friendCount: 38,
   },
   [USER_IDS.associacao]: {
     userId: USER_IDS.associacao, name: "Associação Bairro Verde", email: "ong@bairro.conecta", role: "community", profileType: "associacao",
