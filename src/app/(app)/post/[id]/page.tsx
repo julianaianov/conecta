@@ -77,6 +77,7 @@ export default function PostDetailPage() {
 
   const isAuthor = user?.id === post.authorId;
   const cover = post.images?.[0];
+  const video = post.videos?.[0];
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -85,9 +86,13 @@ export default function PostDetailPage() {
       </button>
 
       <Card padded={false} className="overflow-hidden">
-        {cover && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt={post.title} className="max-h-80 w-full object-cover" />
+        {video ? (
+          <video src={video} poster={cover} controls playsInline preload="metadata" className="max-h-80 w-full bg-black object-cover" />
+        ) : (
+          cover && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={cover} alt={post.title} className="max-h-80 w-full object-cover" />
+          )
         )}
         <div className="p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">

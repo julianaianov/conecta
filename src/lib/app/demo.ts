@@ -431,7 +431,7 @@ export const demo = {
       title: input.title ?? "", description: input.description ?? "", status: "active",
       latitude: input.latitude ?? null, longitude: input.longitude ?? null,
       neighborhood: input.neighborhood ?? DEFAULT_NEIGHBORHOOD, city: input.city ?? DEFAULT_CITY,
-      images: input.images ?? [], tags: input.tags ?? [],
+      images: input.images ?? [], videos: input.videos ?? [], tags: input.tags ?? [],
       reactionsCount: 0, commentsCount: 0, viewsCount: 0, createdAt: new Date().toISOString(),
     };
     POSTS = [post, ...POSTS];
