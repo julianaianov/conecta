@@ -108,7 +108,8 @@ let POSTS: Post[] = [
     description:
       "Todo sábado de manhã nos reunimos para limpar a faixa de areia e a orla. Traga luvas, água e disposição. Já recolhemos mais de 2 toneladas de resíduos!",
     latitude: -23.029, longitude: -43.465, ...base("Vila do Mar"),
-    images: [BANNER_PHOTOS.mutiraoPraia], tags: ["meio-ambiente", "voluntariado", "orla"],
+    images: [BANNER_PHOTOS.mutiraoPraia], videos: ["/videos/mutirao-praia.webm"],
+    tags: ["meio-ambiente", "voluntariado", "orla"],
     reactionsCount: 28, commentsCount: 3, viewsCount: 142, createdAt: iso(2, 10),
   },
   {
@@ -130,7 +131,8 @@ let POSTS: Post[] = [
     description:
       "Estamos transformando um terreno ocioso em horta comunitária. Já temos canteiros de temperos e hortaliças. Buscamos doação de mudas, terra adubada e ferramentas.",
     latitude: -23.0255, longitude: -43.454, ...base("Boa Vista"),
-    images: [BANNER_PHOTOS.horta], tags: ["sustentabilidade", "alimentação", "conexão"],
+    images: [BANNER_PHOTOS.horta], videos: ["/videos/horta-comunitaria.webm"],
+    tags: ["sustentabilidade", "alimentação", "conexão"],
     reactionsCount: 35, commentsCount: 2, viewsCount: 210, createdAt: iso(5, 9),
   },
   {
