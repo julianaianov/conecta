@@ -115,10 +115,11 @@ export type Permission =
   | "express_interest"
   | "ranking";
 
+/** Publicar é aberto a todos os perfis — o que muda é em nome de quem se publica. */
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   community: ["publish", "update_results", "interact", "connect"],
-  citizen: ["interact", "connect", "support"],
-  partner: ["interact", "connect", "express_interest", "ranking"],
+  citizen: ["publish", "interact", "connect", "support"],
+  partner: ["publish", "interact", "connect", "express_interest", "ranking"],
   institutional: ["publish", "interact", "connect"],
 };
 
@@ -133,11 +134,11 @@ export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
     "Receber solicitações de conexão", "Atualizar resultados",
   ],
   citizen: [
-    "Criar perfil", "Curtir", "Comentar", "Compartilhar",
+    "Criar perfil", "Publicar", "Curtir", "Comentar", "Compartilhar",
     "Solicitar conexão", "Apoiar projetos",
   ],
   partner: [
-    "Visualizar demandas", "Solicitar conexão", "Demonstrar interesse",
+    "Visualizar demandas", "Publicar", "Solicitar conexão", "Demonstrar interesse",
     "Participar do ranking",
   ],
   institutional: [
@@ -147,7 +148,7 @@ export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
 };
 
 export const ROLE_RESTRICTIONS: Partial<Record<UserRole, string>> = {
-  citizen: "Não publica oficialmente em nome de conexões",
+  citizen: "Publica em nome próprio — não em nome de uma organização",
 };
 
 export interface User {
@@ -220,6 +221,9 @@ export interface Post {
   neighborhood?: string | null;
   city?: string | null;
   images: string[];
+  /** Vídeos do post (mp4/webm em /public/videos). O primeiro vira a capa,
+      com images[0] servindo de poster enquanto o vídeo não carrega. */
+  videos?: string[];
   tags: string[];
   reactionsCount: number;
   commentsCount: number;
