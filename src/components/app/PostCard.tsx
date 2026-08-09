@@ -15,6 +15,7 @@ export function PostCard({ post }: { post: Post }) {
   const [reactions, setReactions] = useState(post.reactionsCount);
   const [liked, setLiked] = useState(false);
   const cover = post.images?.[0];
+  const video = post.videos?.[0];
 
   async function toggleLike(e: React.MouseEvent) {
     e.preventDefault();
@@ -76,9 +77,22 @@ export function PostCard({ post }: { post: Post }) {
         )}
       </div>
 
-      {cover && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={cover} alt={post.title} className="max-h-72 w-full object-cover" />
+      {video ? (
+        <video
+          src={video}
+          poster={cover}
+          controls
+          playsInline
+          preload="metadata"
+          className="max-h-72 w-full bg-black object-cover"
+          // o card inteiro navega para o post; no player o clique é do player
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        cover && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={cover} alt={post.title} className="max-h-72 w-full object-cover" />
+        )
       )}
 
       {/* rodapé */}
