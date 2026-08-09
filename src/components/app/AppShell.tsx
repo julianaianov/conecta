@@ -40,18 +40,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ── Header ───────────────────────────────────────── */}
       <header className="nav-blur sticky top-0 z-40 border-b">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
-          <Link href="/feed" className="flex items-center" style={{ color: "var(--th-text)" }}>
+          <Link href="/feed" className="flex shrink-0 items-center" style={{ color: "var(--th-text)" }}>
             <DMLogo size={30} tone="plain" />
           </Link>
 
-          <nav className="ml-4 hidden items-center gap-1 md:flex">
+          {/* O menu só cabe ao lado dos botões a partir de lg — abaixo disso
+              quem navega é a barra inferior. */}
+          <nav className="ml-2 hidden min-w-0 items-center gap-0.5 lg:flex">
             {NAV.map((item) => {
               const active = isActive(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors"
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-semibold transition-colors"
                   style={{
                     color: active ? "#f4841a" : "var(--th-muted)",
                     background: active ? "rgba(244,132,26,0.10)" : "transparent",
@@ -64,10 +66,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {demoMode && (
               <span
-                className="hidden rounded-full px-2.5 py-1 text-[11px] font-bold sm:inline-block"
+                className="hidden rounded-full px-2.5 py-1 text-[11px] font-bold xl:inline-block"
                 style={{ background: "rgba(244,132,26,0.14)", color: "#f4841a" }}
               >
                 MODO DEMO
@@ -75,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
             <Link
               href="/criar"
-              className="hidden h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white md:inline-flex"
+              className="hidden h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white lg:inline-flex"
               style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}
             >
               <Icon name="plus" size={18} /> Publicar
@@ -113,11 +115,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* ── Conteúdo ─────────────────────────────────────── */}
-      <main className="mx-auto max-w-6xl px-3 pb-28 pt-5 sm:px-4 md:pb-10">{children}</main>
+      <main className="mx-auto max-w-6xl px-3 pb-28 pt-5 sm:px-4 lg:pb-10">{children}</main>
 
       {/* ── Bottom nav (mobile) ──────────────────────────── */}
       <nav
-        className="nav-blur fixed inset-x-0 bottom-0 z-40 border-t md:hidden"
+        className="nav-blur fixed inset-x-0 bottom-0 z-40 border-t lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="relative mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">

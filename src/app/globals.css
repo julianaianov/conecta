@@ -282,42 +282,49 @@ body {
 .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
-/* Inputs do app */
-.app-input, .app-textarea {
-  width: 100%;
-  border-radius: 0.75rem;
-  border: 1px solid var(--th-border);
-  background: var(--th-card);
-  color: var(--th-text);
-  padding: 0.7rem 0.9rem;
-  font-size: 0.9rem;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.app-input::placeholder, .app-textarea::placeholder { color: var(--th-muted); opacity: 0.7; }
-.app-input:focus, .app-textarea:focus {
-  outline: none;
-  border-color: #f4841a;
-  box-shadow: 0 0 0 3px rgba(244, 132, 26, 0.15);
-}
-.app-textarea { resize: vertical; min-height: 6rem; line-height: 1.6; }
+/* Inputs do app e da auth.
+   Ficam em @layer components de propósito: CSS sem layer vence qualquer
+   utilitário do Tailwind (que mora na layer utilities), e o `padding`
+   destas regras engolia os `pl-11`/`pr-12` usados para abrir espaço aos
+   ícones — a lupa e o olho acabavam em cima do texto. Dentro da layer,
+   o utilitário volta a mandar. */
+@layer components {
+  .app-input, .app-textarea {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--th-border);
+    background: var(--th-card);
+    color: var(--th-text);
+    padding: 0.7rem 0.9rem;
+    font-size: 0.9rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .app-input::placeholder, .app-textarea::placeholder { color: var(--th-muted); opacity: 0.7; }
+  .app-input:focus, .app-textarea:focus {
+    outline: none;
+    border-color: #f4841a;
+    box-shadow: 0 0 0 3px rgba(244, 132, 26, 0.15);
+  }
+  .app-textarea { resize: vertical; min-height: 6rem; line-height: 1.6; }
 
-/* ── Auth (login/cadastro) — estilo vitrine Facebook ─────── */
-.auth-input {
-  width: 100%;
-  height: 3.5rem;
-  border-radius: 0.85rem;
-  border: 1px solid var(--th-border);
-  background: var(--th-card);
-  color: var(--th-text);
-  padding: 0 1.1rem;
-  font-size: 1rem;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.auth-input::placeholder { color: var(--th-muted); opacity: 0.85; }
-.auth-input:focus {
-  outline: none;
-  border-color: #f4841a;
-  box-shadow: 0 0 0 3px rgba(244, 132, 26, 0.15);
+  /* ── Auth (login/cadastro) — estilo vitrine Facebook ───── */
+  .auth-input {
+    width: 100%;
+    height: 3.5rem;
+    border-radius: 0.85rem;
+    border: 1px solid var(--th-border);
+    background: var(--th-card);
+    color: var(--th-text);
+    padding: 0 1.1rem;
+    font-size: 1rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .auth-input::placeholder { color: var(--th-muted); opacity: 0.85; }
+  .auth-input:focus {
+    outline: none;
+    border-color: #f4841a;
+    box-shadow: 0 0 0 3px rgba(244, 132, 26, 0.15);
+  }
 }
 
 .auth-btn-primary {
