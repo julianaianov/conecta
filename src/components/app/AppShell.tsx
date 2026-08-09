@@ -8,6 +8,7 @@ import { DMLogo } from "./DMLogo";
 import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./Avatar";
 import { NotificationBell } from "./NotificationBell";
+import { SearchButton } from "./SearchButton";
 import { ThemeToggle } from "../ThemeToggle";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
@@ -79,6 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Icon name="plus" size={18} /> Publicar
             </Link>
+            <SearchButton />
             <ThemeToggle />
             <NotificationBell userId={user?.id ?? "guest"} />
 
