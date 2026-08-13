@@ -11,7 +11,7 @@ import {
   type SupportType, type PaymentMethod, type Community, type Scrap, type Testimonial,
   type AppNotification, type RankCategory, type RankEntry,
 } from "./types";
-import { demo, DEMO_TOKEN, DEMO_USERS } from "./demo";
+import { demo, DEMO_TOKEN, DEMO_USERS, type AdminSnapshot } from "./demo";
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 const HAS_API = BASE.length > 0;
@@ -454,5 +454,15 @@ export const api = {
   /** Ranking — sempre demo (não há endpoint no backend). */
   ranking(): Promise<Record<RankCategory, RankEntry[]>> {
     return Promise.resolve(demo.ranking());
+  },
+
+  /**
+   * Base bruta do painel administrativo. Hoje sai do demo: o backend não tem
+   * endpoint agregador (`/api/admin/overview`), e users/posts/supports vivem em
+   * serviços separados. Quando existir, é só trocar por um `request()` aqui —
+   * o formato `AdminSnapshot` é o contrato.
+   */
+  adminSnapshot(): Promise<AdminSnapshot> {
+    return Promise.resolve(demo.snapshot());
   },
 };

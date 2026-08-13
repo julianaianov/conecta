@@ -40,6 +40,24 @@ e **cai automaticamente para o demo** se a rede falhar (espelha o `useDemoFallba
 | `/post/[id]/apoiar` | Fluxo de apoio (10 tipos · financeiro multi-step) |
 | `/criar` | Nova publicação |
 | `/meus-apoios` | Painel do apoiador |
+| `/ranking` | Ranking de impacto |
+| `/admin` | **Painel da operação** — só para contas de administração |
+
+## Painel administrativo (`/admin`)
+
+Visão dos donos da plataforma: contas por categoria e subperfil, publicações,
+operações de apoio e movimentação financeira, bairros atendidos, funil de
+publicação → impacto, série temporal, destaques e saúde da operação. Todas as
+métricas são derivadas da base (`src/lib/app/admin.ts`) — nenhum número é fixo.
+
+Acesso não é uma das 4 categorias de perfil: é uma lista de contas.
+
+```
+NEXT_PUBLIC_ADMIN_EMAILS="ana@dmconecta.com.br,dm@dmconecta.com.br"
+```
+
+Sem a variável, vale a conta demo `admin@dmconecta.com.br` / `demo123`. A
+checagem é de interface — ao ligar o backend, repita-a no servidor.
 
 ## Arquitetura
 
