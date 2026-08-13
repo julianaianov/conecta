@@ -59,6 +59,45 @@
   --th-nav-border: rgba(255, 255, 255, 0.06);
 }
 
+/* ── Data viz (painel administrativo) ─────────────────────────
+   Paleta validada com o validador do método de dataviz, nos dois modos e
+   contra as superfícies reais do app (#ffffff claro / #103451 escuro):
+
+   · categórica de 2 séries  → publicações (azul) × apoios (laranja)
+     claro  #2e7ba8/#f4841a — CVD ΔE 22.4, normal 32.0
+     escuro #3f96c9/#cf7414 — CVD ΔE 22.2, normal 26.1
+     (o laranja claro fica em 2.57:1, abaixo de 3:1 → os gráficos que o usam
+     trazem rótulo direto e tabela alternativa, que é o alívio exigido)
+
+   · rampa ordinal de 5 passos (funil, status) → um só matiz, L monotônica.
+     No escuro a rampa é invertida: mais volume = passo mais claro.
+   ──────────────────────────────────────────────────────────── */
+.viz-root {
+  --viz-s1:    #2e7ba8;
+  --viz-s2:    #f4841a;
+  --viz-o1:    #86b9d8;
+  --viz-o2:    #5fa0ca;
+  --viz-o3:    #3f85b4;
+  --viz-o4:    #2a6b96;
+  --viz-o5:    #1b4f72;
+  --viz-grid:  rgba(27, 79, 114, 0.12);
+  --viz-axis:  rgba(27, 79, 114, 0.26);
+  --viz-track: rgba(27, 79, 114, 0.07);
+}
+
+.dark .viz-root {
+  --viz-s1:    #3f96c9;
+  --viz-s2:    #cf7414;
+  --viz-o1:    #2e7ba8;
+  --viz-o2:    #4f97c1;
+  --viz-o3:    #7db4d5;
+  --viz-o4:    #a8cde4;
+  --viz-o5:    #d3e9f5;
+  --viz-grid:  rgba(255, 255, 255, 0.10);
+  --viz-axis:  rgba(255, 255, 255, 0.22);
+  --viz-track: rgba(255, 255, 255, 0.07);
+}
+
 /* ── Base ────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/app/auth";
+import { isPlatformAdmin } from "@/lib/app/admin-access";
 import { DMLogo } from "./DMLogo";
 import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./Avatar";
@@ -21,11 +22,15 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/ranking", label: "Ranking", icon: "trophy" },
 ];
 
+/** Só para contas da operação (ver lib/app/admin-access.ts). */
+const ADMIN_NAV: { href: string; label: string; icon: IconName } = { href: "/admin", label: "Painel", icon: "shield" };
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, demoMode, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = isPlatformAdmin(user);
 
   const isActive = (href: string) =>
     href === "/perfil" ? pathname === "/perfil" : pathname === href || pathname.startsWith(href + "/");
@@ -47,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* O menu só cabe ao lado dos botões a partir de lg — abaixo disso
               quem navega é a barra inferior. */}
           <nav className="ml-2 hidden min-w-0 items-center gap-0.5 lg:flex">
-            {NAV.map((item) => {
+            {(isAdmin ? [...NAV, ADMIN_NAV] : NAV).map((item) => {
               const active = isActive(item.href);
               return (
                 <Link
@@ -105,6 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <MenuItem icon="person" label="Meu perfil" onClick={() => { setMenuOpen(false); router.push("/perfil"); }} />
                     <MenuItem icon="trophy" label="Ranking" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
                     <MenuItem icon="heart" label="Meus apoios" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
+                    {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => { setMenuOpen(false); router.push("/admin"); }} />}
                     <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />
                   </div>
                 </>
