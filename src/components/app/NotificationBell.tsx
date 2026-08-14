@@ -123,7 +123,7 @@ export function NotificationBell({ userId }: { userId: string }) {
                   return (
                     <Link
                       key={n.id}
-                      href={`/post/${n.postId}`}
+                      href={n.href ?? `/post/${n.postId}`}
                       role="menuitem"
                       onClick={() => openItem(n)}
                       className="flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-[var(--th-card-alt)]"

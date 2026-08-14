@@ -28,7 +28,8 @@ export function OrkutProfile({ userId }: { userId: string }) {
   const [scrapDraft, setScrapDraft] = useState("");
   const [testimonialDraft, setTestimonialDraft] = useState("");
   const [showTestimonialBox, setShowTestimonialBox] = useState(false);
-  const [connectionSent, setConnectionSent] = useState(false);
+  /** já existe pedido em aberto entre as duas contas? */
+  const [pendente, setPendente] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -46,6 +47,16 @@ export function OrkutProfile({ userId }: { userId: string }) {
     });
     return () => { alive = false; };
   }, [userId]);
+
+  useEffect(() => {
+    if (!user || user.id === userId) return;
+    let alive = true;
+    api.connectionsFor(user.id).then((list) => {
+      if (!alive) return;
+      setPendente(list.some((c) => c.status === "pending" && (c.from.userId === userId || c.to.userId === userId)));
+    });
+    return () => { alive = false; };
+  }, [user, userId]);
 
   async function sendScrap() {
     if (!scrapDraft.trim() || !user) return;
@@ -96,9 +107,15 @@ export function OrkutProfile({ userId }: { userId: string }) {
 
       {!isOwn && (
         <div className="mt-4 space-y-2">
-          <Button block size="sm" icon={connectionSent ? "check" : "users"} onClick={() => setConnectionSent(true)} variant={connectionSent ? "outline" : "primary"}>
-            {connectionSent ? "Solicitação enviada" : "Enviar conexão"}
+          {/* leva ao fluxo real com o destinatário já escolhido (ver /conexoes/nova) */}
+          <Button block size="sm" icon="link" href={`/conexoes/nova?para=${userId}`}>
+            Solicitar conexão
           </Button>
+          {pendente && (
+            <p className="text-center text-[11px]" style={{ color: "var(--th-muted)" }}>
+              Já existe um pedido em aberto com este perfil.
+            </p>
+          )}
           <Button block size="sm" variant="outline" icon="star" onClick={() => setShowTestimonialBox((v) => !v)}>Escrever depoimento</Button>
         </div>
       )}

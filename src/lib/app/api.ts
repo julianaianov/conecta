@@ -10,6 +10,7 @@ import {
   type User, type Profile, type UserRole, type ProfileType, type PostType, type PostStatus,
   type SupportType, type PaymentMethod, type Community, type Scrap, type Testimonial,
   type AppNotification, type RankCategory, type RankEntry,
+  type Connection, type ConnectionParty, type ConnectionStatus, type ConnectionType,
 } from "./types";
 import { demo, DEMO_TOKEN, DEMO_USERS, type AdminSnapshot } from "./demo";
 
@@ -454,6 +455,27 @@ export const api = {
   /** Ranking — sempre demo (não há endpoint no backend). */
   ranking(): Promise<Record<RankCategory, RankEntry[]>> {
     return Promise.resolve(demo.ranking());
+  },
+
+  // ── CONEXÕES (sempre demo — sem backend) ─────────────────
+  /**
+   * O fluxo "Solicitar Conexão". Não há tabela no backend ainda; quando
+   * houver, estes quatro métodos viram chamadas a `/api/connections`.
+   */
+  connectionsFor(userId: string): Promise<Connection[]> {
+    return Promise.resolve(demo.connectionsFor(userId));
+  },
+  getConnection(id: string): Promise<Connection | null> {
+    return Promise.resolve(demo.getConnection(id));
+  },
+  connectionTargets(userId: string): Promise<ConnectionParty[]> {
+    return Promise.resolve(demo.connectionTargets(userId));
+  },
+  createConnection(input: { from: User; toUserId: string; type: ConnectionType; message: string; postId?: string | null }): Promise<Connection> {
+    return Promise.resolve(demo.createConnection(input));
+  },
+  updateConnection(id: string, status: ConnectionStatus, outcome?: string): Promise<Connection | null> {
+    return Promise.resolve(demo.updateConnection(id, status, outcome));
   },
 
   /**

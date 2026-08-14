@@ -21,6 +21,12 @@ import {
   type PaymentMethod,
   type UserRole,
   type ProfileType,
+  type Connection,
+  type ConnectionEvent,
+  type ConnectionParty,
+  type ConnectionStatus,
+  type ConnectionType,
+  CONNECTION_TYPE_META,
   SUPPORT_TYPE_META,
   DEFAULT_CITY,
   DEFAULT_NEIGHBORHOOD,
@@ -396,6 +402,7 @@ const FRIENDS: Record<string, string[]> = {
   [USER_IDS.empresa]: [USER_IDS.maria, USER_IDS.associacao],
 };
 
+
 // ── Diretório de contas da plataforma ──────────────────────
 /**
  * Base de usuários usada pelo painel administrativo. São os 4 perfis demo
@@ -446,6 +453,158 @@ const DIRECTORY: DirectoryUser[] = [
   ...DIRECTORY_EXTRAS.map((u) => ({ ...u, city: DEFAULT_CITY, avatarUrl: null })),
 ];
 
+// ── Conexões (fluxo "Solicitar Conexão") ───────────────────
+/**
+ * Pedidos diretos entre contas. As sementes cobrem os quatro pares que o
+ * produto promete — comunidade ↔ empresa, projeto ↔ patrocinador, governo ↔
+ * demanda e ONG ↔ voluntário — e os três desfechos possíveis (pendente, ativa,
+ * concluída), para a tela de fluxo nascer com o que acontece de verdade.
+ */
+const party = (userId: string): ConnectionParty => {
+  const p = PROFILES[userId];
+  const extra = DIRECTORY_EXTRAS.find((u) => u.id === userId);
+  return {
+    userId,
+    name: p?.name ?? extra?.name ?? "Conta",
+    avatarUrl: p?.avatarUrl ?? null,
+    role: (p?.role as UserRole) ?? extra?.role ?? "citizen",
+    profileType: (p?.profileType ?? extra?.profileType ?? null) as ProfileType | null,
+  };
+};
+
+interface ConnectionSeed {
+  id: string;
+  type: ConnectionType;
+  status: ConnectionStatus;
+  from: string;
+  to: string;
+  message: string;
+  post?: string;
+  outcome?: string;
+  daysAgo: number;
+  /** dias depois do pedido em que veio a resposta */
+  answeredAfter?: number;
+  /** dias depois da resposta em que a dupla registrou o desfecho */
+  doneAfter?: number;
+}
+
+const CONNECTION_SEEDS: ConnectionSeed[] = [
+  {
+    id: "cx-1001", type: "sponsorship", status: "accepted",
+    from: USER_IDS.empresa, to: USER_IDS.associacao, post: POST_IDS.hortaComunitaria,
+    message: "Queremos patrocinar a primeira fase da horta: R$ 1.200 em mudas, terra e ferramentas. Podemos fechar essa semana?",
+    daysAgo: 6, answeredAfter: 1,
+  },
+  {
+    id: "cx-1002", type: "support", status: "pending",
+    from: USER_IDS.associacao, to: USER_IDS.empresa, post: POST_IDS.mutiraoPraia,
+    message: "Precisamos de 60 pares de luvas e sacos de lixo para o mutirão de sábado. Vocês conseguem doar?",
+    daysAgo: 2,
+  },
+  {
+    id: "cx-1003", type: "meeting", status: "pending",
+    from: USER_IDS.subprefeitura, to: USER_IDS.associacao, post: POST_IDS.iluminacaoBarreto,
+    message: "Queremos alinhar o cronograma da troca de postes com a associação. Podemos marcar uma reunião na quinta?",
+    daysAgo: 1,
+  },
+  {
+    id: "cx-1004", type: "partnership", status: "done",
+    from: "rk-c2", to: USER_IDS.subprefeitura, post: POST_IDS.alagamentoGuignard,
+    message: "Nossa ONG pode assumir o monitoramento dos bueiros da região se a subprefeitura garantir a limpeza trimestral.",
+    outcome: "Bueiros desobstruídos e monitoramento assumido pela ONG Mar Limpo. A rua não alagou nas últimas chuvas.",
+    daysAgo: 12, answeredAfter: 2, doneAfter: 3,
+  },
+  {
+    id: "cx-1005", type: "resources", status: "accepted",
+    from: USER_IDS.maria, to: "rk-p2", post: POST_IDS.cestasBasicas,
+    message: "O supermercado consegue completar 40 cestas básicas para as famílias atingidas pela chuva?",
+    daysAgo: 4, answeredAfter: 1,
+  },
+  {
+    id: "cx-1006", type: "outreach", status: "accepted",
+    from: "rk-c4", to: "imprensa-bairro", post: POST_IDS.feiraSustentabilidade,
+    message: "Podem divulgar a feira de sustentabilidade? Esperamos 2 mil pessoas e temos 30 produtores locais.",
+    daysAgo: 5, answeredAfter: 2,
+  },
+  {
+    id: "cx-1007", type: "support", status: "pending",
+    from: "rk-v2", to: USER_IDS.maria, post: POST_IDS.reforcoEscolar,
+    message: "Sou professor de matemática aposentado e quero dar as aulas de reforço. Como faço para começar?",
+    daysAgo: 1,
+  },
+  {
+    id: "cx-1008", type: "partnership", status: "declined",
+    from: "rk-p6", to: "rk-c3", post: POST_IDS.futebolComunitario,
+    message: "Podemos ceder a academia para os treinos em troca de exposição da marca nos uniformes.",
+    daysAgo: 9, answeredAfter: 3,
+  },
+];
+
+/**
+ * Conexões sobrevivem ao recarregar a página.
+ *
+ * O resto da base demo é só memória — o que é aceitável para uma publicação de
+ * teste, mas não aqui: quem está demonstrando o produto pede uma conexão,
+ * navega, e ela precisa continuar lá. A chave carrega o dia porque as datas das
+ * sementes são ancoradas em hoje; virou o dia, começa limpo com datas frescas.
+ */
+const CX_KEY = () => `dmc_demo_cx_${new Date().toISOString().slice(0, 10)}`;
+
+function loadConnections(seed: Connection[]): Connection[] {
+  if (typeof window === "undefined") return seed;
+  try {
+    const raw = localStorage.getItem(CX_KEY());
+    const saved = raw ? (JSON.parse(raw) as Connection[]) : null;
+    return saved?.length ? saved : seed;
+  } catch {
+    return seed;
+  }
+}
+
+function saveConnections() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CX_KEY(), JSON.stringify(CONNECTIONS));
+  } catch {
+    /* storage cheio ou indisponível — segue só em memória */
+  }
+}
+
+const CONNECTION_SEED_LIST: Connection[] = CONNECTION_SEEDS.map((s) => {
+  const post = s.post ? POSTS.find((p) => p.id === s.post) : undefined;
+  const meta = CONNECTION_TYPE_META[s.type];
+  const createdAt = iso(s.daysAgo, 10);
+  const events: ConnectionEvent[] = [
+    { id: `${s.id}-e1`, label: "Conexão solicitada", detail: meta.label, icon: "send", at: createdAt },
+  ];
+  let updatedAt = createdAt;
+
+  if (s.answeredAfter != null && s.status !== "pending") {
+    const at = iso(s.daysAgo - s.answeredAfter, 15);
+    events.push(
+      s.status === "declined"
+        ? { id: `${s.id}-e2`, label: "Pedido recusado", detail: null, icon: "close", at }
+        : { id: `${s.id}-e2`, label: "Conexão aceita", detail: "as duas partes seguem em contato", icon: "check", at },
+    );
+    updatedAt = at;
+  }
+  if (s.doneAfter != null && s.status === "done") {
+    const at = iso(s.daysAgo - (s.answeredAfter ?? 0) - s.doneAfter, 17);
+    events.push({ id: `${s.id}-e3`, label: "Resultado registrado", detail: s.outcome ?? null, icon: "star", at });
+    updatedAt = at;
+  }
+
+  return {
+    id: s.id, type: s.type, status: s.status,
+    from: party(s.from), to: party(s.to),
+    message: s.message,
+    postId: post?.id ?? null, postTitle: post?.title ?? null,
+    outcome: s.outcome ?? null,
+    createdAt, updatedAt, events,
+  };
+});
+
+let CONNECTIONS: Connection[] = loadConnections(CONNECTION_SEED_LIST);
 /** Tudo que o painel administrativo lê de uma vez só. */
 export interface AdminSnapshot {
   posts: Post[];
@@ -455,6 +614,7 @@ export interface AdminSnapshot {
   communities: Community[];
   scraps: Scrap[];
   testimonials: Testimonial[];
+  connections: Connection[];
 }
 
 // ── API demo (em memória) ──────────────────────────────────
@@ -695,6 +855,39 @@ export const demo = {
       }
     }
 
+    // Conexões: o outro lado pediu algo, aceitou o seu pedido ou registrou o resultado.
+    for (const c of CONNECTIONS) {
+      const sou = c.to.userId === userId ? "destinatario" : c.from.userId === userId ? "remetente" : null;
+      if (!sou) continue;
+      const meta = CONNECTION_TYPE_META[c.type];
+      const alvo = `/conexoes/${c.id}`;
+      if (sou === "destinatario" && c.status === "pending") {
+        out.push({
+          id: `n-${c.id}-req`, kind: "connection", actorName: c.from.name,
+          postId: c.postId ?? "", postTitle: c.postTitle ?? meta.label,
+          summary: `pediu ${meta.label.toLowerCase()}${c.postTitle ? ` sobre «${c.postTitle}»` : ""}`,
+          icon: meta.icon, href: alvo, createdAt: c.createdAt,
+        });
+      }
+      if (sou === "remetente" && (c.status === "accepted" || c.status === "declined")) {
+        out.push({
+          id: `n-${c.id}-ans`, kind: "connection", actorName: c.to.name,
+          postId: c.postId ?? "", postTitle: c.postTitle ?? meta.label,
+          summary: c.status === "accepted" ? `aceitou sua conexão de ${meta.label.toLowerCase()}` : `recusou seu pedido de ${meta.label.toLowerCase()}`,
+          icon: c.status === "accepted" ? "check" : "close", href: alvo, createdAt: c.updatedAt,
+        });
+      }
+      if (c.status === "done") {
+        out.push({
+          id: `n-${c.id}-done`, kind: "connection",
+          actorName: sou === "destinatario" ? c.from.name : c.to.name,
+          postId: c.postId ?? "", postTitle: c.postTitle ?? meta.label,
+          summary: "registrou o resultado de uma conexão",
+          icon: "star", href: alvo, createdAt: c.updatedAt,
+        });
+      }
+    }
+
     out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return clone(out);
   },
@@ -739,6 +932,79 @@ export const demo = {
     return clone(RANKING);
   },
 
+  // ── Conexões ─────────────────────────────────────────────
+  /** Tudo que passa pelo usuário — pedidos enviados e recebidos, mais recentes primeiro. */
+  connectionsFor(userId: string): Connection[] {
+    return clone(
+      CONNECTIONS
+        .filter((c) => c.from.userId === userId || c.to.userId === userId)
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    );
+  },
+
+  getConnection(id: string): Connection | null {
+    const c = CONNECTIONS.find((x) => x.id === id);
+    return c ? clone(c) : null;
+  },
+
+  /** Contas que o usuário pode acionar (todo mundo menos ele mesmo). */
+  connectionTargets(userId: string): ConnectionParty[] {
+    return clone(
+      DIRECTORY
+        .filter((u) => u.id !== userId)
+        .map((u) => ({ userId: u.id, name: u.name, avatarUrl: u.avatarUrl ?? null, role: u.role, profileType: u.profileType }))
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    );
+  },
+
+  createConnection(input: {
+    from: User; toUserId: string; type: ConnectionType; message: string; postId?: string | null;
+  }): Connection {
+    const post = input.postId ? POSTS.find((p) => p.id === input.postId) : undefined;
+    const now = new Date().toISOString();
+    const meta = CONNECTION_TYPE_META[input.type];
+    const conn: Connection = {
+      id: nextId("cx"),
+      type: input.type,
+      status: "pending",
+      from: {
+        userId: input.from.id, name: input.from.name, avatarUrl: input.from.avatarUrl ?? null,
+        role: input.from.role, profileType: input.from.profileType ?? null,
+      },
+      to: party(input.toUserId),
+      message: input.message,
+      postId: post?.id ?? null,
+      postTitle: post?.title ?? null,
+      outcome: null,
+      createdAt: now,
+      updatedAt: now,
+      events: [{ id: nextId("cxe"), label: "Conexão solicitada", detail: meta.label, icon: "send", at: now }],
+    };
+    CONNECTIONS = [conn, ...CONNECTIONS];
+    saveConnections();
+    return clone(conn);
+  },
+
+  /** Aceitar, recusar, cancelar ou registrar o resultado. */
+  updateConnection(id: string, status: ConnectionStatus, outcome?: string): Connection | null {
+    const c = CONNECTIONS.find((x) => x.id === id);
+    if (!c) return null;
+    const at = new Date().toISOString();
+    const event: Record<ConnectionStatus, { label: string; icon: string; detail?: string | null }> = {
+      pending: { label: "Reaberta", icon: "send" },
+      accepted: { label: "Conexão aceita", icon: "check", detail: "as duas partes seguem em contato" },
+      declined: { label: "Pedido recusado", icon: "close" },
+      canceled: { label: "Pedido cancelado", icon: "close" },
+      done: { label: "Resultado registrado", icon: "star", detail: outcome ?? null },
+    };
+    c.status = status;
+    c.updatedAt = at;
+    if (status === "done" && outcome) c.outcome = outcome;
+    c.events = [...c.events, { id: nextId("cxe"), ...event[status], detail: event[status].detail ?? null, at }];
+    saveConnections();
+    return clone(c);
+  },
+
   /** Base bruta para o painel administrativo (inclui o que foi criado em runtime). */
   snapshot(): AdminSnapshot {
     return clone({
@@ -749,6 +1015,7 @@ export const demo = {
       communities: COMMUNITIES,
       scraps: SCRAPS,
       testimonials: TESTIMONIALS,
+      connections: CONNECTIONS,
     });
   },
 };
