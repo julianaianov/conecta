@@ -264,6 +264,35 @@ export default function AdminPage() {
         </Card>
       </div>
 
+      {/* ── Conexões ──────────────────────────────────────── */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <Card>
+          <SectionTitle icon="link" action={
+            <Link href="/conexoes" className="text-xs font-semibold" style={{ color: "#f4841a" }}>Ver fluxo</Link>
+          }>
+            Conexões solicitadas
+          </SectionTitle>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MiniStat label="No período" value={int(m.connections.inPeriod)} />
+            <MiniStat label="Aguardando" value={int(m.connections.pending)} />
+            <MiniStat label="Ativas" value={int(m.connections.accepted)} />
+            <MiniStat label="Concluídas" value={int(m.connections.done)} />
+          </div>
+          <p className="mt-3 text-xs" style={{ color: "var(--th-muted)" }}>
+            Taxa de aceite: <b style={{ color: "var(--th-text)" }}>{pctLabel(m.connections.acceptanceRate)}</b> das que já
+            tiveram resposta ({int(m.connections.declined)} recusada{m.connections.declined === 1 ? "" : "s"}).
+          </p>
+        </Card>
+
+        <Card>
+          <SectionTitle icon="share">Conexões por tipo de pedido</SectionTitle>
+          <BarList
+            items={m.connections.byType.map((s) => ({ key: s.key, label: s.label, value: s.value, icon: s.hint as IconName }))}
+            emptyHint="Nenhum pedido de conexão no período."
+          />
+        </Card>
+      </div>
+
       {/* ── Conteúdo ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <Card>

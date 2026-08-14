@@ -8,6 +8,7 @@
  */
 import type { AdminSnapshot, DirectoryUser } from "./demo";
 import {
+  CONNECTION_TYPES,
   PAYMENT_METHODS, POST_STATUS_LABELS, POST_TYPE_LABELS, PROFILE_LABELS,
   ROLE_LABELS, ROLES, SUPPORT_TYPES, SUPPORT_TYPE_META,
   type PaymentMethod, type PostStatus, type PostType, type ProfileType,
@@ -123,6 +124,17 @@ export interface AdminMetrics {
     avgTicket: number;
     byMethod: Slice[];
     nonFinancial: number;
+  };
+  connections: {
+    total: number;
+    inPeriod: number;
+    pending: number;
+    accepted: number;
+    done: number;
+    declined: number;
+    /** aceitas + concluídas sobre as que já tiveram resposta */
+    acceptanceRate: number;
+    byType: Slice[];
   };
   engagement: {
     reactions: number;
@@ -263,6 +275,17 @@ export function buildAdminMetrics(
     }))
     .filter((s) => s.value > 0);
 
+  // ── Conexões ──
+  const connections = snap.connections.filter((c) => inPeriod(c.createdAt));
+  const connByStatus = countBy(connections, (c) => c.status);
+  const connTypeCount = countBy(connections, (c) => c.type);
+  const respondidas =
+    (connByStatus.get("accepted") ?? 0) + (connByStatus.get("done") ?? 0) + (connByStatus.get("declined") ?? 0);
+  const connByType: Slice[] = CONNECTION_TYPES
+    .map((meta) => ({ key: meta.type, label: meta.label, value: connTypeCount.get(meta.type) ?? 0, hint: meta.icon }))
+    .filter((s) => s.value > 0)
+    .sort((a, b) => b.value - a.value);
+
   // ── Bairros atendidos ──
   const rows = new Map<string, NeighborhoodRow>();
   const row = (name: string, city: string) => {
@@ -289,10 +312,12 @@ export function buildAdminMetrics(
   const supportedIds = new Set(supports.map((s) => s.postId));
   const engagedIds = new Set(posts.filter((p) => p.reactionsCount > 0 || p.commentsCount > 0).map((p) => p.id));
   const executing = posts.filter((p) => p.status === "in_progress" || p.status === "resolved").length;
+  const connectedIds = new Set(connections.map((c) => c.postId).filter(Boolean) as string[]);
   const stageCounts: [string, string, string, number][] = [
     ["published", "Publicadas", "demandas, projetos e eventos criados", posts.length],
     ["geolocated", "Geolocalizadas", "com ponto no mapa", geolocated],
     ["engaged", "Com engajamento", "receberam curtida ou comentário", engagedIds.size],
+    ["connected", "Com conexão", "geraram pedido direto entre duas contas", posts.filter((p) => connectedIds.has(p.id)).length],
     ["supported", "Com apoio", "receberam ao menos uma operação de apoio", supportedIds.size],
     ["executing", "Em execução", "status em andamento ou resolvido", executing],
     ["registered", "Impacto registrado", "marcadas como resolvidas", resolved],
@@ -405,6 +430,16 @@ export function buildAdminMetrics(
       avgTicket: financial.length ? amount / financial.length : 0,
       byMethod,
       nonFinancial: supports.length - financial.length,
+    },
+    connections: {
+      total: snap.connections.length,
+      inPeriod: connections.length,
+      pending: connByStatus.get("pending") ?? 0,
+      accepted: connByStatus.get("accepted") ?? 0,
+      done: connByStatus.get("done") ?? 0,
+      declined: connByStatus.get("declined") ?? 0,
+      acceptanceRate: pct((connByStatus.get("accepted") ?? 0) + (connByStatus.get("done") ?? 0), respondidas),
+      byType: connByType,
     },
     engagement: {
       reactions,

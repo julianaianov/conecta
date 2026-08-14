@@ -353,8 +353,98 @@ export const RANK_CATEGORIES: { category: RankCategory; label: string; icon: str
   { category: "volunteer", label: "Voluntários", icon: "volunteer" },
 ];
 
+// ── Conexões (o fluxo "Solicitar Conexão") ─────────────────
+/**
+ * Uma conexão é um pedido direto de uma conta a outra — comunidade ↔ empresa,
+ * projeto ↔ patrocinador, governo ↔ demanda, ONG ↔ voluntário. É o passo que
+ * transforma interação em ação: alguém pede algo concreto, o outro lado aceita
+ * e a dupla registra o desfecho.
+ */
+export type ConnectionType =
+  | "support"      // solicitar apoio
+  | "sponsorship"  // patrocínio
+  | "partnership"  // parceria
+  | "meeting"      // reunião
+  | "resources"    // recursos
+  | "outreach";    // divulgação
+
+export interface ConnectionTypeMeta {
+  type: ConnectionType;
+  label: string;
+  subtitle: string;
+  icon: string; // chave de ícone (ver Icon component)
+}
+
+export const CONNECTION_TYPES: ConnectionTypeMeta[] = [
+  { type: "support", label: "Solicitar apoio", subtitle: "Peça ajuda para uma demanda ou projeto", icon: "volunteer" },
+  { type: "sponsorship", label: "Patrocínio", subtitle: "Proponha investimento em um projeto", icon: "payments" },
+  { type: "partnership", label: "Parceria", subtitle: "Trabalhem juntos de forma contínua", icon: "link" },
+  { type: "meeting", label: "Reunião", subtitle: "Marque uma conversa para alinhar", icon: "calendar" },
+  { type: "resources", label: "Recursos", subtitle: "Ofereça ou peça materiais e equipamentos", icon: "inventory" },
+  { type: "outreach", label: "Divulgação", subtitle: "Amplifique a causa nas suas redes", icon: "megaphone" },
+];
+
+export const CONNECTION_TYPE_META: Record<ConnectionType, ConnectionTypeMeta> = Object.fromEntries(
+  CONNECTION_TYPES.map((c) => [c.type, c]),
+) as Record<ConnectionType, ConnectionTypeMeta>;
+
+/** pending → accepted → done é o caminho feliz; declined e canceled encerram. */
+export type ConnectionStatus = "pending" | "accepted" | "declined" | "done" | "canceled";
+
+export const CONNECTION_STATUS_LABELS: Record<ConnectionStatus, string> = {
+  pending: "Aguardando resposta",
+  accepted: "Conexão ativa",
+  declined: "Recusada",
+  done: "Concluída",
+  canceled: "Cancelada",
+};
+
+export const CONNECTION_STATUS_COLORS: Record<ConnectionStatus, string> = {
+  pending: "#f4841a",
+  accepted: "#2e7ba8",
+  declined: "#868e96",
+  done: "#2e9e5b",
+  canceled: "#868e96",
+};
+
+/** Cada passo do fluxo fica registrado — é o histórico auditável da conexão. */
+export interface ConnectionEvent {
+  id: string;
+  label: string;
+  detail?: string | null;
+  icon: string;
+  at: string;
+}
+
+export interface ConnectionParty {
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+  role: UserRole;
+  profileType?: ProfileType | null;
+}
+
+export interface Connection {
+  id: string;
+  type: ConnectionType;
+  status: ConnectionStatus;
+  /** quem pediu */
+  from: ConnectionParty;
+  /** quem recebeu o pedido */
+  to: ConnectionParty;
+  message: string;
+  /** publicação que originou o pedido (opcional) */
+  postId?: string | null;
+  postTitle?: string | null;
+  /** o que a dupla registrou ao concluir */
+  outcome?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  events: ConnectionEvent[];
+}
+
 // ── Notificações ───────────────────────────────────────────
-export type NotificationKind = "comment" | "support" | "reaction";
+export type NotificationKind = "comment" | "support" | "reaction" | "connection";
 
 export interface AppNotification {
   id: string;
@@ -365,6 +455,8 @@ export interface AppNotification {
   /** resumo pronto para exibição, ex.: "comentou em «Buraco na Av.»" */
   summary: string;
   icon: string; // chave de ícone (ver Icon component)
+  /** destino ao clicar; sem isso vale a publicação (`/post/{postId}`) */
+  href?: string;
   createdAt: string;
 }
 

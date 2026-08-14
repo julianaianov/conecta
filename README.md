@@ -34,7 +34,9 @@ e **cai automaticamente para o demo** se a rede falhar (espelha o `useDemoFallba
 | `/login`, `/register` | Autenticação (com modo demo) |
 | `/feed` | Feed com filtros, busca e quick post |
 | `/mapa` | Mapa de demandas (Leaflet/OSM) com pinos por tipo |
-| `/conexoes` | Conexões |
+| `/conexoes` | **Fluxo de conexões** — recebidas, enviadas, ativas, histórico e grupos |
+| `/conexoes/nova` | Solicitar conexão (para quem → o quê → contexto) |
+| `/conexoes/[id]` | Fluxo de uma conexão: linha do tempo, aceite e resultado |
 | `/perfil`, `/perfil/[id]` | Perfil estilo Orkut (recados, depoimentos, conexões) |
 | `/post/[id]` | Detalhe do post (comentários, apoios) |
 | `/post/[id]/apoiar` | Fluxo de apoio (10 tipos · financeiro multi-step) |
@@ -42,6 +44,15 @@ e **cai automaticamente para o demo** se a rede falhar (espelha o `useDemoFallba
 | `/meus-apoios` | Painel do apoiador |
 | `/ranking` | Ranking de impacto |
 | `/admin` | **Painel da operação** — só para contas de administração |
+
+## Fluxo de conexões (`/conexoes`)
+
+O pedido direto de uma conta a outra — comunidade ↔ empresa, projeto ↔
+patrocinador, governo ↔ demanda, ONG ↔ voluntário. Seis tipos de pedido
+(apoio, patrocínio, parceria, reunião, recursos, divulgação), ciclo
+`pendente → aceita → concluída` e linha do tempo com o histórico de cada passo.
+Modelo em `src/lib/app/types.ts`; no modo demo as conexões ficam no
+localStorage (chave do dia), então sobrevivem ao recarregar.
 
 ## Painel administrativo (`/admin`)
 
