@@ -34,7 +34,7 @@ export function Footer() {
           <FooterLinks
             title="Legal"
             links={[
-              { href: "#", label: "Política de privacidade" },
+              { href: "/politica-de-privacidade", label: "Política de privacidade" },
               { href: "#", label: "Termos de uso" },
               { href: "#", label: "Cookies" },
             ]}
