@@ -35,6 +35,7 @@ export function Footer() {
             title="Legal"
             links={[
               { href: "/politica-de-privacidade", label: "Política de privacidade" },
+              { href: "/seguranca-infantil", label: "Segurança infantil" },
               { href: "#", label: "Termos de uso" },
               { href: "#", label: "Cookies" },
             ]}
