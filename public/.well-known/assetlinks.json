@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.dmconecta.app",
+      "sha256_cert_fingerprints": [
+        "5A:3C:07:C4:C6:BF:B9:A6:02:79:84:D5:8C:16:58:25:70:CC:26:36:08:F0:E8:18:6C:D4:8C:E2:0D:F6:49:26"
+      ]
+    }
+  }
+]

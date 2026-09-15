@@ -1,53 +1,52 @@
-/**
- * Logo DM Conecta (Manual de Marca §03).
- * Monograma "DM" + wordmark "Conecta".
- * `tone`: petroleo (badge azul), light (sobre fundo escuro), plain (monocromático/currentColor).
- */
+import { brandToneColor, DM_MARK_PATH, DM_MARK_TRANSFORM, DM_MARK_VIEWBOX, type BrandTone } from "@/lib/app/brand";
 
 interface MarkProps {
   size?: number;
-  tone?: "petroleo" | "light" | "plain";
+  tone?: BrandTone;
   className?: string;
 }
 
 export function DMMonogram({ size = 36, tone = "petroleo", className = "" }: MarkProps) {
-  const badge =
-    tone === "petroleo"
-      ? { background: "linear-gradient(135deg,#f4841a,#f89b45)", color: "#fff" }
-      : tone === "light"
-        ? { background: "rgba(255,255,255,0.12)", color: "#fff" }
-        : { background: "transparent", color: "currentColor" };
-  const radius = size * 0.28;
+  const color = tone === "plain" ? "currentColor" : brandToneColor(tone);
   return (
     <span
-      className={`relative inline-flex items-center justify-center font-bold ${className}`}
-      style={{
-        width: size * 1.06,
-        height: size,
-        borderRadius: radius,
-        fontSize: size * 0.46,
-        letterSpacing: "-0.04em",
-        lineHeight: 1,
-        ...badge,
-      }}
+      className={`inline-flex shrink-0 items-center justify-center ${className}`}
+      style={{ width: size * 0.877, height: size, color }}
       aria-hidden="true"
     >
-      <span>DM</span>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={DM_MARK_VIEWBOX}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        focusable="false"
+      >
+        <g transform={DM_MARK_TRANSFORM} fill="currentColor" stroke="none">
+          <path d={DM_MARK_PATH} />
+        </g>
+      </svg>
     </span>
   );
 }
 
 interface LogoProps {
   size?: number;
-  /** Cor do wordmark; por padrão herda currentColor. */
-  tone?: "petroleo" | "light" | "plain";
+  /** Cor aplicada ao monograma e ao wordmark; `plain` herda do contexto. */
+  tone?: BrandTone;
   wordmark?: boolean;
   className?: string;
 }
 
 export function DMLogo({ size = 30, tone = "petroleo", wordmark = true, className = "" }: LogoProps) {
+  const color = brandToneColor(tone);
   return (
-    <span className={`inline-flex items-center gap-2 ${className}`}>
+    <span
+      className={`inline-flex items-center gap-2 ${className}`}
+      style={{ color }}
+      role="img"
+      aria-label={wordmark ? "DM Conecta" : "Marca DM Conecta"}
+    >
       <DMMonogram size={size} tone={tone} />
       {wordmark && (
         <span
