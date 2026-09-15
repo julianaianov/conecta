@@ -60,12 +60,35 @@ imagens no ECR e executa a atualização na AWS por SSM.
 | `/login`, `/register` | autenticação |
 | `/feed` | publicações |
 | `/mapa` | mapa de demandas |
-| `/conexoes` | conexões |
+| `/conexoes` | conexões recebidas, enviadas, ativas e histórico |
+| `/conexoes/nova` | solicitar uma conexão |
+| `/conexoes/[id]` | linha do tempo, aceite e resultado |
 | `/perfil`, `/perfil/[id]` | perfis |
 | `/post/[id]` | publicação, comentários e apoios |
+| `/post/[id]/apoiar` | fluxo de apoio |
 | `/criar` | nova publicação |
 | `/ranking` | ranking |
 | `/meus-apoios` | apoios do usuário |
+| `/admin` | painel da operação |
+
+## Fluxo de conexões (`/conexoes`)
+
+O pedido direto de uma conta a outra — comunidade ↔ empresa, projeto ↔
+patrocinador, governo ↔ demanda, ONG ↔ voluntário. Seis tipos de pedido
+(apoio, patrocínio, parceria, reunião, recursos, divulgação), ciclo
+`pendente → aceita → concluída` e linha do tempo com o histórico de cada passo.
+No modo demo as conexões ficam no localStorage para sobreviver ao recarregar.
+
+## Painel administrativo (`/admin`)
+
+Visão da operação: contas por categoria e subperfil, publicações, apoios,
+movimentação financeira, bairros atendidos, funil de publicação → impacto,
+série temporal, destaques e saúde da operação. As métricas são derivadas da
+base em `src/lib/app/admin.ts`.
+
+O acesso é uma lista de contas, não uma quinta categoria de perfil. Configure
+`NEXT_PUBLIC_ADMIN_EMAILS` no ambiente quando o backend estiver pronto; sem a
+variável, o modo demo usa `admin@dmconecta.com.br` / `demo123`.
 
 ## Organização do código
 
