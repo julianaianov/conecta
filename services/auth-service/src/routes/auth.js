@@ -74,7 +74,8 @@ module.exports = (pool) => {
       const ok = await bcrypt.compare(password, user.password_hash);
       if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
 
-      const { password_hash: _, ...safe } = user;
+      const safe = { ...user };
+      delete safe.password_hash;
       res.json({
         user: safe,
         token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role }, '7d'),
