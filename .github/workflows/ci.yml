@@ -1,0 +1,43 @@
+name: Validar aplicação
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_RUNTIME_ENV: homologation
+      NEXT_PUBLIC_API_URL: ""
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Testar contrato de ambiente
+        run: npm run test
+
+      - name: Verificar estilo
+        run: npm run lint -- --max-warnings=0
+
+      - name: Verificar tipos
+        run: npx tsc --noEmit
+
+      - name: Auditar dependências
+        run: npm audit --audit-level=high
+
+      - name: Construir homologação
+        run: npm run build

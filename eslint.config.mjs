@@ -14,6 +14,12 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   {
+    files: ["services/**/*.js"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
     rules: {
       // Padrão intencional: setLoading(true) antes de um fetch assíncrono dentro
       // de useEffect (data-fetching). Não é o anti-padrão de renders em cascata.

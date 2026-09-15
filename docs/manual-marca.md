@@ -1,7 +1,7 @@
-# Manual de Marca — DM Conecta (V1.0)
+# Manual de Marca — DM Conecta (V1.3)
 
 Fonte da verdade para **cores, tipografia e logo**. Os valores abaixo espelham
-`src/app/globals.css`, `src/lib/app/types.ts` e `src/components/app/DMLogo.tsx`.
+`src/app/globals.css`, `src/lib/app/brand.ts` e `src/components/app/DMLogo.tsx`.
 Ao criar telas/componentes, **use apenas o que está aqui** — nada de cores fora
 desta paleta ou de um segundo logo.
 
@@ -9,19 +9,29 @@ desta paleta ou de um segundo logo.
 
 ## 1. Logo
 
-**Logo oficial:** monograma **"DM"** + wordmark **"Conecta"**.
+**Logo oficial:** monograma geométrico **DM**, conforme à referência visual
+aprovada para o produto. O wordmark **"Conecta"** pode acompanhar o símbolo em
+interfaces que precisam exibir o nome completo.
 Componente: [`DMLogo`](../src/components/app/DMLogo.tsx).
 
+**Arquivo oficial de referência:**
+[`design/logo-dm-conecta-oficial.png`](../../design/logo-dm-conecta-oficial.png).
+Contas externas, Gravatar e materiais de publicação devem usar este arquivo
+monocromático preto sobre fundo claro. O ícone 512px em `store_assets/` e os
+recursos Android são cópias técnicas do mesmo desenho, redimensionadas sem
+alterar a marca.
+
 - Nome por extenso: **"DM Conecta"** (nunca "dmconecta" minúsculo).
-- ❌ Não usar o ponto laranja no monograma (removido na V1.1).
-- ❌ Não usar símbolo de átomo, nem outro monograma.
+- O símbolo não deve ser redesenhado como texto, badge, átomo ou estrela.
+- Em fundos claros, use a versão oficial preta ou `currentColor` escuro; em
+  fundos escuros, use a versão clara da mesma geometria.
 
 **Tons (`tone`):**
 
 | tone | Quando usar |
 |------|-------------|
-| `petroleo` | Fundos claros — badge azul petróleo + "Conecta" |
-| `light` | Fundos escuros (petróleo/foto) — badge translúcido branco |
+| `petroleo` | Fundos claros — monograma azul petróleo + "Conecta" |
+| `light` | Fundos escuros (petróleo/foto) — monograma branco + "Conecta" |
 | `plain` | Monocromático, herda `currentColor` |
 
 ```tsx
@@ -109,5 +119,14 @@ app usam as mesmas** — não criar paletas paralelas.
   dourado `#F5C542`).
 - Laranjas "drift" (`#F7941D`, `#F8833A`, `#F66B0E`) — o laranja é **só** `#F4841A`/`#F89B45`.
 - Azuis não-oficiais (`#205375`, `#5483A9`, `#112B3C`).
-- Segundo logo (átomo) ou o nome em minúsculo ("dmconecta").
+- Redes sociais ou telas que redesenhem o monograma com texto, badge, átomo ou estrela.
+- O nome em minúsculo ("dmconecta") como wordmark.
 - Hex fixo para superfícies de tema — use as variáveis `--th-*`.
+
+---
+
+## 6. Perfis oficiais
+
+Os dados públicos padronizados para contas externas estão em
+[`docs/perfis-oficiais.md`](./perfis-oficiais.md). Use o nome **DM Conecta**, o site
+`https://dmconecta.org` e a bio institucional indicada nesse documento.
