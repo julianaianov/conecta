@@ -212,7 +212,7 @@ export const DEMO_COMMUNITIES: DemoCommunity[] = [
   },
 ];
 
-export function postImage(id: string, type?: PostType): string {
+export function postImage(id: string): string {
   return POST_IMAGES[id] ?? POST_IMAGES[POST_IDS.buracoAmericas];
 }
 

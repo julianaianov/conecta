@@ -11,7 +11,7 @@ import { AuthShowcase } from "@/components/app/AuthShowcase";
 import { DEMO_CREDENTIALS } from "@/lib/app/demo";
 
 export default function LoginPage() {
-  const { login, loginDemo, status } = useAuth();
+  const { login, loginDemo, status, demoAllowed } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -100,20 +100,21 @@ export default function LoginPage() {
             Criar nova conta
           </Link>
 
-          {/* Modo demonstração — específico do nosso sistema */}
-          <div className="mt-6 rounded-xl border p-4" style={{ borderColor: "rgba(244,132,26,0.28)", background: "rgba(244,132,26,0.05)" }}>
-            <div className="flex items-center gap-2">
-              <Icon name="bolt" size={16} style={{ color: "#f4841a" }} />
-              <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>Modo demonstração</p>
+          {demoAllowed && (
+            <div className="mt-6 rounded-xl border p-4" style={{ borderColor: "rgba(244,132,26,0.28)", background: "rgba(244,132,26,0.05)" }}>
+              <div className="flex items-center gap-2">
+                <Icon name="bolt" size={16} style={{ color: "#f4841a" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>Modo demonstração</p>
+              </div>
+              <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
+                Explore sem backend, com dados de exemplo. Conta: <b>{DEMO_CREDENTIALS.email}</b> / <b>{DEMO_CREDENTIALS.password}</b>
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Button variant="secondary" size="sm" block onClick={handleDemo} loading={loading === "demo"} icon="bolt">Entrar sem conexão</Button>
+                <Button variant="outline" size="sm" block onClick={fillDemo} icon="edit">Preencher conta demo</Button>
+              </div>
             </div>
-            <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
-              Explore sem backend, com dados de exemplo. Conta: <b>{DEMO_CREDENTIALS.email}</b> / <b>{DEMO_CREDENTIALS.password}</b>
-            </p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <Button variant="secondary" size="sm" block onClick={handleDemo} loading={loading === "demo"} icon="bolt">Entrar sem conexão</Button>
-              <Button variant="outline" size="sm" block onClick={fillDemo} icon="edit">Preencher conta demo</Button>
-            </div>
-          </div>
+          )}
 
           <div className="mt-8 flex justify-center opacity-70">
             <DMLogo size={22} tone="petroleo" />

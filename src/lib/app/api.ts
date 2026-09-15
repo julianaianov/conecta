@@ -1,9 +1,4 @@
-/**
- * DM Conecta — cliente de API híbrido.
- * Tenta o gateway real (NEXT_PUBLIC_API_URL → nginx :8080) e cai para os dados
- * demo em memória quando indisponível, espelhando o useDemoFallback do app Flutter.
- * Social (recados/depoimentos/conexões/amizades) é sempre demo (sem backend).
- */
+/** Cliente de API com suporte explícito aos ambientes local, homologação e produção. */
 import {
   normalizeRole,
   type Post, type Comment, type SupportRecord, type SupportSummaryItem,
@@ -12,9 +7,11 @@ import {
   type AppNotification, type RankCategory, type RankEntry,
 } from "./types";
 import { demo, DEMO_TOKEN, DEMO_USERS } from "./demo";
+import { runtime, shouldUseDemoFallback } from "./runtime";
 
-const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
-const HAS_API = BASE.length > 0;
+const BASE = runtime.apiBase;
+const HAS_API = runtime.hasApi;
+const DEMO_ALLOWED = runtime.demoAllowed;
 const TIMEOUT_MS = 6000;
 
 // ── Estado de sessão (cliente) ─────────────────────────────
@@ -61,7 +58,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       signal: ctrl.signal,
       headers: {
         "Content-Type": "application/json",
-        ...(token && !isDemoMode() ? { Authorization: `Bearer ${token}` } : {}),
+        ...(token && (!DEMO_ALLOWED || !isDemoMode()) ? { Authorization: `Bearer ${token}` } : {}),
         ...(init.headers ?? {}),
       },
     });
@@ -79,13 +76,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 }
 
-/** Executa via API real; em erro de rede usa o fallback demo. */
+/** Executa via API real; somente local e homologação podem usar dados demo. */
 async function hybrid<T>(real: () => Promise<T>, fallback: () => T): Promise<T> {
-  if (!HAS_API || isDemoMode()) return fallback();
+  if (shouldUseDemoFallback(runtime, isDemoMode())) return fallback();
   try {
     return await real();
   } catch (err) {
-    if (err instanceof NetworkError) return fallback();
+    if (DEMO_ALLOWED && err instanceof NetworkError) return fallback();
     throw err;
   }
 }
@@ -162,9 +159,10 @@ function mapUser(r: RawPost): User {
 // ════════════════════════════════════════════════════════════
 export const api = {
   hasApi: HAS_API,
+  demoAllowed: DEMO_ALLOWED,
 
   async login(email: string, password: string): Promise<User> {
-    if (HAS_API && !isDemoMode()) {
+    if (HAS_API && !(DEMO_ALLOWED && isDemoMode())) {
       try {
         const data = await request<{ user: RawPost; token: string }>("/api/auth/login", {
           method: "POST",
@@ -175,13 +173,15 @@ export const api = {
         return user;
       } catch (err) {
         if (!(err instanceof NetworkError)) throw err;
-        // rede falhou → tenta demo
+        if (!DEMO_ALLOWED) throw new Error("Não foi possível conectar ao serviço. Tente novamente.");
       }
     }
-    return this.loginDemo(email, password);
+    if (DEMO_ALLOWED) return this.loginDemo(email, password);
+    throw new Error("O serviço de autenticação está indisponível.");
   },
 
   loginDemo(email?: string, password?: string): User {
+    if (!DEMO_ALLOWED) throw new Error("O modo demonstração não está disponível neste ambiente.");
     const entry = email ? DEMO_USERS[email.toLowerCase().trim()] : undefined;
     if (email && (!entry || (password && entry.password !== password))) {
       throw new Error("Credenciais inválidas. Use uma conta demo (ex.: maria@bairro.conecta / demo123).");
@@ -193,7 +193,7 @@ export const api = {
   },
 
   async register(input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }): Promise<User> {
-    if (HAS_API) {
+    if (HAS_API && !(DEMO_ALLOWED && isDemoMode())) {
       try {
         const data = await request<{ user: RawPost; token: string }>("/api/auth/register", {
           method: "POST",
@@ -207,9 +207,11 @@ export const api = {
         return user;
       } catch (err) {
         if (!(err instanceof NetworkError)) throw err;
+        if (!DEMO_ALLOWED) throw new Error("Não foi possível conectar ao serviço. Tente novamente.");
       }
     }
-    // fallback demo: cria sessão local
+    if (!DEMO_ALLOWED) throw new Error("O cadastro está indisponível neste momento.");
+    // Local e homologação podem criar uma sessão de demonstração.
     const user: User = {
       id: `local-${Date.now()}`, email: input.email, name: input.name,
       role: input.role, profileType: input.profileType, avatarUrl: null,
@@ -219,13 +221,17 @@ export const api = {
   },
 
   async verify(): Promise<User | null> {
-    if (isDemoMode()) return getStoredUser();
-    if (!HAS_API) return getStoredUser();
+    if (!DEMO_ALLOWED && isDemoMode()) {
+      clearSession();
+      return null;
+    }
+    if (DEMO_ALLOWED && isDemoMode()) return getStoredUser();
+    if (!HAS_API) return DEMO_ALLOWED ? getStoredUser() : null;
     try {
       const data = await request<{ user: RawPost }>("/api/auth/verify");
       return mapUser(data.user);
     } catch (err) {
-      if (err instanceof NetworkError) return getStoredUser();
+      if (DEMO_ALLOWED && err instanceof NetworkError) return getStoredUser();
       return null; // token inválido
     }
   },
@@ -378,16 +384,15 @@ export const api = {
 
   // ── NOTIFICAÇÕES (derivadas — sem backend dedicado) ──────
   async notifications(userId: string): Promise<AppNotification[]> {
-    return demo.notifications(userId);
+    return DEMO_ALLOWED ? demo.notifications(userId) : [];
   },
 
   // ── PROFILE ──────────────────────────────────────────────
   async getProfile(userId: string): Promise<Profile | null> {
     // user-service tem GET /:id, mas os campos sociais (bio/cover/status) do demo
-    // são mais ricos — combinamos. Sempre resolve (nunca rejeita): se o perfil real
-    // não existir (ex.: usuário recém-cadastrado → 404), cai para o demo / sessão.
-    const d = demo.getProfile(userId);
-    if (!HAS_API || isDemoMode()) return d ?? this.profileFromSession(userId);
+    // são mais ricos. Em produção, nenhum campo vem da base de demonstração.
+    const d = DEMO_ALLOWED ? demo.getProfile(userId) : null;
+    if (DEMO_ALLOWED && (!HAS_API || isDemoMode())) return d ?? this.profileFromSession(userId);
     try {
       const r = await request<RawPost>(`/api/users/${userId}`);
       return {
@@ -405,9 +410,10 @@ export const api = {
         memberSince: d?.memberSince,
         friendCount: d?.friendCount ?? 0,
       };
-    } catch {
-      // 404 (sem perfil) ou rede → usa demo, ou sintetiza a partir da sessão
-      return d ?? this.profileFromSession(userId);
+    } catch (err) {
+      if (DEMO_ALLOWED) return d ?? this.profileFromSession(userId);
+      if (err instanceof NetworkError) throw new Error("Não foi possível carregar o perfil. Tente novamente.");
+      throw err;
     }
   },
 
@@ -422,7 +428,7 @@ export const api = {
     };
   },
 
-  // ── SOCIAL (sempre demo — sem backend) ───────────────────
+  // ── SOCIAL (dados demonstrativos até existirem endpoints próprios) ──
   postsByAuthor(userId: string): Promise<Post[]> {
     return hybrid(
       async () => {
@@ -433,26 +439,28 @@ export const api = {
     );
   },
   scrapsFor(userId: string): Promise<Scrap[]> {
-    return Promise.resolve(demo.scrapsFor(userId));
+    return Promise.resolve(DEMO_ALLOWED ? demo.scrapsFor(userId) : []);
   },
   addScrap(target: string, author: User, content: string): Promise<Scrap> {
+    if (!DEMO_ALLOWED) return Promise.reject(new Error("Recados ainda não estão disponíveis em produção."));
     return Promise.resolve(demo.addScrap(target, author, content));
   },
   testimonialsFor(userId: string): Promise<Testimonial[]> {
-    return Promise.resolve(demo.testimonialsFor(userId));
+    return Promise.resolve(DEMO_ALLOWED ? demo.testimonialsFor(userId) : []);
   },
   addTestimonial(target: string, author: User, content: string): Promise<Testimonial> {
+    if (!DEMO_ALLOWED) return Promise.reject(new Error("Depoimentos ainda não estão disponíveis em produção."));
     return Promise.resolve(demo.addTestimonial(target, author, content));
   },
   communities(): Promise<Community[]> {
-    return Promise.resolve(demo.communities());
+    return Promise.resolve(DEMO_ALLOWED ? demo.communities() : []);
   },
   friendsOf(userId: string): Promise<Profile[]> {
-    return Promise.resolve(demo.friendsOf(userId));
+    return Promise.resolve(DEMO_ALLOWED ? demo.friendsOf(userId) : []);
   },
 
-  /** Ranking — sempre demo (não há endpoint no backend). */
+  /** Ranking — fica vazio em produção até existir endpoint persistente. */
   ranking(): Promise<Record<RankCategory, RankEntry[]>> {
-    return Promise.resolve(demo.ranking());
+    return Promise.resolve(DEMO_ALLOWED ? demo.ranking() : { partner: [], community: [], volunteer: [] });
   },
 };

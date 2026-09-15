@@ -30,7 +30,7 @@ export default function RankingPage() {
     api.ranking().then((r) => { setBoards(r); setLoading(false); });
   }, []);
 
-  const entries = boards?.[tab] ?? [];
+  const entries = useMemo(() => boards?.[tab] ?? [], [boards, tab]);
   const podium = entries.slice(0, 3);
   const rest = entries.slice(3);
   const mine = useMemo(
