@@ -44,7 +44,8 @@ module.exports = (pool, auth) => {
   });
 
   // GET /:id — public profile
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', async (req, res, next) => {
+    if (req.params.id === 'health') return next();
     try {
       const { rows } = await pool.query('SELECT * FROM profiles WHERE user_id=$1', [req.params.id]);
       if (!rows.length) return res.status(404).json({ error: 'Perfil não encontrado' });
