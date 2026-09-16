@@ -17,6 +17,16 @@ import {
   type AppNotification,
   type RankCategory,
   type RankEntry,
+  type SupportType,
+  type PaymentMethod,
+  type UserRole,
+  type ProfileType,
+  type Connection,
+  type ConnectionEvent,
+  type ConnectionParty,
+  type ConnectionStatus,
+  type ConnectionType,
+  CONNECTION_TYPE_META,
   SUPPORT_TYPE_META,
   DEFAULT_CITY,
   DEFAULT_NEIGHBORHOOD,
@@ -27,8 +37,15 @@ export const DEMO_CREDENTIALS = { email: "maria@bairro.conecta", password: "demo
 
 let _seq = 1000;
 export const nextId = (prefix = "demo") => `${prefix}-${++_seq}`;
+/**
+ * Datas da base demo, ancoradas no **dia de hoje** (meia-noite UTC, para não
+ * variar entre o render do servidor e o do cliente). Com âncora fixa a demo
+ * envelhecia: tudo aparecia como "há 2 meses" e os filtros de período do
+ * painel administrativo devolviam zero.
+ */
 const iso = (daysAgo: number, hour = 9) => {
-  const d = new Date("2026-06-20T12:00:00Z");
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
   d.setUTCDate(d.getUTCDate() - daysAgo);
   d.setUTCHours(hour);
   return d.toISOString();
@@ -66,6 +83,16 @@ export const DEMO_USERS: Record<string, User & { password: string }> = {
     name: "Construtora Nova Ltda",
     role: "partner", profileType: "empresa",
     avatarUrl: BANNER_PHOTOS.avatarEmpresa,
+    password: "demo123",
+  },
+  // Operação da plataforma — vê o painel administrativo (ver admin-access.ts).
+  // Continua sendo uma conta comum na rede; o que muda é a permissão de painel.
+  "admin@dmconecta.com.br": {
+    id: "dmc-admin",
+    email: "admin@dmconecta.com.br",
+    name: "Equipe DM Conecta",
+    role: "institutional", profileType: "secretaria",
+    avatarUrl: null,
     password: "demo123",
   },
 };
@@ -227,24 +254,86 @@ const COMMENTS: Record<string, Comment[]> = {
 };
 
 // ── Apoios por post ────────────────────────────────────────
-const SUPPORTS: Record<string, SupportRecord[]> = {
-  [POST_IDS.mutiraoPraia]: [
-    {
-      id: nextId("s"), postId: POST_IDS.mutiraoPraia, postTitle: "Mutirão de limpeza da praia", postType: "project",
-      userId: AUTHORS.maria.id, userName: AUTHORS.maria.name, type: "volunteering",
-      message: "Posso ajudar nos sábados de manhã.", details: { horas: "4h por semana", disponibilidade: "Sábados, manhã" },
-      status: "confirmed", ...base("Jardim das Flores"), createdAt: iso(2, 12),
-    },
-  ],
-  [POST_IDS.buracoAmericas]: [
-    {
-      id: nextId("s"), postId: POST_IDS.buracoAmericas, postTitle: "Buraco na Av. das Américas", postType: "problem",
-      userId: AUTHORS.maria.id, userName: AUTHORS.maria.name, type: "financial",
-      message: "Contribuição para sinalização provisória.", amount: 50, paymentMethod: "pix",
-      details: {}, status: "confirmed", ...base("Boa Vista"), createdAt: iso(1, 9),
-    },
-  ],
-};
+/**
+ * Operações de apoio da base demo. Cada semente descreve só o que é dela;
+ * título, tipo e **bairro saem do próprio post** — assim o painel admin conta
+ * o apoio no mesmo bairro em que a demanda foi publicada (o `addSupport` em
+ * runtime faz igual).
+ */
+interface SupportSeed {
+  post: string;
+  userId: string;
+  userName: string;
+  type: SupportType;
+  daysAgo: number;
+  hour?: number;
+  amount?: number;
+  method?: PaymentMethod;
+  message?: string;
+  details?: Record<string, unknown>;
+}
+
+const SUPPORT_SEEDS: SupportSeed[] = [
+  // Mutirão de limpeza da praia — projeto com maior mobilização
+  { post: POST_IDS.mutiraoPraia, userId: AUTHORS.maria.id, userName: AUTHORS.maria.name, type: "volunteering", daysAgo: 2, hour: 12, message: "Posso ajudar nos sábados de manhã.", details: { "Horas/semana": "4h", Disponibilidade: "Sábados, manhã" } },
+  { post: POST_IDS.mutiraoPraia, userId: AUTHORS.empresa.id, userName: AUTHORS.empresa.name, type: "materials", daysAgo: 1, hour: 9, message: "Luvas e sacos de lixo para o mutirão.", details: { Materiais: "60 pares de luvas, 200 sacos", Entrega: "sexta-feira" } },
+  { post: POST_IDS.mutiraoPraia, userId: "rk-v2", userName: "João Pereira", type: "volunteering", daysAgo: 3, hour: 8 },
+  { post: POST_IDS.mutiraoPraia, userId: "rk-p2", userName: "Supermercado Bom Preço", type: "food", daysAgo: 2, hour: 15, message: "Água e lanche para a equipe.", details: { Alimentos: "Água mineral e frutas", Porções: "80" } },
+  { post: POST_IDS.mutiraoPraia, userId: "rk-c2", userName: "ONG Mar Limpo", type: "transport", daysAgo: 4, hour: 11, details: { Veículo: "Caminhonete", Capacidade: "800 kg" } },
+
+  // Buraco na Av. das Américas
+  { post: POST_IDS.buracoAmericas, userId: AUTHORS.maria.id, userName: AUTHORS.maria.name, type: "financial", daysAgo: 1, hour: 9, amount: 50, method: "pix", message: "Contribuição para sinalização provisória." },
+  { post: POST_IDS.buracoAmericas, userId: "rk-p4", userName: "Auto Peças RJ", type: "materials", daysAgo: 1, hour: 16, details: { Materiais: "Cones e fita zebrada", Quantidade: "12 cones" } },
+
+  // Horta comunitária — projeto em andamento
+  { post: POST_IDS.hortaComunitaria, userId: AUTHORS.empresa.id, userName: AUTHORS.empresa.name, type: "financial", daysAgo: 3, hour: 14, amount: 1200, method: "credit", message: "Patrocínio da primeira fase da horta." },
+  { post: POST_IDS.hortaComunitaria, userId: "rk-p5", userName: "Padaria Pão Quente", type: "financial", daysAgo: 5, hour: 10, amount: 200, method: "pix" },
+  { post: POST_IDS.hortaComunitaria, userId: "rk-v3", userName: "Ana Beatriz", type: "volunteering", daysAgo: 4, hour: 9, details: { "Horas/semana": "6h", Disponibilidade: "Quartas e sábados" } },
+  { post: POST_IDS.hortaComunitaria, userId: "rk-v5", userName: "Fernanda Lima", type: "knowledge", daysAgo: 6, hour: 19, message: "Sou agrônoma, posso dar a oficina de compostagem.", details: { Área: "Agronomia", Formato: "Oficina prática" } },
+  { post: POST_IDS.hortaComunitaria, userId: "rk-p3", userName: "Farmácia Saúde+", type: "equipment", daysAgo: 7, hour: 13, details: { Equipamento: "Caixa d'água 500L", Modalidade: "doação" } },
+
+  // Cestas básicas — necessidade emergencial
+  { post: POST_IDS.cestasBasicas, userId: "rk-p2", userName: "Supermercado Bom Preço", type: "food", daysAgo: 2, hour: 11, message: "40 cestas básicas montadas.", details: { Alimentos: "Cestas básicas", Porções: "40 cestas" } },
+  { post: POST_IDS.cestasBasicas, userId: AUTHORS.assoc.id, userName: AUTHORS.assoc.name, type: "labor", daysAgo: 2, hour: 17, details: { Habilidade: "Triagem e entrega", Horas: "12h" } },
+  { post: POST_IDS.cestasBasicas, userId: "rk-v4", userName: "Carlos Mendes", type: "financial", daysAgo: 1, hour: 20, amount: 80, method: "pix" },
+  { post: POST_IDS.cestasBasicas, userId: "rk-p6", userName: "Studio Fitness Vida", type: "financial", daysAgo: 3, hour: 18, amount: 300, method: "debit" },
+
+  // Reforço escolar — voluntariado
+  { post: POST_IDS.reforcoEscolar, userId: "rk-v3", userName: "Ana Beatriz", type: "volunteering", daysAgo: 4, hour: 10, details: { Ajuda: "Aulas de matemática", "Horas/semana": "2h" } },
+  { post: POST_IDS.reforcoEscolar, userId: "rk-c3", userName: "Coletivo Cultural Recreio", type: "space", daysAgo: 5, hour: 15, details: { Espaço: "Sala de oficinas", Capacidade: "25 pessoas" } },
+
+  // Plantio de mudas
+  { post: POST_IDS.plantioMudas, userId: "rk-p5", userName: "Padaria Pão Quente", type: "food", daysAgo: 6, hour: 8 },
+  { post: POST_IDS.plantioMudas, userId: "rk-v2", userName: "João Pereira", type: "volunteering", daysAgo: 6, hour: 8 },
+
+  // Feira de sustentabilidade / futebol comunitário — eventos patrocinados
+  { post: POST_IDS.feiraSustentabilidade, userId: "rk-p3", userName: "Farmácia Saúde+", type: "financial", daysAgo: 4, hour: 12, amount: 600, method: "credit", message: "Patrocínio do palco das oficinas." },
+  { post: POST_IDS.feiraSustentabilidade, userId: "rk-c4", userName: "Projeto Semear", type: "sharing", daysAgo: 4, hour: 16, details: { Canais: "Instagram e grupos de bairro", Alcance: "8 mil pessoas" } },
+  { post: POST_IDS.futebolComunitario, userId: AUTHORS.empresa.id, userName: AUTHORS.empresa.name, type: "financial", daysAgo: 3, hour: 18, amount: 1500, method: "credit", message: "Premiação e uniformes do campeonato." },
+  { post: POST_IDS.futebolComunitario, userId: "rk-p6", userName: "Studio Fitness Vida", type: "equipment", daysAgo: 2, hour: 19, details: { Equipamento: "Bolas e coletes", Modalidade: "doação" } },
+
+  // Iluminação e alagamento — demandas de infraestrutura
+  { post: POST_IDS.iluminacaoBarreto, userId: AUTHORS.pref.id, userName: AUTHORS.pref.name, type: "labor", daysAgo: 2, hour: 17, message: "Equipe da concessionária acionada.", details: { Habilidade: "Manutenção elétrica", Horas: "16h" } },
+  { post: POST_IDS.alagamentoGuignard, userId: AUTHORS.pref.id, userName: AUTHORS.pref.name, type: "labor", daysAgo: 8, hour: 9, message: "Desobstrução dos bueiros concluída.", details: { Habilidade: "Drenagem urbana", Horas: "24h" } },
+  { post: POST_IDS.alagamentoGuignard, userId: "rk-v4", userName: "Carlos Mendes", type: "volunteering", daysAgo: 9, hour: 14 },
+];
+
+const SUPPORTS: Record<string, SupportRecord[]> = {};
+for (const seed of SUPPORT_SEEDS) {
+  const post = POSTS.find((p) => p.id === seed.post);
+  (SUPPORTS[seed.post] ??= []).push({
+    id: nextId("s"),
+    postId: seed.post, postTitle: post?.title, postType: post?.type,
+    userId: seed.userId, userName: seed.userName, type: seed.type,
+    message: seed.message ?? null,
+    amount: seed.amount ?? null,
+    paymentMethod: seed.amount != null ? (seed.method ?? "pix") : null,
+    details: seed.details ?? {},
+    status: "confirmed",
+    neighborhood: post?.neighborhood ?? DEFAULT_NEIGHBORHOOD, city: post?.city ?? DEFAULT_CITY,
+    createdAt: iso(seed.daysAgo, seed.hour ?? 10),
+  });
+}
 
 // ── Perfis (Orkut) ─────────────────────────────────────────
 const PROFILES: Record<string, Profile> = {
@@ -312,6 +401,221 @@ const FRIENDS: Record<string, string[]> = {
   [USER_IDS.subprefeitura]: [USER_IDS.maria, USER_IDS.associacao],
   [USER_IDS.empresa]: [USER_IDS.maria, USER_IDS.associacao],
 };
+
+
+// ── Diretório de contas da plataforma ──────────────────────
+/**
+ * Base de usuários usada pelo painel administrativo. São os 4 perfis demo
+ * (que também logam) mais as contas que aparecem no ranking e nos apoios —
+ * todas com categoria, subperfil, bairro e data de entrada, que é o que o
+ * painel precisa contar.
+ */
+export interface DirectoryUser {
+  id: string;
+  name: string;
+  role: UserRole;
+  profileType: ProfileType;
+  neighborhood: string;
+  city: string;
+  memberSince: string;
+  avatarUrl?: string | null;
+}
+
+const DIRECTORY_EXTRAS: Omit<DirectoryUser, "city">[] = [
+  { id: "rk-p2", name: "Supermercado Bom Preço", role: "partner", profileType: "comercio_local", neighborhood: "Vila Nova", memberSince: iso(210) },
+  { id: "rk-p3", name: "Farmácia Saúde+", role: "partner", profileType: "comercio_local", neighborhood: "Centro", memberSince: iso(180) },
+  { id: "rk-p4", name: "Auto Peças RJ", role: "partner", profileType: "empresa", neighborhood: "Jardim América", memberSince: iso(150) },
+  { id: "rk-p5", name: "Padaria Pão Quente", role: "partner", profileType: "comercio_local", neighborhood: "Boa Vista", memberSince: iso(120) },
+  { id: "rk-p6", name: "Studio Fitness Vida", role: "partner", profileType: "patrocinador", neighborhood: "São José", memberSince: iso(95) },
+  { id: "rk-c2", name: "ONG Mar Limpo", role: "community", profileType: "ong", neighborhood: "Vila do Mar", memberSince: iso(300) },
+  { id: "rk-c3", name: "Coletivo Cultural Recreio", role: "community", profileType: "coletivo", neighborhood: "Nova Aliança", memberSince: iso(240) },
+  { id: "rk-c4", name: "Projeto Semear", role: "community", profileType: "projeto_social", neighborhood: "Parque das Árvores", memberSince: iso(170) },
+  { id: "rk-c5", name: "Instituto Criança Feliz", role: "community", profileType: "ong", neighborhood: "Jardim das Flores", memberSince: iso(140) },
+  { id: "rk-v2", name: "João Pereira", role: "citizen", profileType: "voluntario", neighborhood: "Vila do Mar", memberSince: iso(90) },
+  { id: "rk-v3", name: "Ana Beatriz", role: "citizen", profileType: "voluntario", neighborhood: "Boa Vista", memberSince: iso(70) },
+  { id: "rk-v4", name: "Carlos Mendes", role: "citizen", profileType: "morador", neighborhood: "Jardim das Flores", memberSince: iso(45) },
+  { id: "rk-v5", name: "Fernanda Lima", role: "citizen", profileType: "jovem", neighborhood: "São José", memberSince: iso(30) },
+  { id: "sec-ambiente", name: "Secretaria de Meio Ambiente", role: "institutional", profileType: "secretaria", neighborhood: "Centro", memberSince: iso(260) },
+  { id: "imprensa-bairro", name: "Jornal do Bairro", role: "institutional", profileType: "imprensa", neighborhood: "Centro", memberSince: iso(110) },
+];
+
+const DIRECTORY: DirectoryUser[] = [
+  ...Object.values(PROFILES).map((p) => ({
+    id: p.userId,
+    name: p.name,
+    role: p.role as UserRole,
+    profileType: (p.profileType ?? "morador") as ProfileType,
+    neighborhood: p.neighborhood ?? DEFAULT_NEIGHBORHOOD,
+    city: p.city ?? DEFAULT_CITY,
+    memberSince: p.memberSince ?? iso(365),
+    avatarUrl: p.avatarUrl ?? null,
+  })),
+  ...DIRECTORY_EXTRAS.map((u) => ({ ...u, city: DEFAULT_CITY, avatarUrl: null })),
+];
+
+// ── Conexões (fluxo "Solicitar Conexão") ───────────────────
+/**
+ * Pedidos diretos entre contas. As sementes cobrem os quatro pares que o
+ * produto promete — comunidade ↔ empresa, projeto ↔ patrocinador, governo ↔
+ * demanda e ONG ↔ voluntário — e os três desfechos possíveis (pendente, ativa,
+ * concluída), para a tela de fluxo nascer com o que acontece de verdade.
+ */
+const party = (userId: string): ConnectionParty => {
+  const p = PROFILES[userId];
+  const extra = DIRECTORY_EXTRAS.find((u) => u.id === userId);
+  return {
+    userId,
+    name: p?.name ?? extra?.name ?? "Conta",
+    avatarUrl: p?.avatarUrl ?? null,
+    role: (p?.role as UserRole) ?? extra?.role ?? "citizen",
+    profileType: (p?.profileType ?? extra?.profileType ?? null) as ProfileType | null,
+  };
+};
+
+interface ConnectionSeed {
+  id: string;
+  type: ConnectionType;
+  status: ConnectionStatus;
+  from: string;
+  to: string;
+  message: string;
+  post?: string;
+  outcome?: string;
+  daysAgo: number;
+  /** dias depois do pedido em que veio a resposta */
+  answeredAfter?: number;
+  /** dias depois da resposta em que a dupla registrou o desfecho */
+  doneAfter?: number;
+}
+
+const CONNECTION_SEEDS: ConnectionSeed[] = [
+  {
+    id: "cx-1001", type: "sponsorship", status: "accepted",
+    from: USER_IDS.empresa, to: USER_IDS.associacao, post: POST_IDS.hortaComunitaria,
+    message: "Queremos patrocinar a primeira fase da horta: R$ 1.200 em mudas, terra e ferramentas. Podemos fechar essa semana?",
+    daysAgo: 6, answeredAfter: 1,
+  },
+  {
+    id: "cx-1002", type: "support", status: "pending",
+    from: USER_IDS.associacao, to: USER_IDS.empresa, post: POST_IDS.mutiraoPraia,
+    message: "Precisamos de 60 pares de luvas e sacos de lixo para o mutirão de sábado. Vocês conseguem doar?",
+    daysAgo: 2,
+  },
+  {
+    id: "cx-1003", type: "meeting", status: "pending",
+    from: USER_IDS.subprefeitura, to: USER_IDS.associacao, post: POST_IDS.iluminacaoBarreto,
+    message: "Queremos alinhar o cronograma da troca de postes com a associação. Podemos marcar uma reunião na quinta?",
+    daysAgo: 1,
+  },
+  {
+    id: "cx-1004", type: "partnership", status: "done",
+    from: "rk-c2", to: USER_IDS.subprefeitura, post: POST_IDS.alagamentoGuignard,
+    message: "Nossa ONG pode assumir o monitoramento dos bueiros da região se a subprefeitura garantir a limpeza trimestral.",
+    outcome: "Bueiros desobstruídos e monitoramento assumido pela ONG Mar Limpo. A rua não alagou nas últimas chuvas.",
+    daysAgo: 12, answeredAfter: 2, doneAfter: 3,
+  },
+  {
+    id: "cx-1005", type: "resources", status: "accepted",
+    from: USER_IDS.maria, to: "rk-p2", post: POST_IDS.cestasBasicas,
+    message: "O supermercado consegue completar 40 cestas básicas para as famílias atingidas pela chuva?",
+    daysAgo: 4, answeredAfter: 1,
+  },
+  {
+    id: "cx-1006", type: "outreach", status: "accepted",
+    from: "rk-c4", to: "imprensa-bairro", post: POST_IDS.feiraSustentabilidade,
+    message: "Podem divulgar a feira de sustentabilidade? Esperamos 2 mil pessoas e temos 30 produtores locais.",
+    daysAgo: 5, answeredAfter: 2,
+  },
+  {
+    id: "cx-1007", type: "support", status: "pending",
+    from: "rk-v2", to: USER_IDS.maria, post: POST_IDS.reforcoEscolar,
+    message: "Sou professor de matemática aposentado e quero dar as aulas de reforço. Como faço para começar?",
+    daysAgo: 1,
+  },
+  {
+    id: "cx-1008", type: "partnership", status: "declined",
+    from: "rk-p6", to: "rk-c3", post: POST_IDS.futebolComunitario,
+    message: "Podemos ceder a academia para os treinos em troca de exposição da marca nos uniformes.",
+    daysAgo: 9, answeredAfter: 3,
+  },
+];
+
+/**
+ * Conexões sobrevivem ao recarregar a página.
+ *
+ * O resto da base demo é só memória — o que é aceitável para uma publicação de
+ * teste, mas não aqui: quem está demonstrando o produto pede uma conexão,
+ * navega, e ela precisa continuar lá. A chave carrega o dia porque as datas das
+ * sementes são ancoradas em hoje; virou o dia, começa limpo com datas frescas.
+ */
+const CX_KEY = () => `dmc_demo_cx_${new Date().toISOString().slice(0, 10)}`;
+
+function loadConnections(seed: Connection[]): Connection[] {
+  if (typeof window === "undefined") return seed;
+  try {
+    const raw = localStorage.getItem(CX_KEY());
+    const saved = raw ? (JSON.parse(raw) as Connection[]) : null;
+    return saved?.length ? saved : seed;
+  } catch {
+    return seed;
+  }
+}
+
+function saveConnections() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CX_KEY(), JSON.stringify(CONNECTIONS));
+  } catch {
+    /* storage cheio ou indisponível — segue só em memória */
+  }
+}
+
+const CONNECTION_SEED_LIST: Connection[] = CONNECTION_SEEDS.map((s) => {
+  const post = s.post ? POSTS.find((p) => p.id === s.post) : undefined;
+  const meta = CONNECTION_TYPE_META[s.type];
+  const createdAt = iso(s.daysAgo, 10);
+  const events: ConnectionEvent[] = [
+    { id: `${s.id}-e1`, label: "Conexão solicitada", detail: meta.label, icon: "send", at: createdAt },
+  ];
+  let updatedAt = createdAt;
+
+  if (s.answeredAfter != null && s.status !== "pending") {
+    const at = iso(s.daysAgo - s.answeredAfter, 15);
+    events.push(
+      s.status === "declined"
+        ? { id: `${s.id}-e2`, label: "Pedido recusado", detail: null, icon: "close", at }
+        : { id: `${s.id}-e2`, label: "Conexão aceita", detail: "as duas partes seguem em contato", icon: "check", at },
+    );
+    updatedAt = at;
+  }
+  if (s.doneAfter != null && s.status === "done") {
+    const at = iso(s.daysAgo - (s.answeredAfter ?? 0) - s.doneAfter, 17);
+    events.push({ id: `${s.id}-e3`, label: "Resultado registrado", detail: s.outcome ?? null, icon: "star", at });
+    updatedAt = at;
+  }
+
+  return {
+    id: s.id, type: s.type, status: s.status,
+    from: party(s.from), to: party(s.to),
+    message: s.message,
+    postId: post?.id ?? null, postTitle: post?.title ?? null,
+    outcome: s.outcome ?? null,
+    createdAt, updatedAt, events,
+  };
+});
+
+let CONNECTIONS: Connection[] = loadConnections(CONNECTION_SEED_LIST);
+/** Tudo que o painel administrativo lê de uma vez só. */
+export interface AdminSnapshot {
+  posts: Post[];
+  supports: SupportRecord[];
+  comments: Comment[];
+  users: DirectoryUser[];
+  communities: Community[];
+  scraps: Scrap[];
+  testimonials: Testimonial[];
+  connections: Connection[];
+}
 
 // ── API demo (em memória) ──────────────────────────────────
 function clone<T>(v: T): T {
@@ -551,6 +855,39 @@ export const demo = {
       }
     }
 
+    // Conexões: o outro lado pediu algo, aceitou o seu pedido ou registrou o resultado.
+    for (const c of CONNECTIONS) {
+      const sou = c.to.userId === userId ? "destinatario" : c.from.userId === userId ? "remetente" : null;
+      if (!sou) continue;
+      const meta = CONNECTION_TYPE_META[c.type];
+      const alvo = `/conexoes/${c.id}`;
+      if (sou === "destinatario" && c.status === "pending") {
+        out.push({
+          id: `n-${c.id}-req`, kind: "connection", actorName: c.from.name,
+          postId: c.postId ?? "", postTitle: c.postTitle ?? meta.label,
+          summary: `pediu ${meta.label.toLowerCase()}${c.postTitle ? ` sobre «${c.postTitle}»` : ""}`,
+          icon: meta.icon, href: alvo, createdAt: c.createdAt,
+        });
+      }
+      if (sou === "remetente" && (c.status === "accepted" || c.status === "declined")) {
+        out.push({
+          id: `n-${c.id}-ans`, kind: "connection", actorName: c.to.name,
+          postId: c.postId ?? "", postTitle: c.postTitle ?? meta.label,
+          summary: c.status === "accepted" ? `aceitou sua conexão de ${meta.label.toLowerCase()}` : `recusou seu pedido de ${meta.label.toLowerCase()}`,
+          icon: c.status === "accepted" ? "check" : "close", href: alvo, createdAt: c.updatedAt,
+        });
+      }
+      if (c.status === "done") {
+        out.push({
+          id: `n-${c.id}-done`, kind: "connection",
+          actorName: sou === "destinatario" ? c.from.name : c.to.name,
+          postId: c.postId ?? "", postTitle: c.postTitle ?? meta.label,
+          summary: "registrou o resultado de uma conexão",
+          icon: "star", href: alvo, createdAt: c.updatedAt,
+        });
+      }
+    }
+
     out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return clone(out);
   },
@@ -593,5 +930,92 @@ export const demo = {
 
   ranking(): Record<RankCategory, RankEntry[]> {
     return clone(RANKING);
+  },
+
+  // ── Conexões ─────────────────────────────────────────────
+  /** Tudo que passa pelo usuário — pedidos enviados e recebidos, mais recentes primeiro. */
+  connectionsFor(userId: string): Connection[] {
+    return clone(
+      CONNECTIONS
+        .filter((c) => c.from.userId === userId || c.to.userId === userId)
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    );
+  },
+
+  getConnection(id: string): Connection | null {
+    const c = CONNECTIONS.find((x) => x.id === id);
+    return c ? clone(c) : null;
+  },
+
+  /** Contas que o usuário pode acionar (todo mundo menos ele mesmo). */
+  connectionTargets(userId: string): ConnectionParty[] {
+    return clone(
+      DIRECTORY
+        .filter((u) => u.id !== userId)
+        .map((u) => ({ userId: u.id, name: u.name, avatarUrl: u.avatarUrl ?? null, role: u.role, profileType: u.profileType }))
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    );
+  },
+
+  createConnection(input: {
+    from: User; toUserId: string; type: ConnectionType; message: string; postId?: string | null;
+  }): Connection {
+    const post = input.postId ? POSTS.find((p) => p.id === input.postId) : undefined;
+    const now = new Date().toISOString();
+    const meta = CONNECTION_TYPE_META[input.type];
+    const conn: Connection = {
+      id: nextId("cx"),
+      type: input.type,
+      status: "pending",
+      from: {
+        userId: input.from.id, name: input.from.name, avatarUrl: input.from.avatarUrl ?? null,
+        role: input.from.role, profileType: input.from.profileType ?? null,
+      },
+      to: party(input.toUserId),
+      message: input.message,
+      postId: post?.id ?? null,
+      postTitle: post?.title ?? null,
+      outcome: null,
+      createdAt: now,
+      updatedAt: now,
+      events: [{ id: nextId("cxe"), label: "Conexão solicitada", detail: meta.label, icon: "send", at: now }],
+    };
+    CONNECTIONS = [conn, ...CONNECTIONS];
+    saveConnections();
+    return clone(conn);
+  },
+
+  /** Aceitar, recusar, cancelar ou registrar o resultado. */
+  updateConnection(id: string, status: ConnectionStatus, outcome?: string): Connection | null {
+    const c = CONNECTIONS.find((x) => x.id === id);
+    if (!c) return null;
+    const at = new Date().toISOString();
+    const event: Record<ConnectionStatus, { label: string; icon: string; detail?: string | null }> = {
+      pending: { label: "Reaberta", icon: "send" },
+      accepted: { label: "Conexão aceita", icon: "check", detail: "as duas partes seguem em contato" },
+      declined: { label: "Pedido recusado", icon: "close" },
+      canceled: { label: "Pedido cancelado", icon: "close" },
+      done: { label: "Resultado registrado", icon: "star", detail: outcome ?? null },
+    };
+    c.status = status;
+    c.updatedAt = at;
+    if (status === "done" && outcome) c.outcome = outcome;
+    c.events = [...c.events, { id: nextId("cxe"), ...event[status], detail: event[status].detail ?? null, at }];
+    saveConnections();
+    return clone(c);
+  },
+
+  /** Base bruta para o painel administrativo (inclui o que foi criado em runtime). */
+  snapshot(): AdminSnapshot {
+    return clone({
+      posts: POSTS,
+      supports: Object.values(SUPPORTS).flat(),
+      comments: Object.values(COMMENTS).flat(),
+      users: DIRECTORY,
+      communities: COMMUNITIES,
+      scraps: SCRAPS,
+      testimonials: TESTIMONIALS,
+      connections: CONNECTIONS,
+    });
   },
 };

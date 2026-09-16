@@ -10,7 +10,7 @@ export function Footer() {
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
             <Link href="/" className="flex items-center" style={{ color: "var(--th-text)" }}>
-              <DMLogo size={32} tone="petroleo" />
+              <DMLogo size={32} tone="plain" />
             </Link>
             <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--th-muted)" }}>
               A rede social de impacto local. Conectando bairros, transformando realidades.

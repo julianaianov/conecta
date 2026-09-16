@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Inter } from "next/font/google";
+import { BrandLoading } from "@/components/app/BrandLoading";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -55,6 +56,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
+        <BrandLoading />
         <div className="noise" aria-hidden="true" />
         {children}
       </body>

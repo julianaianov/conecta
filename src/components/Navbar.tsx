@@ -52,7 +52,7 @@ export function Navbar() {
 
         {/* Logo */}
         <Link href="/" className="flex items-center" style={{ color: "var(--th-text)" }}>
-          <DMLogo size={30} tone="petroleo" />
+          <DMLogo size={30} tone="plain" />
         </Link>
 
         {/* Nav links — center */}

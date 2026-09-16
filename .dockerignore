@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+coverage
+.git
+.github
+.env*
+graphify-out
+*.log
+Dockerfile*
+services/*/node_modules
+services/*/*.log

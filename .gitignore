@@ -35,4 +35,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.iml
-.claude/
+
+# Contratos do projeto
+!.cursor/
+!.cursor/rules/
+!.cursor/skills/

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ──────────────────────────────────────────────────────────
-   DM Conecta — Sistema de cores (Manual de Marca V1.0)
+   DM Conecta — Sistema de cores (Manual de Marca V1.2)
    Azul Petróleo #1B4F72 · Laranja Cívico #F4841A
    ────────────────────────────────────────────────────────── */
 @theme inline {
@@ -57,6 +57,45 @@
   --th-border:     rgba(255, 255, 255, 0.09);
   --th-nav:        rgba(13, 45, 66, 0.88);
   --th-nav-border: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Data viz (painel administrativo) ─────────────────────────
+   Paleta validada com o validador do método de dataviz, nos dois modos e
+   contra as superfícies reais do app (#ffffff claro / #103451 escuro):
+
+   · categórica de 2 séries  → publicações (azul) × apoios (laranja)
+     claro  #2e7ba8/#f4841a — CVD ΔE 22.4, normal 32.0
+     escuro #3f96c9/#cf7414 — CVD ΔE 22.2, normal 26.1
+     (o laranja claro fica em 2.57:1, abaixo de 3:1 → os gráficos que o usam
+     trazem rótulo direto e tabela alternativa, que é o alívio exigido)
+
+   · rampa ordinal de 5 passos (funil, status) → um só matiz, L monotônica.
+     No escuro a rampa é invertida: mais volume = passo mais claro.
+   ──────────────────────────────────────────────────────────── */
+.viz-root {
+  --viz-s1:    #2e7ba8;
+  --viz-s2:    #f4841a;
+  --viz-o1:    #86b9d8;
+  --viz-o2:    #5fa0ca;
+  --viz-o3:    #3f85b4;
+  --viz-o4:    #2a6b96;
+  --viz-o5:    #1b4f72;
+  --viz-grid:  rgba(27, 79, 114, 0.12);
+  --viz-axis:  rgba(27, 79, 114, 0.26);
+  --viz-track: rgba(27, 79, 114, 0.07);
+}
+
+.dark .viz-root {
+  --viz-s1:    #3f96c9;
+  --viz-s2:    #cf7414;
+  --viz-o1:    #2e7ba8;
+  --viz-o2:    #4f97c1;
+  --viz-o3:    #7db4d5;
+  --viz-o4:    #a8cde4;
+  --viz-o5:    #d3e9f5;
+  --viz-grid:  rgba(255, 255, 255, 0.10);
+  --viz-axis:  rgba(255, 255, 255, 0.22);
+  --viz-track: rgba(255, 255, 255, 0.07);
 }
 
 /* ── Base ────────────────────────────────────────────────── */
@@ -205,6 +244,108 @@ body {
 }
 
 .network-pulse { animation: network-pulse 3s ease-in-out infinite; }
+
+/* ── Abertura da marca ───────────────────────────────────── */
+.brand-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(135deg, #0d2d42, #1b4f72);
+}
+
+.brand-loading__glow {
+  position: absolute;
+  inset: 20% 10%;
+  z-index: -1;
+  border-radius: 999px;
+  background: radial-gradient(ellipse, rgba(90, 155, 196, 0.34), transparent 68%);
+  filter: blur(18px);
+  animation: brand-glow 3.2s ease-in-out infinite;
+}
+
+.brand-loading__glow::before,
+.brand-loading__glow::after {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid rgba(214, 234, 248, 0.15);
+  border-radius: 50%;
+  content: "";
+  animation: brand-orbit 8s linear infinite;
+}
+
+.brand-loading__glow::after {
+  inset: 22%;
+  border-color: rgba(244, 132, 26, 0.18);
+  animation-duration: 11s;
+  animation-direction: reverse;
+}
+
+.brand-loading__logo-stage {
+  position: relative;
+  display: grid;
+  width: min(62vw, 250px);
+  aspect-ratio: 1;
+  place-items: center;
+}
+
+.brand-loading__orbit {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(214, 234, 248, 0.24);
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  animation: brand-orbit 7s linear infinite;
+}
+
+.brand-loading__orbit::after {
+  position: absolute;
+  inset: 22px;
+  border: 1px solid rgba(244, 132, 26, 0.3);
+  border-left-color: transparent;
+  border-radius: 50%;
+  content: "";
+  animation: brand-orbit 5s linear infinite reverse;
+}
+
+.brand-loading__logo-open {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  animation: brand-logo-open 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  filter: drop-shadow(0 0 22px rgba(214, 234, 248, 0.22));
+}
+
+@keyframes brand-logo-open {
+  0% { opacity: 0; transform: scale(0.72); }
+  65% { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes brand-glow {
+  0%, 100% { opacity: 0.65; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+@keyframes brand-orbit {
+  from { transform: rotate(0deg) scaleX(1.2); }
+  to { transform: rotate(360deg) scaleX(1.2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-loading__logo-open,
+  .brand-loading__orbit,
+  .brand-loading__glow,
+  .brand-loading__glow::before,
+  .brand-loading__glow::after {
+    animation: none;
+  }
+}
 
 /* ── Map pin ─────────────────────────────────────────────── */
 .map-pin span:first-child { animation: pin-bounce 2s ease-in-out infinite; }

@@ -1,0 +1,15 @@
+---
+description: Contrato de ambientes do DM Conecta
+globs:
+alwaysApply: true
+---
+
+# Contrato de ambientes
+
+- Local: Docker Compose; dados de demonstração permitidos.
+- Homologação: Vercel; dados de demonstração permitidos.
+- Produção: AWS + Cloudflare em `https://dmconecta.org`; fallback de demonstração proibido.
+
+Em produção, `NEXT_PUBLIC_API_URL` vazio significa `/api` no mesmo domínio.
+Não coloque segredos em `NEXT_PUBLIC_*`, não use homologação como produção e
+não altere o contrato sem atualizar `AGENTS.md`, `README.md` e a infraestrutura.

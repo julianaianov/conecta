@@ -8,8 +8,6 @@ import {
 
   DEMO_PROFILES,
 
-  POST_IMAGES,
-
   POST_IDS,
 
   postImage,
@@ -123,4 +121,3 @@ export const TRUST_ROLE_IMAGES = {
   Voluntários: AVATARS.maria,
 
 } as const;
-

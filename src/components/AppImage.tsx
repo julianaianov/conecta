@@ -15,7 +15,7 @@ function resolveSrc(src?: string | null): string {
 }
 
 /** Wrapper para next/image com defaults do dmconecta. */
-export function AppImage({ className, fill, src, ...props }: AppImageProps) {
+export function AppImage({ alt, className, fill, src, ...props }: AppImageProps) {
   const safeSrc = resolveSrc(src);
 
   if (fill) {
@@ -23,6 +23,7 @@ export function AppImage({ className, fill, src, ...props }: AppImageProps) {
       <Image
         fill
         src={safeSrc}
+        alt={alt}
         className={className}
         sizes={props.sizes ?? "(max-width: 768px) 100vw, 50vw"}
         {...props}
@@ -33,6 +34,7 @@ export function AppImage({ className, fill, src, ...props }: AppImageProps) {
   return (
     <Image
       src={safeSrc}
+      alt={alt}
       className={className}
       sizes={props.sizes ?? "(max-width: 768px) 100vw, 50vw"}
       {...props}

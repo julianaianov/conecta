@@ -1,0 +1,120 @@
+services:
+  nginx:
+    build: ./services/nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      - auth-service
+      - user-service
+      - post-service
+    networks:
+      - conecta-net
+    restart: unless-stopped
+
+  # ── Auth Service ──────────────────────────────────────────────────────────
+  auth-service:
+    build: ./services/auth-service
+    environment:
+      DATABASE_URL: postgresql://postgres:password@auth-db:5432/auth_db
+      JWT_SECRET: conecta_jwt_secret_local_dev
+      PORT: 3001
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - conecta-net
+    restart: unless-stopped
+
+  auth-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+      - ./services/auth-service/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./services/auth-service/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+    networks:
+      - conecta-net
+
+  # ── User Service ──────────────────────────────────────────────────────────
+  user-service:
+    build: ./services/user-service
+    environment:
+      DATABASE_URL: postgresql://postgres:password@user-db:5432/user_db
+      JWT_SECRET: conecta_jwt_secret_local_dev
+      PORT: 3002
+    depends_on:
+      user-db:
+        condition: service_healthy
+    networks:
+      - conecta-net
+    restart: unless-stopped
+
+  user-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+      - ./services/user-service/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./services/user-service/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+    networks:
+      - conecta-net
+
+  # ── Post Service ──────────────────────────────────────────────────────────
+  post-service:
+    build: ./services/post-service
+    environment:
+      DATABASE_URL: postgresql://postgres:password@post-db:5432/post_db
+      JWT_SECRET: conecta_jwt_secret_local_dev
+      PORT: 3003
+    depends_on:
+      post-db:
+        condition: service_healthy
+    networks:
+      - conecta-net
+    restart: unless-stopped
+
+  post-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: post_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - post-db-data:/var/lib/postgresql/data
+      - ./services/post-service/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./services/post-service/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+    networks:
+      - conecta-net
+
+networks:
+  conecta-net:
+    driver: bridge
+
+volumes:
+  auth-db-data:
+  user-db-data:
+  post-db-data:

@@ -11,6 +11,7 @@ interface AuthContextValue {
   user: User | null;
   status: AuthStatus;
   demoMode: boolean;
+  demoAllowed: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginDemo: (email?: string, password?: string) => Promise<void>;
   register: (input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }) => Promise<void>;
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [checkAuth]);
 
   return (
-    <AuthContext.Provider value={{ user, status, demoMode, login, loginDemo, register, logout, refresh }}>
+    <AuthContext.Provider value={{ user, status, demoMode, demoAllowed: api.demoAllowed, login, loginDemo, register, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

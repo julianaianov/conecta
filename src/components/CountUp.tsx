@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 /** Layout effect no cliente, effect no servidor — evita o warning de SSR. */
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -35,7 +35,7 @@ type CountUpProps = {
  * só é aplicado no cliente, antes da primeira pintura, quando a animação vai rodar.
  */
 export function CountUp({ value, className, duration = 1600 }: CountUpProps) {
-  const parsed = parse(value);
+  const parsed = useMemo(() => parse(value), [value]);
   const ref = useRef<HTMLSpanElement>(null);
   const [display, setDisplay] = useState(value);
 
@@ -43,7 +43,7 @@ export function CountUp({ value, className, duration = 1600 }: CountUpProps) {
     if (!parsed) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     setDisplay(format(0, parsed));
-  }, [value]);
+  }, [parsed]);
 
   useEffect(() => {
     if (!parsed) return;
@@ -74,7 +74,7 @@ export function CountUp({ value, className, duration = 1600 }: CountUpProps) {
       observer.disconnect();
       cancelAnimationFrame(raf);
     };
-  }, [value, duration]);
+  }, [parsed, duration]);
 
   return (
     <span ref={ref} className={className}>
