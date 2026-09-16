@@ -11,7 +11,8 @@ serviços Node.js.
 | Homologação | projeto da Vercel | dados de demonstração permitidos |
 | Produção | `https://dmconecta.org` | API real; fallback demo proibido |
 
-A Vercel não é produção. O build de produção recebe
+A Vercel acompanha a branch `develop` e é somente homologação; não é produção.
+O build de produção recebe
 `NEXT_PUBLIC_RUNTIME_ENV=production` e usa a API no mesmo domínio por meio do
 gateway da infraestrutura.
 
