@@ -22,7 +22,7 @@ privadas.
 - **GitHub — aplicação atual:** `julianaianov/conecta`
 - **GitHub — organização de produção:** a confirmar
 - **Portal web de produção:** <https://dmconecta.org>
-- **Portal web de homologação:** projeto da Vercel
+- **Portal web de homologação:** <https://homologacao.dmconecta.org> (AWS)
 
 ## Aplicativo
 

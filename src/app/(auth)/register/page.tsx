@@ -10,7 +10,7 @@ import { AuthShowcase } from "@/components/app/AuthShowcase";
 import { Field } from "../login/page";
 import {
   ROLES, ROLE_LABELS, ROLE_COLORS, ROLE_ICONS, ROLE_PROFILES,
-  ROLE_PERMISSION_LABELS, ROLE_RESTRICTIONS,
+  ROLE_PERMISSION_LABELS, ROLE_RESTRICTIONS, ROLE_FUNCTIONS, ROLE_DESCRIPTIONS, ROLE_FUTURE_PROFILES,
   type UserRole, type ProfileType,
 } from "@/lib/app/types";
 import type { IconName } from "@/components/app/Icon";
@@ -25,7 +25,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("citizen");
+  const [role, setRole] = useState<UserRole>("member");
   const [profileType, setProfileType] = useState<ProfileType | null>(null);
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -139,7 +139,10 @@ export default function RegisterPage() {
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: `${ROLE_COLORS[r]}1f`, color: ROLE_COLORS[r] }}>
                         <Icon name={ROLE_ICONS[r] as IconName} size={18} />
                       </span>
-                      <span className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>{ROLE_LABELS[r]}</span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold" style={{ color: "var(--th-text)" }}>{ROLE_LABELS[r]}</span>
+                        <span className="block text-xs" style={{ color: "var(--th-muted)" }}>{ROLE_FUNCTIONS[r]}</span>
+                      </span>
                       {active && <Icon name="check" size={16} className="ml-auto shrink-0" style={{ color: ROLE_COLORS[r] }} />}
                     </button>
                   );
@@ -151,6 +154,7 @@ export default function RegisterPage() {
                 <span id="subperfil-label" className="block text-xs font-semibold" style={{ color: "var(--th-muted)" }}>
                   Seu perfil em {ROLE_LABELS[role]}
                 </span>
+                <p className="mt-1 text-xs" style={{ color: "var(--th-text)" }}>{ROLE_DESCRIPTIONS[role]}</p>
                 <div role="radiogroup" aria-labelledby="subperfil-label" className="mt-2 flex flex-wrap gap-2">
                   {ROLE_PROFILES[role].map((p) => {
                     const active = profileType === p.type;
@@ -170,6 +174,11 @@ export default function RegisterPage() {
                     );
                   })}
                 </div>
+                {ROLE_FUTURE_PROFILES[role] && (
+                  <p className="mt-2 text-xs" style={{ color: "var(--th-muted)" }}>
+                    Em breve: {ROLE_FUTURE_PROFILES[role]!.join(", ")}.
+                  </p>
+                )}
 
                 <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
                   {ROLE_PERMISSION_LABELS[role].map((label) => (

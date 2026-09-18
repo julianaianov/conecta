@@ -5,13 +5,17 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/app/api";
 import { timeAgo } from "@/lib/app/format";
-import type { Post } from "@/lib/app/types";
+import { useAuth } from "@/lib/app/auth";
+import { allowedSupportTypes, type Post } from "@/lib/app/types";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { TypeBadge, StatusBadge } from "./ui";
 
 export function PostCard({ post }: { post: Post }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const supportTypes = allowedSupportTypes(user?.role, user?.profileType);
+  const onlyShares = supportTypes.length === 1 && supportTypes[0] === "sharing";
   const [reactions, setReactions] = useState(post.reactionsCount);
   const [liked, setLiked] = useState(false);
   const cover = post.images?.[0];
@@ -100,14 +104,16 @@ export function PostCard({ post }: { post: Post }) {
         <ActionButton icon="heart" label={String(reactions)} active={liked} onClick={toggleLike} />
         <ActionButton icon="comment" label={String(post.commentsCount)} onClick={(e) => { e.stopPropagation(); router.push(`/post/${post.id}`); }} />
         <ActionButton icon="eye" label={String(post.viewsCount)} muted />
-        <Link
-          href={`/post/${post.id}/apoiar`}
-          onClick={(e) => e.stopPropagation()}
-          className="ml-auto mr-1 inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-bold text-white"
-          style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}
-        >
-          <Icon name="volunteer" size={16} /> Apoiar
-        </Link>
+        {supportTypes.length > 0 && (
+          <Link
+            href={onlyShares ? `/post/${post.id}/apoiar?type=sharing` : `/post/${post.id}/apoiar`}
+            onClick={(e) => e.stopPropagation()}
+            className="ml-auto mr-1 inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-bold text-white"
+            style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}
+          >
+            <Icon name={onlyShares ? "share" : "volunteer"} size={16} /> {onlyShares ? "Divulgar" : "Apoiar"}
+          </Link>
+        )}
       </div>
     </article>
   );

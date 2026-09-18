@@ -13,7 +13,7 @@ import { Card, EmptyState } from "@/components/app/ui";
 
 const METRIC_HINT: Record<RankCategory, string> = {
   partner: "Pontos por valor apoiado, projetos e tipos de apoio.",
-  community: "Pontos por projetos publicados e apoios recebidos.",
+  agent: "Pontos por projetos publicados e apoios recebidos.",
   volunteer: "Pontos por participações, projetos e horas doadas.",
 };
 
@@ -134,7 +134,7 @@ function PodiumCard({ entry, isMe }: { entry: RankEntry; isMe: boolean }) {
 }
 
 function RankRow({ entry, isMe, highlight }: { entry: RankEntry; isMe: boolean; highlight?: boolean }) {
-  const roleColor = ROLE_COLORS[normalizeRole(entry.role)];
+  const roleColor = ROLE_COLORS[normalizeRole(entry.role, entry.profileType)];
   return (
     <div
       className="app-card flex items-center gap-3 rounded-2xl px-3 py-3"

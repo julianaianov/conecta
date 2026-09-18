@@ -75,7 +75,7 @@ export function OrkutProfile({ userId }: { userId: string }) {
   if (loading) return <div className="flex justify-center py-24"><span className="app-spinner" style={{ width: 30, height: 30 }} /></div>;
   if (!profile) return <p className="py-20 text-center" style={{ color: "var(--th-muted)" }}>Perfil não encontrado.</p>;
 
-  const role = normalizeRole(profile.role);
+  const role = normalizeRole(profile.role, profile.profileType);
 
   const infoCard = (
     <Panel accent="#1b4f72">

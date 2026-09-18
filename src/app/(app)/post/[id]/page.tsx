@@ -7,7 +7,7 @@ import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { formatDate, timeAgo } from "@/lib/app/format";
 import {
-  POST_STATUS_LABELS, type Comment, type Post, type PostStatus,
+  POST_STATUS_LABELS, allowedSupportTypes, type Comment, type Post, type PostStatus,
   type SupportRecord, type SupportSummaryItem,
 } from "@/lib/app/types";
 import { Avatar } from "@/components/app/Avatar";
@@ -21,6 +21,8 @@ export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const supportTypes = allowedSupportTypes(user?.role, user?.profileType);
+  const onlyShares = supportTypes.length === 1 && supportTypes[0] === "sharing";
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [summary, setSummary] = useState<SupportSummaryItem[]>([]);
@@ -187,12 +189,14 @@ export default function PostDetailPage() {
       </Card>
 
       {/* Barra inferior de apoio */}
-      <div className="sticky bottom-20 z-20 mt-4 md:bottom-4">
-        <Link href={`/post/${post.id}/apoiar`} className="flex h-12 items-center justify-center gap-2 rounded-xl text-[15px] font-bold text-white shadow-lg" style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)", boxShadow: "0 10px 24px rgba(244,132,26,0.35)" }}>
-          <Icon name="volunteer" size={20} /> Apoiar esta causa
-          {supports.length > 0 && <span className="font-numeric">· {supports.length}</span>}
-        </Link>
-      </div>
+      {supportTypes.length > 0 && (
+        <div className="sticky bottom-20 z-20 mt-4 md:bottom-4">
+          <Link href={onlyShares ? `/post/${post.id}/apoiar?type=sharing` : `/post/${post.id}/apoiar`} className="flex h-12 items-center justify-center gap-2 rounded-xl text-[15px] font-bold text-white shadow-lg" style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)", boxShadow: "0 10px 24px rgba(244,132,26,0.35)" }}>
+            <Icon name={onlyShares ? "share" : "volunteer"} size={20} /> {onlyShares ? "Divulgar esta causa" : "Apoiar esta causa"}
+            {supports.length > 0 && <span className="font-numeric">· {supports.length}</span>}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

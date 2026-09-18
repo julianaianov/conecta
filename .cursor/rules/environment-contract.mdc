@@ -7,7 +7,8 @@ alwaysApply: true
 # Contrato de ambientes
 
 - Local: Docker Compose; dados de demonstração permitidos.
-- Homologação: Vercel; dados de demonstração permitidos.
+- Homologação: AWS em `https://homologacao.dmconecta.org` (branch `develop`); dados de demonstração permitidos.
+- A Vercel não é mais usada. Mapa completo: `DmConnecta/dm-docs` → `docs/arquitetura.md`.
 - Produção: AWS + Cloudflare em `https://dmconecta.org`; fallback de demonstração proibido.
 
 Em produção, `NEXT_PUBLIC_API_URL` vazio significa `/api` no mesmo domínio.

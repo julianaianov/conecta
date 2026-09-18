@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   website    VARCHAR(500),
   city       VARCHAR(100),
   state      VARCHAR(100),
-  role       VARCHAR(50) NOT NULL DEFAULT 'citizen',
+  role       VARCHAR(50) NOT NULL DEFAULT 'member',
   profile_type VARCHAR(50),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

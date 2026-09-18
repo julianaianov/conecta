@@ -4,90 +4,111 @@
  * support_type, support_record, payment_method) e o contrato da API.
  */
 
-// ── Papéis de usuário ──────────────────────────────────────
-/** As 4 categorias de perfil. Cada uma agrupa subperfis (ver ROLE_PROFILES). */
-export type UserRole = "community" | "citizen" | "partner" | "institutional";
+// ── Perfis do ecossistema ──────────────────────────────────
+/**
+ * As 5 categorias de perfil, organizadas pela função de cada participante no
+ * fluxo DEMANDA → PROJETO → CONEXÃO → APOIO → ARTICULAÇÃO → AMPLIFICAÇÃO →
+ * EXECUÇÃO → RESULTADO → IMPACTO. Cada categoria agrupa subperfis
+ * (ver ROLE_PROFILES). Especificação: docs/perfis-e-permissoes.md.
+ */
+export type UserRole = "agent" | "member" | "partner" | "government" | "media";
 
-export const ROLES: UserRole[] = ["community", "citizen", "partner", "institutional"];
+export const ROLES: UserRole[] = ["agent", "member", "partner", "government", "media"];
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  community: "Conexão",
-  citizen: "Cidadão / Morador",
+  agent: "Agente de Transformação",
+  member: "Membro da Comunidade",
   partner: "Parceiro",
-  institutional: "Institucional",
+  government: "Poder Público",
+  media: "Comunicação",
+};
+
+/** O papel da categoria no ecossistema, em uma palavra. */
+export const ROLE_FUNCTIONS: Record<UserRole, string> = {
+  agent: "Publicadores",
+  member: "Participantes",
+  partner: "Apoiadores",
+  government: "Articulação",
+  media: "Amplificação",
+};
+
+export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
+  agent: "Identificam necessidades no território e transformam demandas em projetos e ações.",
+  member: "Participam, acompanham, apoiam e fortalecem iniciativas do território.",
+  partner: "Oferecem recursos, produtos, serviços, conhecimento, estrutura ou investimento para demandas e projetos.",
+  government: "Acompanham demandas, respondem institucionalmente e encaminham ou viabilizam soluções dentro de sua competência.",
+  media: "Amplificam demandas, projetos e resultados, aumentando a visibilidade e o potencial de conexão.",
 };
 
 export const ROLE_COLORS: Record<UserRole, string> = {
-  community: "#1b4f72",
-  citizen: "#2e7ba8",
+  agent: "#1b4f72",
+  member: "#2e7ba8",
   partner: "#f4841a",
-  institutional: "#0d2d42",
+  government: "#0d2d42",
+  media: "#2e9e5b",
 };
 
 export const ROLE_ICONS: Record<UserRole, string> = {
-  community: "users",
-  citizen: "person",
+  agent: "users",
+  member: "person",
   partner: "building",
-  institutional: "shield",
+  government: "shield",
+  media: "megaphone",
 };
-
-/**
- * Papéis anteriores (5 opções) que ainda existem em contas antigas e no JWT.
- * Lidos de volta como as 4 categorias atuais.
- */
-const LEGACY_ROLE_MAP: Record<string, UserRole> = {
-  organization: "community",
-  association: "community",
-  business: "partner",
-  government: "institutional",
-  citizen: "citizen",
-};
-
-/** Normaliza qualquer role vinda da API/localStorage para as 4 categorias. */
-export function normalizeRole(role: string | null | undefined): UserRole {
-  if (!role) return "citizen";
-  if ((ROLES as string[]).includes(role)) return role as UserRole;
-  return LEGACY_ROLE_MAP[role] ?? "citizen";
-}
 
 // ── Subperfis ──────────────────────────────────────────────
 export type ProfileType =
-  // Conexão
-  | "associacao" | "ong" | "projeto_social" | "coletivo" | "lider_comunitario" | "representante_bairro"
-  // Cidadão / Morador
+  // Agentes de Transformação
+  | "associacao" | "ong" | "instituto" | "projeto_social" | "coletivo" | "lider_comunitario" | "representante_bairro"
+  // Membros da Comunidade
   | "morador" | "voluntario" | "jovem" | "participante"
-  // Parceiro
-  | "empresa" | "patrocinador" | "comercio_local" | "marca"
-  // Institucional
-  | "prefeitura" | "secretaria" | "politico" | "imprensa";
+  // Parceiros
+  | "empresa" | "marca" | "comercio_local" | "patrocinador"
+  // Poder Público
+  | "prefeitura" | "secretaria" | "orgao_publico" | "representante_poder_publico" | "politico"
+  // Comunicação
+  | "imprensa" | "veiculo_comunicacao" | "jornalista";
 
 export const ROLE_PROFILES: Record<UserRole, { type: ProfileType; label: string }[]> = {
-  community: [
+  agent: [
     { type: "associacao", label: "Associação" },
     { type: "ong", label: "ONG" },
+    { type: "instituto", label: "Instituto" },
     { type: "projeto_social", label: "Projeto Social" },
     { type: "coletivo", label: "Coletivo" },
     { type: "lider_comunitario", label: "Líder Comunitário" },
     { type: "representante_bairro", label: "Representante de Bairro" },
   ],
-  citizen: [
+  member: [
     { type: "morador", label: "Morador" },
     { type: "voluntario", label: "Voluntário" },
-    { type: "jovem", label: "Jovens" },
-    { type: "participante", label: "Participante das conexões" },
+    { type: "jovem", label: "Jovem" },
+    { type: "participante", label: "Participante da Comunidade" },
   ],
   partner: [
     { type: "empresa", label: "Empresa" },
-    { type: "patrocinador", label: "Patrocinador" },
-    { type: "comercio_local", label: "Comércio local" },
     { type: "marca", label: "Marca" },
+    { type: "comercio_local", label: "Comércio Local" },
+    { type: "patrocinador", label: "Patrocinador" },
   ],
-  institutional: [
+  government: [
     { type: "prefeitura", label: "Prefeitura" },
     { type: "secretaria", label: "Secretaria" },
+    { type: "orgao_publico", label: "Órgão Público" },
+    { type: "representante_poder_publico", label: "Representante do Poder Público" },
     { type: "politico", label: "Político" },
-    { type: "imprensa", label: "Imprensa" },
   ],
+  media: [
+    { type: "imprensa", label: "Imprensa" },
+    { type: "veiculo_comunicacao", label: "Veículo de Comunicação" },
+    { type: "jornalista", label: "Jornalista" },
+  ],
+};
+
+/** Subperfis previstos na especificação, liberados em versões futuras. */
+export const ROLE_FUTURE_PROFILES: Partial<Record<UserRole, string[]>> = {
+  partner: ["Investidores e financiadores"],
+  media: ["Criadores de conteúdo"],
 };
 
 export const PROFILE_LABELS: Record<ProfileType, string> = Object.fromEntries(
@@ -99,56 +120,126 @@ export const PROFILE_ROLE: Record<ProfileType, UserRole> = Object.fromEntries(
   Object.entries(ROLE_PROFILES).flatMap(([role, list]) => list.map((p) => [p.type, role])),
 ) as Record<ProfileType, UserRole>;
 
-// ── Permissões ─────────────────────────────────────────────
 /**
- * Capacidades aplicadas no app. As listas de permissões da especificação
- * descrevem o que cada categoria faz de característico, não uma whitelist
- * fechada — por isso `interact` (curtir/comentar/compartilhar) e a leitura do
- * feed/mapa valem para todos, e só o que a spec distingue é bloqueado.
+ * Categorias anteriores que ainda podem chegar do JWT, do localStorage ou de
+ * bancos não migrados. `institutional` foi dividida em Poder Público e
+ * Comunicação — o subperfil decide (ver normalizeRole).
  */
-export type Permission =
-  | "publish"        // publicar demandas, projetos e eventos
-  | "update_results" // atualizar resultados dos próprios projetos
-  | "interact"       // curtir, comentar, compartilhar
-  | "connect"        // solicitar conexão / contato
-  | "support"        // apoiar projetos
-  | "express_interest"
-  | "ranking";
-
-/** Publicar é aberto a todos os perfis — o que muda é em nome de quem se publica. */
-export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  community: ["publish", "update_results", "interact", "connect"],
-  citizen: ["publish", "interact", "connect", "support"],
-  partner: ["publish", "interact", "connect", "express_interest", "ranking"],
-  institutional: ["publish", "interact", "connect"],
+const LEGACY_ROLE_MAP: Record<string, UserRole> = {
+  community: "agent",
+  citizen: "member",
+  institutional: "government",
+  organization: "agent",
+  association: "agent",
+  business: "partner",
 };
 
-export function can(role: string | null | undefined, permission: Permission): boolean {
-  return ROLE_PERMISSIONS[normalizeRole(role)].includes(permission);
+/**
+ * Normaliza qualquer role vinda da API/localStorage para as 5 categorias.
+ * Quando o subperfil é conhecido, ele prevalece: é o que resolve contas
+ * antigas "institutional" de imprensa, que agora pertencem a Comunicação.
+ */
+export function normalizeRole(role: string | null | undefined, profileType?: string | null): UserRole {
+  if (profileType && profileType in PROFILE_ROLE) return PROFILE_ROLE[profileType as ProfileType];
+  if (!role) return "member";
+  if ((ROLES as string[]).includes(role)) return role as UserRole;
+  return LEGACY_ROLE_MAP[role] ?? "member";
 }
 
-/** Texto exibido no cadastro — espelha a especificação de Tipos de Perfis. */
+// ── Permissões ─────────────────────────────────────────────
+/**
+ * Capacidades aplicadas no app, derivadas da função de cada categoria.
+ * Ver, filtrar e acompanhar demandas, projetos e o mapa vale para todos.
+ */
+export type Permission =
+  | "publish"                 // publicar demandas, projetos, eventos e ações
+  | "update_results"          // atualizar andamento, resultados e impacto dos próprios projetos
+  | "institutional_response"  // publicar respostas institucionais, programas e serviços
+  | "interact"                // curtir, comentar
+  | "share"                   // compartilhar e divulgar iniciativas
+  | "connect"                 // solicitar conexão
+  | "express_interest"        // demonstrar interesse
+  | "support"                 // apoiar projetos / oferecer recursos, produtos ou serviços
+  | "volunteer"               // oferecer voluntariado, inscrever-se em eventos
+  | "ranking";                // aparecer no ranking de apoiadores e impacto
+
+export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  agent: ["publish", "update_results", "interact", "share", "connect"],
+  member: ["interact", "share", "connect", "express_interest", "support", "volunteer", "ranking"],
+  partner: ["interact", "share", "connect", "express_interest", "support", "ranking"],
+  // Sem "ranking": o Poder Público é medido por indicadores de atuação,
+  // não por um ranking competitivo de apoiadores (neutralidade institucional).
+  government: ["institutional_response", "interact", "share", "connect", "express_interest", "support"],
+  media: ["interact", "share", "connect"],
+};
+
+export function can(role: string | null | undefined, permission: Permission, profileType?: string | null): boolean {
+  return ROLE_PERMISSIONS[normalizeRole(role, profileType)].includes(permission);
+}
+
+/**
+ * Tipos de publicação que cada categoria pode criar. Membros da Comunidade,
+ * Parceiros e Comunicação não publicam demandas ou projetos: agem por apoio,
+ * conexão e compartilhamento. O Poder Público publica respostas institucionais
+ * e informa programas e serviços como "Mensagem".
+ */
+export const ROLE_POST_TYPES: Record<UserRole, PostType[]> = {
+  agent: ["problem", "project", "need", "event", "action", "message"],
+  member: [],
+  partner: [],
+  government: ["message"],
+  media: [],
+};
+
+export function allowedPostTypes(role: string | null | undefined, profileType?: string | null): PostType[] {
+  return ROLE_POST_TYPES[normalizeRole(role, profileType)];
+}
+
+/** Texto exibido no cadastro — espelha a especificação de perfis. */
 export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
-  community: [
-    "Criar perfil", "Publicar demandas", "Publicar projetos", "Publicar eventos",
-    "Receber solicitações de conexão", "Atualizar resultados",
+  agent: [
+    "Criar e gerenciar perfil", "Publicar demandas", "Publicar projetos",
+    "Publicar eventos e ações", "Adicionar fotos, documentos e informações",
+    "Receber solicitações de conexão", "Conversar com parceiros",
+    "Atualizar o andamento dos projetos", "Registrar resultados e impactos",
+    "Informar necessidades de apoio", "Participar de indicadores de impacto",
   ],
-  citizen: [
-    "Criar perfil", "Publicar", "Curtir", "Comentar", "Compartilhar",
-    "Solicitar conexão", "Apoiar projetos",
+  member: [
+    "Criar perfil", "Visualizar demandas e projetos", "Curtir e apoiar",
+    "Comentar", "Compartilhar", "Solicitar conexão",
+    "Demonstrar interesse em participar", "Inscrever-se em eventos",
+    "Oferecer voluntariado", "Apoiar projetos",
   ],
   partner: [
-    "Visualizar demandas", "Publicar", "Solicitar conexão", "Demonstrar interesse",
-    "Participar do ranking",
+    "Criar perfil empresarial", "Visualizar demandas e projetos",
+    "Filtrar oportunidades de apoio", "Demonstrar interesse", "Solicitar conexão",
+    "Oferecer recursos", "Oferecer produtos ou serviços", "Apoiar projetos",
+    "Registrar apoio realizado", "Acompanhar resultados",
+    "Participar do ranking de apoiadores",
   ],
-  institutional: [
-    "Visualizar mapa", "Interagir", "Solicitar contato",
+  government: [
+    "Criar perfil institucional", "Visualizar mapa de demandas e projetos",
+    "Acompanhar iniciativas do território", "Solicitar conexão",
+    "Responder demandas relacionadas à sua atuação",
     "Publicar respostas institucionais",
+    "Informar programas, serviços ou oportunidades", "Compartilhar iniciativas",
+    "Acompanhar indicadores e resultados", "Filtrar oportunidades de apoio",
+    "Demonstrar interesse", "Oferecer recursos", "Apoiar projetos",
+  ],
+  media: [
+    "Criar perfil profissional ou institucional",
+    "Visualizar demandas, projetos e resultados", "Solicitar conexão",
+    "Identificar pautas", "Compartilhar iniciativas",
+    "Divulgar projetos e resultados",
+    "Acompanhar informações públicas do território",
   ],
 };
 
 export const ROLE_RESTRICTIONS: Partial<Record<UserRole, string>> = {
-  citizen: "Publica em nome próprio — não em nome de uma organização",
+  member: "Não publica demandas ou projetos em nome de uma organização ou comunidade sem vínculo ou autorização.",
+  partner: "Apoia, oferece recursos e se conecta — demandas e projetos são publicados pelos Agentes de Transformação.",
+  government: "Publica respostas institucionais e programas; não participa do ranking competitivo de apoiadores.",
+  media: "Amplifica e divulga iniciativas — demandas e projetos são publicados pelos Agentes de Transformação.",
 };
 
 export interface User {
@@ -277,6 +368,17 @@ export const SUPPORT_TYPE_META: Record<SupportType, SupportTypeMeta> = Object.fr
   SUPPORT_TYPES.map((s) => [s.type, s]),
 ) as Record<SupportType, SupportTypeMeta>;
 
+/**
+ * Formas de apoio que cada perfil pode oferecer. Quem tem "support" (Membros,
+ * Parceiros, Poder Público) oferece qualquer uma; quem só amplifica
+ * (Agentes, Comunicação) contribui com divulgação.
+ */
+export function allowedSupportTypes(role: string | null | undefined, profileType?: string | null): SupportType[] {
+  if (can(role, "support", profileType)) return SUPPORT_TYPES.map((s) => s.type);
+  if (can(role, "share", profileType)) return ["sharing"];
+  return [];
+}
+
 export type PaymentMethod = "pix" | "debit" | "credit";
 
 export const PAYMENT_METHODS: { method: PaymentMethod; label: string; subtitle: string; icon: string }[] = [
@@ -314,8 +416,11 @@ export interface SupportRecord {
 }
 
 // ── Ranking ────────────────────────────────────────────────
-/** As abas do ranking. `partner` reflete a permissão "Participar do ranking". */
-export type RankCategory = "partner" | "community" | "volunteer";
+/**
+ * As abas do ranking: reconhecimento de apoio e impacto. O Poder Público e a
+ * Comunicação não entram — ver a permissão "ranking" em ROLE_PERMISSIONS.
+ */
+export type RankCategory = "partner" | "agent" | "volunteer";
 
 export interface RankHighlight {
   icon: string; // chave de ícone (ver Icon component)
@@ -349,13 +454,13 @@ export interface RankBoard {
 
 export const RANK_CATEGORIES: { category: RankCategory; label: string; icon: string }[] = [
   { category: "partner", label: "Parceiros", icon: "building" },
-  { category: "community", label: "Conexões", icon: "users" },
+  { category: "agent", label: "Agentes", icon: "users" },
   { category: "volunteer", label: "Voluntários", icon: "volunteer" },
 ];
 
 // ── Conexões (o fluxo "Solicitar Conexão") ─────────────────
 /**
- * Uma conexão é um pedido direto de uma conta a outra — comunidade ↔ empresa,
+ * Uma conexão é um pedido direto de uma conta a outra — agente ↔ parceiro,
  * projeto ↔ patrocinador, governo ↔ demanda, ONG ↔ voluntário. É o passo que
  * transforma interação em ação: alguém pede algo concreto, o outro lado aceita
  * e a dupla registra o desfecho.

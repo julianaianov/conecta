@@ -10,7 +10,7 @@ description: Contrato de ambientes, configuração e verificação da aplicaçã
 | Ambiente | Plataforma | URL | Demo |
 | --- | --- | --- | --- |
 | Local | Docker Compose | `localhost` | permitida |
-| Homologação | Vercel | URL do projeto | permitida |
+| Homologação | AWS | `https://homologacao.dmconecta.org` | permitida |
 | Produção | AWS + Cloudflare | `https://dmconecta.org` | proibida |
 
 ## Configuração

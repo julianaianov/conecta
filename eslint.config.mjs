@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".ds-sync/**",
+    ".design-sync/**",
+    "ds-bundle/**",
   ]),
   {
     files: ["services/**/*.js"],
