@@ -8,10 +8,12 @@ serviços Node.js.
 | Ambiente | URL | Regra |
 | --- | --- | --- |
 | Local | `http://localhost:3000` | dados de demonstração permitidos |
-| Homologação | projeto da Vercel | dados de demonstração permitidos |
+| Homologação | `https://homologacao.dmconecta.org` (AWS) | dados de demonstração permitidos |
 | Produção | `https://dmconecta.org` | API real; fallback demo proibido |
 
-A Vercel acompanha a branch `develop` e é somente homologação; não é produção.
+Homologação e produção rodam na AWS: `develop` alimenta a homologação e `stable` a
+produção. A Vercel não é mais usada. Mapa completo em `DmConnecta/dm-docs` →
+`docs/arquitetura.md`.
 O build de produção recebe
 `NEXT_PUBLIC_RUNTIME_ENV=production` e usa a API no mesmo domínio por meio do
 gateway da infraestrutura.
