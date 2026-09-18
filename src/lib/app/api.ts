@@ -27,7 +27,10 @@ export function getToken(): string | null {
 export function getStoredUser(): User | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem(USER_KEY);
-  return raw ? (JSON.parse(raw) as User) : null;
+  if (!raw) return null;
+  const user = JSON.parse(raw) as User;
+  // Sessões gravadas antes da mudança de perfis guardam a categoria antiga.
+  return { ...user, role: normalizeRole(user.role, user.profileType) };
 }
 export function isDemoMode(): boolean {
   if (typeof window === "undefined") return false;
@@ -149,7 +152,7 @@ function mapUser(r: RawPost): User {
     id: String(r.id),
     email: String(r.email ?? ""),
     name: String(r.name ?? ""),
-    role: normalizeRole(r.role as string | null),
+    role: normalizeRole(r.role as string | null, (r.profile_type ?? r.profileType ?? null) as string | null),
     profileType: (r.profile_type ?? r.profileType ?? null) as ProfileType | null,
     avatarUrl: (r.avatar_url ?? r.avatarUrl ?? null) as string | null,
   };
@@ -399,7 +402,7 @@ export const api = {
       return {
         userId,
         name: String(r.name ?? d?.name ?? "Usuário"),
-        role: normalizeRole((r.role as string) ?? d?.role),
+        role: normalizeRole((r.role as string) ?? d?.role, (r.profile_type as string) ?? d?.profileType),
         profileType: (r.profile_type ?? d?.profileType ?? null) as ProfileType | null,
         bio: (r.bio as string) ?? d?.bio ?? null,
         status: d?.status ?? null,
@@ -462,7 +465,7 @@ export const api = {
 
   /** Ranking — fica vazio em produção até existir endpoint persistente. */
   ranking(): Promise<Record<RankCategory, RankEntry[]>> {
-    return Promise.resolve(DEMO_ALLOWED ? demo.ranking() : { partner: [], community: [], volunteer: [] });
+    return Promise.resolve(DEMO_ALLOWED ? demo.ranking() : { partner: [], agent: [], volunteer: [] });
   },
 
   // ── CONEXÕES (sempre demo — sem backend) ─────────────────

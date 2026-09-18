@@ -10,7 +10,7 @@ export const NAV_LINKS = [
 ] as const;
 
 export const TRUST_ROLES = [
-  "Cidadãos",
+  "Moradores",
   "ONGs",
   "Associações",
   "Prefeituras",
@@ -63,8 +63,8 @@ export const FEATURES = [
   {
     title: "Perfis verificados",
     description:
-      "Cidadãos, associações, governo e comércio local — cada perfil com identidade visual e credibilidade.",
-    roles: ["Cidadão", "Associação", "Governo", "Comércio"],
+      "Agentes de transformação, comunidade, parceiros, poder público e comunicação — cada perfil com sua função e credibilidade.",
+    roles: ["Associação", "Morador", "Empresa", "Prefeitura", "Imprensa"],
     large: true,
     accent: true,
     icon: "shield",

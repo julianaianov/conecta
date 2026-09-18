@@ -18,7 +18,7 @@ export function Stakeholders() {
               <span className="gradient-text">feita para todos</span>
             </h2>
             <p className="mt-4" style={{ color: "var(--th-muted)" }}>
-              Cidadãos, associações, governo e empresas — qualquer bairro, qualquer cidade, um só propósito.
+              Quem identifica uma necessidade, quem pode ajudar a transformá-la em solução e quem dá visibilidade — qualquer bairro, qualquer cidade.
             </p>
           </div>
         </Reveal>

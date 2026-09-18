@@ -6,12 +6,14 @@ const { body, validationResult } = require('express-validator');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
 const sign = (payload, expiresIn) => jwt.sign(payload, JWT_SECRET, { expiresIn });
 
-// As 4 categorias de perfil e seus subperfis (espelha src/lib/app/types.ts).
+// As 5 categorias de perfil e seus subperfis (espelha src/lib/app/types.ts e
+// docs/perfis-e-permissoes.md).
 const ROLE_PROFILES = {
-  community:     ['associacao', 'ong', 'projeto_social', 'coletivo', 'lider_comunitario', 'representante_bairro'],
-  citizen:       ['morador', 'voluntario', 'jovem', 'participante'],
-  partner:       ['empresa', 'patrocinador', 'comercio_local', 'marca'],
-  institutional: ['prefeitura', 'secretaria', 'politico', 'imprensa'],
+  agent:      ['associacao', 'ong', 'instituto', 'projeto_social', 'coletivo', 'lider_comunitario', 'representante_bairro'],
+  member:     ['morador', 'voluntario', 'jovem', 'participante'],
+  partner:    ['empresa', 'marca', 'comercio_local', 'patrocinador'],
+  government: ['prefeitura', 'secretaria', 'orgao_publico', 'representante_poder_publico', 'politico'],
+  media:      ['imprensa', 'veiculo_comunicacao', 'jornalista'],
 };
 const ROLES = Object.keys(ROLE_PROFILES);
 const PROFILE_TYPES = Object.values(ROLE_PROFILES).flat();
@@ -32,7 +34,7 @@ module.exports = (pool) => {
 
     const { email, password, name, role, profile_type: profileType } = req.body;
     // O subperfil precisa pertencer à categoria enviada — senão daria para
-    // registrar um "citizen" com o subperfil "prefeitura".
+    // registrar um "member" com o subperfil "prefeitura".
     if (!ROLE_PROFILES[role].includes(profileType)) {
       return res.status(400).json({ error: `Subperfil "${profileType}" não pertence à categoria "${role}"` });
     }
@@ -48,7 +50,7 @@ module.exports = (pool) => {
       const user = rows[0];
       res.status(201).json({
         user,
-        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role }, '7d'),
+        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role, profileType: user.profile_type }, '7d'),
         refreshToken: sign({ userId: user.id }, '30d'),
       });
     } catch (err) {
@@ -78,7 +80,7 @@ module.exports = (pool) => {
       delete safe.password_hash;
       res.json({
         user: safe,
-        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role }, '7d'),
+        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role, profileType: user.profile_type }, '7d'),
         refreshToken: sign({ userId: user.id }, '30d'),
       });
     } catch (err) {
@@ -93,10 +95,10 @@ module.exports = (pool) => {
     if (!refreshToken) return res.status(401).json({ error: 'Token ausente' });
     try {
       const decoded = jwt.verify(refreshToken, JWT_SECRET);
-      const { rows } = await pool.query('SELECT id,email,name,role FROM users WHERE id=$1', [decoded.userId]);
+      const { rows } = await pool.query('SELECT id,email,name,role,profile_type FROM users WHERE id=$1', [decoded.userId]);
       if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
       const u = rows[0];
-      res.json({ token: sign({ userId: u.id, email: u.email, name: u.name, role: u.role }, '7d') });
+      res.json({ token: sign({ userId: u.id, email: u.email, name: u.name, role: u.role, profileType: u.profile_type }, '7d') });
     } catch {
       res.status(401).json({ error: 'Token inválido' });
     }
@@ -108,7 +110,7 @@ module.exports = (pool) => {
     if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Sem token' });
     try {
       const decoded = jwt.verify(header.slice(7), JWT_SECRET);
-      const { rows } = await pool.query('SELECT id,email,name,role FROM users WHERE id=$1', [decoded.userId]);
+      const { rows } = await pool.query('SELECT id,email,name,role,profile_type FROM users WHERE id=$1', [decoded.userId]);
       if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
       res.json({ user: rows[0] });
     } catch {

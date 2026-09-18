@@ -141,7 +141,7 @@ export const DEMO_PROFILES: DemoProfile[] = [
   {
     id: USER_IDS.maria,
     name: "Maria Silva",
-    role: "Cidadã / Moradora",
+    role: "Membro da Comunidade / Moradora",
     avatar: BANNER_PHOTOS.avatarMaria,
     cover: BANNER_PHOTOS.communityBairro,
   },

@@ -6,7 +6,7 @@ import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { formatCurrency } from "@/lib/app/format";
 import {
-  PAYMENT_CONFIG, PAYMENT_METHODS, SUPPORT_TYPES, SUPPORT_TYPE_META,
+  PAYMENT_CONFIG, PAYMENT_METHODS, SUPPORT_TYPES, SUPPORT_TYPE_META, allowedSupportTypes,
   type Post, type PaymentMethod, type SupportType,
 } from "@/lib/app/types";
 import { Avatar } from "@/components/app/Avatar";
@@ -82,6 +82,13 @@ export default function SupportFlowPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => { api.getPost(id).then(setPost); }, [id]);
+
+  const allowed = allowedSupportTypes(user?.role, user?.profileType);
+  const options = SUPPORT_TYPES.filter((s) => allowed.includes(s.type));
+  // Um tipo pedido pela URL que o perfil não pode oferecer volta para a escolha.
+  useEffect(() => {
+    if (type && user && !allowed.includes(type)) setType(null);
+  }, [type, user, allowed]);
 
   const isFinancial = type === "financial";
   const totalSteps = isFinancial ? 3 : 1;
@@ -164,7 +171,7 @@ export default function SupportFlowPage() {
       {/* ── Escolha do tipo ─────────────────────────────── */}
       {!type && (
         <div className="space-y-2">
-          {SUPPORT_TYPES.map((s) => (
+          {options.map((s) => (
             <button key={s.type} onClick={() => { setType(s.type); setSub(0); }} className="app-card flex w-full items-center gap-3 rounded-xl p-3.5 text-left transition-all hover:border-[#f4841a]">
               <span className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: "rgba(244,132,26,0.12)", color: "#f4841a" }}>
                 <Icon name={s.icon as IconName} size={20} />

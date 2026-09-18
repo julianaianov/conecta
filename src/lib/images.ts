@@ -108,7 +108,7 @@ export const IMPACT_GALLERY = DEMO_POSTS.map((post) => ({
 
 export const TRUST_ROLE_IMAGES = {
 
-  Cidadãos: AVATARS.maria,
+  Moradores: AVATARS.maria,
 
   ONGs: AVATARS.associacao,
 

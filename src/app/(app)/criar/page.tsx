@@ -6,7 +6,7 @@ import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import {
   DEFAULT_CITY, DEFAULT_NEIGHBORHOOD, POST_TYPE_COLORS, POST_TYPE_LABELS,
-  can, normalizeRole, ROLE_LABELS, ROLE_RESTRICTIONS, type PostType,
+  allowedPostTypes, normalizeRole, ROLE_LABELS, ROLE_RESTRICTIONS, type PostType,
 } from "@/lib/app/types";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Button } from "@/components/app/Button";
@@ -25,18 +25,23 @@ export default function CreatePostPage() {
   const router = useRouter();
   const search = useSearchParams();
   const { user } = useAuth();
-  const [type, setType] = useState<PostType>((search.get("type") as PostType) || "problem");
+  const postTypes = allowedPostTypes(user?.role, user?.profileType);
+  const types = TYPES.filter((t) => postTypes.includes(t.type));
+  const requested = search.get("type") as PostType | null;
+  const [picked, setType] = useState<PostType | null>(requested);
+  // O tipo precisa estar entre os permitidos ao perfil (ver ROLE_POST_TYPES).
+  const type = picked && postTypes.includes(picked) ? picked : postTypes[0];
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [neighborhood, setNeighborhood] = useState(DEFAULT_NEIGHBORHOOD);
   const [city, setCity] = useState(DEFAULT_CITY);
   const [tags, setTags] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const canPublish = can(user?.role, "publish");
+  const canPublish = postTypes.length > 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !canPublish) return;
+    if (!user || !type) return;
     setSubmitting(true);
     try {
       const post = await api.createPost(
@@ -52,7 +57,7 @@ export default function CreatePostPage() {
   }
 
   if (user && !canPublish) {
-    const role = normalizeRole(user.role);
+    const role = normalizeRole(user.role, user.profileType);
     return (
       <div className="mx-auto max-w-xl">
         <button onClick={() => router.back()} className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--th-muted)" }}>
@@ -65,7 +70,7 @@ export default function CreatePostPage() {
               `Perfis do tipo "${ROLE_LABELS[role]}" não publicam demandas, projetos ou eventos.`}
           </p>
           <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>
-            Você continua podendo curtir, comentar, compartilhar e se conectar com as conexões pelo feed.
+            Você continua podendo acompanhar demandas e projetos, compartilhar e solicitar conexões.
           </p>
           <Button className="mt-4" onClick={() => router.push("/feed")}>Voltar ao feed</Button>
         </Card>
@@ -81,13 +86,17 @@ export default function CreatePostPage() {
 
       <Card>
         <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Nova publicação</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>Conte um problema, lance um projeto ou convoque uma ação.</p>
+        <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>
+          {normalizeRole(user?.role, user?.profileType) === "government"
+            ? "Publique uma resposta institucional ou informe programas, serviços e oportunidades."
+            : "Conte um problema, lance um projeto ou convoque uma ação."}
+        </p>
 
         <form onSubmit={submit} className="mt-5 space-y-5">
           <div>
             <span className="mb-2 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>Tipo</span>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {TYPES.map(({ type: t, icon }) => {
+              {types.map(({ type: t, icon }) => {
                 const active = type === t;
                 const color = POST_TYPE_COLORS[t];
                 return (

@@ -1,8 +1,9 @@
 /**
  * Quem entra no painel administrativo.
  *
- * A capacidade de administrar a plataforma **não é uma das 4 categorias de
- * perfil** (Conexão / Cidadão / Parceiro / Institucional) — essas descrevem o
+ * A capacidade de administrar a plataforma **não é uma das 5 categorias de
+ * perfil** (Agentes de Transformação / Membros da Comunidade / Parceiros /
+ * Poder Público / Comunicação) — essas descrevem o
  * papel de quem usa a rede, não de quem opera o produto. Por isso o acesso é
  * uma lista de contas, configurável por ambiente:
  *

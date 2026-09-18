@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
-import { ROLE_LABELS, normalizeRole, type Post, type PostType, type Community } from "@/lib/app/types";
+import { ROLE_LABELS, allowedPostTypes, normalizeRole, type Post, type PostType, type Community } from "@/lib/app/types";
 import { PostCard } from "@/components/app/PostCard";
 import { Avatar } from "@/components/app/Avatar";
 import { Icon } from "@/components/app/Icon";
@@ -22,6 +22,7 @@ const FILTERS: { value: PostType | "all"; label: string }[] = [
 
 export default function FeedPage() {
   const { user } = useAuth();
+  const postTypes = allowedPostTypes(user?.role, user?.profileType);
   const [posts, setPosts] = useState<Post[]>([]);
   const [communities, setCommunities] = useState<Community[]>([]);
   const [filter, setFilter] = useState<PostType | "all">("all");
@@ -54,7 +55,7 @@ export default function FeedPage() {
             <div className="flex flex-col items-center text-center">
               <Avatar name={user?.name ?? ""} src={user?.avatarUrl} id={user?.id} size={64} />
               <p className="mt-2 text-sm font-bold" style={{ color: "var(--th-text)" }}>{user?.name}</p>
-              <p className="text-xs" style={{ color: "var(--th-muted)" }}>{ROLE_LABELS[normalizeRole(user?.role)]}</p>
+              <p className="text-xs" style={{ color: "var(--th-muted)" }}>{ROLE_LABELS[normalizeRole(user?.role, user?.profileType)]}</p>
               <Link href="/perfil" className="mt-3 w-full rounded-lg border py-2 text-xs font-semibold" style={{ borderColor: "var(--th-border)", color: "var(--th-text)" }}>
                 Ver meu perfil
               </Link>
@@ -71,23 +72,25 @@ export default function FeedPage() {
 
       {/* Coluna central — largura confortável em telas médias (md), cheia no grid a partir de lg */}
       <div className="mx-auto w-full min-w-0 max-w-2xl space-y-4 lg:mx-0 lg:max-w-none">
-        {/* Quick post */}
-        <Card>
-          <div className="flex items-center gap-3">
-            <Avatar name={user?.name ?? ""} src={user?.avatarUrl} id={user?.id} size={40} />
-            <Link href="/criar" className="flex-1 rounded-full border px-4 py-2.5 text-sm" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)", background: "var(--th-card-alt)" }}>
-              O que está acontecendo no bairro?
-            </Link>
-          </div>
-          <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar">
-            {(["problem", "project", "need", "event"] as PostType[]).map((t) => (
-              <Link key={t} href={`/criar?type=${t}`} className="app-chip shrink-0">
-                <Icon name={t === "problem" ? "bolt" : t === "project" ? "leaf" : t === "need" ? "volunteer" : "calendar"} size={14} style={{ color: "#f4841a" }} />
-                {FILTERS.find((f) => f.value === t)?.label}
+        {/* Quick post — só para quem publica (ver ROLE_POST_TYPES) */}
+        {postTypes.length > 0 && (
+          <Card>
+            <div className="flex items-center gap-3">
+              <Avatar name={user?.name ?? ""} src={user?.avatarUrl} id={user?.id} size={40} />
+              <Link href="/criar" className="flex-1 rounded-full border px-4 py-2.5 text-sm" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)", background: "var(--th-card-alt)" }}>
+                O que está acontecendo no bairro?
               </Link>
-            ))}
-          </div>
-        </Card>
+            </div>
+            <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar">
+              {(["problem", "project", "need", "event", "message"] as PostType[]).filter((t) => postTypes.includes(t)).map((t) => (
+                <Link key={t} href={`/criar?type=${t}`} className="app-chip shrink-0">
+                  <Icon name={t === "problem" ? "bolt" : t === "project" ? "leaf" : t === "need" ? "volunteer" : t === "event" ? "calendar" : "message"} size={14} style={{ color: "#f4841a" }} />
+                  {FILTERS.find((f) => f.value === t)?.label}
+                </Link>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Busca */}
         <div className="relative">

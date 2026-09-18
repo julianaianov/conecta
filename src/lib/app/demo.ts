@@ -57,7 +57,7 @@ export const DEMO_USERS: Record<string, User & { password: string }> = {
     id: USER_IDS.maria,
     email: DEMO_CREDENTIALS.email,
     name: "Maria Silva",
-    role: "citizen", profileType: "morador",
+    role: "member", profileType: "morador",
     avatarUrl: BANNER_PHOTOS.avatarMaria,
     password: "demo123",
   },
@@ -65,7 +65,7 @@ export const DEMO_USERS: Record<string, User & { password: string }> = {
     id: USER_IDS.associacao,
     email: "ong@bairro.conecta",
     name: "Associação Bairro Verde",
-    role: "community", profileType: "associacao",
+    role: "agent", profileType: "associacao",
     avatarUrl: BANNER_PHOTOS.avatarAssociacao,
     password: "demo123",
   },
@@ -73,7 +73,7 @@ export const DEMO_USERS: Record<string, User & { password: string }> = {
     id: USER_IDS.subprefeitura,
     email: "prefeitura@bairro.conecta",
     name: "Subprefeitura Regional",
-    role: "institutional", profileType: "prefeitura",
+    role: "government", profileType: "prefeitura",
     avatarUrl: BANNER_PHOTOS.avatarPrefeitura,
     password: "demo123",
   },
@@ -91,7 +91,7 @@ export const DEMO_USERS: Record<string, User & { password: string }> = {
     id: "dmc-admin",
     email: "admin@dmconecta.com.br",
     name: "Equipe DM Conecta",
-    role: "institutional", profileType: "secretaria",
+    role: "government", profileType: "secretaria",
     avatarUrl: null,
     password: "demo123",
   },
@@ -101,7 +101,7 @@ export const DEMO_USER: User = {
   id: USER_IDS.maria,
   email: DEMO_CREDENTIALS.email,
   name: "Maria Silva",
-  role: "citizen", profileType: "morador",
+  role: "member", profileType: "morador",
   avatarUrl: BANNER_PHOTOS.avatarMaria,
 };
 
@@ -338,20 +338,20 @@ for (const seed of SUPPORT_SEEDS) {
 // ── Perfis (Orkut) ─────────────────────────────────────────
 const PROFILES: Record<string, Profile> = {
   [USER_IDS.maria]: {
-    userId: USER_IDS.maria, name: "Maria Silva", email: DEMO_CREDENTIALS.email, role: "citizen", profileType: "morador",
+    userId: USER_IDS.maria, name: "Maria Silva", email: DEMO_CREDENTIALS.email, role: "member", profileType: "morador",
     bio: "Moradora do bairro há 15 anos. Acredito que pequenas ações transformam o bairro.",
     status: "Conectando vizinhos 💪", city: DEFAULT_CITY, neighborhood: DEFAULT_NEIGHBORHOOD,
     avatarUrl: BANNER_PHOTOS.avatarMaria, coverUrl: BANNER_PHOTOS.communityBairro, memberSince: iso(400), friendCount: 38,
   },
   [USER_IDS.associacao]: {
-    userId: USER_IDS.associacao, name: "Associação Bairro Verde", email: "ong@bairro.conecta", role: "community", profileType: "associacao",
+    userId: USER_IDS.associacao, name: "Associação Bairro Verde", email: "ong@bairro.conecta", role: "agent", profileType: "associacao",
     bio: "Associação de moradores dedicada à sustentabilidade e à vida comunitária no bairro.",
     status: "Mutirão todo sábado 🌱", city: DEFAULT_CITY, neighborhood: DEFAULT_NEIGHBORHOOD,
     website: "recreioverde.org.br", avatarUrl: BANNER_PHOTOS.avatarAssociacao, coverUrl: BANNER_PHOTOS.mutiraoPraia,
     memberSince: iso(700), friendCount: 124,
   },
   [USER_IDS.subprefeitura]: {
-    userId: USER_IDS.subprefeitura, name: "Subprefeitura Regional", email: "prefeitura@bairro.conecta", role: "institutional", profileType: "prefeitura",
+    userId: USER_IDS.subprefeitura, name: "Subprefeitura Regional", email: "prefeitura@bairro.conecta", role: "government", profileType: "prefeitura",
     bio: "Canal oficial da gestão pública local. Aqui ouvimos e respondemos às demandas do território.",
     status: "Atendimento à população", city: DEFAULT_CITY, neighborhood: DEFAULT_NEIGHBORHOOD,
     avatarUrl: BANNER_PHOTOS.avatarPrefeitura, coverUrl: BANNER_PHOTOS.stakeholderPrefeitura, memberSince: iso(900), friendCount: 56,
@@ -427,16 +427,16 @@ const DIRECTORY_EXTRAS: Omit<DirectoryUser, "city">[] = [
   { id: "rk-p4", name: "Auto Peças RJ", role: "partner", profileType: "empresa", neighborhood: "Jardim América", memberSince: iso(150) },
   { id: "rk-p5", name: "Padaria Pão Quente", role: "partner", profileType: "comercio_local", neighborhood: "Boa Vista", memberSince: iso(120) },
   { id: "rk-p6", name: "Studio Fitness Vida", role: "partner", profileType: "patrocinador", neighborhood: "São José", memberSince: iso(95) },
-  { id: "rk-c2", name: "ONG Mar Limpo", role: "community", profileType: "ong", neighborhood: "Vila do Mar", memberSince: iso(300) },
-  { id: "rk-c3", name: "Coletivo Cultural Recreio", role: "community", profileType: "coletivo", neighborhood: "Nova Aliança", memberSince: iso(240) },
-  { id: "rk-c4", name: "Projeto Semear", role: "community", profileType: "projeto_social", neighborhood: "Parque das Árvores", memberSince: iso(170) },
-  { id: "rk-c5", name: "Instituto Criança Feliz", role: "community", profileType: "ong", neighborhood: "Jardim das Flores", memberSince: iso(140) },
-  { id: "rk-v2", name: "João Pereira", role: "citizen", profileType: "voluntario", neighborhood: "Vila do Mar", memberSince: iso(90) },
-  { id: "rk-v3", name: "Ana Beatriz", role: "citizen", profileType: "voluntario", neighborhood: "Boa Vista", memberSince: iso(70) },
-  { id: "rk-v4", name: "Carlos Mendes", role: "citizen", profileType: "morador", neighborhood: "Jardim das Flores", memberSince: iso(45) },
-  { id: "rk-v5", name: "Fernanda Lima", role: "citizen", profileType: "jovem", neighborhood: "São José", memberSince: iso(30) },
-  { id: "sec-ambiente", name: "Secretaria de Meio Ambiente", role: "institutional", profileType: "secretaria", neighborhood: "Centro", memberSince: iso(260) },
-  { id: "imprensa-bairro", name: "Jornal do Bairro", role: "institutional", profileType: "imprensa", neighborhood: "Centro", memberSince: iso(110) },
+  { id: "rk-c2", name: "ONG Mar Limpo", role: "agent", profileType: "ong", neighborhood: "Vila do Mar", memberSince: iso(300) },
+  { id: "rk-c3", name: "Coletivo Cultural Recreio", role: "agent", profileType: "coletivo", neighborhood: "Nova Aliança", memberSince: iso(240) },
+  { id: "rk-c4", name: "Projeto Semear", role: "agent", profileType: "projeto_social", neighborhood: "Parque das Árvores", memberSince: iso(170) },
+  { id: "rk-c5", name: "Instituto Criança Feliz", role: "agent", profileType: "instituto", neighborhood: "Jardim das Flores", memberSince: iso(140) },
+  { id: "rk-v2", name: "João Pereira", role: "member", profileType: "voluntario", neighborhood: "Vila do Mar", memberSince: iso(90) },
+  { id: "rk-v3", name: "Ana Beatriz", role: "member", profileType: "voluntario", neighborhood: "Boa Vista", memberSince: iso(70) },
+  { id: "rk-v4", name: "Carlos Mendes", role: "member", profileType: "morador", neighborhood: "Jardim das Flores", memberSince: iso(45) },
+  { id: "rk-v5", name: "Fernanda Lima", role: "member", profileType: "jovem", neighborhood: "São José", memberSince: iso(30) },
+  { id: "sec-ambiente", name: "Secretaria de Meio Ambiente", role: "government", profileType: "secretaria", neighborhood: "Centro", memberSince: iso(260) },
+  { id: "imprensa-bairro", name: "Jornal do Bairro", role: "media", profileType: "imprensa", neighborhood: "Centro", memberSince: iso(110) },
 ];
 
 const DIRECTORY: DirectoryUser[] = [
@@ -467,7 +467,7 @@ const party = (userId: string): ConnectionParty => {
     userId,
     name: p?.name ?? extra?.name ?? "Conta",
     avatarUrl: p?.avatarUrl ?? null,
-    role: (p?.role as UserRole) ?? extra?.role ?? "citizen",
+    role: (p?.role as UserRole) ?? extra?.role ?? "member",
     profileType: (p?.profileType ?? extra?.profileType ?? null) as ProfileType | null,
   };
 };
@@ -642,7 +642,7 @@ const RANK_PARTNERS: { userId: string; name: string; avatarUrl?: string; city: s
   { userId: "rk-p6", name: "Studio Fitness Vida", city: "Barra", amount: 750, projects: 3, types: 2 },
 ];
 
-/** Conexões: pontos = 150/projeto publicado + 12/apoio recebido. */
+/** Agentes de Transformação: pontos = 150/projeto publicado + 12/apoio recebido. */
 const RANK_COMMUNITIES: { userId: string; name: string; avatarUrl?: string; city: string; projects: number; supports: number; members: number }[] = [
   { userId: USER_IDS.associacao, name: "Associação Bairro Verde", avatarUrl: BANNER_PHOTOS.avatarAssociacao, city: "Recreio", projects: 12, supports: 340, members: 124 },
   { userId: "rk-c2", name: "ONG Mar Limpo", city: "Recreio", projects: 9, supports: 280, members: 96 },
@@ -680,11 +680,11 @@ const RANKING: Record<RankCategory, RankEntry[]> = {
       ],
     }),
   ),
-  community: rankBy(
+  agent: rankBy(
     RANK_COMMUNITIES,
     (r) => r.projects * 150 + r.supports * 12,
     (r, points) => ({
-      userId: r.userId, name: r.name, avatarUrl: r.avatarUrl ?? null, role: "community", city: r.city, points,
+      userId: r.userId, name: r.name, avatarUrl: r.avatarUrl ?? null, role: "agent", city: r.city, points,
       highlights: [
         { icon: "megaphone", label: `${r.projects} projetos` },
         { icon: "heart", label: `${r.supports} apoios recebidos` },
@@ -696,7 +696,7 @@ const RANKING: Record<RankCategory, RankEntry[]> = {
     RANK_VOLUNTEERS,
     (r) => r.participations * 60 + r.projects * 40 + r.hours * 2,
     (r, points) => ({
-      userId: r.userId, name: r.name, avatarUrl: r.avatarUrl ?? null, role: "citizen", city: r.city, points,
+      userId: r.userId, name: r.name, avatarUrl: r.avatarUrl ?? null, role: "member", city: r.city, points,
       highlights: [
         { icon: "volunteer", label: `${r.participations} participações` },
         { icon: "heart", label: `${r.projects} projetos` },

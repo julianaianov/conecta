@@ -1,4 +1,5 @@
 const express = require('express');
+const { canPublish, canSupport } = require('../roles');
 
 module.exports = (pool, auth) => {
   const router = express.Router();
@@ -92,6 +93,8 @@ module.exports = (pool, auth) => {
     const { type, title, description, latitude, longitude, neighborhood, city, images, tags } = req.body;
     if (!type || !title || !description)
       return res.status(400).json({ error: 'type, title e description são obrigatórios' });
+    if (!canPublish(req.user, type))
+      return res.status(403).json({ error: `Seu perfil não publica "${type}"` });
     try {
       const { rows } = await pool.query(
         `INSERT INTO posts
@@ -221,6 +224,8 @@ module.exports = (pool, auth) => {
     const { type, message, amount, payment_method, details, status } = req.body;
     if (!type || !SUPPORT_TYPES.includes(type))
       return res.status(400).json({ error: 'Tipo de apoio inválido' });
+    if (!canSupport(req.user, type))
+      return res.status(403).json({ error: 'Seu perfil apoia com divulgação' });
     if (type === 'financial') {
       if (!amount || amount <= 0)
         return res.status(400).json({ error: 'Valor financeiro obrigatório' });

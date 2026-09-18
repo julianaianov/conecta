@@ -42,7 +42,7 @@ export function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) 
 
 /** Rótulo do papel da conta ("Parceiro · Empresa"). */
 export function partyLabel(p: ConnectionParty): string {
-  return [ROLE_LABELS[normalizeRole(p.role)], p.profileType && PROFILE_LABELS[p.profileType]]
+  return [ROLE_LABELS[normalizeRole(p.role, p.profileType)], p.profileType && PROFILE_LABELS[p.profileType]]
     .filter(Boolean)
     .join(" · ");
 }

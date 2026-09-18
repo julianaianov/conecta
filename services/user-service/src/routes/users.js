@@ -31,9 +31,9 @@ module.exports = (pool, auth) => {
         );
       } else {
         result = await pool.query(
-          `INSERT INTO profiles (user_id,name,bio,avatar_url,phone,website,city,state,role)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-          [userId, name || req.user.name, bio, avatar_url, phone, website, city, state, req.user.role]
+          `INSERT INTO profiles (user_id,name,bio,avatar_url,phone,website,city,state,role,profile_type)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+          [userId, name || req.user.name, bio, avatar_url, phone, website, city, state, req.user.role, req.user.profileType ?? null]
         );
       }
       res.json(result.rows[0]);

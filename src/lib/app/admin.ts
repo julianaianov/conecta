@@ -222,7 +222,7 @@ export function buildAdminMetrics(
       key: type,
       label: PROFILE_LABELS[type as ProfileType] ?? type,
       value,
-      hint: ROLE_LABELS[(snap.users.find((u) => u.profileType === type)?.role ?? "citizen") as UserRole],
+      hint: ROLE_LABELS[(snap.users.find((u) => u.profileType === type)?.role ?? "member") as UserRole],
     }))
     .sort((a, b) => b.value - a.value);
 
@@ -365,7 +365,7 @@ export function buildAdminMetrics(
     const cur = supporters.get(s.userId) ?? {
       id: s.userId,
       name: s.userName ?? "Conta sem nome",
-      role: (snap.users.find((u) => u.id === s.userId)?.role ?? "citizen") as UserRole,
+      role: (snap.users.find((u) => u.id === s.userId)?.role ?? "member") as UserRole,
       operations: 0, amount: 0, types: 0, typeSet: new Set<SupportType>(),
     };
     cur.operations += 1;
