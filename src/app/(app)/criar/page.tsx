@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import {
@@ -23,8 +24,17 @@ const TYPES: { type: PostType; icon: IconName }[] = [
 ];
 
 export default function CreatePostPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-24"><span className="app-spinner" style={{ width: 30, height: 30 }} /></div>}>
+      <CreatePostFlow />
+    </Suspense>
+  );
+}
+
+function CreatePostFlow() {
   const router = useRouter();
   const search = useSearchParams();
+
   const { user } = useAuth();
   const postTypes = allowedPostTypes(user?.role, user?.profileType);
   const types = TYPES.filter((t) => postTypes.includes(t.type));

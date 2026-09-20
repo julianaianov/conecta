@@ -3,10 +3,16 @@ import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 
-export const metadata = {
-  title: "Padrões de Segurança Infantil — DM Conecta",
-  description: "Padrões de segurança e tolerância zero contra exploração e abuso sexual infantil (CSAM/CSAE) no DM Conecta.",
-};
+import type { Metadata } from "next";
+import { metadataForPage } from "@/lib/seo/site";
+
+export const metadata: Metadata = metadataForPage({
+  title: "Padrões de Segurança Infantil",
+  description:
+    "Padrões de segurança e tolerância zero contra exploração e abuso sexual infantil (CSAM/CSAE) no DM Conecta.",
+  path: "/seguranca-infantil",
+});
+
 
 export default function SegurancaInfantilPage() {
   return (

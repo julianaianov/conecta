@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
@@ -13,6 +13,8 @@ import { Avatar } from "@/components/app/Avatar";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Button } from "@/components/app/Button";
 import { Card } from "@/components/app/ui";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
+
 
 /** Campos específicos por tipo de apoio (espelha support_flow_page.dart) */
 const FIELDS: Partial<Record<SupportType, { key: string; label: string; placeholder: string }[]>> = {
@@ -65,6 +67,14 @@ const FIELDS: Partial<Record<SupportType, { key: string; label: string; placehol
 const QUICK_AMOUNTS = [20, 50, 100, 200];
 
 export default function SupportFlowPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-24"><span className="app-spinner" style={{ width: 30, height: 30 }} /></div>}>
+      <SupportFlow />
+    </Suspense>
+  );
+}
+
+function SupportFlow() {
   const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
   const router = useRouter();
@@ -93,6 +103,20 @@ export default function SupportFlowPage() {
   const isFinancial = type === "financial";
   const totalSteps = isFinancial ? 3 : 1;
   const progress = type ? (done ? 1 : (sub + 1) / totalSteps) : 0;
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg pt-6">
+        <AuthPrompt
+          action="support"
+          returnTo={`/post/${id}/apoiar`}
+          title="Apoiar esta causa"
+          message="Entre na sua conta para registrar seu apoio."
+        />
+      </div>
+    );
+  }
+
 
   async function confirm() {
     if (!type || !user) return;
