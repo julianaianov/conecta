@@ -12,7 +12,7 @@ serviços Node.js.
 | Produção | `https://dmconecta.org` | API real; fallback demo proibido |
 
 Homologação e produção rodam na AWS: `develop` alimenta a homologação e `stable` a
-produção. A Vercel não é mais usada. Mapa completo em `DmConnecta/dm-docs` →
+produção. Mapa completo em `DmConnecta/dm-docs` →
 `docs/arquitetura.md`.
 O build de produção recebe
 `NEXT_PUBLIC_RUNTIME_ENV=production` e usa a API no mesmo domínio por meio do

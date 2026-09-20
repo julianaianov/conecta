@@ -6,11 +6,11 @@
  * número aparece no painel, ele foi contado a partir de publicações, apoios,
  * comentários ou contas.
  */
-import type { AdminSnapshot, DirectoryUser } from "./demo";
 import {
   CONNECTION_TYPES,
   PAYMENT_METHODS, POST_STATUS_LABELS, POST_TYPE_LABELS, PROFILE_LABELS,
   ROLE_LABELS, ROLES, SUPPORT_TYPES, SUPPORT_TYPE_META,
+  type AdminSnapshot, type DirectoryUser,
   type PaymentMethod, type PostStatus, type PostType, type ProfileType,
   type SupportType, type UserRole,
 } from "./types";

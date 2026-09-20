@@ -2,7 +2,8 @@
 
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import { useRouter } from "next/navigation";
 import { MAP_CENTER, MAP_PIN_COLORS, POST_TYPE_LABELS, type Post } from "@/lib/app/types";
 
@@ -21,6 +22,25 @@ function pinIcon(color: string) {
   });
 }
 
+function MapController({ posts }: { posts: Post[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const valid = posts.filter((p) => p.latitude != null && p.longitude != null);
+    if (valid.length === 0) return;
+
+    if (valid.length === 1) {
+      map.setView([valid[0].latitude!, valid[0].longitude!], 15, { animate: true });
+      return;
+    }
+
+    const bounds = L.latLngBounds(valid.map((p) => [p.latitude!, p.longitude!]));
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+  }, [map, posts]);
+
+  return null;
+}
+
 export default function MapView({ posts }: { posts: Post[] }) {
   const router = useRouter();
   return (
@@ -29,6 +49,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <MapController posts={posts} />
       {posts.map((p) =>
         p.latitude != null && p.longitude != null ? (
           <Marker key={p.id} position={[p.latitude, p.longitude]} icon={pinIcon(MAP_PIN_COLORS[p.type])}>

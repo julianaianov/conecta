@@ -12,16 +12,19 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 | Produção | AWS EC2 + Cloudflare | `https://dmconecta.org` | `stable` | proibidos |
 
 - **Não existe mais Vercel.** Produção e homologação são AWS; menções a Vercel
-  são dívida a remover. A homologação na AWS ainda precisa ser provisionada.
+  são dívida a remover. A homologação na AWS roda sob `https://homologacao.dmconecta.org`.
 - Repositórios (org `DmConnecta`): aplicação em `dm-api` (checkout local
   `dm-api/`, que também tem o remoto `web` → `dm-web`, de onde o deploy lê),
   infraestrutura em `dm-infra` (`dmconecta-infra/`), documentação em `dm-docs`,
   Android em `dm-app-android` (`dmconecta-app-client-android/`), iOS em
   `dm-app-ios` (vazio).
-- AWS `us-east-2`: EC2 `dmconecta-production` com Docker Compose (Caddy →
-  Next.js `web:3000` e `/api/auth|users|posts` → serviços Node 3001–3003 →
-  PostgreSQL com `auth_db`, `user_db`, `post_db`), imagens no ECR, parâmetros
-  no SSM `/dmconecta/production/*`, releases no S3. Sem SSH: tudo por SSM.
+- AWS `us-east-2`: EC2s dedicadas para produção e homologação com Docker Compose
+  (Caddy → Next.js `web:3000` e `/api/auth|users|posts` → serviços Node 3001–3003 →
+  PostgreSQL com `auth_db`, `user_db`, `post_db`), imagens no ECR compartilhado,
+  parâmetros no SSM `/dmconecta/<ambiente>/*`, releases no S3. Sem SSH: tudo por SSM.
+- Catálogo do feed é a fonte canônica dos seeds SQL (`services/*/seed.sql`), com
+  4 usuários, 4 perfis, 4 comunidades (`/communities`), 10 posts com suporte a
+  vídeos, 9 comentários e 27 apoios tipados.
 - Cloudflare: zona `dmconecta.org` manual, fora do Terraform.
 - Trabalhe em `develop` (ou branch criada dela); produção é `stable`.
 

@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     ".ds-sync/**",
     ".design-sync/**",
     "ds-bundle/**",
+    ".worktrees/**",
   ]),
   {
     files: ["services/**/*.js"],

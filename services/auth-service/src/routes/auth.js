@@ -44,13 +44,13 @@ module.exports = (pool) => {
 
       const hash = await bcrypt.hash(password, 10);
       const { rows } = await pool.query(
-        'INSERT INTO users (email,password_hash,name,role,profile_type) VALUES ($1,$2,$3,$4,$5) RETURNING id,email,name,role,profile_type,created_at',
+        'INSERT INTO users (email,password_hash,name,role,profile_type) VALUES ($1,$2,$3,$4,$5) RETURNING id,email,name,role,profile_type,avatar_url,created_at',
         [email, hash, name, role, profileType]
       );
       const user = rows[0];
       res.status(201).json({
         user,
-        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role, profileType: user.profile_type }, '7d'),
+        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role, profileType: user.profile_type, avatarUrl: user.avatar_url }, '7d'),
         refreshToken: sign({ userId: user.id }, '30d'),
       });
     } catch (err) {
@@ -80,7 +80,7 @@ module.exports = (pool) => {
       delete safe.password_hash;
       res.json({
         user: safe,
-        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role, profileType: user.profile_type }, '7d'),
+        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role, profileType: user.profile_type, avatarUrl: user.avatar_url }, '7d'),
         refreshToken: sign({ userId: user.id }, '30d'),
       });
     } catch (err) {
@@ -95,10 +95,10 @@ module.exports = (pool) => {
     if (!refreshToken) return res.status(401).json({ error: 'Token ausente' });
     try {
       const decoded = jwt.verify(refreshToken, JWT_SECRET);
-      const { rows } = await pool.query('SELECT id,email,name,role,profile_type FROM users WHERE id=$1', [decoded.userId]);
+      const { rows } = await pool.query('SELECT id,email,name,role,profile_type,avatar_url FROM users WHERE id=$1', [decoded.userId]);
       if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
       const u = rows[0];
-      res.json({ token: sign({ userId: u.id, email: u.email, name: u.name, role: u.role, profileType: u.profile_type }, '7d') });
+      res.json({ token: sign({ userId: u.id, email: u.email, name: u.name, role: u.role, profileType: u.profile_type, avatarUrl: u.avatar_url }, '7d') });
     } catch {
       res.status(401).json({ error: 'Token inválido' });
     }
@@ -110,7 +110,7 @@ module.exports = (pool) => {
     if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Sem token' });
     try {
       const decoded = jwt.verify(header.slice(7), JWT_SECRET);
-      const { rows } = await pool.query('SELECT id,email,name,role,profile_type FROM users WHERE id=$1', [decoded.userId]);
+      const { rows } = await pool.query('SELECT id,email,name,role,profile_type,avatar_url FROM users WHERE id=$1', [decoded.userId]);
       if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
       res.json({ user: rows[0] });
     } catch {

@@ -1,0 +1,369 @@
+const express = require('express');
+
+module.exports = (pool, auth) => {
+  const router = express.Router();
+
+  // ── Scraps (Recados) ──────────────────────────────────────
+  router.get('/scraps/:userId', async (req, res) => {
+    try {
+      const { rows } = await pool.query(
+        `SELECT s.id, s.author_id, s.target_user_id, s.content, s.created_at,
+                p.name AS author_name, p.avatar_url AS author_avatar
+           FROM scraps s
+           LEFT JOIN profiles p ON p.user_id = s.author_id
+          WHERE s.target_user_id = $1
+          ORDER BY s.created_at DESC`,
+        [req.params.userId]
+      );
+      res.json(rows.map((r) => ({
+        id: r.id,
+        authorId: r.author_id,
+        authorName: r.author_name || 'Usuário',
+        authorAvatar: r.author_avatar || null,
+        targetUserId: r.target_user_id,
+        content: r.content,
+        createdAt: r.created_at,
+      })));
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  router.post('/scraps', auth, async (req, res) => {
+    const { targetUserId, content } = req.body;
+    if (!targetUserId || !content) {
+      return res.status(400).json({ error: 'targetUserId e content são obrigatórios' });
+    }
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO scraps (author_id, target_user_id, content, created_at)
+         VALUES ($1, $2, $3, NOW())
+         RETURNING id, author_id, target_user_id, content, created_at`,
+        [req.user.userId, targetUserId, content]
+      );
+      const s = rows[0];
+      const author = await pool.query('SELECT name, avatar_url FROM profiles WHERE user_id = $1', [req.user.userId]);
+      const p = author.rows[0];
+      res.status(201).json({
+        id: s.id,
+        authorId: s.author_id,
+        authorName: p?.name || req.user.name || 'Usuário',
+        authorAvatar: p?.avatar_url || req.user.avatarUrl || null,
+        targetUserId: s.target_user_id,
+        content: s.content,
+        createdAt: s.created_at,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // ── Testimonials (Depoimentos) ───────────────────────────
+  router.get('/testimonials/:userId', async (req, res) => {
+    try {
+      const { rows } = await pool.query(
+        `SELECT t.id, t.author_id, t.target_user_id, t.content, t.created_at,
+                p.name AS author_name, p.avatar_url AS author_avatar
+           FROM testimonials t
+           LEFT JOIN profiles p ON p.user_id = t.author_id
+          WHERE t.target_user_id = $1
+          ORDER BY t.created_at DESC`,
+        [req.params.userId]
+      );
+      res.json(rows.map((r) => ({
+        id: r.id,
+        authorId: r.author_id,
+        authorName: r.author_name || 'Usuário',
+        authorAvatar: r.author_avatar || null,
+        targetUserId: r.target_user_id,
+        content: r.content,
+        createdAt: r.created_at,
+      })));
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  router.post('/testimonials', auth, async (req, res) => {
+    const { targetUserId, content } = req.body;
+    if (!targetUserId || !content) {
+      return res.status(400).json({ error: 'targetUserId e content são obrigatórios' });
+    }
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO testimonials (author_id, target_user_id, content, created_at)
+         VALUES ($1, $2, $3, NOW())
+         RETURNING id, author_id, target_user_id, content, created_at`,
+        [req.user.userId, targetUserId, content]
+      );
+      const t = rows[0];
+      const author = await pool.query('SELECT name, avatar_url FROM profiles WHERE user_id = $1', [req.user.userId]);
+      const p = author.rows[0];
+      res.status(201).json({
+        id: t.id,
+        authorId: t.author_id,
+        authorName: p?.name || req.user.name || 'Usuário',
+        authorAvatar: p?.avatar_url || req.user.avatarUrl || null,
+        targetUserId: t.target_user_id,
+        content: t.content,
+        createdAt: t.created_at,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // ── Ranking ──────────────────────────────────────────────
+  router.get('/ranking', async (_req, res) => {
+    try {
+      const { rows } = await pool.query('SELECT * FROM profiles ORDER BY name ASC');
+      const partners = rows.filter((p) => p.role === 'partner');
+      const agents = rows.filter((p) => p.role === 'agent');
+      const members = rows.filter((p) => p.role === 'member');
+
+      const formatRank = (list, calcPoints, makeHighlights) => {
+        return list
+          .map((p) => {
+            const points = calcPoints(p);
+            return {
+              userId: p.user_id,
+              name: p.name,
+              avatarUrl: p.avatar_url || null,
+              role: p.role,
+              city: p.city || 'Rio de Janeiro',
+              points,
+              highlights: makeHighlights(p, points),
+            };
+          })
+          .sort((a, b) => b.points - a.points)
+          .map((item, index) => ({ ...item, rank: index + 1 }));
+      };
+
+      const result = {
+        partner: formatRank(
+          partners,
+          (p) => 1000 + (p.friend_count || 1) * 80,
+          (p, pts) => [
+            { icon: 'payments', label: `R$ ${pts.toLocaleString('pt-BR')} apoiados` },
+            { icon: 'heart', label: `${p.friend_count || 1} conexões` },
+            { icon: 'star', label: 'Parceiro ativo' },
+          ]
+        ),
+        agent: formatRank(
+          agents,
+          (p) => 500 + (p.friend_count || 1) * 50,
+          (p) => [
+            { icon: 'megaphone', label: 'Projetos comunitários' },
+            { icon: 'heart', label: `${p.friend_count || 1} apoiadores` },
+            { icon: 'users', label: `${p.neighborhood || 'Bairro'}` },
+          ]
+        ),
+        volunteer: formatRank(
+          members,
+          (p) => 200 + (p.friend_count || 1) * 30,
+          (p) => [
+            { icon: 'volunteer', label: 'Participação ativa' },
+            { icon: 'heart', label: `${p.friend_count || 1} amigos` },
+            { icon: 'clock', label: 'Voluntário da rede' },
+          ]
+        ),
+      };
+
+      res.json(result);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // ── Notificações ─────────────────────────────────────────
+  router.get('/notifications', auth, async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const notifs = [];
+
+      // Conexões pendentes recebidas
+      const pendingConn = await pool.query(
+        `SELECT c.id, c.type, c.created_at, p.name AS from_name
+           FROM connections c
+           LEFT JOIN profiles p ON p.user_id = c.from_user_id
+          WHERE c.to_user_id = $1 AND c.status = 'pending'
+          ORDER BY c.created_at DESC LIMIT 10`,
+        [userId]
+      );
+      for (const r of pendingConn.rows) {
+        notifs.push({
+          id: `n-conn-${r.id}`,
+          kind: 'connection',
+          actorName: r.from_name || 'Alguém',
+          postId: '',
+          postTitle: 'Conexão',
+          summary: `${r.from_name || 'Alguém'} enviou uma solicitação de conexão`,
+          icon: 'link',
+          href: `/conexoes/${r.id}`,
+          createdAt: r.created_at,
+        });
+      }
+
+      // Conexões aceitas
+      const acceptedConn = await pool.query(
+        `SELECT c.id, c.type, c.updated_at, p.name AS to_name
+           FROM connections c
+           LEFT JOIN profiles p ON p.user_id = c.to_user_id
+          WHERE c.from_user_id = $1 AND c.status = 'accepted'
+          ORDER BY c.updated_at DESC LIMIT 10`,
+        [userId]
+      );
+      for (const r of acceptedConn.rows) {
+        notifs.push({
+          id: `n-acc-${r.id}`,
+          kind: 'connection',
+          actorName: r.to_name || 'Alguém',
+          postId: '',
+          postTitle: 'Conexão aceita',
+          summary: `${r.to_name || 'Alguém'} aceitou sua conexão`,
+          icon: 'check',
+          href: `/conexoes/${r.id}`,
+          createdAt: r.updated_at,
+        });
+      }
+
+      // Recados recebidos
+      const scraps = await pool.query(
+        `SELECT s.id, s.created_at, p.name AS author_name
+           FROM scraps s
+           LEFT JOIN profiles p ON p.user_id = s.author_id
+          WHERE s.target_user_id = $1
+          ORDER BY s.created_at DESC LIMIT 10`,
+        [userId]
+      );
+      for (const r of scraps.rows) {
+        notifs.push({
+          id: `n-scr-${r.id}`,
+          kind: 'comment',
+          actorName: r.author_name || 'Alguém',
+          postId: '',
+          postTitle: 'Recado',
+          summary: `${r.author_name || 'Alguém'} deixou um recado no seu perfil`,
+          icon: 'chat',
+          href: `/perfil/${userId}`,
+          createdAt: r.created_at,
+        });
+      }
+
+      notifs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      res.json(notifs.slice(0, 20));
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // ── Admin Snapshot (Base de usuários e conexões para overview) ─
+  router.get('/admin-snapshot', async (_req, res) => {
+    try {
+      const [users, communities, connections, scraps, testimonials] = await Promise.all([
+        pool.query('SELECT * FROM profiles ORDER BY name ASC'),
+        pool.query('SELECT * FROM communities ORDER BY member_count DESC'),
+        pool.query(
+          `SELECT
+             c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.outcome, c.events, c.created_at, c.updated_at,
+             p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
+             p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
+           FROM connections c
+           LEFT JOIN profiles p_from ON p_from.user_id = c.from_user_id
+           LEFT JOIN profiles p_to ON p_to.user_id = c.to_user_id
+           ORDER BY c.created_at DESC`
+        ),
+        pool.query(
+          `SELECT s.id, s.author_id, s.target_user_id, s.content, s.created_at,
+                  p.name AS author_name, p.avatar_url AS author_avatar
+             FROM scraps s
+             LEFT JOIN profiles p ON p.user_id = s.author_id
+            ORDER BY s.created_at DESC`
+        ),
+        pool.query(
+          `SELECT t.id, t.author_id, t.target_user_id, t.content, t.created_at,
+                  p.name AS author_name, p.avatar_url AS author_avatar
+             FROM testimonials t
+             LEFT JOIN profiles p ON p.user_id = t.author_id
+            ORDER BY t.created_at DESC`
+        ),
+      ]);
+
+      res.json({
+        users: users.rows.map((u) => ({
+          id: u.user_id,
+          name: u.name,
+          role: u.role,
+          profileType: u.profile_type,
+          neighborhood: u.neighborhood || 'Centro',
+          city: u.city || 'Rio de Janeiro',
+          memberSince: u.member_since || u.created_at,
+          avatarUrl: u.avatar_url || null,
+        })),
+        communities: communities.rows.map((c) => ({
+          id: c.id,
+          name: c.name,
+          description: c.description,
+          category: c.category,
+          memberCount: c.member_count,
+          imageUrl: c.image_url,
+        })),
+        connections: connections.rows.map((r) => ({
+          id: r.id,
+          type: r.type,
+          status: r.status,
+          from: {
+            userId: r.from_user_id,
+            name: r.from_name || 'Usuário',
+            avatarUrl: r.from_avatar_url || null,
+            role: r.from_role || 'member',
+            profileType: r.from_profile_type || null,
+          },
+          to: {
+            userId: r.to_user_id,
+            name: r.to_name || 'Usuário',
+            avatarUrl: r.to_avatar_url || null,
+            role: r.to_role || 'member',
+            profileType: r.to_profile_type || null,
+          },
+          message: r.message,
+          postId: r.post_id || null,
+          postTitle: r.post_title || null,
+          outcome: r.outcome || null,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+          events: r.events || [],
+        })),
+        scraps: scraps.rows.map((r) => ({
+          id: r.id,
+          authorId: r.author_id,
+          authorName: r.author_name || 'Usuário',
+          authorAvatar: r.author_avatar || null,
+          targetUserId: r.target_user_id,
+          content: r.content,
+          createdAt: r.created_at,
+        })),
+        testimonials: testimonials.rows.map((r) => ({
+          id: r.id,
+          authorId: r.author_id,
+          authorName: r.author_name || 'Usuário',
+          authorAvatar: r.author_avatar || null,
+          targetUserId: r.target_user_id,
+          content: r.content,
+          createdAt: r.created_at,
+        })),
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  return router;
+};

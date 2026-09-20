@@ -31,6 +31,7 @@ import {
   DEFAULT_CITY,
   DEFAULT_NEIGHBORHOOD,
 } from "./types";
+import { normalizeCoordinates } from "./location";
 
 export const DEMO_TOKEN = "demo_offline_token_conecta";
 export const DEMO_CREDENTIALS = { email: "maria@bairro.conecta", password: "demo123" };
@@ -742,6 +743,15 @@ export const demo = {
     };
     POSTS = [post, ...POSTS];
     return clone(post);
+  },
+
+  updatePostLocation(id: string, latitude: number | null, longitude: number | null): Post | null {
+    const p = POSTS.find((x) => x.id === id);
+    if (!p) return null;
+    const coordinates = normalizeCoordinates(latitude, longitude);
+    p.latitude = coordinates?.latitude ?? null;
+    p.longitude = coordinates?.longitude ?? null;
+    return clone(p);
   },
 
   updatePostStatus(id: string, status: Post["status"]): Post | null {

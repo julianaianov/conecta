@@ -612,6 +612,28 @@ export interface Community {
   imageUrl?: string | null;
 }
 
+export interface DirectoryUser {
+  id: string;
+  name: string;
+  role: UserRole;
+  profileType: ProfileType;
+  neighborhood: string;
+  city: string;
+  memberSince: string;
+  avatarUrl?: string | null;
+}
+
+export interface AdminSnapshot {
+  posts: Post[];
+  supports: SupportRecord[];
+  comments: Comment[];
+  users: DirectoryUser[];
+  communities: Community[];
+  scraps: Scrap[];
+  testimonials: Testimonial[];
+  connections: Connection[];
+}
+
 // ── Defaults ───────────────────────────────────────────────
 export const DEFAULT_NEIGHBORHOOD = "Centro";
 export const DEFAULT_CITY = "Rio de Janeiro";

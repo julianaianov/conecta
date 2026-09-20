@@ -4,6 +4,9 @@ const helmet  = require('helmet');
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 const usersRoutes = require('./routes/users');
+const communitiesRoutes = require('./routes/communities');
+const connectionsRoutes = require('./routes/connections');
+const socialRoutes = require('./routes/social');
 
 const createApp = ({ pool = new Pool({ connectionString: process.env.DATABASE_URL }), secret = process.env.JWT_SECRET || 'dev_secret' } = {}) => {
   const app = express();
@@ -23,6 +26,9 @@ const createApp = ({ pool = new Pool({ connectionString: process.env.DATABASE_UR
   app.use(cors());
   app.use(express.json());
   app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'user-service' }));
+  app.use('/communities', communitiesRoutes(pool));
+  app.use('/connections', connectionsRoutes(pool, auth));
+  app.use('/', socialRoutes(pool, auth));
   app.use('/', usersRoutes(pool, auth));
 
   return app;
