@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
+import type { Coordinates } from "@/lib/app/location";
 import {
   DEFAULT_CITY, DEFAULT_NEIGHBORHOOD, POST_TYPE_COLORS, POST_TYPE_LABELS,
   allowedPostTypes, normalizeRole, ROLE_LABELS, ROLE_RESTRICTIONS, type PostType,
@@ -11,6 +13,11 @@ import {
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Button } from "@/components/app/Button";
 import { Card } from "@/components/app/ui";
+
+const LocationPicker = dynamic(
+  () => import("@/components/app/LocationPicker").then((mod) => mod.LocationPicker),
+  { ssr: false, loading: () => <div className="h-56 animate-pulse rounded-2xl" style={{ background: "var(--th-card-alt)" }} /> },
+);
 
 const TYPES: { type: PostType; icon: IconName }[] = [
   { type: "problem", icon: "bolt" },
@@ -36,18 +43,26 @@ export default function CreatePostPage() {
   const [neighborhood, setNeighborhood] = useState(DEFAULT_NEIGHBORHOOD);
   const [city, setCity] = useState(DEFAULT_CITY);
   const [tags, setTags] = useState("");
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const canPublish = postTypes.length > 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !type) return;
+    if (!coordinates) {
+      setLocationError("Escolha no mapa onde esta publicação acontece.");
+      return;
+    }
     setSubmitting(true);
     try {
       const post = await api.createPost(
         {
           type, title: title.trim(), description: description.trim(),
           neighborhood, city,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
           tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         },
         user,
@@ -130,12 +145,27 @@ export default function CreatePostPage() {
             </label>
           </div>
 
+          <div>
+            <span className="mb-1.5 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>Localização da publicação</span>
+            <p className="mb-2 text-xs" style={{ color: "var(--th-muted)" }}>
+              Marque no mapa o ponto aproximado da demanda. A localização é necessária para que a publicação apareça no mapa.
+            </p>
+            <LocationPicker
+              value={coordinates}
+              onChange={(value) => {
+                setCoordinates(value);
+                setLocationError(null);
+              }}
+            />
+            {locationError && <p className="mt-2 text-sm font-semibold" style={{ color: "#d64545" }}>{locationError}</p>}
+          </div>
+
           <label className="block">
             <span className="mb-1.5 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>Tags <span className="font-normal" style={{ color: "var(--th-muted)" }}>(separadas por vírgula)</span></span>
             <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="infraestrutura, urgente, vias" className="app-input" />
           </label>
 
-          <Button type="submit" block size="lg" loading={submitting} icon="send" disabled={!title.trim() || !description.trim()}>Publicar</Button>
+          <Button type="submit" block size="lg" loading={submitting} icon="send" disabled={!title.trim() || !description.trim() || !coordinates}>Publicar</Button>
         </form>
       </Card>
     </div>

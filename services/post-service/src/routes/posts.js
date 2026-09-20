@@ -1,18 +1,20 @@
 const express = require('express');
 const { canPublish, canSupport } = require('../roles');
+const { normalizeCoordinates } = require('../location');
 
 module.exports = (pool, auth) => {
   const router = express.Router();
 
   // GET / — list with filters
   router.get('/', async (req, res) => {
-    const { type, status, neighborhood, limit = 20, offset = 0 } = req.query;
+    const { type, status, neighborhood, author_id, limit = 20, offset = 0 } = req.query;
     const params = [];
     let where = 'WHERE 1=1';
     let i = 1;
     if (type)         { where += ` AND type=$${i++}`;                    params.push(type); }
     if (status)       { where += ` AND status=$${i++}`;                  params.push(status); }
     if (neighborhood) { where += ` AND neighborhood ILIKE $${i++}`;      params.push(`%${neighborhood}%`); }
+    if (author_id)    { where += ` AND author_id=$${i++}`;               params.push(author_id); }
 
     const query = `SELECT * FROM posts ${where} ORDER BY created_at DESC LIMIT $${i++} OFFSET $${i++}`;
     params.push(parseInt(limit), parseInt(offset));
@@ -90,18 +92,22 @@ module.exports = (pool, auth) => {
 
   // POST /
   router.post('/', auth, async (req, res) => {
-    const { type, title, description, latitude, longitude, neighborhood, city, images, tags } = req.body;
+    const { type, title, description, latitude, longitude, neighborhood, city, images, videos, tags } = req.body;
     if (!type || !title || !description)
       return res.status(400).json({ error: 'type, title e description são obrigatórios' });
     if (!canPublish(req.user, type))
       return res.status(403).json({ error: `Seu perfil não publica "${type}"` });
+    const hasLocation = latitude != null || longitude != null;
+    const coordinates = normalizeCoordinates(latitude, longitude);
+    if (hasLocation && !coordinates)
+      return res.status(400).json({ error: 'latitude e longitude devem formar uma localização válida' });
     try {
       const { rows } = await pool.query(
         `INSERT INTO posts
-          (author_id,author_name,type,title,description,latitude,longitude,neighborhood,city,images,tags)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-        [req.user.userId, req.user.name || req.user.email, type, title, description,
-         latitude || null, longitude || null, neighborhood, city, images || [], tags || []]
+          (author_id,author_name,author_avatar,type,title,description,latitude,longitude,neighborhood,city,images,videos,tags)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+        [req.user.userId, req.user.name || req.user.email, req.user.avatarUrl || null, type, title, description,
+         coordinates?.latitude ?? null, coordinates?.longitude ?? null, neighborhood, city, images || [], videos || [], tags || []]
       );
       res.status(201).json(rows[0]);
     } catch (err) {
@@ -112,19 +118,37 @@ module.exports = (pool, auth) => {
 
   // PUT /:id
   router.put('/:id', auth, async (req, res) => {
-    const { title, description, status, images, tags } = req.body;
+    const { title, description, status, images, videos, tags, latitude, longitude } = req.body;
+    const hasLocation = Object.prototype.hasOwnProperty.call(req.body, 'latitude')
+      || Object.prototype.hasOwnProperty.call(req.body, 'longitude');
+    const coordinates = normalizeCoordinates(latitude, longitude);
+    if (hasLocation && (latitude != null || longitude != null) && !coordinates)
+      return res.status(400).json({ error: 'latitude e longitude devem formar uma localização válida' });
     try {
       const { rows: existing } = await pool.query('SELECT author_id FROM posts WHERE id=$1', [req.params.id]);
       if (!existing.length) return res.status(404).json({ error: 'Post não encontrado' });
       if (existing[0].author_id !== req.user.userId)
         return res.status(403).json({ error: 'Sem permissão' });
+
+      const updates = [
+        'title=COALESCE($1,title)',
+        'description=COALESCE($2,description)',
+        'status=COALESCE($3,status)',
+        'images=COALESCE($4,images)',
+        'videos=COALESCE($5,videos)',
+        'tags=COALESCE($6,tags)',
+      ];
+      const values = [title, description, status, images, videos, tags];
+      if (hasLocation) {
+        updates.push(`latitude=$${values.length + 1}`, `longitude=$${values.length + 2}`);
+        values.push(coordinates?.latitude ?? null, coordinates?.longitude ?? null);
+      }
+      values.push(req.params.id);
+
       const { rows } = await pool.query(
-        `UPDATE posts
-           SET title=COALESCE($1,title), description=COALESCE($2,description),
-               status=COALESCE($3,status), images=COALESCE($4,images),
-               tags=COALESCE($5,tags), updated_at=NOW()
-         WHERE id=$6 RETURNING *`,
-        [title, description, status, images, tags, req.params.id]
+        `UPDATE posts SET ${updates.join(', ')}, updated_at=NOW()
+         WHERE id=$${values.length} RETURNING *`,
+        values
       );
       res.json(rows[0]);
     } catch (err) {

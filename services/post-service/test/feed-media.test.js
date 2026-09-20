@@ -17,7 +17,7 @@ function createPool() {
         return { rows: [{ author_id: USER_ID }] };
       }
       if (text.includes('INSERT INTO posts')) {
-        return { rows: [{ id: POST_ID, videos: params[10] }] };
+        return { rows: [{ id: POST_ID, videos: params[11] }] };
       }
       if (text.includes('UPDATE posts')) {
         return { rows: [{ id: POST_ID, videos: params[4] }] };
@@ -71,7 +71,7 @@ test('POST / persists post videos with the image and tag payload', async () => {
     const insert = pool.calls.find(({ text }) => text.includes('INSERT INTO posts'));
     assert.ok(insert);
     assert.match(insert.text, /videos/);
-    assert.deepEqual(insert.params[10], ['/videos/mutirao-praia.webm']);
+    assert.deepEqual(insert.params[11], ['/videos/mutirao-praia.webm']);
   });
 });
 

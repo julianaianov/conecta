@@ -17,6 +17,7 @@
 import type { User } from "./types";
 
 export const DEMO_ADMIN_EMAIL = "admin@dmconecta.com.br";
+export const DEMO_CREDENTIALS = { email: "maria@bairro.conecta", password: "demo123" };
 
 const CONFIGURED = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
   .split(",")

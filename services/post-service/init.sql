@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS posts (
   neighborhood    VARCHAR(255),
   city            VARCHAR(100),
   images          TEXT[]  DEFAULT '{}',
+  videos          TEXT[]  DEFAULT '{}',
   tags            TEXT[]  DEFAULT '{}',
   reactions_count INT     DEFAULT 0,
   comments_count  INT     DEFAULT 0,

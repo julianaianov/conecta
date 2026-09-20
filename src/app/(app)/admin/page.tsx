@@ -14,18 +14,19 @@ import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { isPlatformAdmin, DEMO_ADMIN_EMAIL } from "@/lib/app/admin-access";
 import { buildAdminMetrics, neighborhoodsCsv, PERIODS, type AdminMetrics, type PeriodKey } from "@/lib/app/admin";
-import type { AdminSnapshot } from "@/lib/app/demo";
+import type { AdminSnapshot } from "@/lib/app/types";
 import { ROLE_LABELS, normalizeRole } from "@/lib/app/types";
 import { timeAgo } from "@/lib/app/format";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Avatar } from "@/components/app/Avatar";
+import { Button } from "@/components/app/Button";
 import { Card, EmptyState, SectionTitle, StatusBadge, TypeBadge } from "@/components/app/ui";
 import {
   BarList, Funnel, StackedBar, StatTile, Td, Th, TimeSeries, brl, int, pctLabel,
 } from "@/components/app/admin/charts";
 
 export default function AdminPage() {
-  const { user, demoMode } = useAuth();
+  const { user, demoMode, loginDemo, demoAllowed } = useAuth();
   const [snap, setSnap] = useState<AdminSnapshot | null>(null);
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [loading, setLoading] = useState(true);
@@ -33,11 +34,18 @@ export default function AdminPage() {
   const allowed = isPlatformAdmin(user);
 
   useEffect(() => {
+    if (!allowed && demoAllowed && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("as") === "admin") {
+        void loginDemo(DEMO_ADMIN_EMAIL, "demo123").then(() => window.location.reload());
+        return;
+      }
+    }
     if (!allowed) { setLoading(false); return; }
     let alive = true;
     api.adminSnapshot().then((s) => { if (alive) { setSnap(s); setLoading(false); } });
     return () => { alive = false; };
-  }, [allowed]);
+  }, [allowed, demoAllowed, loginDemo]);
 
   const m: AdminMetrics | null = useMemo(
     () => (snap ? buildAdminMetrics(snap, period) : null),
@@ -52,7 +60,20 @@ export default function AdminPage() {
           title="Área restrita à operação do DM Conecta"
           hint={`Esta conta não tem acesso ao painel. Entre com uma conta de administração — na demo, ${DEMO_ADMIN_EMAIL} / demo123.`}
         />
-        <div className="mt-4 text-center">
+        <div className="mt-5 flex flex-col items-center gap-3">
+          {demoAllowed && (
+            <Button
+              variant="primary"
+              size="md"
+              icon="shield"
+              onClick={async () => {
+                await loginDemo(DEMO_ADMIN_EMAIL, "demo123");
+                window.location.reload();
+              }}
+            >
+              Entrar como administrador da operação
+            </Button>
+          )}
           <Link href="/feed" className="text-sm font-semibold" style={{ color: "#f4841a" }}>Voltar ao feed</Link>
         </div>
       </div>

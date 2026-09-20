@@ -71,8 +71,17 @@ export default function MapPage() {
         </div>
 
         <div className="absolute left-3 top-3 z-[1000] flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold shadow" style={{ background: "var(--th-card)", borderColor: "var(--th-border)", color: "var(--th-muted)" }}>
-          <Icon name="info" size={13} /> Toque num pino para ver a publicação
+          <Icon name="info" size={13} /> {posts.length > 0 ? "Toque num pino para ver a publicação" : "Nenhuma publicação mapeada neste filtro"}
         </div>
+
+        {!loading && posts.length === 0 && (
+          <div className="absolute inset-x-4 top-14 z-[1000] mx-auto max-w-md rounded-xl border p-4 text-center shadow-lg" style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>Nenhuma publicação com localização encontrada</p>
+            <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
+              Apenas publicações com ponto marcado no mapa aparecem nesta visualização. Ao criar ou editar uma publicação, marque a localização para exibi-la aqui.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const seed = fs.readFileSync(path.join(__dirname, '..', 'seed.sql'), 'utf8');
+const mediaMigration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '003-post-media.sql'), 'utf8');
 
 const postIds = [
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -46,4 +47,32 @@ test('post seed contains the ten deterministic feed publications', () => {
   assert.match(seed, /\/images\/uploads\/cestas-basicas\.jpg/);
   assert.match(seed, /\/videos\/mutirao-praia\.webm/);
   assert.match(seed, /\/videos\/horta-comunitaria\.webm/);
+});
+
+test('post seed manifest has comments, supports and all feed media', () => {
+  assert.equal((seed.match(/INSERT INTO posts/g) || []).length, 1);
+  assert.equal((seed.match(/INSERT INTO comments/g) || []).length, 1);
+  assert.equal((seed.match(/INSERT INTO supports/g) || []).length, 1);
+  for (const count of [12, 41, 28, 19, 26, 23, 22, 35, 17, 31]) {
+    assert.match(seed, new RegExp(`,\\s*${count},`));
+  }
+  const images = [
+    '/images/buraco.jpeg',
+    '/images/uploads/cestas-basicas.jpg',
+    '/images/uploads/mutirao-praia.jpg',
+    '/images/iluminacao.jpeg',
+    '/images/uploads/futebol-comunitario.jpg',
+    '/images/voluntario-refoco-escolar.jpeg',
+    '/images/uploads/feira-sustentabilidade.jpg',
+    '/images/horta.jpeg',
+    '/images/stock/feira-verde.jpg',
+    '/images/alagamento.jpeg',
+  ];
+  for (const img of images) {
+    assert.match(seed, new RegExp(escapeRegExp(img)));
+  }
+});
+
+test('post media migration is idempotent', () => {
+  assert.match(mediaMigration, /ADD COLUMN IF NOT EXISTS\s+videos\s+TEXT\[\]/i);
 });

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { formatDate, timeAgo } from "@/lib/app/format";
+import { type Coordinates, normalizeCoordinates } from "@/lib/app/location";
 import {
   POST_STATUS_LABELS, allowedSupportTypes, type Comment, type Post, type PostStatus,
   type SupportRecord, type SupportSummaryItem,
@@ -14,6 +16,11 @@ import { Avatar } from "@/components/app/Avatar";
 import { Icon } from "@/components/app/Icon";
 import { Button } from "@/components/app/Button";
 import { Card, EmptyState, StatusBadge, SupportPill, TypeBadge } from "@/components/app/ui";
+
+const LocationPicker = dynamic(
+  () => import("@/components/app/LocationPicker").then((mod) => mod.LocationPicker),
+  { ssr: false, loading: () => <div className="h-56 animate-pulse rounded-2xl" style={{ background: "var(--th-card-alt)" }} /> },
+);
 
 const STATUSES: PostStatus[] = ["active", "in_progress", "resolved", "cancelled"];
 
@@ -33,6 +40,10 @@ export default function PostDetailPage() {
   const [liked, setLiked] = useState(false);
   const [reactions, setReactions] = useState(0);
   const [statusMenu, setStatusMenu] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -40,6 +51,7 @@ export default function PostDetailPage() {
     Promise.all([api.getPost(id), api.listComments(id), api.postSupports(id)]).then(([p, c, s]) => {
       if (!alive) return;
       setPost(p);
+      setCoordinates(normalizeCoordinates(p?.latitude, p?.longitude));
       setReactions(p?.reactionsCount ?? 0);
       setComments(c);
       setSummary(s.summary);
@@ -74,10 +86,36 @@ export default function PostDetailPage() {
     if (updated) setPost(updated);
   }
 
+  async function saveLocation() {
+    if (!post || !coordinates) return;
+    setSavingLocation(true);
+    setLocationFeedback(null);
+    try {
+      const updated = await api.updatePostLocation(post.id, coordinates.latitude, coordinates.longitude);
+      if (updated) {
+        setPost(updated);
+        setCoordinates(normalizeCoordinates(updated.latitude, updated.longitude));
+        setEditingLocation(false);
+        setLocationFeedback("Localização atualizada com sucesso! Esta publicação agora está visível no mapa.");
+      }
+    } catch {
+      setLocationFeedback("Não foi possível salvar a localização. Tente novamente.");
+    } finally {
+      setSavingLocation(false);
+    }
+  }
+
+  function cancelEditLocation() {
+    setEditingLocation(false);
+    setCoordinates(normalizeCoordinates(post?.latitude, post?.longitude));
+    setLocationFeedback(null);
+  }
+
   if (loading) return <div className="flex justify-center py-24"><span className="app-spinner" style={{ width: 30, height: 30 }} /></div>;
   if (!post) return <EmptyState icon="info" title="Publicação não encontrada" hint="Ela pode ter sido removida." />;
 
   const isAuthor = user?.id === post.authorId;
+  const hasCoordinates = post.latitude != null && post.longitude != null;
   const cover = post.images?.[0];
   const video = post.videos?.[0];
 
@@ -155,6 +193,80 @@ export default function PostDetailPage() {
               <div className="flex flex-wrap gap-2">{summary.map((s) => <SupportPill key={s.type} type={s.type} count={s.count} />)}</div>
             </div>
           )}
+
+          {/* Localização no mapa e fluxo de reparo */}
+          <div className="mt-5 rounded-xl border p-4" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)" }}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "#f4841a1a", color: "#f4841a" }}>
+                  <Icon name="location" size={16} />
+                </span>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--th-muted)" }}>Localização no mapa</span>
+                  <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>
+                    {hasCoordinates
+                      ? `${post.neighborhood || "Bairro"}${post.city ? ` · ${post.city}` : ""}`
+                      : "Sem localização no mapa"}
+                  </p>
+                </div>
+              </div>
+              {isAuthor && !editingLocation && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon="edit"
+                  onClick={() => {
+                    setEditingLocation(true);
+                    setCoordinates(normalizeCoordinates(post.latitude, post.longitude));
+                    setLocationFeedback(null);
+                  }}
+                >
+                  {hasCoordinates ? "Alterar no mapa" : "Marcar no mapa"}
+                </Button>
+              )}
+            </div>
+
+            {!hasCoordinates && !editingLocation && (
+              <p className="mt-2.5 text-xs font-medium" style={{ color: isAuthor ? "#d64545" : "var(--th-muted)" }}>
+                {isAuthor
+                  ? "Esta publicação ainda não possui coordenadas e não aparece no mapa de demandas. Clique em \"Marcar no mapa\" para posicioná-la."
+                  : "Esta publicação não possui coordenadas geográficas registradas."}
+              </p>
+            )}
+
+            {locationFeedback && (
+              <p className="mt-2.5 text-xs font-semibold" style={{ color: "#16a34a" }}>
+                {locationFeedback}
+              </p>
+            )}
+
+            {editingLocation && (
+              <div className="mt-3.5 space-y-3">
+                <p className="text-xs" style={{ color: "var(--th-muted)" }}>
+                  Clique no mapa ou use sua localização para indicar o ponto exato da demanda:
+                </p>
+                <LocationPicker
+                  value={coordinates}
+                  onChange={(c) => setCoordinates(c)}
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <Button size="sm" variant="ghost" onClick={cancelEditLocation}>Cancelar</Button>
+                  <Button size="sm" loading={savingLocation} disabled={!coordinates} onClick={saveLocation} icon="check">
+                    Salvar localização
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {hasCoordinates && !editingLocation && (
+              <div className="mt-3 flex items-center justify-between border-t pt-2.5 text-xs" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)" }}>
+                <span>Coordenadas: {post.latitude?.toFixed(4)}, {post.longitude?.toFixed(4)}</span>
+                <Link href="/mapa" className="font-semibold hover:underline" style={{ color: "#f4841a" }}>
+                  Ver no mapa geral →
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 

@@ -9,6 +9,7 @@ import {
 } from "./types";
 import { demo, DEMO_TOKEN, DEMO_USERS, type AdminSnapshot } from "./demo";
 import { runtime, shouldUseDemoFallback } from "./runtime";
+import { normalizeCoordinates } from "./location";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -157,6 +158,16 @@ function mapUser(r: RawPost): User {
     avatarUrl: (r.avatar_url ?? r.avatarUrl ?? null) as string | null,
   };
 }
+function mapCommunity(r: RawPost): Community {
+  return {
+    id: String(r.id),
+    name: String(r.name ?? ""),
+    description: String(r.description ?? ""),
+    category: String(r.category ?? ""),
+    memberCount: Number(r.member_count ?? r.memberCount ?? 0),
+    imageUrl: (r.image_url ?? r.imageUrl ?? null) as string | null,
+  };
+}
 
 // ════════════════════════════════════════════════════════════
 //  AUTH
@@ -281,6 +292,7 @@ export const api = {
   },
 
   createPost(input: Partial<Post>, author: User): Promise<Post> {
+    const coordinates = normalizeCoordinates(input.latitude, input.longitude);
     return hybrid(
       async () =>
         mapPost(
@@ -289,13 +301,27 @@ export const api = {
             body: JSON.stringify({
               type: input.type, title: input.title, description: input.description,
               neighborhood: input.neighborhood, city: input.city,
-              latitude: input.latitude, longitude: input.longitude, tags: input.tags ?? [],
+              latitude: coordinates?.latitude, longitude: coordinates?.longitude, tags: input.tags ?? [],
               images: input.images ?? [],
               videos: input.videos ?? [],
             }),
           }),
         ),
       () => demo.createPost(input, author),
+    );
+  },
+
+  updatePostLocation(id: string, latitude: number | null, longitude: number | null): Promise<Post | null> {
+    const coordinates = normalizeCoordinates(latitude, longitude);
+    return hybrid(
+      async () => mapPost(await request<RawPost>(`/api/posts/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          latitude: coordinates?.latitude ?? null,
+          longitude: coordinates?.longitude ?? null,
+        }),
+      })),
+      () => demo.updatePostLocation(id, coordinates?.latitude ?? null, coordinates?.longitude ?? null),
     );
   },
 
@@ -405,14 +431,14 @@ export const api = {
         role: normalizeRole((r.role as string) ?? d?.role, (r.profile_type as string) ?? d?.profileType),
         profileType: (r.profile_type ?? d?.profileType ?? null) as ProfileType | null,
         bio: (r.bio as string) ?? d?.bio ?? null,
-        status: d?.status ?? null,
+        status: (r.status as string) ?? d?.status ?? null,
         city: (r.city as string) ?? d?.city ?? null,
-        neighborhood: d?.neighborhood ?? null,
+        neighborhood: (r.neighborhood as string) ?? d?.neighborhood ?? null,
         website: (r.website as string) ?? d?.website ?? null,
         avatarUrl: (r.avatar_url as string) ?? d?.avatarUrl ?? null,
-        coverUrl: d?.coverUrl ?? null,
-        memberSince: d?.memberSince,
-        friendCount: d?.friendCount ?? 0,
+        coverUrl: (r.cover_url as string) ?? d?.coverUrl ?? null,
+        memberSince: (r.member_since as string | undefined) ?? d?.memberSince,
+        friendCount: Number(r.friend_count ?? d?.friendCount ?? 0),
       };
     } catch (err) {
       if (DEMO_ALLOWED) return d ?? this.profileFromSession(userId);
@@ -457,7 +483,10 @@ export const api = {
     return Promise.resolve(demo.addTestimonial(target, author, content));
   },
   communities(): Promise<Community[]> {
-    return Promise.resolve(DEMO_ALLOWED ? demo.communities() : []);
+    return hybrid(
+      async () => (await request<RawPost[]>("/api/users/communities")).map(mapCommunity),
+      () => demo.communities(),
+    );
   },
   friendsOf(userId: string): Promise<Profile[]> {
     return Promise.resolve(DEMO_ALLOWED ? demo.friendsOf(userId) : []);
