@@ -35,6 +35,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.iml
+.worktrees/
 
 # Contratos do projeto
 !.cursor/
