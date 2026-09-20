@@ -6,13 +6,14 @@ module.exports = (pool, auth) => {
 
   // GET / — list with filters
   router.get('/', async (req, res) => {
-    const { type, status, neighborhood, limit = 20, offset = 0 } = req.query;
+    const { type, status, neighborhood, author_id: authorId, limit = 20, offset = 0 } = req.query;
     const params = [];
     let where = 'WHERE 1=1';
     let i = 1;
     if (type)         { where += ` AND type=$${i++}`;                    params.push(type); }
     if (status)       { where += ` AND status=$${i++}`;                  params.push(status); }
     if (neighborhood) { where += ` AND neighborhood ILIKE $${i++}`;      params.push(`%${neighborhood}%`); }
+    if (authorId)     { where += ` AND author_id=$${i++}`;               params.push(authorId); }
 
     const query = `SELECT * FROM posts ${where} ORDER BY created_at DESC LIMIT $${i++} OFFSET $${i++}`;
     params.push(parseInt(limit), parseInt(offset));

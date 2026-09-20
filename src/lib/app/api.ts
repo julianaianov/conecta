@@ -245,13 +245,14 @@ export const api = {
   },
 
   // ── POSTS ────────────────────────────────────────────────
-  listPosts(filter?: { type?: string; status?: string; neighborhood?: string; limit?: number; offset?: number }): Promise<Post[]> {
+  listPosts(filter?: { type?: string; status?: string; neighborhood?: string; authorId?: string; limit?: number; offset?: number }): Promise<Post[]> {
     return hybrid(
       async () => {
         const q = new URLSearchParams();
         if (filter?.type) q.set("type", filter.type);
         if (filter?.status) q.set("status", filter.status);
         if (filter?.neighborhood) q.set("neighborhood", filter.neighborhood);
+        if (filter?.authorId) q.set("author_id", filter.authorId);
         q.set("limit", String(filter?.limit ?? 20));
         q.set("offset", String(filter?.offset ?? 0));
         const data = await request<{ posts: RawPost[] }>(`/api/posts/?${q}`);
@@ -436,8 +437,9 @@ export const api = {
   postsByAuthor(userId: string): Promise<Post[]> {
     return hybrid(
       async () => {
-        const data = await request<{ posts: RawPost[] }>(`/api/posts/?limit=50`);
-        return data.posts.map(mapPost).filter((p) => p.authorId === userId);
+        const q = new URLSearchParams({ author_id: userId, limit: "5000", offset: "0" });
+        const data = await request<{ posts: RawPost[] }>(`/api/posts/?${q}`);
+        return data.posts.map(mapPost);
       },
       () => demo.postsByAuthor(userId),
     );
