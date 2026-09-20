@@ -41,7 +41,7 @@ export function metadataForPage({
     alternates: { canonical: url },
     robots: indexable
       ? { index: true, follow: true }
-      : { index: false, follow: false },
+      : { index: false, follow: true },
     openGraph: {
       title: fullTitle,
       description,

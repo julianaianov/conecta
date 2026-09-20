@@ -24,8 +24,8 @@ import {
   type PostType,
   type SupportType,
   type PaymentMethod,
-  type UserRole,
 } from "../app/types.ts";
+
 
 export { publicFallback } from "./public-api.ts";
 

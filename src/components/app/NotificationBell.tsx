@@ -42,9 +42,6 @@ export function NotificationBell({ userId }: { userId: string }) {
     };
   }, [userId]);
 
-  if (!userId || userId === "guest") return null;
-
-
   const unread = items.filter((n) => !read.has(n.id)).length;
 
   const markRead = useCallback(
@@ -65,7 +62,10 @@ export function NotificationBell({ userId }: { userId: string }) {
     setOpen(false);
   }
 
+  if (!userId || userId === "guest") return null;
+
   return (
+
     <div className="relative">
       <button
         type="button"
