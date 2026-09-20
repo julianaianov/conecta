@@ -17,6 +17,7 @@ import { Button } from "@/components/app/Button";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Card, EmptyState } from "@/components/app/ui";
 import { ConnectionStatusBadge, ConnectionTypePill, partyLabel } from "@/components/app/ConnectionCard";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 export default function ConnectionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +28,20 @@ export default function ConnectionDetailPage() {
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState("");
   const [showOutcome, setShowOutcome] = useState(false);
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg pt-6">
+        <AuthPrompt
+          action="connection"
+          returnTo={`/conexoes/${id}`}
+          title="Conexão privada"
+          message="Entre na sua conta para visualizar os detalhes desta conexão."
+        />
+      </div>
+    );
+  }
+
 
   useEffect(() => {
     let alive = true;

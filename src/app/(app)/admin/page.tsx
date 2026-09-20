@@ -20,6 +20,7 @@ import { timeAgo } from "@/lib/app/format";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Avatar } from "@/components/app/Avatar";
 import { Card, EmptyState, SectionTitle, StatusBadge, TypeBadge } from "@/components/app/ui";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 import {
   BarList, Funnel, StackedBar, StatTile, Td, Th, TimeSeries, brl, int, pctLabel,
 } from "@/components/app/admin/charts";
@@ -44,6 +45,19 @@ export default function AdminPage() {
     [snap, period],
   );
 
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg pt-6">
+        <AuthPrompt
+          action="profile-write"
+          returnTo="/admin"
+          title="Painel da operação"
+          message="Área restrita à operação do DM Conecta. Entre com uma conta de administração."
+        />
+      </div>
+    );
+  }
+
   if (!allowed) {
     return (
       <div className="mx-auto max-w-lg py-10">
@@ -58,6 +72,7 @@ export default function AdminPage() {
       </div>
     );
   }
+
 
   if (loading || !m) {
     return <div className="flex justify-center py-24"><span className="app-spinner" style={{ width: 30, height: 30 }} /></div>;

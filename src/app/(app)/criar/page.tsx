@@ -11,6 +11,7 @@ import {
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Button } from "@/components/app/Button";
 import { Card } from "@/components/app/ui";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 const TYPES: { type: PostType; icon: IconName }[] = [
   { type: "problem", icon: "bolt" },
@@ -56,7 +57,21 @@ export default function CreatePostPage() {
     } finally { setSubmitting(false); }
   }
 
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg pt-6">
+        <AuthPrompt
+          action="create-post"
+          returnTo="/criar"
+          title="Entre para publicar"
+          message="Você precisa estar conectado a uma conta para criar publicações no DM Conecta."
+        />
+      </div>
+    );
+  }
+
   if (user && !canPublish) {
+
     const role = normalizeRole(user.role, user.profileType);
     return (
       <div className="mx-auto max-w-xl">

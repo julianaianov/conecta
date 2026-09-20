@@ -20,6 +20,7 @@ import { Button } from "@/components/app/Button";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Card } from "@/components/app/ui";
 import { partyLabel } from "@/components/app/ConnectionCard";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 export default function NewConnectionPage() {
   return (
@@ -43,6 +44,20 @@ function NewConnectionFlow() {
   const [postId, setPostId] = useState<string | null>(search.get("post"));
   const [query, setQuery] = useState("");
   const [sending, setSending] = useState(false);
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg pt-6">
+        <AuthPrompt
+          action="connection"
+          returnTo="/conexoes/nova"
+          title="Nova conexão"
+          message="Entre na sua conta para iniciar uma conexão com outro morador ou organização."
+        />
+      </div>
+    );
+  }
+
 
   useEffect(() => {
     if (!user) return;

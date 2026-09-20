@@ -54,3 +54,16 @@ export function isIndexablePath(pathname: string): boolean {
     (path) => path === pathname || (path !== "/" && pathname.startsWith(`${path}/`)),
   );
 }
+
+export type ProtectedAction =
+  | "create-post"
+  | "comment"
+  | "reaction"
+  | "support"
+  | "connection"
+  | "profile-write";
+
+export function actionRequiresAuth(action: ProtectedAction | "read-post"): boolean {
+  return action !== "read-post";
+}
+

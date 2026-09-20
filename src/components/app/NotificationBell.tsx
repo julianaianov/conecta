@@ -31,6 +31,7 @@ export function NotificationBell({ userId }: { userId: string }) {
   const [read, setRead] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!userId || userId === "guest") return;
     let alive = true;
     setRead(loadRead(userId));
     api.notifications(userId).then((list) => {
@@ -40,6 +41,9 @@ export function NotificationBell({ userId }: { userId: string }) {
       alive = false;
     };
   }, [userId]);
+
+  if (!userId || userId === "guest") return null;
+
 
   const unread = items.filter((n) => !read.has(n.id)).length;
 
