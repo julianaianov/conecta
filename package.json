@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/app/*.test.mjs"
+    "test": "node --experimental-strip-types --test src/lib/app/*.test.mjs src/lib/seo/*.test.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
