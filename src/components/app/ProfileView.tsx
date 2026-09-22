@@ -15,6 +15,7 @@ import { InstitutionSeal, PublicInstitutionCard } from "./institution/PublicInst
 import { InstitutionStatusBadge } from "./institution/InstitutionStatus";
 import { useInstitutionAccess } from "./institution/useInstitutionAccess";
 import { ImpactBadges } from "./ImpactBadges";
+import { ReportButton } from "./ReportButton";
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { Button } from "./Button";
@@ -142,6 +143,10 @@ export function ProfileView({ userId }: { userId: string }) {
             </p>
           )}
           <Button block size="sm" variant="outline" icon="star" onClick={() => setShowTestimonialBox((v) => !v)}>Adicionar referência</Button>
+          {/* Denúncia de perfil (T6.3): discreta, sem revelar nada ao denunciado. */}
+          <div className="flex justify-center">
+            <ReportButton targetKind="perfil" targetId={userId} targetOwnerId={userId} targetLabel="este perfil" />
+          </div>
         </div>
       )}
     </Panel>

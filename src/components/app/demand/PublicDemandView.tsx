@@ -14,6 +14,7 @@ import { runtime } from "@/lib/app/runtime";
 import { formatIsoDate, timelineEventLabel } from "@/lib/app/demand";
 import { formatDate } from "@/lib/app/format";
 import { ShareButton } from "../ShareButton";
+import { ReportButton } from "../ReportButton";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { DemandMap } from "./DemandMap";
@@ -144,7 +145,7 @@ export function PublicDemandView({
             </p>
           )}
           {/* Amplificação (T21): compartilhar a demanda e registrar o compartilhamento. */}
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <ShareButton
               targetKind="demand"
               targetId={demand.id}
@@ -152,6 +153,13 @@ export function PublicDemandView({
               title={demand.title}
               text={`${demand.title} — DM Conecta`}
               sharesCount={demand.sharesCount ?? 0}
+            />
+            {/* Denúncia da demanda (T6.3). */}
+            <ReportButton
+              targetKind="demanda"
+              targetId={demand.id}
+              targetOwnerId={demand.authorId}
+              targetLabel="esta demanda"
             />
           </div>
           <div className="mt-4"><StatusTrack status={demand.status} /></div>

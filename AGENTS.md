@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 011, post-service 018. Registre a migração em
+  auth-service 004, user-service 011, post-service 019. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -845,6 +845,58 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   fonte são os da T21.
 - Testes: `test/ranking-domain.test.js`, `test/rankings-routes.test.js`,
   `test/engagement-e2e.test.js` (no `test:e2e`) e `src/lib/app/ranking.test.mjs`.
+
+## Denúncia de conteúdo e de perfil (T6.3)
+
+- Fonte: Apresentação Institucional, slide 26 (Governança: LGPD, neutralidade
+  político-partidária e publicação apenas de dados verificáveis). Até aqui a
+  fila de moderação do dm-gestao lia `gestao_db.reports`, tabela que nenhum
+  serviço do portal escrevia: ficava sempre vazia. A denúncia passa a nascer
+  aqui.
+- Migração post 018 (`018-content-reports.sql`): `content_reports` — alvo
+  (`publicacao`, `comentario`, `demanda`, `perfil` + `target_id`, sem FK: a
+  denúncia é registro de moderação e sobrevive ao alvo), retrato do alvo
+  (`target_owner_id`, `target_summary`) gravado no momento, quem denunciou
+  (`reporter_id`, categoria e perfil), motivo (`conteudo_improprio`,
+  `informacao_falsa`, `spam`, `discurso_de_odio`, `dado_pessoal_indevido`,
+  `outro` — este exige descrição), `description` opcional (2000), e o desfecho
+  que só o dm-gestao grava: `status` (`pendente` → `em_analise` →
+  `procedente` | `improcedente`), `resolution` (`ocultar_publicacao`,
+  `advertencia_ao_autor`, `outra_providencia`, `conteudo_mantido`),
+  `resolution_note`, `resolved_by` (`gestao:<id>`) e `resolved_at`.
+- Append-only: o trigger `content_reports_guard` recusa DELETE, TRUNCATE, o
+  INSERT da sessão `gestao_app`, qualquer mudança em quem denunciou/alvo/
+  motivo/descrição e a volta para `pendente`; o desfecho é final e completo
+  (CHECKs `content_reports_resolution`, `_resolution_kind`, `_hide_target`,
+  `_other_reason`, `_not_self`). Uma denúncia em aberto por (denunciante,
+  alvo): índice único parcial `idx_content_reports_open`.
+- Rotas (`src/routes/reports.js`, montada em `/` antes das rotas de posts;
+  domínio em `src/report/`): `POST /reports` (201 com `state` e `notice`),
+  `GET /reports/mine` e `GET /reports/context?targetKind=&targetId=`. Todas
+  exigem token. Erros: 422 `validation_failed` com `fields`, 404 alvo
+  inexistente ou já oculto, 409 `report_already_open`, 429
+  `report_rate_limited` com `retryAfterSeconds` (5/hora e 20/dia por conta,
+  conferidos numa consulta agregada antes de gravar).
+- Sem exposição: nenhuma rota lista denúncias por alvo, o denunciado não é
+  avisado, nada entra em `demand_events` e quem denunciou recebe só
+  `em_apuracao`/`analisada` — nunca `procedente`/`improcedente`. Ninguém
+  denuncia o próprio conteúdo nem o próprio perfil.
+- Frontend: `src/lib/app/report.ts` (espelho de `report/constants.js`,
+  comparado em `report.test.mjs`), bloco "DENÚNCIA DE CONTEÚDO E DE PERFIL
+  (T6.3)" em `api.ts` e `ReportButton` (`src/components/app/ReportButton.tsx`):
+  botão "Denunciar" com modal `role="dialog"`/`aria-modal`, motivo em
+  `radio` com ajuda, descrição (obrigatória em "Outro"), confirmação e um
+  aviso final que não revela resultado. Montado na publicação e em cada
+  comentário (`PostDetailClient`), na demanda (`PublicDemandView`) e no perfil
+  de outra conta (`ProfileView`); some sem sessão e no próprio conteúdo.
+- Contrato com o dm-gestao: grant dm-infra
+  `017-gestao-app-post-reports.sql` (SELECT + UPDATE só das colunas do
+  desfecho); o `gestao_db.reports` fica como legado, sem migração de dados.
+  LGPD: na gestão o denunciante aparece pseudonimizado e a revelação é
+  auditada e de admin+. Detalhes em
+  `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.14.
+- Testes: `test/report-domain.test.js`, `test/reports-routes.test.js`,
+  `test/report-e2e.test.js` (no `test:e2e`) e `src/lib/app/report.test.mjs`.
 
 ## Segurança dos serviços
 

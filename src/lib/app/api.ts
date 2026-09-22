@@ -34,6 +34,7 @@ import {
   type ShareChannel, type ShareTargetKind,
 } from "./ranking";
 import type { DemandDossierDownload, DemandDossierList, DossierVerification, PublicDossierInfo } from "./types";
+import type { MyReport, ReportContext, ReportInput, ReportTargetKind } from "./report";
 import type {
   InstitutionalContext, InstitutionalDemandFilter, InstitutionalDemandPage, InstitutionalDemandView,
   InstitutionalOfferInput, InstitutionalResponseInput, InstitutionalStatus, InstitutionalTrack,
@@ -1411,6 +1412,28 @@ export const api = {
     const query = filter ? `?${buildMapQuery(filter)}` : "";
     const body = await demandRequest<{ territories: MapTerritory[] }>(`/map/territories${query}`);
     return body?.territories ?? [];
+  },
+
+  // ── DENÚNCIA DE CONTEÚDO E DE PERFIL (T6.3) ──────────────
+  /**
+   * Registra a denúncia. A resposta confirma só o recebimento: o desfecho
+   * fica com a moderação e não volta para quem denunciou nem chega a quem
+   * foi denunciado.
+   */
+  report(input: ReportInput): Promise<MyReport & { notice: string }> {
+    return request<MyReport & { notice: string }>("/api/posts/reports", { method: "POST", ...json(input) });
+  },
+
+  /** Posso denunciar este alvo? Já denunciei e a análise segue em aberto? */
+  reportContext(targetKind: ReportTargetKind, targetId: string): Promise<ReportContext> {
+    const query = new URLSearchParams({ targetKind, targetId });
+    return request<ReportContext>(`/api/posts/reports/context?${query.toString()}`);
+  },
+
+  /** Minhas denúncias, sem o desfecho (em apuração ou analisada). */
+  async myReports(): Promise<MyReport[]> {
+    const body = await request<{ reports: MyReport[] }>("/api/posts/reports/mine");
+    return body?.reports ?? [];
   },
 
   // ── ENGAJAMENTO, RANKINGS E SELOS (T21) ──────────────────

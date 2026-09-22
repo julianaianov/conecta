@@ -17,6 +17,7 @@ import {
 } from "@/lib/app/types";
 import { AuthPrompt } from "../AuthPrompt";
 import { ShareButton } from "../ShareButton";
+import { ReportButton } from "../ReportButton";
 import { Avatar } from "../Avatar";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
@@ -159,6 +160,13 @@ export function PostDetailClient({
               text={`${post.title} — DM Conecta`}
               sharesCount={post.sharesCount ?? 0}
             />
+            {/* Denúncia da publicação (T6.3). */}
+            <ReportButton
+              targetKind="publicacao"
+              targetId={post.id}
+              targetOwnerId={post.authorId}
+              targetLabel="esta publicação"
+            />
           </div>
           {supports.summary.length > 0 && <div className="mt-4"><p className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Formas de apoio já registradas</p><div className="flex flex-wrap gap-2">{supports.summary.map((item) => <SupportPill key={item.type} type={item.type} count={item.count} />)}</div></div>}
           <div className="mt-5 rounded-xl border p-4" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)" }}>
@@ -189,7 +197,7 @@ export function PostDetailClient({
       <Card>
         <h2 className="text-sm font-bold" style={{ color: "var(--th-text)" }}>Atualizações do acompanhamento</h2>
         <div className="mt-3">{user ? <div className="flex items-start gap-2.5"><Avatar name={user.name} src={user.avatarUrl} id={user.id} size={36} /><div className="flex-1"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Registre uma atualização ou informação útil..." className="app-textarea" /><div className="mt-2 flex justify-end"><button type="button" onClick={sendComment} disabled={!draft.trim() || sending} className="rounded-lg px-3 py-2 text-sm font-bold text-white" style={{ background: "#f4841a" }}>{sending ? "Enviando…" : "Registrar atualização"}</button></div>{gate?.action === "comentar" && <div className="mt-2"><InstitutionGateNotice action="comentar" status={gate.status} /></div>}{commentError && <p role="alert" className="mt-2 text-sm font-semibold" style={{ color: "#e53935" }}>{commentError}</p>}</div></div> : <AuthPrompt action="registrar uma atualização" returnTo={returnTo} />}</div>
-        <div className="mt-5 space-y-4">{comments.length === 0 ? <p className="py-3 text-center text-sm" style={{ color: "var(--th-muted)" }}>Ainda não há atualizações neste acompanhamento.</p> : comments.map((comment) => <div key={comment.id} className="flex gap-2.5 border-l-2 pl-3" style={{ borderColor: "#2e7ba8" }}><Avatar name={comment.authorName} id={comment.authorId} size={36} /><div><div className="flex items-baseline gap-2"><span className="text-sm font-bold" style={{ color: "var(--th-text)" }}>{comment.authorName}</span><span className="text-xs" style={{ color: "var(--th-muted)" }}>{timeAgo(comment.createdAt)}</span></div><p className="mt-0.5 text-sm" style={{ color: "var(--th-text)" }}>{comment.content}</p></div></div>)}</div>
+        <div className="mt-5 space-y-4">{comments.length === 0 ? <p className="py-3 text-center text-sm" style={{ color: "var(--th-muted)" }}>Ainda não há atualizações neste acompanhamento.</p> : comments.map((comment) => <div key={comment.id} className="flex gap-2.5 border-l-2 pl-3" style={{ borderColor: "#2e7ba8" }}><Avatar name={comment.authorName} id={comment.authorId} size={36} /><div><div className="flex items-baseline gap-2"><span className="text-sm font-bold" style={{ color: "var(--th-text)" }}>{comment.authorName}</span><span className="text-xs" style={{ color: "var(--th-muted)" }}>{timeAgo(comment.createdAt)}</span></div><p className="mt-0.5 text-sm" style={{ color: "var(--th-text)" }}>{comment.content}</p><div className="mt-0.5"><ReportButton variant="icon" targetKind="comentario" targetId={comment.id} targetOwnerId={comment.authorId} targetLabel="este comentário" /></div></div></div>)}</div>
       </Card>
     </div>
   );

@@ -24,6 +24,7 @@ const executionRoutes = require('./routes/execution');
 const accountabilityRoutes = require('./routes/accountability');
 const mapRoutes = require('./routes/map');
 const rankingsRoutes = require('./routes/rankings');
+const reportsRoutes = require('./routes/reports');
 const { createRankingService } = require('./ranking/service');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
@@ -94,6 +95,9 @@ const createApp = ({
   // Engajamento, rankings e selos de impacto social (T21): /rankings, /shares
   // e /profiles/:userId/impact. Antes das rotas de posts, cujo `/:id` é UUID.
   app.use('/', rankingsRoutes({ pool, auth }));
+  // Denúncia de publicação, comentário, demanda e perfil (T6.3): /reports.
+  // Antes das rotas de posts, cujo `/:id` é UUID.
+  app.use('/', reportsRoutes({ pool, auth }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 

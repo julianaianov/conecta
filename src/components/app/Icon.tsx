@@ -9,7 +9,7 @@ export type IconName =
   | "building" | "megaphone" | "leaf" | "shield" | "bolt" | "payments" | "inventory"
   | "construction" | "volunteer" | "handyman" | "home_work" | "restaurant" | "shipping"
   | "school" | "share" | "pix" | "card" | "copy" | "menu" | "sun" | "moon" | "info" | "clock"
-  | "download" | "document";
+  | "download" | "document" | "flag";
 
 const P: Record<IconName, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9" />,
@@ -27,6 +27,8 @@ const P: Record<IconName, React.ReactNode> = {
   chevronLeft: <path d="m15 6-6 6 6 6" />,
   check: <path d="m20 6-11 11-5-5" />,
   close: <path d="M18 6 6 18M6 6l12 12" />,
+  // Denúncia de conteúdo e de perfil (T6.3).
+  flag: <><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1Z" /><path d="M4 22v-7" /></>,
   arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
   more: <><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></>,
   comment: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z" />,
