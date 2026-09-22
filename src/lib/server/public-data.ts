@@ -14,6 +14,8 @@ import {
   type PublicDemandAccountabilityView,
   type DossierVerification,
   type PublicDossierInfo,
+  type MapTerritory,
+  type MapView,
   type PublicInstitution,
   type RankCategory,
   type RankEntry,
@@ -25,6 +27,7 @@ import { mapPublicInstitutionRecord } from "../app/institution.ts";
 import { resolveMediaUrl } from "../app/uploads.ts";
 import { runtime } from "../app/runtime.ts";
 import { boundedPublicLimit, fetchPublicJson, MAX_PUBLIC_LIST_LIMIT } from "./public-api.ts";
+import { buildMapQuery, emptyMapFilter, type MapFilterState, type MapQueryOptions } from "../app/map.ts";
 
 type RawRecord = Record<string, unknown>;
 
@@ -316,4 +319,45 @@ export async function verifyDossierHash(hash: string): Promise<DossierVerificati
   if (!/^[0-9a-f]{64}$/.test(hash)) return null;
   const data = await fetchPublicJson<DossierVerification>("posts", `/demands/dossiers/verify/${hash}`);
   return data && data.valid === true ? data : null;
+}
+
+// ── Mapa inteligente (T20) ─────────────────────────────────
+// SSR da página pública do mapa (`/mapa` e `/mapa/<territorio>`): pontos,
+// contagens e territórios. Tudo vem da projeção pública do post-service, sem
+// token e sem dado pessoal.
+
+const EMPTY_MAP_VIEW: MapView = {
+  mode: "points",
+  zoom: 12,
+  cellSize: 0,
+  counts: {
+    total: 0,
+    category: {
+      projeto_social: 0, projeto_ambiental: 0, necessidade_de_patrocinio: 0,
+      problema_urbano: 0, problema_urgente: 0,
+    },
+    priority: { baixa: 0, media: 0, alta: 0, urgente: 0 },
+    status: {
+      em_analise: 0, publicada: 0, em_busca_de_parceiro: 0, conectada: 0,
+      em_execucao: 0, concluida: 0, prestacao_de_contas: 0, arquivada: 0,
+    },
+  },
+  points: [],
+  clusters: [],
+  truncated: false,
+};
+
+export async function getPublicDemandMap(
+  filter: MapFilterState = emptyMapFilter(),
+  options: MapQueryOptions = {},
+): Promise<MapView> {
+  const data = await fetchPublicJson<MapView>("posts", `/demands/map?${buildMapQuery(filter, options)}`);
+  if (!data || !Array.isArray(data.points)) return EMPTY_MAP_VIEW;
+  return { ...data, clusters: Array.isArray(data.clusters) ? data.clusters : [] };
+}
+
+export async function getPublicMapTerritories(filter?: MapFilterState): Promise<MapTerritory[]> {
+  const query = filter ? `?${buildMapQuery(filter)}` : "";
+  const data = await fetchPublicJson<{ territories?: MapTerritory[] }>("posts", `/demands/map/territories${query}`);
+  return Array.isArray(data?.territories) ? data.territories : [];
 }

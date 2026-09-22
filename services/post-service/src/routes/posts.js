@@ -27,6 +27,8 @@ const SUPPORT_OPERATION_SQL = 'id, post_id, user_id, user_name, type, modality, 
 // não é mais editado; a moderação só alterna a visibilidade (visible/hidden).
 // Post oculto não aparece em rota pública nem aceita interação.
 const VISIBLE = "visibility = 'visible'";
+// Teto da camada de conteúdos do feed no mapa (T20).
+const MAP_LIMIT_MAX = 500;
 const VISIBLE_POST = `SELECT 1 FROM posts WHERE id=$1 AND ${VISIBLE}`;
 
 // Post-vitrine de demanda (posts.demand_id): o conteúdo vem da demanda, então
@@ -79,7 +81,11 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
     }
   });
 
-  // GET /map — lightweight data for map markers
+  // GET /map — lightweight data for map markers.
+  // Camada de conteúdos do feed do mapa inteligente (T20, slide 18): aceita
+  // `bbox=oeste,sul,leste,norte` e `limit` (teto de MAP_LIMIT_MAX) para que
+  // nenhum movimento do mapa varra a tabela inteira. A resposta continua
+  // sendo o array de posts (contrato antigo), já ordenada do mais recente.
   router.get('/map', async (req, res) => {
     const { type, status } = req.query;
     const params = [];
@@ -88,15 +94,47 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
     if (type)   { where += ` AND type=$${i++}`;   params.push(type); }
     if (status) { where += ` AND status=$${i++}`; params.push(status); }
 
+    if (req.query.bbox !== undefined && req.query.bbox !== '') {
+      const parts = String(req.query.bbox).split(',').map((v) => Number(v.trim()));
+      const [west, south, east, north] = parts;
+      const valid = parts.length === 4 && parts.every(Number.isFinite)
+        && Math.abs(south) <= 90 && Math.abs(north) <= 90
+        && Math.abs(west) <= 180 && Math.abs(east) <= 180
+        && south <= north && west <= east;
+      if (!valid) {
+        return res.status(422).json({
+          error: 'Filtro inválido',
+          code: 'validation_failed',
+          fields: { bbox: 'Use bbox=oeste,sul,leste,norte (longitude e latitude em graus)' },
+        });
+      }
+      where += ` AND latitude BETWEEN $${i++} AND $${i++} AND longitude BETWEEN $${i++} AND $${i++}`;
+      params.push(south, north, west, east);
+    }
+
+    let limit = MAP_LIMIT_MAX;
+    if (req.query.limit !== undefined && req.query.limit !== '') {
+      const parsed = Number(req.query.limit);
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAP_LIMIT_MAX) {
+        return res.status(422).json({
+          error: 'Filtro inválido',
+          code: 'validation_failed',
+          fields: { limit: `Entre 1 e ${MAP_LIMIT_MAX}` },
+        });
+      }
+      limit = parsed;
+    }
+    params.push(limit);
+
     try {
       const { rows } = await pool.query(
-        `SELECT ${POST_SQL} FROM posts ${where} ORDER BY created_at DESC`,
+        `SELECT ${POST_SQL} FROM posts ${where} ORDER BY created_at DESC LIMIT $${i}`,
         params
       );
-      res.json(rows);
+      return res.json(rows);
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: 'Erro interno' });
+      return res.status(500).json({ error: 'Erro interno' });
     }
   });
 

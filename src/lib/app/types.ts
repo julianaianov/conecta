@@ -278,15 +278,9 @@ export const POST_TYPE_COLORS: Record<PostType, string> = {
   message: "#5a9bc4",
 };
 
-/** Cores dos pinos do mapa (Pitch Deck §Mapa Inteligente) */
-export const MAP_PIN_COLORS: Record<PostType, string> = {
-  problem: "#e53935", // urgentes
-  project: "#2e9e5b", // projetos sociais
-  action: "#2e7ba8", // ações ambientais
-  need: "#f89b45", // oportunidades
-  event: "#1b4f72",
-  message: "#5a9bc4",
-};
+// As cores e as formas dos pinos do mapa deixaram de sair do tipo do post: a
+// legenda do slide 19 é por categoria da demanda e vive em `src/lib/app/map.ts`
+// (espelho de services/post-service/src/map/constants.js), com uma paleta só.
 
 export const POST_STATUS_LABELS: Record<PostStatus, string> = {
   active: "Ativo",
@@ -2250,4 +2244,68 @@ export interface DemandAccountabilityDocumentInput {
   description?: string | null;
   issuedOn?: string | null;
   amountCents?: number | null;
+}
+
+// ── Mapa inteligente (T20) ─────────────────────────────────
+// Fonte: Apresentação Institucional, slide 19. As classes da legenda, as cores
+// e os atalhos de leitura rápida ficam em `src/lib/app/map.ts` (espelho do
+// post-service); aqui só o contrato das rotas `/api/posts/demands/map*`.
+
+/** Ponto do mapa: projeção pública sem autor, endereço fino ou orçamento. */
+export interface MapPoint {
+  id: string;
+  category: DemandCategory;
+  priority: DemandPriority;
+  status: DemandStatus;
+  title: string;
+  district: string | null;
+  municipality: string | null;
+  uf: string | null;
+  territory: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  publishedAt: string | null;
+  /** Post-vitrine no feed, quando visível. */
+  postId: string | null;
+}
+
+/** Agrupamento por célula da grade, quando há pontos demais no recorte. */
+export interface MapCluster {
+  id: string;
+  total: number;
+  latitude: number;
+  longitude: number;
+  cellSize: number;
+  category: Record<DemandCategory, number>;
+}
+
+export interface MapCounts {
+  total: number;
+  category: Record<DemandCategory, number>;
+  priority: Record<DemandPriority, number>;
+  status: Record<DemandStatus, number>;
+}
+
+export interface MapView {
+  mode: "points" | "clusters";
+  zoom: number;
+  cellSize: number;
+  counts: MapCounts;
+  points: MapPoint[];
+  clusters: MapCluster[];
+  /** `true` quando o recorte tem mais demandas do que as devolvidas. */
+  truncated: boolean;
+}
+
+/** Território agregado (bairro, comunidade ou região), base de `/mapa/<slug>`. */
+export interface MapTerritory {
+  slug: string;
+  territory: string;
+  municipality: string | null;
+  uf: string | null;
+  total: number;
+  latitude: number | null;
+  longitude: number | null;
+  lastPublishedAt: string | null;
+  category: Record<DemandCategory, number>;
 }

@@ -1,16 +1,28 @@
-import { MapClient } from "@/components/app/public/MapClient";
-import { getPublicMapPosts } from "@/lib/server/public-data";
+import { SmartMapClient } from "@/components/app/map/SmartMapClient";
+import { getPublicDemandMap, getPublicMapTerritories } from "@/lib/server/public-data";
 import { metadataForPage } from "@/lib/seo/site";
 
 export const revalidate = 60;
 
 export const metadata = metadataForPage({
-  title: "Mapa de demandas e iniciativas — DM Conecta",
-  description: "Explore demandas e iniciativas públicas por localização no mapa do DM Conecta.",
+  title: "Mapa inteligente de demandas — DM Conecta",
+  description:
+    "Visualização geográfica das demandas publicadas: problemas urgentes, problemas urbanos, projetos sociais, ações ambientais e necessidades de patrocínio, com leitura rápida para governo, empresas, imprensa e comunidade.",
   path: "/mapa",
 });
 
 export default async function MapPage() {
-  const posts = await getPublicMapPosts();
-  return <MapClient initialPosts={posts} />;
+  const [view, territories] = await Promise.all([
+    getPublicDemandMap(),
+    getPublicMapTerritories(),
+  ]);
+  return (
+    <SmartMapClient
+      initialView={view}
+      initialPosts={[]}
+      territories={territories}
+      title="Mapa inteligente"
+      intro="Visualização geográfica das demandas publicadas. Use a legenda, os filtros e os atalhos de leitura rápida para encontrar o que importa no território."
+    />
+  );
 }

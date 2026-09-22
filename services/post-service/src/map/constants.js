@@ -1,0 +1,152 @@
+// Mapa inteligente (T20). Fonte da verdade: Apresentação Institucional,
+// slide 19 ("Mapa inteligente — visualização geográfica das demandas"), com a
+// legenda literal e a exigência de "leitura rápida para governo, empresas,
+// mídia e comunidade"; slide 18 ("Demandas e conteúdos") separa as demandas
+// dos conteúdos do feed (postagens, fotos, atualizações), que aqui são uma
+// camada à parte.
+//
+// As cinco classes da legenda são as cinco categorias da demanda (decisão 1 e
+// migração 007), uma para uma. Cores: manual de marca (docs/manual-marca.md);
+// `shape` existe para o mapa continuar legível sem depender só de cor.
+//
+// `src/lib/app/map.ts` espelha este arquivo no frontend; `src/lib/app/map.test.mjs`
+// compara os dois.
+
+const { CATEGORIES, PRIORITIES, PUBLIC_STATUSES } = require('../demand/constants');
+
+/** Classes da legenda, na ordem do slide 19. */
+const LEGEND = [
+  {
+    id: 'problemas_urgentes',
+    label: 'Problemas urgentes',
+    category: 'problema_urgente',
+    color: '#E53935',
+    shape: 'triangulo',
+  },
+  {
+    id: 'problemas_urbanos',
+    label: 'Problemas urbanos',
+    category: 'problema_urbano',
+    color: '#1B4F72',
+    shape: 'quadrado',
+  },
+  {
+    id: 'projetos_sociais',
+    label: 'Projetos sociais',
+    category: 'projeto_social',
+    color: '#2E9E5B',
+    shape: 'circulo',
+  },
+  {
+    id: 'acoes_ambientais',
+    label: 'Ações ambientais',
+    category: 'projeto_ambiental',
+    color: '#2E7BA8',
+    shape: 'losango',
+  },
+  {
+    id: 'necessidades',
+    label: 'Necessidades (Oportunidades de patrocínio)',
+    category: 'necessidade_de_patrocinio',
+    color: '#F4841A',
+    shape: 'estrela',
+  },
+];
+
+/** Camada do feed (slide 18, "Conteúdos"): publicações comuns, sem demanda. */
+const FEED_LAYER = { id: 'feed', label: 'Conteúdos do feed', color: '#5A9BC4', shape: 'ponto' };
+
+/**
+ * Atalhos de leitura rápida por público (slide 19). Cada atalho pré-aplica
+ * filtros coerentes com o que a fonte permite àquele público (slides 9–12):
+ * o Poder Público articula e responde problemas do seu território; Parceiros
+ * apoiam, financiam e viabilizam (patrocínio e projetos abertos a parceria);
+ * a Comunicação amplifica demandas, projetos e resultados; os Membros da
+ * Comunidade participam do que acontece perto deles.
+ */
+const AUDIENCES = [
+  {
+    id: 'governo',
+    label: 'Governo',
+    description: 'Problemas urgentes e urbanos de maior prioridade, ainda em aberto.',
+    filter: {
+      category: ['problema_urgente', 'problema_urbano'],
+      priority: ['alta', 'urgente'],
+      status: ['publicada', 'em_busca_de_parceiro', 'conectada', 'em_execucao'],
+    },
+    layers: { demands: true, feed: false },
+  },
+  {
+    id: 'empresas',
+    label: 'Empresas',
+    description: 'Oportunidades de patrocínio e projetos em busca de parceiro.',
+    filter: {
+      category: ['necessidade_de_patrocinio', 'projeto_social', 'projeto_ambiental'],
+      priority: [],
+      status: ['publicada', 'em_busca_de_parceiro'],
+    },
+    layers: { demands: true, feed: false },
+  },
+  {
+    id: 'imprensa',
+    label: 'Imprensa',
+    description: 'Demandas publicadas, em execução e com resultados para divulgar.',
+    filter: {
+      category: [],
+      priority: [],
+      status: ['publicada', 'em_execucao', 'concluida', 'prestacao_de_contas'],
+    },
+    layers: { demands: true, feed: true },
+  },
+  {
+    id: 'comunidade',
+    label: 'Comunidade',
+    description: 'Tudo o que acontece no território, com as publicações do feed.',
+    filter: { category: [], priority: [], status: [] },
+    layers: { demands: true, feed: true },
+  },
+];
+
+/** Agrupamento: célula da grade em graus, a partir do zoom do mapa. */
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 18;
+/** Acima deste total de pontos no recorte, a resposta vem agrupada em células. */
+const CLUSTER_THRESHOLD = 300;
+const POINTS_MAX = 500;
+const CELLS_MAX = 400;
+const TERRITORIES_MAX = 500;
+
+function cellSizeDegrees(zoom) {
+  const z = Math.min(Math.max(Math.trunc(Number(zoom) || ZOOM_MIN), ZOOM_MIN), ZOOM_MAX);
+  return 360 / 2 ** z;
+}
+
+/** Identificador estável do território numa URL pública (`/mapa/<slug>`). */
+function territorySlug({ territory, municipality, uf }) {
+  const parts = [territory, municipality, uf].filter((v) => typeof v === 'string' && v.trim());
+  return parts
+    .join(' ')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120);
+}
+
+module.exports = {
+  LEGEND,
+  FEED_LAYER,
+  AUDIENCES,
+  CATEGORIES,
+  PRIORITIES,
+  PUBLIC_STATUSES,
+  ZOOM_MIN,
+  ZOOM_MAX,
+  CLUSTER_THRESHOLD,
+  POINTS_MAX,
+  CELLS_MAX,
+  TERRITORIES_MAX,
+  cellSizeDegrees,
+  territorySlug,
+};

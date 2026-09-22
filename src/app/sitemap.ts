@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getPublicDemandSummaries, getPublicPosts } from "../lib/server/public-data.ts";
+import { getPublicDemandSummaries, getPublicMapTerritories, getPublicPosts } from "../lib/server/public-data.ts";
 import { absoluteUrl } from "../lib/seo/site.ts";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +33,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   } catch {
     // Stable public URLs remain available even when the content service is down.
+  }
+
+  try {
+    // Mapa por território (T20): uma URL pública por território com demanda.
+    for (const territory of await getPublicMapTerritories()) {
+      if (territory.slug) addUnique(entries, `/mapa/${territory.slug}`, territory.lastPublishedAt ?? undefined);
+    }
+  } catch {
+    // Sem o serviço, o sitemap segue com as demais URLs.
   }
 
   try {

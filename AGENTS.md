@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 011, post-service 016. Registre a migração em
+  auth-service 004, user-service 011, post-service 017. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -716,6 +716,60 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `src/lib/app/accountability.test.mjs`.
 - Contrato e pendências do dm-gestao em
   `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.13.
+
+## Mapa inteligente (T20)
+
+- Fonte: Apresentação Institucional, slide 19 (legenda literal e "leitura
+  rápida para governo, empresas, mídia e comunidade") e slide 18 (demandas e
+  conteúdos do feed como camadas distintas).
+- Legenda: as cinco classes são as cinco categorias da demanda, uma para uma —
+  Problemas urgentes (`problema_urgente`), Problemas urbanos (`problema_urbano`),
+  Projetos sociais (`projeto_social`), Ações ambientais (`projeto_ambiental`) e
+  Necessidades (Oportunidades de patrocínio) (`necessidade_de_patrocinio`).
+  Cada classe tem cor do manual de marca **e** forma própria (triângulo,
+  quadrado, círculo, losango, estrela), para o mapa não depender só de cor;
+  `Conteúdos do feed` é a sexta camada (`#5A9BC4`, ponto). Vocabulário em
+  `services/post-service/src/map/constants.js`, espelhado em
+  `src/lib/app/map.ts` (`src/lib/app/map.test.mjs` compara os dois).
+- Rotas públicas (`src/routes/map.js`, montada em `/demands` antes das rotas da
+  demanda; público em `/api/posts/demands/map*`), sem token e sem dado pessoal:
+  `GET /map` (filtros `category`, `priority`, `status`, `territory`,
+  `municipality`, `district`, `uf`, `q`, `from`/`to` por data de publicação,
+  `bbox=oeste,sul,leste,norte`, `zoom` 1–18 e `limit` ≤ 500) devolve
+  `{ mode, counts, points, clusters, truncated }`; `GET /map/territories`
+  agrega por território/município/UF com `slug` estável; `GET /map/legend`
+  devolve legenda, camadas e atalhos. Filtro inválido → 422
+  `validation_failed` com `fields`.
+- Custo por requisição: duas consultas agregadas com índice, nunca varredura.
+  Acima de 300 demandas no recorte (`CLUSTER_THRESHOLD`), a resposta vem
+  agrupada por célula da grade (`cellSize = 360 / 2^zoom`, teto de 400
+  células); abaixo, vêm os pontos (teto de 500) e `truncated` avisa. As
+  contagens por classe, prioridade e status saem de `count(*) FILTER`.
+  Migração post 016 (`016-map-indexes.sql`): `idx_demands_map_points`
+  (status + coordenadas), `idx_demands_map_place` (status + UF/município/
+  território) e `idx_posts_map_points`.
+- Ponto público: id, categoria, prioridade, status, título, bairro, município,
+  UF, território, coordenada, data de publicação e o post-vitrine. Autor, CEP,
+  rua, número e orçamento **não** saem no mapa.
+- Camada de conteúdos do feed: `GET /map` de posts (`routes/posts.js`) passou a
+  aceitar `bbox` e `limit` (teto de 500); a resposta continua sendo o array.
+- Leitura rápida por público (atalhos que pré-aplicam filtros coerentes com as
+  permissões da fonte): **Governo** (problemas urgentes e urbanos, prioridade
+  alta/urgente, em aberto), **Empresas** (patrocínio, projetos sociais e
+  ambientais, publicadas e em busca de parceiro), **Imprensa** (publicadas, em
+  execução e com resultados, com a camada do feed) e **Comunidade** (tudo, com
+  a camada do feed).
+- Frontend: `/mapa` (SSR, indexável) e `/mapa/<territorio>` (SSR indexável por
+  território, `slug` de `GET /map/territories`, entra no `sitemap.ts`).
+  `src/components/app/map/`: `SmartMapClient` (filtros, atalhos, contagens por
+  camada e lista), `SmartMapView` (Leaflet, `ssr: false`, marcadores com
+  `title`/`alt` e foco pelo teclado), `MapLegend` (legenda como tabela, com
+  símbolo, forma em texto e contagem) e `pins.ts` (SVG das formas). O SSR já
+  traz legenda, contagens e a lista de demandas com link, então a página serve
+  sem JavaScript e sem mouse. `MAP_PIN_COLORS` (cor por tipo de post) saiu:
+  a paleta do mapa é a da legenda.
+- Testes: `services/post-service/test/map-routes.test.js`,
+  `test/map-e2e.test.js` (no `test:e2e`) e `src/lib/app/map.test.mjs`.
 
 ## Segurança dos serviços
 

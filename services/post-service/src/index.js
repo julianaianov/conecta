@@ -22,6 +22,7 @@ const interestsRoutes = require('./routes/interests');
 const supportsRoutes = require('./routes/supports');
 const executionRoutes = require('./routes/execution');
 const accountabilityRoutes = require('./routes/accountability');
+const mapRoutes = require('./routes/map');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
 /** Endereço público do portal (URL de verificação impressa no dossiê). */
@@ -83,6 +84,8 @@ const createApp = ({
   app.use('/demands', executionRoutes({ pool, auth, validatedAgent }));
   // Prestação de contas e prestação de resultados (T18).
   app.use('/demands', accountabilityRoutes({ pool, auth, validatedAgent, dossiers }));
+  // Mapa inteligente (T20): /demands/map, /demands/map/territories e /demands/map/legend.
+  app.use('/demands', mapRoutes({ pool }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 

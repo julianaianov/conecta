@@ -26,6 +26,8 @@ import type {
   DemandTimelineEvent, DemandValidation, PublicDemand, DemandBudgetItemInput,
 } from "./types";
 import type { UploadedFile, UploadPurpose, UploadService, UploadTicket } from "./types";
+import type { MapTerritory, MapView } from "./types";
+import { buildMapQuery, type MapFilterState, type MapQueryOptions } from "./map";
 import type { DemandDossierDownload, DemandDossierList, DossierVerification, PublicDossierInfo } from "./types";
 import type {
   InstitutionalContext, InstitutionalDemandFilter, InstitutionalDemandPage, InstitutionalDemandView,
@@ -640,9 +642,15 @@ export const api = {
       .then((data) => data.posts.map(mapPost));
   },
 
-  mapPosts(type?: string): Promise<Post[]> {
+  /**
+   * Camada de conteúdos do feed no mapa (T20). `bbox` e `limit` existem para
+   * o movimento do mapa não varrer a tabela inteira (teto de 500 no servidor).
+   */
+  mapPosts(type?: string, options: { bbox?: [number, number, number, number] | null; limit?: number } = {}): Promise<Post[]> {
     const q = new URLSearchParams();
     if (type) q.set("type", type);
+    if (options.bbox) q.set("bbox", options.bbox.join(","));
+    if (options.limit) q.set("limit", String(options.limit));
     return request<RawPost[]>(`/api/posts/map?${q}`).then((data) => data.map(mapPost));
   },
 
@@ -1384,5 +1392,18 @@ export const api = {
     return demandRequired<DemandAccountabilityView>(
       `/mine/${encodeURIComponent(id)}/accountability/conclude`, { method: "POST", ...json({}) },
     );
+  },
+
+  // ── MAPA INTELIGENTE (T20) ───────────────────────────────
+  /** Pontos (ou agrupamento) e contagens do recorte atual do mapa. */
+  demandMap(filter: MapFilterState, options: MapQueryOptions = {}): Promise<MapView> {
+    return demandRequired<MapView>(`/map?${buildMapQuery(filter, options)}`);
+  },
+
+  /** Territórios com demanda publicada, para a página pública por território. */
+  async mapTerritories(filter?: MapFilterState): Promise<MapTerritory[]> {
+    const query = filter ? `?${buildMapQuery(filter)}` : "";
+    const body = await demandRequest<{ territories: MapTerritory[] }>(`/map/territories${query}`);
+    return body?.territories ?? [];
   },
 };
