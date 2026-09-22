@@ -57,6 +57,7 @@ const TRIGGER_LABELS = {
   reenvio: 'Reenvio para análise',
   publicacao: 'Publicação',
   conclusao: 'Conclusão da execução',
+  prestacao_de_contas: 'Prestação de contas e resultados',
 };
 
 const VARIANT_LABELS = {
@@ -78,7 +79,7 @@ function daysBetween(start, end) {
  * Demanda congelada no pedido do dossiê (linha de `demands` com a projeção do
  * autor + itens de store.loadItems). É o que a versão integral mostra.
  */
-function demandSnapshot(row, items) {
+function demandSnapshot(row, items, { accountability = null } = {}) {
   const schedule = (items.scheduleItems ?? []).map((s) => ({
     id: s.id,
     stage: s.stage,
@@ -171,6 +172,44 @@ function demandSnapshot(row, items) {
       // Arquivo enviado à plataforma ou link externo (compatibilidade).
       source: /^upload:/i.test(d.reference ?? '') ? 'arquivo' : 'link',
     })),
+    // Prestação de contas concluída (T18, slide 24). `null` enquanto não há.
+    // A projeção já é a pública (sem nota interna e sem arquivo do anexo),
+    // então a variante pública do dossiê a repete sem redigir mais nada.
+    accountability: accountabilitySnapshot(accountability),
+  };
+}
+
+/** Retrato da prestação de contas concluída (projeção pública da T18). */
+function accountabilitySnapshot(view) {
+  if (!view || !view.accountability) return null;
+  const a = view.accountability;
+  return {
+    concludedAt: a.concludedAt,
+    executionReport: a.executionReport,
+    actionsRecord: a.actionsRecord,
+    scheduleSummary: a.scheduleSummary,
+    beneficiariesReached: a.beneficiariesReached,
+    beneficiariesEstimate: a.beneficiariesEstimate,
+    beneficiariesNote: a.beneficiariesNote,
+    impactIndicators: a.impactIndicators,
+    financialSupport: a.financialSupport === true,
+    financialSummary: a.financialSummary,
+    executedAmountCents: a.executedAmountCents,
+    results: (view.results ?? []).map((r) => ({
+      goal: r.goal,
+      indicator: r.indicator,
+      expectedResult: r.expectedResult,
+      measuredValue: r.measuredValue,
+      measurementMethod: r.measurementMethod,
+      achieved: r.achieved === true,
+    })),
+    documents: (view.documents ?? []).map((d) => ({
+      kind: d.kind,
+      title: d.title,
+      issuedOn: d.issuedOn,
+      amountCents: d.amountCents,
+    })),
+    summary: view.summary ?? null,
   };
 }
 
@@ -310,6 +349,7 @@ module.exports = {
   VARIANT_LABELS,
   HASH_RE,
   demandSnapshot,
+  accountabilitySnapshot,
   redactSnapshot,
   institutionIdentity,
   deadlines,

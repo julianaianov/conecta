@@ -1227,6 +1227,12 @@ export interface DemandTimelineDetails {
   partialResults?: string | null;
   executedAmountCents?: number | null;
   reason?: string | null;
+  /** Prestação de contas concluída (T18, migração post 015). */
+  beneficiariesReached?: number | null;
+  beneficiariesEstimate?: number | null;
+  goalsTotal?: number | null;
+  goalsAchieved?: number | null;
+  impactIndicators?: string | null;
 }
 
 /** Evento da linha do tempo completa, visto pelo autor. */
@@ -1265,6 +1271,7 @@ export type UploadPurpose =
   | "demand_evidence_photo"
   | "demand_evidence_video"
   | "demand_document"
+  | "demand_accountability_document"
   | "institution_proof";
 
 /** Serviço que guarda o arquivo: `posts` (demanda) ou `users` (instituição). */
@@ -1305,7 +1312,13 @@ export interface UploadTicket {
 // (services/post-service/src/dossier/) no envio, em cada reenvio e na publicação.
 
 export type DemandDossierVariant = "integral" | "publica";
-export type DemandDossierTrigger = "envio" | "reenvio" | "publicacao" | "conclusao";
+export type DemandDossierTrigger =
+  | "envio"
+  | "reenvio"
+  | "publicacao"
+  | "conclusao"
+  /** Prestação de contas concluída (T18). */
+  | "prestacao_de_contas";
 export type DemandDossierStatus = "pendente" | "gerado" | "falhou" | "indisponivel";
 
 /** Versão do dossiê vista pelo autor (ou pela operação). */
@@ -2077,4 +2090,164 @@ export interface DemandProgressInput {
   partialResults?: string | null;
   note?: string | null;
   expenses?: DemandProgressExpenseInput[];
+}
+
+// ── PRESTAÇÃO DE CONTAS E PRESTAÇÃO DE RESULTADOS (T18) ─────────────────────
+// Fluxo 2, slides 15, 23, 24 e 25 (passo 18). Espelha
+// services/post-service/src/accountability/ (constantes em accountability.ts).
+
+export type DemandAccountabilityStatus = "rascunho" | "concluida";
+
+export type DemandAccountabilityDocumentKind =
+  | "comprovante_financeiro"
+  | "relatorio_execucao"
+  | "registro_acao"
+  | "outro";
+
+/** Por que uma exigência da conclusão vale (slide 24: "quando aplicável"). */
+export type DemandAccountabilityRequirementCondition = "sempre" | "execucao_fisica" | "apoio_financeiro";
+
+export interface DemandAccountabilityRequirement {
+  key: string;
+  label: string;
+  condition: DemandAccountabilityRequirementCondition;
+  /** A exigência vale nesta demanda. */
+  applies: boolean;
+  satisfied: boolean;
+  reason: string | null;
+}
+
+/** Registro final na página pública (sem autor e sem nota do rascunho). */
+export interface PublicDemandAccountability {
+  id: string;
+  status: DemandAccountabilityStatus;
+  executionReport: string | null;
+  actionsRecord: string | null;
+  scheduleSummary: string | null;
+  beneficiariesReached: number | null;
+  beneficiariesEstimate: number | null;
+  beneficiariesNote: string | null;
+  impactIndicators: string | null;
+  financialSupport: boolean;
+  financialSummary: string | null;
+  executedAmountCents: number | null;
+  concludedAt: string | null;
+}
+
+/** Registro final visto pelo Agente autor. */
+export interface DemandAccountability extends PublicDemandAccountability {
+  demandId: string;
+  author: { userId: string; name: string | null };
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+/** Resultado alcançado de uma meta declarada na T06 (slide 15). */
+export interface PublicDemandAccountabilityResult {
+  id: string;
+  goalId: string;
+  position: number;
+  goal: string;
+  indicator: string;
+  expectedResult: string | null;
+  plannedMeasurementMethod: string | null;
+  measuredValue: string;
+  measurementMethod: string;
+  achieved: boolean;
+  evidenceId: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface DemandAccountabilityResult extends PublicDemandAccountabilityResult {
+  note: string | null;
+}
+
+/** Anexo no público: existe, com tipo, título, data e valor — sem o arquivo. */
+export interface PublicDemandAccountabilityDocument {
+  id: string;
+  kind: DemandAccountabilityDocumentKind;
+  title: string;
+  issuedOn: string | null;
+  amountCents: number | null;
+}
+
+export interface DemandAccountabilityDocument extends PublicDemandAccountabilityDocument {
+  description: string | null;
+  reference: string;
+  position: number;
+  createdAt: string | null;
+}
+
+export interface DemandAccountabilitySummary {
+  goalsTotal: number;
+  goalsAchieved: number;
+  documentsTotal: number;
+  financialReceipts: number;
+  financialReceiptsCents: number;
+}
+
+/** Meta da T06 com o resultado já informado (ou não) na prestação. */
+export interface DemandAccountabilityGoal {
+  goalId: string;
+  position: number;
+  goal: string;
+  expectedResult: string;
+  indicator: string;
+  measurementMethod: string;
+  answered: boolean;
+}
+
+/** `GET /api/posts/demands/:id/accountability` (público). */
+export interface PublicDemandAccountabilityView {
+  accountability: PublicDemandAccountability | null;
+  results: PublicDemandAccountabilityResult[];
+  documents: PublicDemandAccountabilityDocument[];
+  summary: DemandAccountabilitySummary;
+  status: DemandStatus;
+}
+
+/** `GET /api/posts/demands/mine/:id/accountability` (Agente autor). */
+export interface DemandAccountabilityView {
+  accountability: DemandAccountability | null;
+  results: DemandAccountabilityResult[];
+  documents: DemandAccountabilityDocument[];
+  goals: DemandAccountabilityGoal[];
+  summary: DemandAccountabilitySummary;
+  status: DemandStatus;
+  hasPhysicalExecution: boolean;
+  recordWaiverReason: string | null;
+  milestones: { antes: number; depois: number };
+  requirements: DemandAccountabilityRequirement[];
+  editable: boolean;
+  canConclude: boolean;
+}
+
+export interface DemandAccountabilityInput {
+  executionReport?: string | null;
+  actionsRecord?: string | null;
+  scheduleSummary?: string | null;
+  beneficiariesReached?: number | null;
+  beneficiariesNote?: string | null;
+  impactIndicators?: string | null;
+  financialSupport?: boolean | null;
+  financialSummary?: string | null;
+  executedAmountCents?: number | null;
+}
+
+export interface DemandAccountabilityResultInput {
+  measuredValue: string;
+  measurementMethod: string;
+  achieved: boolean;
+  note?: string | null;
+  evidenceId?: string | null;
+}
+
+export interface DemandAccountabilityDocumentInput {
+  kind: DemandAccountabilityDocumentKind;
+  title: string;
+  reference: string;
+  description?: string | null;
+  issuedOn?: string | null;
+  amountCents?: number | null;
 }

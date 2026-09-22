@@ -79,6 +79,10 @@ const PURPOSES = {
     label: 'Documento comprobatório da demanda', target: 'demand', folder: 'documents',
     types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
   },
+  demand_accountability_document: {
+    label: 'Documento da prestação de contas', target: 'demand', folder: 'accountability',
+    types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
+  },
   institution_proof: {
     label: 'Comprovação da representação', target: 'institution', folder: 'proof',
     types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',

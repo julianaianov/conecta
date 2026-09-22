@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 011, post-service 015. Registre a migração em
+  auth-service 004, user-service 011, post-service 016. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -193,8 +193,10 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `pendente`/`confirmado` e vínculo (`demand_id` / `organization_id`).
 - Finalidades: `demand_photo` e `demand_evidence_photo` (JPEG/PNG/WEBP/HEIC,
   15 MB), `demand_evidence_video` (MP4/MOV, 500 MB em PUT único, sem
-  multipart), `demand_document` e `institution_proof` (PDF/DOCX/XLSX/ODT/ODS/
-  JPG/PNG, 25 MB). Frontend espelha em `src/lib/app/uploads.ts` (teste compara).
+  multipart), `demand_document`, `demand_accountability_document` (T18, só com
+  a demanda em `prestacao_de_contas`) e `institution_proof`
+  (PDF/DOCX/XLSX/ODT/ODS/JPG/PNG, 25 MB). Frontend espelha em
+  `src/lib/app/uploads.ts` (teste compara).
 - Rotas (`/api/posts/uploads` para a demanda, `/api/users/uploads` para a
   instituição): `POST /presign` (token; grava pendente, devolve PUT
   pré-assinado para `tmp/<uuid>` com `Content-Type` assinado e, se houver,
@@ -631,6 +633,89 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `test/execution-e2e.test.js` (no `test:e2e`) e `src/lib/app/execution.test.mjs`.
 - Contrato e pendências do dm-gestao em
   `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.12.
+
+## Prestação de contas e prestação de resultados (T18)
+
+- Fonte: Fluxo 2, slide 24 ("Etapa 10 · Prestação de resultados": ao longo e ao
+  final da execução deverão ser registrados documentos e evidências,
+  incluindo, **obrigatoriamente quando aplicável**, fotos e filmagem do antes e
+  do depois, registros das ações realizadas, comprovantes financeiros quando
+  aplicável, relatórios de execução, atualização do cronograma, número de
+  beneficiários, resultados alcançados e indicadores de impacto; os registros
+  de antes e depois ficam vinculados à demanda e a plataforma monta o histórico
+  completo, da criação aos resultados), slide 15 (metas, resultados esperados,
+  indicadores e **forma de mensuração**) e slide 25, passo 18.
+- Migração post 015 (`015-accountability.sql`): `demand_accountability` (um
+  registro final por demanda, `status` `rascunho` → `concluida`: relatório de
+  execução, registros das ações, atualização final do cronograma,
+  `beneficiaries_reached` × `beneficiaries_estimate` congelada da T06,
+  indicadores de impacto, `financial_support` declarado, resumo financeiro e
+  total executado); `demand_accountability_results` (um por meta da T06, com
+  retrato da meta e do indicador, valor medido, forma de mensuração usada,
+  `achieved`, nota interna e `evidence_id` da T17); e
+  `demand_accountability_documents` (comprovante financeiro, relatório de
+  execução, registro da ação ou outro, por upload confirmado da T08, finalidade
+  `demand_accountability_document`). Também `UNIQUE (demand_id, id)` em
+  `demand_goals` e o CHECK de `uploads.purpose` estendido.
+- Obrigatoriedade explícita (o "quando aplicável" da fonte), em duas camadas:
+  **sempre** — relatório de execução, registros das ações, atualização do
+  cronograma, beneficiários alcançados, indicadores de impacto (CHECK
+  `demand_accountability_concluded`) e um resultado por meta declarada
+  (trigger); **condicional a execução física** (`has_physical_execution` sem
+  `record_waiver_reason` da T17) — evidência `antes` e `depois`; **condicional
+  a apoio financeiro declarado** — resumo financeiro e ao menos um comprovante.
+  A lista vem pronta em `requirements` (`{ key, label, condition, applies,
+  satisfied, reason }`) e o 422 `accountability_incomplete` traz `fields`.
+- Imutabilidade: a prestação `concluida` não muda mais (nem ela, nem os
+  resultados, nem os anexos); nada é excluído; `gestao_app` só lê (triggers
+  `demand_accountability_guard`, `demand_accountability_items_guard`, os
+  `*_block_truncate` e o grant dm-infra
+  `015-gestao-app-post-accountability.sql`). Enquanto `rascunho`, o Agente
+  edita, troca resultados e remove anexos.
+- Linha do tempo: `demand_accountability_record_event` grava
+  `prestacao_de_contas_concluida` (público) com `payload->'public'`
+  (beneficiários alcançados e estimados, metas totais e cumpridas, total
+  executado, indicadores de impacto); `DETAILED_EVENT_TYPES` de
+  `routes/demands.js` inclui o evento, que sai como `details` na rota pública.
+- Domínio em `services/post-service/src/accountability/` (constantes,
+  exigências, validação) e `store.js` (projeções do autor e pública, metas com
+  resultado, contagem de evidências, totais); rotas em
+  `src/routes/accountability.js`, montada em `/demands` antes das da demanda:
+  público `GET /:id/accountability` (só a prestação **concluída**); Agente autor
+  `GET /mine/:id/accountability` (com `requirements`, `editable` e
+  `canConclude`), `PUT /mine/:id/accountability` (cria na primeira gravação),
+  `PUT|DELETE /mine/:id/accountability/results/:goalId`,
+  `POST /mine/:id/accountability/documents`,
+  `DELETE /mine/:id/accountability/documents/:documentId` e
+  `POST /mine/:id/accountability/conclude`. Escrita exige instituição validada
+  (`requireValidatedAgent`).
+- Dossiê (T10): a conclusão gera uma versão nova, `trigger_kind`
+  `prestacao_de_contas` (integral + pública), pedida fora do caminho crítico
+  pelo mesmo `dossiers.request`; `ensureRequests` só a cria quando a prestação
+  está `concluida`. O snapshot ganha `accountability` (já na projeção pública) e
+  o PDF, a seção "Prestação de contas e resultados".
+- Frontend: `src/lib/app/accountability.ts` (espelho de
+  `accountability/constants.js`, comparado em `accountability.test.mjs`), bloco
+  "PRESTAÇÃO DE CONTAS E RESULTADOS (T18)" em `api.ts` e tipos em `types.ts`;
+  `src/components/app/accountability/` com `DemandAccountabilityPanel` (aba
+  "Prestação de contas" em Minhas demandas, só no status
+  `prestacao_de_contas`: registro final, resultado por meta, anexos e
+  conclusão) e `DemandAccountabilitySection` (seção pública "Resultados e
+  prestação de contas", SSR por `getPublicDemandAccountability`). As abas de
+  "Minhas demandas" passam a ser cinco: interessados, apoios, execução,
+  prestação de contas e dossiê.
+- Transparência (T19 parcial): a página pública mostra pessoas impactadas
+  (alcançadas × estimadas), metas cumpridas, relatório, ações, cronograma
+  executado, indicadores de impacto, resultados por meta (sem nota interna) e
+  os comprovantes **sem o arquivo** (tipo, título, data e valor declarado); as
+  fotos e os registros continuam na galeria antes/depois da T17 e o histórico
+  de apoio, na seção da T16.
+- Testes: `test/accountability-domain.test.js`,
+  `test/accountability-routes.test.js`, `test/accountability-e2e.test.js` (no
+  `test:e2e`), os dois testes novos de `test/dossier.test.js` e
+  `src/lib/app/accountability.test.mjs`.
+- Contrato e pendências do dm-gestao em
+  `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.13.
 
 ## Segurança dos serviços
 

@@ -48,6 +48,10 @@ import type {
   DemandEvidence, DemandEvidenceInput, DemandExecution, DemandProgressInput,
   DemandProgressUpdate, PublicDemandExecution,
 } from "./types";
+import type {
+  DemandAccountabilityDocumentInput, DemandAccountabilityInput, DemandAccountabilityResultInput,
+  DemandAccountabilityView, PublicDemandAccountabilityView,
+} from "./types";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -1319,5 +1323,66 @@ export const api = {
   /** Justifica que não há execução física a registrar (slide 12). */
   waiveDemandRecord(id: string, reason: string): Promise<{ recordWaiverReason: string; recordWaiverAt: string | null }> {
     return demandRequired(`/mine/${encodeURIComponent(id)}/record-waiver`, { method: "POST", ...json({ reason }) });
+  },
+
+  // ── PRESTAÇÃO DE CONTAS E RESULTADOS (T18) ───────────────────────────────
+  /** Resultados e prestação de contas públicos (só depois de concluída). */
+  publicDemandAccountability(id: string): Promise<PublicDemandAccountabilityView | null> {
+    return demandRequest<PublicDemandAccountabilityView>(`/${encodeURIComponent(id)}/accountability`);
+  },
+
+  /** Agente autor: rascunho, metas, anexos e o que a conclusão exige. */
+  myDemandAccountability(id: string): Promise<DemandAccountabilityView> {
+    return demandRequired<DemandAccountabilityView>(`/mine/${encodeURIComponent(id)}/accountability`);
+  },
+
+  /** Grava os campos enviados do registro final (cria na primeira gravação). */
+  saveDemandAccountability(id: string, input: DemandAccountabilityInput): Promise<DemandAccountabilityView> {
+    return demandRequired<DemandAccountabilityView>(
+      `/mine/${encodeURIComponent(id)}/accountability`, { method: "PUT", ...json(input) },
+    );
+  },
+
+  /** Resultado alcançado de uma meta declarada na T06 (um por meta). */
+  saveDemandAccountabilityResult(
+    id: string,
+    goalId: string,
+    input: DemandAccountabilityResultInput,
+  ): Promise<DemandAccountabilityView> {
+    return demandRequired<DemandAccountabilityView>(
+      `/mine/${encodeURIComponent(id)}/accountability/results/${encodeURIComponent(goalId)}`,
+      { method: "PUT", ...json(input) },
+    );
+  },
+
+  removeDemandAccountabilityResult(id: string, goalId: string): Promise<DemandAccountabilityView> {
+    return demandRequired<DemandAccountabilityView>(
+      `/mine/${encodeURIComponent(id)}/accountability/results/${encodeURIComponent(goalId)}`,
+      { method: "DELETE" },
+    );
+  },
+
+  /** Comprovante financeiro, relatório ou registro da ação (upload da T08). */
+  addDemandAccountabilityDocument(
+    id: string,
+    input: DemandAccountabilityDocumentInput,
+  ): Promise<DemandAccountabilityView> {
+    return demandRequired<DemandAccountabilityView>(
+      `/mine/${encodeURIComponent(id)}/accountability/documents`, { method: "POST", ...json(input) },
+    );
+  },
+
+  removeDemandAccountabilityDocument(id: string, documentId: string): Promise<DemandAccountabilityView> {
+    return demandRequired<DemandAccountabilityView>(
+      `/mine/${encodeURIComponent(id)}/accountability/documents/${encodeURIComponent(documentId)}`,
+      { method: "DELETE" },
+    );
+  },
+
+  /** Conclui a prestação: publica os resultados e gera a versão do dossiê. */
+  concludeDemandAccountability(id: string): Promise<DemandAccountabilityView> {
+    return demandRequired<DemandAccountabilityView>(
+      `/mine/${encodeURIComponent(id)}/accountability/conclude`, { method: "POST", ...json({}) },
+    );
   },
 };

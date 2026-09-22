@@ -346,8 +346,18 @@ function photoBlock(doc, content, photo) {
     + 'A imagem fica disponível na página da demanda.');
 }
 
+/** Tipos de anexo da prestação de contas (T18, migração post 015). */
+const ACCOUNTABILITY_DOCUMENT_LABELS = {
+  comprovante_financeiro: 'Comprovante financeiro',
+  relatorio_execucao: 'Relatório de execução',
+  registro_acao: 'Registro da ação realizada',
+  outro: 'Outro documento',
+};
+
 function renderBody(doc, content) {
-  const { agent, demand, location, budget, schedule, goals, resources, documents, deadlines } = content;
+  const {
+    agent, demand, location, budget, schedule, goals, resources, documents, deadlines, accountability,
+  } = content;
   const inst = agent.institution;
   const isPublic = content.variant === 'publica';
   let n = 0;
@@ -484,6 +494,51 @@ function renderBody(doc, content) {
   if (isPublic) {
     doc.font('regular').fontSize(7.5).fillColor(COLOR.cinza)
       .text('Versão pública: os arquivos ficam com o Agente e com a equipe de análise.', MARGIN.left, doc.y, { width: CONTENT_WIDTH });
+  }
+
+  // Prestação de contas e resultados (T18, slide 24). Só na versão gerada
+  // depois que o Agente concluiu a prestação.
+  if (accountability) {
+    sectionTitle(doc, ++n, 'Prestação de contas e resultados');
+    field(doc, 'Prestação concluída em', formatDateTime(accountability.concludedAt), { numeric: true });
+    field(doc, 'Pessoas alcançadas', accountability.beneficiariesReached !== null
+      ? `${accountability.beneficiariesReached.toLocaleString('pt-BR')} (estimativa: `
+        + `${(accountability.beneficiariesEstimate ?? 0).toLocaleString('pt-BR')})`
+      : null, { numeric: true });
+    if (accountability.beneficiariesNote) {
+      labeledParagraph(doc, 'Perfil alcançado', accountability.beneficiariesNote);
+    }
+    labeledParagraph(doc, 'Relatório de execução', accountability.executionReport);
+    labeledParagraph(doc, 'Registros das ações realizadas', accountability.actionsRecord);
+    labeledParagraph(doc, 'Atualização final do cronograma', accountability.scheduleSummary);
+    labeledParagraph(doc, 'Indicadores de impacto', accountability.impactIndicators);
+    if (accountability.financialSupport) {
+      labeledParagraph(doc, 'Aplicação do apoio financeiro', accountability.financialSummary);
+    }
+    if (accountability.executedAmountCents !== null) {
+      field(doc, 'Total executado declarado', formatCents(accountability.executedAmountCents), { numeric: true });
+    }
+
+    subTitle(doc, 'Resultados alcançados por meta');
+    table(doc, [
+      { header: 'Meta', width: 0.24 }, { header: 'Indicador', width: 0.2 },
+      { header: 'Valor medido', width: 0.18 }, { header: 'Forma de mensuração', width: 0.26 },
+      { header: 'Cumprida', width: 0.12 },
+    ], accountability.results.map((r) => [
+      r.goal, r.indicator, r.measuredValue, r.measurementMethod, r.achieved ? 'Sim' : 'Não',
+    ]));
+
+    subTitle(doc, 'Comprovantes e relatórios anexados');
+    bulletList(doc, accountability.documents.map((d) => {
+      const parts = [`${ACCOUNTABILITY_DOCUMENT_LABELS[d.kind] ?? d.kind}: ${d.title}`];
+      if (d.issuedOn) parts.push(formatDate(d.issuedOn));
+      if (d.amountCents !== null && d.amountCents !== undefined) parts.push(formatCents(d.amountCents));
+      return parts.join(' — ');
+    }));
+    doc.font('regular').fontSize(7.5).fillColor(COLOR.cinza)
+      .text('Os arquivos dos comprovantes ficam com o Agente e com a equipe de análise; '
+        + 'o dossiê registra o tipo, o título, a data e o valor declarado.', MARGIN.left, doc.y, { width: CONTENT_WIDTH });
+    doc.moveDown(0.3);
   }
 
   sectionTitle(doc, ++n, 'Autenticidade');

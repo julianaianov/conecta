@@ -21,6 +21,7 @@ const { createGovernmentDirectoryClient } = require('./institutional/directory')
 const interestsRoutes = require('./routes/interests');
 const supportsRoutes = require('./routes/supports');
 const executionRoutes = require('./routes/execution');
+const accountabilityRoutes = require('./routes/accountability');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
 /** Endereço público do portal (URL de verificação impressa no dossiê). */
@@ -80,6 +81,8 @@ const createApp = ({
   app.use('/demands', supportsRoutes({ pool, auth, governmentGate: institutional, institutionStatus }));
   // Execução, evidências do antes/depois e acompanhamento (T17).
   app.use('/demands', executionRoutes({ pool, auth, validatedAgent }));
+  // Prestação de contas e prestação de resultados (T18).
+  app.use('/demands', accountabilityRoutes({ pool, auth, validatedAgent, dossiers }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 

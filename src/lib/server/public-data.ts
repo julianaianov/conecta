@@ -11,6 +11,7 @@ import {
   type DemandTimelineEvent,
   type PublicDemandInstitutional,
   type PublicDemandExecution,
+  type PublicDemandAccountabilityView,
   type DossierVerification,
   type PublicDossierInfo,
   type PublicInstitution,
@@ -267,6 +268,22 @@ export async function getPublicDemandExecution(id: string): Promise<PublicDemand
     })),
     progress: Array.isArray(data.progress) ? data.progress : [],
     schedule: Array.isArray(data.schedule) ? data.schedule : [],
+  };
+}
+
+/**
+ * Resultados e prestação de contas públicos (T18); `null` quando a demanda não
+ * é pública. `accountability` é `null` enquanto a prestação não é concluída.
+ */
+export async function getPublicDemandAccountability(id: string): Promise<PublicDemandAccountabilityView | null> {
+  const data = await fetchPublicJson<PublicDemandAccountabilityView>(
+    "posts", `/demands/${encodeURIComponent(id)}/accountability`,
+  );
+  if (!data || !Array.isArray(data.results)) return null;
+  return {
+    ...data,
+    accountability: data.accountability ?? null,
+    documents: Array.isArray(data.documents) ? data.documents : [],
   };
 }
 

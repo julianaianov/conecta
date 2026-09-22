@@ -236,3 +236,83 @@ test('migração 009: imutabilidade e finalidade demand_dossier', () => {
   const manifest = fs.readFileSync(path.join(__dirname, '../../migrations.manifest'), 'utf8');
   assert.match(manifest, /^post_db post-service\/migrations\/009-demand-dossiers\.sql$/m);
 });
+
+// ── Prestação de contas no dossiê (T18) ──────────────────────────────────────
+const ACCOUNTABILITY = {
+  accountability: {
+    id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    status: 'concluida',
+    executionReport: 'Os 20 canteiros foram construídos e entregues.',
+    actionsRecord: 'Mutirões em 3, 10 e 17 de novembro.',
+    scheduleSummary: 'As duas etapas foram concluídas com 10 dias de atraso.',
+    beneficiariesReached: 310,
+    beneficiariesEstimate: 250,
+    beneficiariesNote: 'Moradores e duas escolas.',
+    impactIndicators: 'Produção semanal de 40 kg de hortaliças.',
+    financialSupport: true,
+    financialSummary: 'R$ 9.000,00 aplicados em madeira e terra.',
+    executedAmountCents: 900000,
+    concludedAt: '2026-12-20T12:00:00.000Z',
+  },
+  results: [{
+    id: 'r1', goalId: 'g1', position: 0, goal: '20 canteiros', indicator: 'Canteiros ativos',
+    expectedResult: 'Produção semanal', plannedMeasurementMethod: 'Contagem mensal',
+    measuredValue: '20 canteiros ativos', measurementMethod: 'Contagem em campo, com foto',
+    achieved: true, evidenceId: null, createdAt: null, updatedAt: null,
+  }],
+  documents: [{
+    id: 'd1', kind: 'comprovante_financeiro', title: 'Nota fiscal 123',
+    issuedOn: '2026-11-20', amountCents: 500000,
+  }],
+  summary: {
+    goalsTotal: 1, goalsAchieved: 1, documentsTotal: 1, financialReceipts: 1, financialReceiptsCents: 500000,
+  },
+};
+
+test('prestação de contas concluída entra no dossiê, integral e público (T18)', async () => {
+  const snapshot = content.demandSnapshot(ROW, ITEMS, { accountability: ACCOUNTABILITY });
+  assert.equal(snapshot.accountability.beneficiariesReached, 310);
+  assert.equal(snapshot.accountability.results[0].measuredValue, '20 canteiros ativos');
+  assert.equal(snapshot.accountability.documents[0].amountCents, 500000);
+
+  const integral = content.buildDossierContent({
+    snapshot, institution: INSTITUTION, meta: meta('integral', { trigger: 'prestacao_de_contas' }),
+  });
+  assert.equal(integral.trigger, 'prestacao_de_contas');
+  assert.equal(integral.accountability.beneficiariesEstimate, 250);
+
+  // A versão pública repete a mesma projeção (já é a pública: sem nota interna
+  // do resultado e sem o arquivo do comprovante).
+  const publica = content.buildDossierContent({
+    snapshot, institution: INSTITUTION, meta: meta('publica', { trigger: 'prestacao_de_contas' }),
+  });
+  const json = JSON.stringify(publica.accountability);
+  assert.ok(!json.includes('upload:'));
+  assert.ok(!/"note"/.test(json));
+  assert.equal(publica.accountability.summary.goalsAchieved, 1);
+
+  const pdf = await renderDossierPdf(integral, {
+    verifyUrl: 'https://dmconecta.org/dossie/verificar/' + 'a'.repeat(64),
+    contentSha256: 'a'.repeat(64),
+  });
+  assert.ok(pdf.length > 10_000, 'o PDF da prestação é gerado');
+  assert.equal(pdf.subarray(0, 5).toString('latin1'), '%PDF-');
+
+  // Sem prestação concluída a seção não existe.
+  const semPrestacao = content.buildDossierContent({
+    snapshot: content.demandSnapshot(ROW, ITEMS), institution: INSTITUTION, meta: meta('integral'),
+  });
+  assert.equal(semPrestacao.accountability, null);
+});
+
+test('migração 015: prestação congelada, gestão só lê e novo gatilho do dossiê (T18)', () => {
+  const sql = fs.readFileSync(path.join(__dirname, '../migrations/015-accountability.sql'), 'utf8');
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS demand_accountability\b/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS demand_accountability_results/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS demand_accountability_documents/);
+  assert.match(sql, /'demand_accountability_document'\)\);/);
+  assert.match(sql, /BEFORE TRUNCATE ON demand_accountability/);
+  assert.match(sql, /trigger_kind IN \('envio', 'reenvio', 'publicacao', 'conclusao', 'prestacao_de_contas'\)/);
+  const manifest = fs.readFileSync(path.join(__dirname, '../../migrations.manifest'), 'utf8');
+  assert.match(manifest, /^post_db post-service\/migrations\/015-accountability\.sql$/m);
+});

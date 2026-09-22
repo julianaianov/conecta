@@ -36,6 +36,7 @@ import { institutionalTimelineLabel } from "./institutional.ts";
 import { interestTimelineLabel } from "./interest.ts";
 import { supportTimelineLabel } from "./support.ts";
 import { executionTimelineLabel } from "./execution.ts";
+import { accountabilityTimelineLabel } from "./accountability.ts";
 
 // ── Rotas ──────────────────────────────────────────────────
 
@@ -851,6 +852,12 @@ export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "to
     details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
   });
   if (execution) return execution;
+  // Prestação de contas e resultados (T18).
+  const accountability = accountabilityTimelineLabel({
+    type: event.type,
+    details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
+  });
+  if (accountability) return accountability;
   switch (event.type) {
     case "criada": return "Rascunho criado";
     case "enviada_para_analise": return event.payload?.reenvio === true ? "Reenviada para análise" : "Enviada para análise";

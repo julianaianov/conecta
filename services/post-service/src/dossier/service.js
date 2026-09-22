@@ -15,6 +15,7 @@
 
 const crypto = require('node:crypto');
 const store = require('../demand/store');
+const accountabilityStore = require('../accountability/store');
 const { PUBLIC_STATUSES } = require('../demand/constants');
 const { parseUploadRef } = require('../uploads');
 const {
@@ -122,6 +123,17 @@ function createDossierService({
       if (['concluida', 'prestacao_de_contas'].includes(row.status)) {
         origins.push({ key: 'conclusao', trigger: 'conclusao', variants: ['integral', 'publica'] });
       }
+      // Prestação de contas concluída (T18): a última versão, com o relatório
+      // de execução, os resultados por meta e os indicadores de impacto.
+      if (row.status === 'prestacao_de_contas') {
+        const { rows: [done] } = await client.query(
+          "SELECT id FROM demand_accountability WHERE demand_id = $1 AND status = 'concluida'",
+          [demandId],
+        );
+        if (done) {
+          origins.push({ key: 'prestacao_de_contas', trigger: 'prestacao_de_contas', variants: ['integral', 'publica'] });
+        }
+      }
       if (!origins.length) return 0;
 
       const { rows: existing } = await client.query(
@@ -140,7 +152,10 @@ function createDossierService({
       }
       let maxVersion = existing.reduce((m, e) => Math.max(m, Number(e.version)), 0);
       const items = await store.loadItems(client, demandId);
-      const snapshot = demandSnapshot(row, items);
+      // Prestação de contas concluída (T18) entra no retrato: o dossiê da
+      // prestação traz relatório, resultados por meta e impacto.
+      const accountability = await accountabilityStore.loadConcludedView(client, demandId);
+      const snapshot = demandSnapshot(row, items, { accountability });
       const status = storage ? 'pendente' : 'indisponivel';
       const reason = storage ? null : UNAVAILABLE_REASON;
       let created = 0;

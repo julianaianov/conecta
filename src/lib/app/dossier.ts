@@ -11,6 +11,7 @@ export const DOSSIER_TRIGGER_LABELS: Record<DemandDossierTrigger, string> = {
   reenvio: "Reenvio para análise",
   publicacao: "Publicação",
   conclusao: "Conclusão da execução",
+  prestacao_de_contas: "Prestação de contas e resultados",
 };
 
 export const DOSSIER_VARIANT_LABELS: Record<DemandDossierVariant, string> = {

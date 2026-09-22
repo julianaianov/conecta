@@ -5,6 +5,8 @@
 //   devolvida), como o resto do conteúdo (trigger demands_guard).
 // - Fotos e vídeos do antes/depois: demanda da publicação em diante, fora
 //   `arquivada` (a T17 vincula a evidência ao andamento).
+// - Documentos da prestação de contas (T18): só com a demanda em
+//   `prestacao_de_contas` (comprovantes, relatórios e registros das ações).
 // - Público: foto e evidências de demanda publicada; documentos, nunca.
 
 const { normalizeRole } = require('./roles');
@@ -12,8 +14,11 @@ const { isUuid } = require('./security');
 const { PUBLIC_STATUSES } = require('./demand/constants');
 const { UploadError, findUsableUpload, parseUploadRef, describeUploads, contentPath } = require('./uploads');
 
-const PURPOSES = ['demand_photo', 'demand_evidence_photo', 'demand_evidence_video', 'demand_document'];
+const PURPOSES = ['demand_photo', 'demand_evidence_photo', 'demand_evidence_video', 'demand_document',
+  'demand_accountability_document'];
 const EDITABLE_PURPOSES = ['demand_photo', 'demand_document'];
+// Prestação de contas (T18): a demanda precisa estar no último status canônico.
+const ACCOUNTABILITY_PURPOSES = ['demand_accountability_document'];
 const PUBLIC_PREFIX = '/api/posts/uploads';
 const TARGET_COLUMN = 'demand_id';
 
@@ -52,6 +57,13 @@ function createPostUploadPolicy() {
           throw new UploadError(409, {
             error: 'A demanda só recebe fotografia e documentos em rascunho ou devolvida para ajustes',
             code: 'demand_not_editable',
+          });
+        }
+      } else if (ACCOUNTABILITY_PURPOSES.includes(purpose)) {
+        if (demand.status !== 'prestacao_de_contas') {
+          throw new UploadError(409, {
+            error: 'Os documentos da prestação de contas entram com a demanda em prestação de contas',
+            code: 'invalid_state',
           });
         }
       } else if (!PUBLIC_STATUSES.includes(demand.status)) {

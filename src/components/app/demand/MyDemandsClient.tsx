@@ -33,6 +33,7 @@ import { DossierPanel } from "./DossierPanel";
 import { DemandInterestsInbox } from "../interest/DemandInterestsInbox";
 import { DemandSupportsInbox } from "../support/DemandSupportsInbox";
 import { DemandExecutionPanel } from "../execution/DemandExecutionPanel";
+import { DemandAccountabilityPanel } from "../accountability/DemandAccountabilityPanel";
 import { FormAlert } from "./fields";
 import type { IconName } from "../Icon";
 
@@ -42,13 +43,14 @@ function dateTime(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-type DemandPanel = "interessados" | "apoios" | "execucao" | "dossie";
+type DemandPanel = "interessados" | "apoios" | "execucao" | "prestacao" | "dossie";
 
 /** Abas do detalhe da demanda em "Minhas demandas". */
 const PANELS: [DemandPanel, string, IconName][] = [
   ["interessados", "Interessados e conexões", "groups"],
   ["apoios", "Apoios recebidos", "volunteer"],
   ["execucao", "Execução", "clock"],
+  ["prestacao", "Prestação de contas", "trophy"],
   ["dossie", "Dossiê (PDF)", "document"],
 ];
 
@@ -136,7 +138,12 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
           {isPublic && <Button href={demandPublicPath(demand.id)} size="sm" variant="outline" icon="eye">Página pública</Button>}
           {isPublic && demand.postId && <Button href={`/post/${demand.postId}`} size="sm" variant="ghost" icon="bolt">No pulso</Button>}
           <div role="tablist" aria-label={`Detalhes de ${title}`} className="flex flex-wrap items-center gap-2">
-            {PANELS.filter(([key]) => (key === "dossie" ? hasDossier : isPublic)).map(([key, label, icon]) => (
+            {PANELS.filter(([key]) => {
+              if (key === "dossie") return hasDossier;
+              // A prestação de contas só faz sentido no último status (T18).
+              if (key === "prestacao") return demand.status === "prestacao_de_contas";
+              return isPublic;
+            }).map(([key, label, icon]) => (
               <Button
                 key={key}
                 type="button"
@@ -194,6 +201,19 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
               demandId={demand.id}
               onChanged={() => {
                 // Evidência nova libera "Iniciar execução" e "Concluir" (T17).
+                void api.getMyDemand(demand.id).then((next) => {
+                  if (next) onUpdated({ ...next, photoUrl: next.photoUrl ?? demand.photoUrl });
+                }).catch(() => undefined);
+              }}
+            />
+          </div>
+        )}
+        {panel === "prestacao" && (
+          <div id={`dm-${demand.id}-prestacao`} role="tabpanel" className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+            <DemandAccountabilityPanel
+              demandId={demand.id}
+              onChanged={() => {
+                // A conclusão da prestação gera dossiê novo e muda a linha do tempo.
                 void api.getMyDemand(demand.id).then((next) => {
                   if (next) onUpdated({ ...next, photoUrl: next.photoUrl ?? demand.photoUrl });
                 }).catch(() => undefined);

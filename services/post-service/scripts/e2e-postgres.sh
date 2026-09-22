@@ -4,8 +4,9 @@
 # (test/dossier-e2e.test.js), da atuação institucional do Poder Público
 # (test/institutional-e2e.test.js), dos encaminhamentos (test/forwarding-e2e.test.js)
 # do interesse/conexão/oportunidades (test/interest-e2e.test.js), do apoio
-# (test/support-e2e.test.js) e da execução com evidências
-# (test/execution-e2e.test.js),
+# (test/support-e2e.test.js), da execução com evidências
+# (test/execution-e2e.test.js) e da prestação de contas
+# (test/accountability-e2e.test.js),
 # cada um num banco novo, e destrói o cluster no fim, com sucesso ou falha.
 # Nada é gravado fora do diretório temporário.
 #
@@ -43,7 +44,7 @@ trap cleanup EXIT
 "$PG_BIN/initdb" -D "$tmp/data" -U postgres --auth=trust -E UTF8 --locale=C >/dev/null
 "$PG_BIN/pg_ctl" -D "$tmp/data" -l "$tmp/postgres.log" -w \
   -o "-p $port -k $tmp -c listen_addresses=127.0.0.1" start >/dev/null
-for suite in demand dossier institutional forwarding interest support execution; do
+for suite in demand dossier institutional forwarding interest support execution accountability; do
   "$PG_BIN/createdb" -h 127.0.0.1 -p "$port" -U postgres "post_db_$suite"
   DM_E2E_DATABASE_URL="postgresql://postgres@127.0.0.1:$port/post_db_$suite" \
     NODE_ENV=test node --test "test/$suite-e2e.test.js"
