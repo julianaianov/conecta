@@ -8,7 +8,7 @@
 #
 # Regras: todo arquivo aqui é idempotente, porque o deploy reaplica a lista
 # inteira; arquivo novo entra no fim do bloco do seu banco, com o próximo número.
-# Próximos números livres: auth-service 004, user-service 009, post-service 007.
+# Próximos números livres: auth-service 004, user-service 009, post-service 008.
 
 auth_db auth-service/init.sql
 auth_db auth-service/migrations/001-perfis-4-categorias.sql
@@ -32,3 +32,4 @@ post_db post-service/migrations/003-post-media.sql
 post_db post-service/migrations/004-gestao-fields.sql
 post_db post-service/migrations/005-post-type-message.sql
 post_db post-service/migrations/006-post-visibility.sql
+post_db post-service/migrations/007-demands.sql

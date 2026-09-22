@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 009, post-service 007. Registre a migração em
+  auth-service 004, user-service 009, post-service 008. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -103,6 +103,35 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Perfil público: selo e dados da projeção pública (`getPublicInstitution` no
   SSR e `api.getPublicInstitution` logado); o próprio perfil mostra o estado do
   cadastro.
+
+## Demanda (T06)
+
+- Entidade própria no `post_db` (decisão 1), migração post 007
+  (`007-demands.sql`): `demands` (agente, `organization_id` da instituição
+  validada, categoria, conteúdo, público, prioridade, foto, CEP/endereço/lat/lng,
+  território, `has_physical_execution`, composição financeira gravada e estado),
+  `demand_budget_items` (quantidade, unidade, valor unitário e total em centavos,
+  `is_audiovisual_record`, vínculo à etapa → físico-financeiro),
+  `demand_schedule_items` (etapa, atividades, início, término, responsável,
+  `record_milestones` antes/acompanhamento/depois), `demand_goals`,
+  `demand_resources` (necessário/contrapartida, tipos da fonte),
+  `demand_documents`, `demand_events` (linha do tempo só inserção) e
+  `posts.demand_id` (post-vitrine criado pelo trigger na publicação, protegido
+  contra edição e exclusão; oculto quando a demanda é arquivada).
+- Estado: `status` (7 canônicos + `arquivada`) e, dentro de `em_analise`,
+  `review_state` (`rascunho` → `aguardando_analise` → `devolvida` | publicação
+  `aprovada`). Transições por ator (agente, gestão = sessão `gestao_app`,
+  sistema = `SET LOCAL dm.actor_type = 'sistema'`) no trigger `demands_guard`,
+  espelhado em `services/post-service/src/demand/state-machine.js`. Conteúdo e
+  itens só mudam em `rascunho`/`devolvida`; demanda não é excluída.
+- Composição: 4% e 6% sobre o orçamento original, cada parcela arredondada meio
+  para cima ao centavo, total = base + 4% + 6% (`src/demand/finance.js`, CHECK
+  `demands_financial_composition`).
+- Domínio puro em `services/post-service/src/demand/` (constantes, cálculo,
+  validação de rascunho e de envio, máquina de estados, gate T06a). Enviar exige
+  Agente com instituição `validada` (`requireValidatedAgent`, que usa o cliente
+  de `institution-gate.js`; `GET /me/institution/status` devolve
+  `organizationId`). A API REST é a T07.
 
 ## Segurança dos serviços
 

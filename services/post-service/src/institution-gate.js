@@ -8,8 +8,8 @@
 // institucional é recusada (503). Cache curto por conta para não consultar a
 // cada requisição.
 //
-// A regra equivalente para o Agente publicar demanda (decisão 3) entra nas
-// rotas de demanda (T06a/T07) reutilizando `createInstitutionStatusClient`.
+// A regra equivalente para o Agente enviar demanda (decisão 3, T06a) está em
+// src/demand/gate.js, que reutiliza `createInstitutionStatusClient`.
 
 const { normalizeRole } = require('./roles');
 
@@ -20,7 +20,7 @@ const MAX_CACHE_ENTRIES = 5_000;
 
 /**
  * Cliente do estado institucional. `lookup(req)` devolve
- * `{ kind, status, canActInstitutionally }` ou lança erro (rede, timeout,
+ * `{ kind, status, canActInstitutionally, organizationId }` ou lança erro (rede, timeout,
  * resposta inválida, URL não configurada).
  */
 function createInstitutionStatusClient({
@@ -52,6 +52,7 @@ function createInstitutionStatusClient({
         kind: body.kind ?? null,
         status: body.status ?? null,
         canActInstitutionally: body.canActInstitutionally,
+        organizationId: typeof body.organizationId === 'string' ? body.organizationId : null,
       };
       if (userId) {
         if (cache.size >= MAX_CACHE_ENTRIES) cache.delete(cache.keys().next().value);

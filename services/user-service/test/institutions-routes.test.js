@@ -46,7 +46,7 @@ function createPool({ orgs = [], failStatus = false } = {}) {
     if (sql.startsWith('SELECT o.institution_kind, o.validation_status')) {
       if (failStatus) throw new Error('banco indisponível');
       const org = byUser(params[0]);
-      return { rows: org ? [org] : [] };
+      return { rows: org ? [{ ...org, organization_id: org.id }] : [] };
     }
     if (sql.startsWith('SELECT o.id, o.institution_kind, o.validation_status')) {
       const org = byUser(params[0]);
@@ -214,7 +214,9 @@ test('Poder Público: cadastro com esfera, território, competência e represent
     assert.equal(body.representative.institutional_email, 'carlos@exemplo.sp.gov.br');
 
     const status = await (await fetch(`${base}/me/institution/status`, { headers: h })).json();
-    assert.deepEqual(status, { kind: 'poder_publico', status: 'pendente', requiredKind: 'poder_publico', canActInstitutionally: false });
+    assert.deepEqual(status, {
+      kind: 'poder_publico', status: 'pendente', requiredKind: 'poder_publico', canActInstitutionally: false, organizationId: body.id,
+    });
   });
 });
 

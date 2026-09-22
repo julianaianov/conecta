@@ -782,6 +782,8 @@ export interface InstitutionAccess {
   /** Tipo de cadastro que a categoria do perfil exige (null: não se aplica). */
   requiredKind: InstitutionKind | null;
   canActInstitutionally: boolean;
+  /** Id da instituição (user_db.organizations), quando há cadastro. */
+  organizationId?: string | null;
 }
 
 export interface InstitutionFieldErrors {

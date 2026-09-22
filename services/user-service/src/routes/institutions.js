@@ -49,7 +49,7 @@ const OWN_ORG_SQL = `SELECT ${cols(OWNER_ORG_COLUMNS)}
     JOIN profiles p ON p.id = o.profile_id
    WHERE p.user_id = $1 AND o.institution_kind IS NOT NULL`;
 
-const STATUS_SQL = `SELECT o.institution_kind, o.validation_status
+const STATUS_SQL = `SELECT o.institution_kind, o.validation_status, o.id AS organization_id
     FROM organizations o
     JOIN profiles p ON p.id = o.profile_id
    WHERE p.user_id = $1 AND o.institution_kind IS NOT NULL`;
@@ -94,6 +94,9 @@ async function institutionStatus(db, user) {
     status,
     requiredKind: kindForUser(user),
     canActInstitutionally: canActInstitutionally(kind, status),
+    // Id da instituição (user_db.organizations): o post-service o grava na
+    // demanda no envio para análise (T06a). Não é dado sensível: é o próprio cadastro.
+    organizationId: rows[0]?.organization_id ?? null,
   };
 }
 
