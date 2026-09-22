@@ -560,6 +560,8 @@ export interface Connection {
   /** publicação que originou o pedido (opcional) */
   postId?: string | null;
   postTitle?: string | null;
+  /** demanda de onde saiu o pedido (T15): o aceite passa pela rota da demanda */
+  demandId?: string | null;
   /** o que a dupla registrou ao concluir */
   outcome?: string | null;
   createdAt: string;
@@ -1201,12 +1203,16 @@ export interface DemandTimelineDetails {
   forwardingStatus?: string | null;
   fromForwardingStatus?: string | null;
   updateKind?: string | null;
+  /** Interesse e conexão (T15, migração post 012): sem nome nem id de quem manifestou. */
+  interestKind?: string | null;
+  userCategory?: string | null;
+  offerTypes?: string[] | null;
 }
 
 /** Evento da linha do tempo completa, visto pelo autor. */
 export interface DemandEvent extends DemandTimelineEvent {
   reviewState: DemandReviewState | null;
-  actorType: "agente" | "gestao" | "sistema" | "poder_publico";
+  actorType: "agente" | "gestao" | "sistema" | "poder_publico" | "parceiro" | "comunidade";
   note: string | null;
   payload: Record<string, unknown>;
   isPublic: boolean;
@@ -1614,3 +1620,135 @@ export interface ForwardingView {
   forwarding: Forwarding;
   demand: PublicDemandSummary | null;
 }
+
+// ── Interesse, conexão e oportunidades de apoio (T15) ──────
+// Espelho de services/post-service/src/routes/interests.js e
+// services/user-service/src/routes/partner-profile.js (JSON em camelCase).
+
+export type InterestKind = "apoio" | "participacao" | "voluntariado";
+export type InterestOfferType = "recursos" | "produtos" | "servicos" | "conhecimento" | "estrutura" | "investimento";
+export type InterestConnectionStatus = "pendente" | "aceita" | "recusada" | "cancelada";
+export type InterestUserCategory = "parceiro" | "comunidade" | "poder_publico";
+
+/** Manifestação vista por quem a fez. */
+export interface DemandInterest {
+  id: string;
+  demandId: string;
+  kind: InterestKind;
+  offerTypes: InterestOfferType[];
+  message: string | null;
+  connectionId: string | null;
+  connectionStatus: InterestConnectionStatus | null;
+  connectionRequestedAt: string | null;
+  connectionAnsweredAt: string | null;
+  withdrawnAt: string | null;
+  createdAt: string;
+}
+
+/** Manifestação vista pelo Agente autor: quem se interessou. */
+export interface AgentDemandInterest extends DemandInterest {
+  user: {
+    userId: string;
+    name: string | null;
+    avatarUrl: string | null;
+    category: InterestUserCategory;
+    profileType: ProfileType | null;
+  };
+}
+
+export interface MyInterestItem extends DemandInterest {
+  demand: { id: string; title: string; status: DemandStatus };
+}
+
+/** Contagens públicas (sem nome nem id). */
+export interface InterestSummary {
+  apoio: number;
+  participacao: number;
+  voluntariado: number;
+  acceptedConnections: number;
+}
+
+export type CompatibilityCriterion = "territorio" | "categoria" | "recursos";
+export type CompatibilityLevel = "alta" | "media" | "baixa" | "nenhuma";
+
+export interface CompatibilityReason {
+  criterion: CompatibilityCriterion;
+  points: number;
+  maxPoints: number;
+  matched: boolean;
+  text: string;
+  matchedResources?: DemandNeededResourceType[];
+}
+
+/** Compatibilidade explicável (sem IA): território 40, categoria 30, recursos 30. */
+export interface Compatibility {
+  score: number;
+  maxScore: number;
+  level: CompatibilityLevel;
+  profileComplete: boolean;
+  reasons: CompatibilityReason[];
+}
+
+export interface DemandInterestContext {
+  interests: DemandInterest[];
+  allowedKinds: InterestKind[];
+  isAuthor: boolean;
+  open: boolean;
+  compatibility: Compatibility | null;
+}
+
+export interface Opportunity {
+  demand: PublicDemandSummary & { neededResources: DemandNeededResourceType[] };
+  compatibility: Compatibility | null;
+  myInterests: { id: string; kind: InterestKind; connectionStatus: InterestConnectionStatus | null }[];
+}
+
+export interface OpportunityPage {
+  opportunities: Opportunity[];
+  total: number;
+  truncated: boolean;
+  offset: number;
+  limit: number;
+  nextOffset: number | null;
+  sort: "compatibilidade" | "recentes";
+  compatibilityAvailable: boolean;
+  profile: { exists: boolean; complete: boolean } | null;
+}
+
+export interface OpportunityFilter {
+  category?: DemandCategory[];
+  priority?: DemandPriority[];
+  status?: DemandStatus[];
+  resourceType?: DemandNeededResourceType[];
+  territory?: string;
+  municipality?: string;
+  uf?: string;
+  q?: string;
+  minTotalCents?: number | null;
+  maxTotalCents?: number | null;
+  sort?: "compatibilidade" | "recentes";
+  limit?: number;
+  offset?: number;
+}
+
+export interface InterestInput {
+  kind: InterestKind;
+  offerTypes?: InterestOfferType[];
+  message?: string | null;
+}
+
+/** Perfil de apoio (user-service): base da compatibilidade. */
+export interface PartnerProfile {
+  exists: boolean;
+  editable: boolean;
+  nationwide: boolean;
+  ufs: string[];
+  /** "Município/UF" */
+  municipalities: string[];
+  territories: string[];
+  interestCategories: DemandCategory[];
+  offeredResources: DemandNeededResourceType[];
+  updatedAt: string | null;
+}
+
+export type PartnerProfileInput = Omit<PartnerProfile, "exists" | "editable" | "updatedAt">;

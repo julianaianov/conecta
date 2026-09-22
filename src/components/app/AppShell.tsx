@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/app/auth";
 import { isPlatformAdmin } from "@/lib/app/admin-access";
 import { MY_DEMANDS_PATH } from "@/lib/app/demand";
 import { INSTITUTIONAL_AREA_PATH } from "@/lib/app/institutional";
+import { OPPORTUNITIES_PATH, canFilterOpportunities } from "@/lib/app/interest";
 import { normalizeRole } from "@/lib/app/types";
 import { DMLogo } from "./DMLogo";
 import { Icon, type IconName } from "./Icon";
@@ -39,6 +40,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAgent = Boolean(user && normalizeRole(user.role, user.profileType) === "agent");
   // Poder Público atua nas demandas do território (T13).
   const isGovernment = Boolean(user && normalizeRole(user.role, user.profileType) === "government");
+  // Parceiros e Poder Público filtram oportunidades de apoio (T15).
+  const seesOpportunities = Boolean(user && canFilterOpportunities(user.role, user.profileType));
 
   const isActive = (href: string) =>
     href === "/perfil" ? pathname === "/perfil" : pathname === href || pathname.startsWith(href + "/");
@@ -116,6 +119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <MenuItem icon="trophy" label="Impacto" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
                     <MenuItem icon="volunteer" label="Ações apoiadas" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
                     {isAgent && <MenuItem icon="inventory" label="Minhas demandas" onClick={() => { setMenuOpen(false); router.push(MY_DEMANDS_PATH); }} />}
+                    {seesOpportunities && <MenuItem icon="filter" label="Oportunidades de apoio" onClick={() => { setMenuOpen(false); router.push(OPPORTUNITIES_PATH); }} />}
                     {isGovernment && <MenuItem icon="building" label="Atuação institucional" onClick={() => { setMenuOpen(false); router.push(INSTITUTIONAL_AREA_PATH); }} />}
                     {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => { setMenuOpen(false); router.push("/admin"); }} />}
                     <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />

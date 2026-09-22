@@ -30,6 +30,7 @@ import { Card, EmptyState } from "../ui";
 import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import { CategoryBadge, DemandStatusBadge, StatusTrack } from "./DemandParts";
 import { DossierPanel } from "./DossierPanel";
+import { DemandInterestsInbox } from "../interest/DemandInterestsInbox";
 import { FormAlert } from "./fields";
 
 function dateTime(iso: string | null | undefined): string {
@@ -44,6 +45,7 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
   const [error, setError] = useState<string | null>(null);
   const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
   const [showDossier, setShowDossier] = useState(false);
+  const [showInterests, setShowInterests] = useState(false);
   // Dossiê existe a partir do primeiro envio para análise (T10).
   const hasDossier = Boolean(demand.submittedAt);
   const actions = demand.availableActions.filter(isAgentTransition);
@@ -119,6 +121,19 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
           )}
           {isPublic && <Button href={demandPublicPath(demand.id)} size="sm" variant="outline" icon="eye">Página pública</Button>}
           {isPublic && demand.postId && <Button href={`/post/${demand.postId}`} size="sm" variant="ghost" icon="bolt">No pulso</Button>}
+          {isPublic && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              icon="groups"
+              onClick={() => setShowInterests((v) => !v)}
+              aria-expanded={showInterests}
+              aria-controls={`dm-${demand.id}-interessados`}
+            >
+              Interessados e conexões
+            </Button>
+          )}
           {hasDossier && (
             <Button
               type="button"
@@ -148,6 +163,20 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
           ))}
         </div>
 
+        {showInterests && (
+          <div id={`dm-${demand.id}-interessados`} className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+            <DemandInterestsInbox
+              demandId={demand.id}
+              onStatus={(status) => {
+                if (status === demand.status) return;
+                // Conexão aceita levou a demanda a "Conectada": recarrega ações e status.
+                void api.getMyDemand(demand.id).then((next) => {
+                  if (next) onUpdated({ ...next, photoUrl: next.photoUrl ?? demand.photoUrl });
+                }).catch(() => onUpdated({ ...demand, status }));
+              }}
+            />
+          </div>
+        )}
         {showDossier && (
           <div id={`dm-${demand.id}-dossie`} className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
             <DossierPanel demandId={demand.id} compact />

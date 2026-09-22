@@ -33,6 +33,7 @@ import {
   type DemandTimelineEvent,
 } from "./types.ts";
 import { institutionalTimelineLabel } from "./institutional.ts";
+import { interestTimelineLabel } from "./interest.ts";
 
 // ── Rotas ──────────────────────────────────────────────────
 
@@ -830,6 +831,12 @@ export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "to
     details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
   });
   if (institutional) return institutional;
+  // Interesse, participação e conexão (T15): categoria da conta, nunca o nome.
+  const interest = interestTimelineLabel({
+    type: event.type,
+    details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
+  });
+  if (interest) return interest;
   switch (event.type) {
     case "criada": return "Rascunho criado";
     case "enviada_para_analise": return event.payload?.reenvio === true ? "Reenviada para análise" : "Enviada para análise";

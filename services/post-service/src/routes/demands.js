@@ -8,8 +8,8 @@
 //   GET  /:id                      detalhe público (sem endereço fino, sem
 //                                  dados da análise, documentos sem link)
 //   GET  /:id/timeline             linha do tempo pública (demand_events.is_public;
-//                                  eventos institucionais e de encaminhamento
-//                                  com `details`, T13/T14)
+//                                  eventos institucionais, de encaminhamento e
+//                                  de interesse/conexão com `details`, T13–T15)
 //
 // Agente de Transformação autor (token; 404 para quem não é o autor):
 //   GET  /mine                     as próprias demandas, em qualquer estado
@@ -24,6 +24,9 @@
 //   POST /:id/submit               envia para análise (instituição validada)
 //   POST /:id/transitions          { action }: buscar_parceiro, conectar,
 //                                  iniciar_execucao, concluir, prestar_contas
+//
+// Interesse, conexão e oportunidades de apoio (T15): src/routes/interests.js,
+// montada antes desta.
 //
 // Dossiê da Demanda (T10): rotas em src/routes/dossiers.js; o envio pede a
 // geração sem esperar (src/dossier/service.js).
@@ -55,9 +58,11 @@ const {
 const store = require('../demand/store');
 const { INSTITUTIONAL_EVENT_TYPES } = require('../institutional/constants');
 const { FORWARDING_EVENT_TYPES } = require('../institutional/forwardings');
+const { INTEREST_EVENT_TYPES } = require('../interest/constants');
 
-// Eventos com payload->'public' exposto como `details` (T13 e encaminhamentos da T14).
-const DETAILED_EVENT_TYPES = [...INSTITUTIONAL_EVENT_TYPES, ...FORWARDING_EVENT_TYPES];
+// Eventos com payload->'public' exposto como `details` (T13, encaminhamentos da
+// T14 e interesse/conexão da T15).
+const DETAILED_EVENT_TYPES = [...INSTITUTIONAL_EVENT_TYPES, ...FORWARDING_EVENT_TYPES, ...INTEREST_EVENT_TYPES];
 const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
 const { parseUploadRef, describeUploads } = require('../uploads');
 

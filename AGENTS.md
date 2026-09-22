@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 010, post-service 012. Registre a migração em
+  auth-service 004, user-service 011, post-service 013. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -433,6 +433,75 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `test/forwarding-e2e.test.js` (no `test:e2e`), diretório em
   `services/user-service/test/institutions-routes.test.js` e
   `src/lib/app/institutional.test.mjs`.
+
+## Interesse, conexão e oportunidades de apoio (T15)
+
+- Fonte: Apresentação, slides 9–11 (permissões) e 15 (Demanda → Conexão →
+  Apoio); Fluxo 2, slide 22 (demanda publicada → interesse → conexão com o
+  Agente → apoio, "critérios de compatibilidade").
+- Migração post 012 (`012-demand-interests.sql`): `demand_interests`
+  (demanda × conta × tipo em aberto; `apoio` com `offer_types` ⊂ recursos,
+  produtos, serviços, conhecimento, estrutura, investimento, para Parceiro e
+  Poder Público; `participacao` e `voluntariado` para Membro da Comunidade;
+  retrato do nome/perfil; `organization_id` do órgão validado; mensagem;
+  `connection_id` + `connection_status` `pendente` → `aceita` | `recusada` |
+  `cancelada`, e de novo `pendente` com outra conexão depois de recusada ou
+  cancelada; `withdrawn_at` final). Trigger `demand_interests_guard`: só em
+  demanda `publicada`/`em_busca_de_parceiro`/`conectada`/`em_execucao`, nunca
+  do autor, identidade e oferta imutáveis, nada excluído, `gestao_app` só lê
+  (dm-infra `011-gestao-app-post-interests.sql`). `demand_events` ganha os
+  atores `parceiro` e `comunidade`; eventos públicos `interesse_registrado`,
+  `interesse_retirado`, `conexao_solicitada`, `conexao_aceita` com
+  `payload->'public'` (tipo, categoria da conta, ofertas; sem nome nem id);
+  `conexao_recusada`/`conexao_cancelada` privados.
+- Migração user 010 (`010-partner-profiles.sql`): `partner_profiles` (perfil de
+  apoio: `nationwide`, `ufs`, `municipalities` "Município/UF", `territories`,
+  `interest_categories` = categorias da demanda, `offered_resources` = recursos
+  necessários da demanda; CHECKs com as listas) e `connections.demand_id`.
+  Rotas `GET/PUT /me/partner-profile` (`routes/partner-profile.js`; PUT só
+  Parceiro e Poder Público, 403 `partner_profile_forbidden`); `POST
+  /connections` aceita `demandId` e a conexão devolve `demandId`. Grant
+  explícito dm-infra `012-gestao-app-user-partner-profiles.sql`.
+- Compatibilidade sem IA (`services/post-service/src/interest/compatibility.js`):
+  território até 40 (território/bairro 40, só se o município também conferir
+  quando o perfil lista municípios; município+UF 30; UF 20; todo o país 10),
+  categoria 30, recursos `round(30 × oferecidos ∩ necessários / necessários)`;
+  nível alta ≥ 70, média ≥ 40, baixa > 0; cada critério com o motivo em texto.
+- Rotas (`src/routes/interests.js`, montada em `/demands` antes das da demanda;
+  clientes do user-service em `src/interest/user-service.js`, com o token do
+  usuário por `DM_INTERNAL_USER_API_URL`): `GET /opportunities` (Parceiro e
+  Poder Público validado; filtros `category`, `priority`, `status` ⊂ abertos,
+  padrão publicada + em busca de parceiro, `resourceType`, `territory`,
+  `municipality`, `uf`, `q`, `minTotalCents`/`maxTotalCents` sobre o total,
+  `sort=compatibilidade|recentes`, `limit` ≤ 50 e `offset` sobre as 500 mais
+  recentes; sem perfil de apoio disponível, `compatibilityAvailable: false` e
+  ordem por data), `GET /interests/mine`, `GET /:id/interests/summary`
+  (público, só contagens), `GET /:id/interests/mine` (tipos permitidos e
+  compatibilidade), `POST /:id/interests`, `POST /:id/interests/:iid/connection`
+  (cria a conexão no user-service para o autor, com `postId` do post-vitrine e
+  `demandId`; tipo sugerido pela oferta), `POST /:id/interests/:iid/withdraw`
+  (cancela o pedido pendente); Agente autor: `GET /mine/:id/interests`,
+  `POST /mine/:id/connections/:cid/accept` (confere no user-service que o
+  destinatário é o autor e `demandId` é a demanda, aceita se pendente,
+  espelha `aceita` e, de `publicada`/`em_busca_de_parceiro`, faz `conectar`
+  como `sistema` com `dm.actor = conexao:<cid>`; idempotente; 422
+  `connection_not_linked`) e `.../decline`. `em_busca_de_parceiro` continua a
+  ação `buscar_parceiro` do Agente. Poder Público sem validação: 403
+  `institution_not_validated`; 503 `connections_unavailable` sem user-service.
+- Frontend: `/oportunidades` (`noindex`, bloqueada no `robots.ts`, menu da
+  conta de Parceiro e Poder Público; `OpportunitiesClient`, `PartnerProfileForm`,
+  `CompatibilityCard` em `src/components/app/interest/`), seção "Apoio e
+  participação" na página pública da demanda (`DemandInterestPanel`: "Tenho
+  interesse", "Quero participar", "Quero ser voluntário", "Solicitar conexão",
+  retirar, compatibilidade), "Interessados e conexões" em Minhas demandas
+  (`DemandInterestsInbox`, aceitar/recusar), link da demanda no
+  `ConnectionCard` e aceite pela rota da demanda em Conexões
+  (`api.respondToConnection`). A oferta institucional da T13 também grava
+  `demandId`. Espelho em `src/lib/app/interest.ts`.
+- Testes: `test/interest-domain.test.js`, `test/interests-routes.test.js`,
+  `test/interest-e2e.test.js` (no `test:e2e`),
+  `services/user-service/test/partner-profile.test.js` e
+  `src/lib/app/interest.test.mjs`.
 
 ## Segurança dos serviços
 

@@ -85,7 +85,16 @@ export function ConnectionCard({ connection: c, meId, onRespond, busy }: CardPro
 
           <p className="mt-2 text-sm clamp-2" style={{ color: "var(--th-text)" }}>{c.message}</p>
 
-          {c.postTitle && (
+          {c.demandId ? (
+            <Link
+              href={`/demandas/${encodeURIComponent(c.demandId)}`}
+              className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"
+              style={{ background: "var(--th-card-alt)", color: "var(--th-muted)" }}
+            >
+              <Icon name="inventory" size={12} />
+              <span className="truncate">Demanda: {c.postTitle ?? "ver demanda"}</span>
+            </Link>
+          ) : c.postTitle && (
             <Link
               href={`/post/${c.postId}`}
               className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"

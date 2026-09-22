@@ -7,6 +7,7 @@ const communitiesRoutes = require('./routes/communities');
 const connectionsRoutes = require('./routes/connections');
 const socialRoutes = require('./routes/social');
 const institutionsRoutes = require('./routes/institutions');
+const partnerProfileRoutes = require('./routes/partner-profile');
 const { requireInstitutionalAccess } = institutionsRoutes;
 const {
   resolveJwtSecret, createAuth, parseOperationUserIds, requireOperation,
@@ -36,6 +37,8 @@ const createApp = ({
   app.use('/communities', communitiesRoutes(pool));
   app.use('/connections', connectionsRoutes(pool, auth, requireInstitutionalAccess(pool)));
   app.use('/', institutionsRoutes(pool, auth, uploadStorage));
+  // Perfil de apoio (T15), antes das rotas com `/:id` do perfil.
+  app.use('/', partnerProfileRoutes(pool, auth));
   app.use('/', socialRoutes(pool, auth, operation));
   app.use('/', usersRoutes(pool, auth));
 

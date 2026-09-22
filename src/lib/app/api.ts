@@ -35,6 +35,11 @@ import type {
   PublicDemandInstitutional, PublicDemandSummary,
 } from "./types";
 import { buildInstitutionalQuery } from "./institutional";
+import type {
+  AgentDemandInterest, DemandInterest, DemandInterestContext, InterestInput, InterestSummary, MyInterestItem,
+  OpportunityFilter, OpportunityPage, PartnerProfile, PartnerProfileInput,
+} from "./types";
+import { buildOpportunityQuery } from "./interest";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -214,6 +219,7 @@ function mapConnection(r: RawPost): Connection {
     message: String(r.message ?? ""),
     postId: (r.postId ?? r.post_id ?? null) as string | null,
     postTitle: (r.postTitle ?? r.post_title ?? null) as string | null,
+    demandId: (r.demandId ?? r.demand_id ?? null) as string | null,
     outcome: (r.outcome ?? null) as string | null,
     createdAt: String(r.createdAt ?? r.created_at ?? ""),
     updatedAt: String(r.updatedAt ?? r.updated_at ?? ""),
@@ -833,11 +839,35 @@ export const api = {
     void userId;
     return request<RawPost[]>("/api/users/connections/targets").then((rows) => rows.map(mapConnectionParty));
   },
-  createConnection(input: { from: User; toUserId: string; type: ConnectionType; message: string; postId?: string | null }): Promise<Connection> {
+  createConnection(input: {
+    from: User; toUserId: string; type: ConnectionType; message: string; postId?: string | null; postTitle?: string | null; demandId?: string | null;
+  }): Promise<Connection> {
     return request<RawPost>("/api/users/connections", {
       method: "POST",
-      body: JSON.stringify({ toUserId: input.toUserId, type: input.type, message: input.message, postId: input.postId ?? null }),
+      body: JSON.stringify({
+        toUserId: input.toUserId, type: input.type, message: input.message, postId: input.postId ?? null,
+        postTitle: input.postTitle ?? null, demandId: input.demandId ?? null,
+      }),
     }).then(mapConnection);
+  },
+  /**
+   * Responde a uma conexão. Aceite ou recusa de conexão vinda de uma demanda
+   * (T15) passa pela rota da demanda no post-service, que confere o vínculo e
+   * leva a demanda a "Conectada"; se a conexão não é de uma demanda sua, segue
+   * a rota comum de conexões.
+   */
+  async respondToConnection(connection: Connection, status: ConnectionStatus, outcome?: string): Promise<Connection | null> {
+    if (connection.demandId && (status === "accepted" || status === "declined")) {
+      const path = `/mine/${encodeURIComponent(connection.demandId)}/connections/${encodeURIComponent(connection.id)}/${status === "accepted" ? "accept" : "decline"}`;
+      try {
+        const done = await demandRequest(path, { method: "POST", body: "{}" });
+        if (done !== null) return this.getConnection(connection.id);
+      } catch (err) {
+        const code = err instanceof DemandRequestError ? err.code : null;
+        if (code !== "connection_not_linked" && code !== "demand_author_not_agent") throw err;
+      }
+    }
+    return this.updateConnection(connection.id, status, outcome);
   },
   updateConnection(id: string, status: ConnectionStatus, outcome?: string): Promise<Connection | null> {
     return request<RawPost>(`/api/users/connections/${id}`, {
@@ -1132,5 +1162,62 @@ export const api = {
   /** Verificação pública por SHA-256; `null` quando nenhum dossiê tem o hash. */
   verifyDossier(hash: string): Promise<DossierVerification | null> {
     return demandRequest<DossierVerification>(`/dossiers/verify/${encodeURIComponent(hash)}`);
+  },
+
+  // ── INTERESSE, CONEXÃO E OPORTUNIDADES (T15) ─────────────
+  /** Oportunidades de apoio (Parceiro e Poder Público) com compatibilidade. */
+  opportunities(filter?: OpportunityFilter): Promise<OpportunityPage> {
+    return demandRequired<OpportunityPage>(`/opportunities?${buildOpportunityQuery(filter)}`);
+  },
+
+  /** Manifestações da conta, com a demanda. */
+  async myInterests(): Promise<MyInterestItem[]> {
+    return (await demandRequired<{ interests: MyInterestItem[] }>("/interests/mine")).interests;
+  },
+
+  /** Contagens públicas; `null` se a demanda não é pública. */
+  demandInterestSummary(id: string): Promise<InterestSummary | null> {
+    return demandRequest<InterestSummary>(`/${encodeURIComponent(id)}/interests/summary`);
+  },
+
+  /** Manifestações da conta nesta demanda, tipos permitidos e compatibilidade. */
+  demandInterestContext(id: string): Promise<DemandInterestContext | null> {
+    return demandRequest<DemandInterestContext>(`/${encodeURIComponent(id)}/interests/mine`);
+  },
+
+  async registerInterest(id: string, input: InterestInput): Promise<DemandInterest> {
+    return (await demandRequired<{ interest: DemandInterest }>(`/${encodeURIComponent(id)}/interests`, { method: "POST", ...json(input) })).interest;
+  },
+
+  /** Pede conexão ao Agente (user-service), vinculada à demanda. */
+  requestInterestConnection(id: string, interestId: string, input: { type?: ConnectionType; message: string }): Promise<{ interest: DemandInterest }> {
+    return demandRequired(`/${encodeURIComponent(id)}/interests/${encodeURIComponent(interestId)}/connection`, { method: "POST", ...json(input) });
+  },
+
+  async withdrawInterest(id: string, interestId: string): Promise<DemandInterest> {
+    return (await demandRequired<{ interest: DemandInterest }>(`/${encodeURIComponent(id)}/interests/${encodeURIComponent(interestId)}/withdraw`, { method: "POST", body: "{}" })).interest;
+  },
+
+  /** Agente autor: quem se interessou. */
+  agentDemandInterests(id: string): Promise<{ interests: AgentDemandInterest[]; summary: InterestSummary }> {
+    return demandRequired(`/mine/${encodeURIComponent(id)}/interests`);
+  },
+
+  /** Agente autor aceita a conexão vinculada à demanda; a demanda vai para `conectada`. */
+  acceptDemandConnection(id: string, connectionId: string): Promise<{ demand: { id: string; status: Demand["status"] }; transitioned: boolean; interest: AgentDemandInterest | null }> {
+    return demandRequired(`/mine/${encodeURIComponent(id)}/connections/${encodeURIComponent(connectionId)}/accept`, { method: "POST", body: "{}" });
+  },
+
+  declineDemandConnection(id: string, connectionId: string): Promise<{ interest: AgentDemandInterest | null }> {
+    return demandRequired(`/mine/${encodeURIComponent(id)}/connections/${encodeURIComponent(connectionId)}/decline`, { method: "POST", body: "{}" });
+  },
+
+  /** Perfil de apoio (user-service), base da compatibilidade. */
+  getPartnerProfile(): Promise<PartnerProfile> {
+    return demandRequired<PartnerProfile>("/me/partner-profile", {}, "/api/users");
+  },
+
+  savePartnerProfile(input: PartnerProfileInput): Promise<PartnerProfile> {
+    return demandRequired<PartnerProfile>("/me/partner-profile", { method: "PUT", ...json(input) }, "/api/users");
   },
 };

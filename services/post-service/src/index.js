@@ -18,6 +18,8 @@ const institutionalRoutes = require('./routes/institutional');
 const { requireGovernmentActor } = require('./institutional/gate');
 const { createGovernmentProfileClient } = require('./institutional/store');
 const { createGovernmentDirectoryClient } = require('./institutional/directory');
+const interestsRoutes = require('./routes/interests');
+const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
 /** Endereço público do portal (URL de verificação impressa no dossiê). */
 const siteUrl = (env) => (typeof env.DM_PUBLIC_SITE_URL === 'string' && env.DM_PUBLIC_SITE_URL.trim()
@@ -37,6 +39,9 @@ const createApp = ({
   governmentProfile = createGovernmentProfileClient({ fetchInstitution: createPublicInstitutionClient() }),
   // Diretório dos órgãos validados (T14, destino dos encaminhamentos), pelo user-service.
   governmentDirectory = createGovernmentDirectoryClient(),
+  // Perfil de apoio e conexões do user-service (T15), com o token do usuário.
+  partnerProfile = createPartnerProfileClient(),
+  connections = createConnectionsClient(),
 } = {}) => {
   const dossiers = dossierService === undefined
     ? createDossierService({
@@ -65,6 +70,10 @@ const createApp = ({
   // /institutional/* e /demands/:id/institutional.
   app.use('/', institutionalRoutes({ pool, auth, governmentActor, governmentProfile, governmentDirectory }));
   if (dossiers) app.use('/demands', dossierRoutes({ pool, auth, dossiers, operationUserIds }));
+  // Interesse, conexão e oportunidades de apoio (T15): antes do `/:id` da demanda.
+  app.use('/demands', interestsRoutes({
+    pool, auth, validatedAgent, governmentGate: institutional, institutionStatus, partnerProfile, connections,
+  }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 

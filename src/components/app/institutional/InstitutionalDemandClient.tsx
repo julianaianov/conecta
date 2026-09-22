@@ -291,13 +291,16 @@ function OfferForm({ view, onSaved }: { view: InstitutionalDemandView; onSaved: 
     try {
       let connectionId: string | null = null;
       if (connect) {
-        // Conexão com o Agente pelas rotas de conexões (user-service), ligada ao post-vitrine da demanda.
+        // Conexão com o Agente pelas rotas de conexões (user-service), ligada ao
+        // post-vitrine e à demanda (T15: o aceite leva a demanda a "Conectada").
         const connection = await api.createConnection({
           from: user,
           toUserId: view.demand.authorId,
           type: connectionTypeFor(types),
           message: (message.trim() || `${description.trim()}`).slice(0, 2000) || "Interesse institucional em apoiar a demanda.",
           postId: view.demand.postId,
+          postTitle: view.demand.title,
+          demandId: view.demand.id,
         });
         connectionId = connection.id;
       }

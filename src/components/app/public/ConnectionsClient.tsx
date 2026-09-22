@@ -79,7 +79,9 @@ function PrivateConnections({ userId, userName, initialCommunities }: { userId: 
   async function respond(id: string, status: ConnectionStatus) {
     setBusy(true);
     try {
-      await api.updateConnection(id, status);
+      const connection = connections.find((item) => item.id === id);
+      if (connection) await api.respondToConnection(connection, status);
+      else await api.updateConnection(id, status);
       await load();
     } finally {
       setBusy(false);

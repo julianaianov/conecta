@@ -42,7 +42,8 @@ export default function ConnectionDetailPage() {
   async function update(status: ConnectionStatus, texto?: string) {
     setBusy(true);
     try {
-      const updated = await api.updateConnection(id, status, texto);
+      // Conexão vinda de uma demanda (T15): o aceite leva a demanda a "Conectada".
+      const updated = c ? await api.respondToConnection(c, status, texto) : await api.updateConnection(id, status, texto);
       if (updated) setC(updated);
       setShowOutcome(false);
       setOutcome("");

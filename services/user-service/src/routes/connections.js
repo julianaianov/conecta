@@ -24,6 +24,8 @@ function mapRow(r) {
     message: r.message,
     postId: r.post_id || null,
     postTitle: r.post_title || null,
+    // Demanda de onde saiu o pedido (T15; post_db.demands.id).
+    demandId: r.demand_id || null,
     outcome: r.outcome || null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -32,7 +34,7 @@ function mapRow(r) {
 }
 
 const DETAIL_SQL = `SELECT
-           c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.outcome, c.events, c.created_at, c.updated_at,
+           c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.demand_id, c.outcome, c.events, c.created_at, c.updated_at,
            p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
            p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
          FROM connections c
@@ -90,7 +92,7 @@ module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) 
     try {
       const { rows } = await pool.query(
         `SELECT
-           c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.outcome, c.events, c.created_at, c.updated_at,
+           c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.demand_id, c.outcome, c.events, c.created_at, c.updated_at,
            p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
            p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
          FROM connections c
@@ -128,7 +130,7 @@ module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) 
 
   // POST / — criar solicitação de conexão
   router.post('/', auth, institutionalGate, async (req, res) => {
-    const { toUserId, type, postId, postTitle } = req.body ?? {};
+    const { toUserId, type, postId, postTitle, demandId } = req.body ?? {};
     const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
     if (!toUserId || !type || !message) {
       return res.status(400).json({ error: 'toUserId, type e message são obrigatórios' });
@@ -142,6 +144,7 @@ module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) 
       return res.status(400).json({ error: `A mensagem aceita até ${MAX_MESSAGE_LENGTH} caracteres` });
     }
     if (postId != null && postId !== '' && !isUuid(postId)) return res.status(400).json({ error: 'postId inválido' });
+    if (demandId != null && demandId !== '' && !isUuid(demandId)) return res.status(400).json({ error: 'demandId inválido' });
     const now = new Date().toISOString();
     const initialEvents = [
       { id: `e-${Date.now()}`, label: 'Conexão solicitada', detail: null, icon: 'send', at: now },
@@ -149,11 +152,12 @@ module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) 
     try {
       await ensureProfile(pool, req.user);
       const { rows } = await pool.query(
-        `INSERT INTO connections (type, status, from_user_id, to_user_id, message, post_id, post_title, events, created_at, updated_at)
-         VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        `INSERT INTO connections (type, status, from_user_id, to_user_id, message, post_id, post_title, demand_id, events, created_at, updated_at)
+         VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
          RETURNING id`,
         [type, req.user.userId, toUserId, message, postId || null,
-         typeof postTitle === 'string' && postTitle.trim() ? postTitle.trim().slice(0, 255) : null, JSON.stringify(initialEvents)]
+         typeof postTitle === 'string' && postTitle.trim() ? postTitle.trim().slice(0, 255) : null,
+         demandId ? String(demandId).toLowerCase() : null, JSON.stringify(initialEvents)]
       );
       const createdId = rows[0].id;
       const detail = await pool.query(
