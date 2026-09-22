@@ -133,6 +133,53 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   de `institution-gate.js`; `GET /me/institution/status` devolve
   `organizationId`). A API REST é a T07.
 
+## API da demanda (T07)
+
+- `services/post-service/src/routes/demands.js`, montada em `/demands` no
+  post-service antes das rotas de posts; público em `/api/posts/demands` (o
+  Caddy tira `/api/posts`). JSON em camelCase, no formato de
+  `src/demand/validation.js`. Acesso ao banco em `src/demand/store.js`
+  (transação, projeções, recálculo da composição, `transitionDemand`).
+- Público (sem login, só `publicada` em diante, fora `arquivada`): `GET /`
+  (filtros `category`, `priority`, `status` com vírgula, `territory`,
+  `municipality`, `uf`, `q`, `bbox=oeste,sul,leste,norte`; keyset por
+  `published_at, id` com `limit` ≤ 50 e `cursor`/`nextCursor`), `GET /:id`
+  (sem CEP, rua, número, complemento, instituição, parecer; cronograma sem
+  responsável; documentos sem link) e `GET /:id/timeline` (só eventos
+  `is_public`, sem ator, nota ou payload).
+- Agente autor (token; 404 para quem não é o autor): `GET /mine`,
+  `GET /mine/:id` (com `editable` e `availableActions`), `GET /mine/:id/events`,
+  `GET /mine/:id/review` (parecer atual e devoluções), `POST /composition/preview`,
+  `POST /` (rascunho), `PUT /:id` (só os campos enviados), `POST|PUT|DELETE
+  /:id/{budget-items|schedule-items|goals|resources|documents}[/:itemId]`
+  (itens de orçamento recalculam a composição gravada), `POST /:id/validate`
+  (erros por campo, não grava), `POST /:id/submit` e `POST /:id/transitions`
+  (`buscar_parceiro`, `conectar`, `iniciar_execucao`, `concluir`,
+  `prestar_contas`).
+- Rascunho, edição e itens exigem só perfil de Agente; `submit` e `transitions`
+  passam por `requireValidatedAgent` (403 `institution_not_validated`). O envio
+  grava `organization_id` da instituição validada. Escritas rodam em transação
+  com a demanda travada (`FOR UPDATE`); o trigger `demands_guard` confere de
+  novo. O portal age como `sistema` só por `store.transitionDemand(..., { actor:
+  'sistema', actorRef })`, que faz `set_config('dm.actor_type', 'sistema', true)`
+  (ex.: conexão aceita → `conectar`, T15).
+- Erros: 422 `{ error, code: 'validation_failed' | 'demand_incomplete', fields }`,
+  403 `demand_author_not_agent`/`institution_not_validated`/`forbidden_actor`,
+  409 `demand_not_editable`/`invalid_transition`/`invalid_state`, 404.
+- Posts-vitrine: `demand_id` entra na projeção pública dos posts (feed, mapa,
+  detalhe; `Post.demandId` no frontend). `PUT /:id` e `DELETE /:id` de post com
+  `demand_id` respondem 409 `demand_showcase` com `demandId`; posts comuns não
+  são excluídos pela API (`DELETE` responde 405).
+- Frontend: tipos `Demand*`/`PublicDemand*` em `src/lib/app/types.ts` e bloco
+  "DEMANDA (T07)" em `src/lib/app/api.ts` (`DemandRequestError` com `fields`),
+  para o assistente da T09.
+- Testes: `test/demand-routes.test.js` (banco simulado) e
+  `test/demand-e2e.test.js`, o ciclo completo contra PostgreSQL. Rode
+  `npm --prefix services/post-service run test:e2e`: sobe um PostgreSQL 15+
+  temporário (Homebrew; `PG_BIN` para escolher), aplica o manifesto do
+  `post_db` duas vezes, cria o papel `gestao_app` com os grants do dm-infra e
+  apaga o cluster no fim. Sem `DM_E2E_DATABASE_URL`, o `npm test` pula esse arquivo.
+
 ## Segurança dos serviços
 
 - `JWT_SECRET` é obrigatório e forte (32+ caracteres, sem valores de exemplo)

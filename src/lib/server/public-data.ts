@@ -47,6 +47,7 @@ function mapPost(record: RawRecord): Post {
     commentsCount: numberValue(record.comments_count ?? record.commentsCount),
     viewsCount: numberValue(record.views_count ?? record.viewsCount),
     createdAt: String(record.created_at ?? record.createdAt ?? ""),
+    demandId: typeof record.demand_id === "string" ? record.demand_id : null,
   };
 }
 

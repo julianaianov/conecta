@@ -19,6 +19,11 @@ import type {
   InstitutionKind, InstitutionValidationEvent, InstitutionValidationStatus, GovernmentSphere,
   PublicInstitution,
 } from "./types";
+import type {
+  Demand, DemandAgentAction, DemandComposition, DemandEvent, DemandFieldErrors, DemandInput,
+  DemandItemInputs, DemandItemKind, DemandItems, DemandListFilter, DemandPage, DemandReview,
+  DemandTimelineEvent, DemandValidation, PublicDemand, DemandBudgetItemInput,
+} from "./types";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -123,6 +128,7 @@ function mapPost(r: RawPost): Post {
     commentsCount: Number(r.comments_count ?? r.commentsCount ?? 0),
     viewsCount: Number(r.views_count ?? r.viewsCount ?? 0),
     createdAt: String(r.created_at ?? r.createdAt ?? ""),
+    demandId: (r.demand_id ?? r.demandId ?? null) as string | null,
   };
 }
 function mapComment(r: RawPost): Comment {
@@ -368,6 +374,85 @@ export interface InstitutionReference {
   ufs: string[];
   governmentSpheres: GovernmentSphere[];
 }
+
+// ── Demanda (T07) ──────────────────────────────────────────
+/**
+ * Erro da API de demanda: 422 traz `fields` (campo → mensagem), 403
+ * `institution_not_validated`/`demand_author_not_agent`, 409 estado inválido
+ * (`demand_not_editable`, `invalid_transition`, `invalid_state`).
+ */
+export class DemandRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null = null,
+    readonly fields: DemandFieldErrors = {},
+    readonly validationStatus: string | null = null,
+  ) {
+    super(message);
+  }
+}
+
+const DEMANDS = "/api/posts/demands";
+
+/** Requisição da API de demanda; 404 vira `null`. */
+async function demandRequest<T>(path: string, init: RequestInit = {}): Promise<T | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const token = getToken();
+  try {
+    const res = await fetch(`${BASE}${DEMANDS}${path}`, {
+      ...init,
+      signal: ctrl.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init.headers ?? {}),
+      },
+    });
+    if (res.status === 404) return null;
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      throw new DemandRequestError(
+        String(body.error ?? `Erro ${res.status}`),
+        res.status,
+        (body.code as string) ?? null,
+        (body.fields as DemandFieldErrors) ?? {},
+        (body.validationStatus as string) ?? null,
+      );
+    }
+    return body as T;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw new NetworkError("timeout");
+    if (err instanceof TypeError) throw new NetworkError("network");
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function demandRequired<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const body = await demandRequest<T>(path, init);
+  if (body === null) throw new DemandRequestError("Demanda não encontrada", 404);
+  return body;
+}
+
+export function buildDemandQuery(filter: DemandListFilter = {}): string {
+  const q = new URLSearchParams();
+  if (filter.category?.length) q.set("category", filter.category.join(","));
+  if (filter.priority?.length) q.set("priority", filter.priority.join(","));
+  if (filter.status?.length) q.set("status", filter.status.join(","));
+  if (filter.territory) q.set("territory", filter.territory);
+  if (filter.municipality) q.set("municipality", filter.municipality);
+  if (filter.uf) q.set("uf", filter.uf);
+  if (filter.q) q.set("q", filter.q);
+  if (filter.bbox) q.set("bbox", filter.bbox.join(","));
+  if (filter.limit) q.set("limit", String(filter.limit));
+  if (filter.cursor) q.set("cursor", filter.cursor);
+  return q.toString();
+}
+
+const json = (body: unknown): RequestInit => ({ body: JSON.stringify(body ?? {}) });
 
 export const api = {
   hasApi: HAS_API,
@@ -746,5 +831,83 @@ export const api = {
     const raw = await institutionRequest<InstitutionReference>("/api/users/institutions/reference");
     if (!raw) throw new InstitutionRequestError("Referência indisponível", 404);
     return raw;
+  },
+  // ── DEMANDA (T07) ────────────────────────────────────────
+  /** Demandas publicadas em diante (paginação por `nextCursor`). */
+  async listPublicDemands(filter?: DemandListFilter): Promise<DemandPage> {
+    return (await demandRequest<DemandPage>(`/?${buildDemandQuery(filter)}`)) ?? { demands: [], nextCursor: null };
+  },
+
+  getPublicDemand(id: string): Promise<PublicDemand | null> {
+    return demandRequest<PublicDemand>(`/${encodeURIComponent(id)}`);
+  },
+
+  async publicDemandTimeline(id: string): Promise<DemandTimelineEvent[]> {
+    const body = await demandRequest<{ events: DemandTimelineEvent[] }>(`/${encodeURIComponent(id)}/timeline`);
+    return body?.events ?? [];
+  },
+
+  /** Demandas do próprio Agente, em qualquer estado (sem os itens). */
+  async myDemands(): Promise<Demand[]> {
+    return (await demandRequired<{ demands: Demand[] }>("/mine")).demands;
+  },
+
+  getMyDemand(id: string): Promise<Demand | null> {
+    return demandRequest<Demand>(`/mine/${encodeURIComponent(id)}`);
+  },
+
+  async myDemandEvents(id: string): Promise<DemandEvent[]> {
+    return (await demandRequired<{ events: DemandEvent[] }>(`/mine/${encodeURIComponent(id)}/events`)).events;
+  },
+
+  myDemandReview(id: string): Promise<DemandReview | null> {
+    return demandRequest<DemandReview>(`/mine/${encodeURIComponent(id)}/review`);
+  },
+
+  /** Cria o rascunho (não exige instituição validada). */
+  createDemand(input: DemandInput = {}): Promise<Demand> {
+    return demandRequired<Demand>("/", { method: "POST", ...json(input) });
+  },
+
+  /** Atualiza só os campos enviados (rascunho ou devolvida). */
+  updateDemand(id: string, input: DemandInput): Promise<Demand> {
+    return demandRequired<Demand>(`/${encodeURIComponent(id)}`, { method: "PUT", ...json(input) });
+  },
+
+  addDemandItem<K extends DemandItemKind>(
+    id: string, kind: K, input: DemandItemInputs[K],
+  ): Promise<{ item: DemandItems[K]; composition: DemandComposition }> {
+    return demandRequired(`/${encodeURIComponent(id)}/${kind}`, { method: "POST", ...json(input) });
+  },
+
+  updateDemandItem<K extends DemandItemKind>(
+    id: string, kind: K, itemId: string, input: DemandItemInputs[K],
+  ): Promise<{ item: DemandItems[K]; composition: DemandComposition }> {
+    return demandRequired(`/${encodeURIComponent(id)}/${kind}/${encodeURIComponent(itemId)}`, { method: "PUT", ...json(input) });
+  },
+
+  removeDemandItem(id: string, kind: DemandItemKind, itemId: string): Promise<{ deleted: string; composition: DemandComposition }> {
+    return demandRequired(`/${encodeURIComponent(id)}/${kind}/${encodeURIComponent(itemId)}`, { method: "DELETE" });
+  },
+
+  /** Composição 4%/6% da planilha antes de gravar. */
+  previewDemandComposition(
+    budgetItems: DemandBudgetItemInput[],
+  ): Promise<{ items: { totalCents: number }[]; composition: DemandComposition }> {
+    return demandRequired("/composition/preview", { method: "POST", ...json({ budgetItems }) });
+  },
+
+  /** Validação completa de envio (não grava). */
+  validateDemand(id: string): Promise<DemandValidation> {
+    return demandRequired<DemandValidation>(`/${encodeURIComponent(id)}/validate`, { method: "POST", body: "{}" });
+  },
+
+  /** Envia para análise; 403 `institution_not_validated`, 422 `demand_incomplete` com `fields`. */
+  submitDemand(id: string): Promise<Demand> {
+    return demandRequired<Demand>(`/${encodeURIComponent(id)}/submit`, { method: "POST", body: "{}" });
+  },
+
+  transitionDemand(id: string, action: DemandAgentAction): Promise<Demand> {
+    return demandRequired<Demand>(`/${encodeURIComponent(id)}/transitions`, { method: "POST", ...json({ action }) });
   },
 };

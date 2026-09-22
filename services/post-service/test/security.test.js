@@ -128,7 +128,7 @@ test('PUT /:id só pelo autor, e o status não é editável (decisão 7)', async
     calls: [],
     async query(text, params = []) {
       this.calls.push({ text, params });
-      if (text.includes('SELECT author_id FROM posts')) return { rows: [{ author_id: USER_ID }] };
+      if (text.includes('SELECT author_id, demand_id FROM posts')) return { rows: [{ author_id: USER_ID, demand_id: null }] };
       if (text.includes('UPDATE posts')) return { rows: [{ id: POST_ID }] };
       throw new Error(`Unexpected query: ${text}`);
     },

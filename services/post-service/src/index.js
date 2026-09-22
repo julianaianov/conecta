@@ -3,6 +3,8 @@ const cors    = require('cors');
 const helmet  = require('helmet');
 const { Pool } = require('pg');
 const postsRoutes = require('./routes/posts');
+const demandsRoutes = require('./routes/demands');
+const { requireValidatedAgent } = require('./demand/gate');
 const { createInstitutionStatusClient, requireValidatedGovernment } = require('./institution-gate');
 const {
   resolveJwtSecret, createAuth, parseOperationUserIds, requireOperation,
@@ -18,11 +20,14 @@ const createApp = ({
   const auth = createAuth(secret);
   const operation = requireOperation(operationUserIds);
   const institutional = requireValidatedGovernment(institutionStatus);
+  const validatedAgent = requireValidatedAgent(institutionStatus);
 
   app.use(helmet());
   app.use(cors());
   app.use(express.json());
   app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'post-service' }));
+  // Antes das rotas de posts, cujo `/:id` só aceita UUID. Público: /api/posts/demands.
+  app.use('/demands', demandsRoutes({ pool, auth, validatedAgent }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 
   return app;

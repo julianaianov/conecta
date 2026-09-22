@@ -9,6 +9,8 @@ const POST_PUBLIC_COLUMNS = [
   'id', 'author_id', 'author_name', 'author_avatar', 'type', 'title', 'description',
   'status', 'latitude', 'longitude', 'neighborhood', 'city', 'images', 'videos', 'tags',
   'reactions_count', 'comments_count', 'views_count', 'created_at', 'updated_at',
+  // Post-vitrine de demanda publicada (T06/T07): o frontend linka a demanda.
+  'demand_id',
 ];
 const POST_SQL = POST_PUBLIC_COLUMNS.join(', ');
 const COMMENT_SQL = 'id, post_id, author_id, author_name, content, created_at';
@@ -21,6 +23,16 @@ const SUPPORT_OPERATION_SQL = 'id, post_id, user_id, user_name, type, amount, pa
 // Post oculto não aparece em rota pública nem aceita interação.
 const VISIBLE = "visibility = 'visible'";
 const VISIBLE_POST = `SELECT 1 FROM posts WHERE id=$1 AND ${VISIBLE}`;
+
+// Post-vitrine de demanda (posts.demand_id): o conteúdo vem da demanda, então
+// editar ou excluir pelo post é conflito de estado, não erro interno.
+function showcaseConflict(res, demandId) {
+  return res.status(409).json({
+    error: 'Este post é a vitrine de uma demanda: o conteúdo é mantido pela demanda',
+    code: 'demand_showcase',
+    demandId: demandId ?? null,
+  });
+}
 
 module.exports = (pool, auth, operation, institutional = (_req, _res, next) => next()) => {
   if (typeof operation !== 'function') throw new Error('posts routes exigem o middleware de operação');
@@ -245,10 +257,11 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
     if (hasLocation && (latitude != null || longitude != null) && !coordinates)
       return res.status(400).json({ error: 'latitude e longitude devem formar uma localização válida' });
     try {
-      const { rows: existing } = await pool.query('SELECT author_id FROM posts WHERE id=$1', [req.params.id]);
+      const { rows: existing } = await pool.query('SELECT author_id, demand_id FROM posts WHERE id=$1', [req.params.id]);
       if (!existing.length) return res.status(404).json({ error: 'Post não encontrado' });
       if (existing[0].author_id !== req.user.userId)
         return res.status(403).json({ error: 'Sem permissão' });
+      if (existing[0].demand_id) return showcaseConflict(res, existing[0].demand_id);
 
       const updates = [
         'title=COALESCE($1,title)',
@@ -270,6 +283,23 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
         values
       );
       res.json(rows[0]);
+    } catch (err) {
+      // Corrida com a publicação/arquivamento: o trigger do post-vitrine recusa.
+      if (err?.code === '23514' && /post-vitrine/.test(err.message)) return showcaseConflict(res, null);
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // DELETE /:id — posts não são excluídos pela API (a moderação oculta). O
+  // post-vitrine de demanda responde 409 e aponta a demanda.
+  router.delete('/:id', auth, async (req, res) => {
+    try {
+      const { rows } = await pool.query('SELECT author_id, demand_id FROM posts WHERE id=$1', [req.params.id]);
+      if (!rows.length) return res.status(404).json({ error: 'Post não encontrado' });
+      if (rows[0].author_id !== req.user.userId) return res.status(403).json({ error: 'Sem permissão' });
+      if (rows[0].demand_id) return showcaseConflict(res, rows[0].demand_id);
+      return res.status(405).json({ error: 'Publicações não são excluídas; a moderação pode ocultá-las' });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });

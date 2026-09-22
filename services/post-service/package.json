@@ -5,7 +5,8 @@
   "scripts": {
     "test": "NODE_ENV=test node --test test/*.test.js",
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "test:e2e": "bash scripts/e2e-postgres.sh"
   },
   "dependencies": {
     "cors": "^2.8.5",

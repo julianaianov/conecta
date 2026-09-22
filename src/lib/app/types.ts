@@ -342,6 +342,8 @@ export interface Post {
   commentsCount: number;
   viewsCount: number;
   createdAt: string;
+  /** Post-vitrine de uma demanda publicada (T07): linka `/demandas/<id>`. */
+  demandId?: string | null;
 }
 
 export interface Comment {
@@ -819,4 +821,376 @@ export function formatCnae(value: string): string {
   const c = value.replace(/[.\-/\s]/g, "");
   if (c.length !== 7) return value;
   return `${c.slice(0, 4)}-${c.slice(4, 5)}/${c.slice(5)}`;
+}
+
+// ── Demanda (T07) ──────────────────────────────────────────
+// Espelho do contrato de services/post-service/src/routes/demands.js
+// (JSON em camelCase). Valores e rótulos iguais a src/demand/constants.js.
+
+export type DemandCategory =
+  | "projeto_social" | "projeto_ambiental" | "necessidade_de_patrocinio"
+  | "problema_urbano" | "problema_urgente";
+
+export const DEMAND_CATEGORY_LABELS: Record<DemandCategory, string> = {
+  projeto_social: "Projeto Social",
+  projeto_ambiental: "Projeto Ambiental",
+  necessidade_de_patrocinio: "Necessidade de Patrocínio",
+  problema_urbano: "Problema Urbano",
+  problema_urgente: "Problema Urgente",
+};
+
+export type DemandStatus =
+  | "em_analise" | "publicada" | "em_busca_de_parceiro" | "conectada"
+  | "em_execucao" | "concluida" | "prestacao_de_contas" | "arquivada";
+
+export const DEMAND_STATUS_LABELS: Record<DemandStatus, string> = {
+  em_analise: "Em análise",
+  publicada: "Publicada",
+  em_busca_de_parceiro: "Em busca de parceiro",
+  conectada: "Conectada",
+  em_execucao: "Em execução",
+  concluida: "Concluída",
+  prestacao_de_contas: "Prestação de contas",
+  arquivada: "Arquivada",
+};
+
+/** Status visíveis em rota pública (da publicação em diante). */
+export const DEMAND_PUBLIC_STATUSES: DemandStatus[] = [
+  "publicada", "em_busca_de_parceiro", "conectada", "em_execucao", "concluida", "prestacao_de_contas",
+];
+
+export type DemandReviewState = "rascunho" | "aguardando_analise" | "devolvida" | "aprovada";
+
+export const DEMAND_REVIEW_STATE_LABELS: Record<DemandReviewState, string> = {
+  rascunho: "Rascunho",
+  aguardando_analise: "Aguardando análise",
+  devolvida: "Devolvida para ajustes",
+  aprovada: "Aprovada",
+};
+
+export type DemandPriority = "baixa" | "media" | "alta" | "urgente";
+
+export const DEMAND_PRIORITY_LABELS: Record<DemandPriority, string> = {
+  baixa: "Baixa",
+  media: "Média",
+  alta: "Alta",
+  urgente: "Urgente",
+};
+
+export type DemandRecordMilestone = "antes" | "acompanhamento" | "depois";
+export type DemandResourceKind = "necessario" | "contrapartida";
+
+export type DemandNeededResourceType =
+  | "recursos_financeiros" | "materiais" | "servicos" | "equipamentos" | "mao_de_obra"
+  | "estrutura" | "apoio_tecnico" | "conhecimento_especializado" | "servicos_de_fotografia_e_filmagem";
+
+export type DemandCounterpartResourceType =
+  | "equipe" | "espaco_fisico" | "equipamentos" | "materiais" | "servicos"
+  | "estrutura" | "recursos_proprios" | "conhecimento_tecnico";
+
+export type DemandResourceType = DemandNeededResourceType | DemandCounterpartResourceType;
+
+export const DEMAND_RESOURCE_TYPES: Record<DemandResourceKind, DemandResourceType[]> = {
+  necessario: [
+    "recursos_financeiros", "materiais", "servicos", "equipamentos", "mao_de_obra",
+    "estrutura", "apoio_tecnico", "conhecimento_especializado", "servicos_de_fotografia_e_filmagem",
+  ],
+  contrapartida: [
+    "equipe", "espaco_fisico", "equipamentos", "materiais", "servicos",
+    "estrutura", "recursos_proprios", "conhecimento_tecnico",
+  ],
+};
+
+export type DemandDocumentType =
+  | "documentos_institucionais" | "estatuto" | "documentos_de_representacao"
+  | "autorizacoes" | "orcamentos_e_cotacoes" | "projetos_tecnicos" | "fotografias" | "outros";
+
+/** Ações do Agente depois da publicação (POST /demands/:id/transitions). */
+export type DemandAgentAction =
+  | "buscar_parceiro" | "conectar" | "iniciar_execucao" | "concluir" | "prestar_contas";
+
+/** `enviar` aparece em `availableActions` e usa POST /demands/:id/submit. */
+export type DemandAction = "enviar" | DemandAgentAction;
+
+/** Composição financeira gravada, em centavos (4% Agente + 6% plataforma). */
+export interface DemandComposition {
+  budgetAmountCents: number;
+  agentFeeBps: number;
+  platformFeeBps: number;
+  agentFeeCents: number;
+  platformFeeCents: number;
+  totalAmountCents: number;
+}
+
+export interface DemandBudgetItemInput {
+  description: string;
+  /** Até 3 casas decimais; aceita "2,5". */
+  quantity: number | string;
+  unit: string;
+  unitPriceCents: number;
+  isAudiovisualRecord?: boolean;
+  scheduleItemId?: string | null;
+  position?: number;
+}
+
+export interface DemandBudgetItem extends Omit<DemandBudgetItemInput, "quantity"> {
+  id: string;
+  position: number;
+  quantity: number;
+  totalCents: number;
+  isAudiovisualRecord: boolean;
+  scheduleItemId: string | null;
+}
+
+export interface DemandScheduleItemInput {
+  stage: string;
+  activities: string;
+  /** AAAA-MM-DD */
+  startsOn: string;
+  endsOn: string;
+  responsible?: string | null;
+  recordMilestones?: DemandRecordMilestone[];
+  position?: number;
+}
+
+export interface DemandScheduleItem extends DemandScheduleItemInput {
+  id: string;
+  position: number;
+  recordMilestones: DemandRecordMilestone[];
+}
+
+export interface DemandGoalInput {
+  goal: string;
+  expectedResult: string;
+  indicator: string;
+  measurementMethod: string;
+  position?: number;
+}
+
+export interface DemandGoal extends DemandGoalInput {
+  id: string;
+  position: number;
+}
+
+export interface DemandResourceInput {
+  kind: DemandResourceKind;
+  type: DemandResourceType;
+  description?: string | null;
+  position?: number;
+}
+
+export interface DemandResource extends DemandResourceInput {
+  id: string;
+  position: number;
+}
+
+export interface DemandDocumentInput {
+  type: DemandDocumentType;
+  title: string;
+  /** Link https até o upload da T08. */
+  reference: string;
+  description?: string | null;
+  position?: number;
+}
+
+export interface DemandDocument extends DemandDocumentInput {
+  id: string;
+  position: number;
+}
+
+/** Documento na rota pública: sem o link. */
+export interface PublicDemandDocument {
+  id: string;
+  position: number;
+  type: DemandDocumentType;
+  title: string;
+}
+
+export interface DemandItemInputs {
+  "budget-items": DemandBudgetItemInput;
+  "schedule-items": DemandScheduleItemInput;
+  goals: DemandGoalInput;
+  resources: DemandResourceInput;
+  documents: DemandDocumentInput;
+}
+
+export interface DemandItems {
+  "budget-items": DemandBudgetItem;
+  "schedule-items": DemandScheduleItem;
+  goals: DemandGoal;
+  resources: DemandResource;
+  documents: DemandDocument;
+}
+
+export type DemandItemKind = keyof DemandItemInputs;
+
+/** Campos escalares da demanda (POST /demands e PUT /demands/:id; parciais). */
+export interface DemandInput {
+  category?: DemandCategory | null;
+  title?: string | null;
+  description?: string | null;
+  objective?: string | null;
+  justification?: string | null;
+  beneficiariesEstimate?: number | null;
+  beneficiariesProfile?: string | null;
+  priority?: DemandPriority | null;
+  photoRef?: string | null;
+  cep?: string | null;
+  street?: string | null;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  district?: string | null;
+  municipality?: string | null;
+  uf?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  territory?: string | null;
+  hasPhysicalExecution?: boolean;
+}
+
+/** Demanda vista pelo autor (GET /demands/mine/:id). */
+export interface Demand extends Required<DemandInput> {
+  id: string;
+  authorId: string;
+  organizationId: string | null;
+  authorName: string | null;
+  authorAvatar: string | null;
+  composition: DemandComposition;
+  status: DemandStatus;
+  reviewState: DemandReviewState;
+  /** Parecer da devolução enquanto `reviewState` é `devolvida`. */
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  submittedAt: string | null;
+  publishedAt: string | null;
+  archiveReason: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Post-vitrine no feed, depois da publicação. */
+  postId: string | null;
+  editable: boolean;
+  availableActions: DemandAction[];
+  /** Ausentes na listagem (GET /demands/mine). */
+  budgetItems?: DemandBudgetItem[];
+  scheduleItems?: DemandScheduleItem[];
+  goals?: DemandGoal[];
+  resources?: DemandResource[];
+  documents?: DemandDocument[];
+}
+
+/** Demanda na rota pública: sem endereço fino nem dados da análise. */
+export interface PublicDemand {
+  id: string;
+  authorId: string;
+  authorName: string | null;
+  authorAvatar: string | null;
+  category: DemandCategory;
+  title: string;
+  description: string;
+  objective: string;
+  justification: string;
+  beneficiariesEstimate: number;
+  beneficiariesProfile: string;
+  priority: DemandPriority;
+  photoRef: string | null;
+  district: string | null;
+  municipality: string | null;
+  uf: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  territory: string | null;
+  hasPhysicalExecution: boolean;
+  composition: DemandComposition;
+  status: DemandStatus;
+  publishedAt: string | null;
+  updatedAt: string;
+  postId: string | null;
+  budgetItems: DemandBudgetItem[];
+  scheduleItems: Omit<DemandScheduleItem, "responsible">[];
+  goals: DemandGoal[];
+  resources: DemandResource[];
+  documents: PublicDemandDocument[];
+}
+
+/** Item da lista pública e do mapa. */
+export interface PublicDemandSummary {
+  id: string;
+  authorId: string;
+  authorName: string | null;
+  authorAvatar: string | null;
+  category: DemandCategory;
+  title: string;
+  /** Primeiros 280 caracteres. */
+  description: string;
+  priority: DemandPriority;
+  photoRef: string | null;
+  district: string | null;
+  municipality: string | null;
+  uf: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  territory: string | null;
+  beneficiariesEstimate: number | null;
+  budgetAmountCents: number;
+  totalAmountCents: number;
+  status: DemandStatus;
+  publishedAt: string | null;
+  postId: string | null;
+}
+
+export interface DemandListFilter {
+  category?: DemandCategory[];
+  priority?: DemandPriority[];
+  status?: DemandStatus[];
+  territory?: string;
+  municipality?: string;
+  uf?: string;
+  q?: string;
+  /** [oeste, sul, leste, norte] em graus. */
+  bbox?: [number, number, number, number];
+  limit?: number;
+  cursor?: string | null;
+}
+
+export interface DemandPage {
+  demands: PublicDemandSummary[];
+  nextCursor: string | null;
+}
+
+/** Evento da linha do tempo pública. */
+export interface DemandTimelineEvent {
+  id: string;
+  type: string;
+  fromStatus: DemandStatus | null;
+  toStatus: DemandStatus | null;
+  createdAt: string;
+}
+
+/** Evento da linha do tempo completa, visto pelo autor. */
+export interface DemandEvent extends DemandTimelineEvent {
+  reviewState: DemandReviewState | null;
+  actorType: "agente" | "gestao" | "sistema";
+  note: string | null;
+  payload: Record<string, unknown>;
+  isPublic: boolean;
+}
+
+export interface DemandReview {
+  status: DemandStatus;
+  reviewState: DemandReviewState;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  submittedAt: string | null;
+  returns: { note: string | null; createdAt: string }[];
+}
+
+/** Erros por campo (`budgetItems[0].quantity`, `audiovisualRecord`, ...). */
+export type DemandFieldErrors = Record<string, string>;
+
+export interface DemandValidation {
+  valid: boolean;
+  fields: DemandFieldErrors;
+  warnings: DemandFieldErrors;
+  composition: DemandComposition | null;
 }

@@ -13,7 +13,7 @@ function createPool() {
     calls,
     async query(text, params = []) {
       calls.push({ text, params });
-      if (text.includes('SELECT author_id FROM posts')) {
+      if (text.includes('SELECT author_id, demand_id FROM posts')) {
         return { rows: [{ author_id: USER_ID }] };
       }
       if (text.includes('INSERT INTO posts')) {

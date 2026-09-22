@@ -17,7 +17,7 @@ function createPool() {
     calls,
     async query(text, params = []) {
       calls.push({ text, params });
-      if (text.includes('SELECT author_id FROM posts')) return { rows: [{ author_id: USER_ID }] };
+      if (text.includes('SELECT author_id, demand_id FROM posts')) return { rows: [{ author_id: USER_ID }] };
       if (text.includes('INSERT INTO posts')) return { rows: [{ id: POST_ID, latitude: params[6], longitude: params[7] }] };
       if (text.includes('UPDATE posts')) return { rows: [{ id: POST_ID, latitude: params[5], longitude: params[6] }] };
       throw new Error(`Unexpected query: ${text}`);

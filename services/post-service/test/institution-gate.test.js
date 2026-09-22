@@ -22,7 +22,7 @@ function createPool() {
     async query(text, params = []) {
       calls.push(text);
       if (text.includes('INSERT INTO posts')) return { rows: [{ id: POST_ID, type: params[3] }] };
-      if (text.includes('SELECT author_id FROM posts')) return { rows: [{ author_id: GOV }] };
+      if (text.includes('SELECT author_id, demand_id FROM posts')) return { rows: [{ author_id: GOV }] };
       if (text.includes('FROM posts')) return { rows: [{ id: POST_ID, visibility: 'visible', author_id: GOV }] };
       return { rows: [], rowCount: 0 };
     },
