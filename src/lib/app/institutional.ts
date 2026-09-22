@@ -1,10 +1,15 @@
-// Atuação institucional do Poder Público (T13): rótulos, cores, máquina de
-// estados e textos da interface. Espelha services/post-service/src/institutional/
+// Atuação institucional do Poder Público (T13) e encaminhamentos (T14):
+// rótulos, cores, máquinas de estados e textos da interface. Espelha services/post-service/src/institutional/
 // (constants.js e state-machine.js); institutional.test.mjs compara as listas.
 // O servidor é quem decide: aqui só se orienta o formulário.
 
 import type {
+  AppNotification,
   DemandTimelineEvent,
+  ForwardingDestinationKind,
+  ForwardingInboxItem,
+  ForwardingStatus,
+  ForwardingUpdateKind,
   InstitutionalDemandFilter,
   InstitutionalResponseType,
   InstitutionalStatus,
@@ -131,6 +136,90 @@ export function supportTypeLabel(type: string): string {
   return type in SUPPORT_TYPE_LABELS ? SUPPORT_TYPE_LABELS[type as InstitutionalSupportType] : type;
 }
 
+// ── Encaminhamentos (T14) ──────────────────────────────────
+// Espelha services/post-service/src/institutional/forwardings.js.
+
+export const FORWARDING_DESTINATION_KINDS: ForwardingDestinationKind[] = ["orgao_plataforma", "setor_interno", "orgao_externo"];
+
+export const FORWARDING_DESTINATION_KIND_LABELS: Record<ForwardingDestinationKind, string> = {
+  orgao_plataforma: "Órgão do Poder Público na plataforma",
+  setor_interno: "Setor do próprio órgão",
+  orgao_externo: "Órgão fora da plataforma",
+};
+
+export const FORWARDING_STATUSES: ForwardingStatus[] = ["enviado", "recebido", "aceito", "devolvido"];
+
+export const FORWARDING_STATUS_LABELS: Record<ForwardingStatus, string> = {
+  enviado: "Enviado",
+  recebido: "Recebido",
+  aceito: "Aceito",
+  devolvido: "Devolvido",
+};
+
+export const FORWARDING_STATUS_COLORS: Record<ForwardingStatus, string> = {
+  enviado: "#2e7ba8",
+  recebido: "#8e6bbf",
+  aceito: "#1f7a45",
+  devolvido: "#b8860b",
+};
+
+export const FORWARDING_TRANSITIONS: Record<ForwardingStatus, ForwardingStatus[]> = {
+  enviado: ["recebido", "aceito", "devolvido"],
+  recebido: ["aceito", "devolvido"],
+  aceito: [],
+  devolvido: [],
+};
+
+export const FORWARDING_UPDATE_KINDS: Exclude<ForwardingUpdateKind, "status">[] = ["providencia", "atualizacao"];
+
+export const FORWARDING_UPDATE_KIND_LABELS: Record<ForwardingUpdateKind, string> = {
+  providencia: "Providência realizada",
+  atualizacao: "Atualização",
+  status: "Mudança de status",
+};
+
+/** Status institucional da origem ao encaminhar, por tipo de destino (o órgão pode escolher o outro). */
+export const DEFAULT_ORIGIN_TRACK_STATUS: Record<ForwardingDestinationKind, "encaminhada" | "encaminhada_ao_orgao_responsavel"> = {
+  orgao_plataforma: "encaminhada_ao_orgao_responsavel",
+  setor_interno: "encaminhada",
+  orgao_externo: "encaminhada_ao_orgao_responsavel",
+};
+
+export const FORWARDING_EVENT_TYPES = ["demanda_encaminhada", "encaminhamento_status_alterado", "encaminhamento_atualizado"] as const;
+
+/** Status institucional a partir do qual é possível encaminhar (ou já encaminhado). */
+export function canForwardFrom(status: InstitutionalStatus | null | undefined, target: InstitutionalStatus): boolean {
+  if (!status) return true; // o acompanhamento é aberto como Recebida
+  return status === target || nextInstitutionalStatuses(status).includes(target);
+}
+
+export function forwardingStatusLabel(status: string | null | undefined): string | null {
+  return status && status in FORWARDING_STATUS_LABELS ? FORWARDING_STATUS_LABELS[status as ForwardingStatus] : null;
+}
+
+/** Destino legível: "Órgão — Setor", só o setor (interno) ou só o órgão. */
+export function forwardingDestinationLabel(f: { destinationKind?: string | null; destinationOrganizationName?: string | null; destinationSector?: string | null }): string {
+  if (f.destinationKind === "setor_interno") return f.destinationSector || "setor interno";
+  const org = f.destinationOrganizationName || "órgão responsável";
+  return f.destinationSector ? `${org} — ${f.destinationSector}` : org;
+}
+
+/** Notificação do sino para encaminhamento recebido e ainda sem resposta. */
+export function forwardingNotification(item: ForwardingInboxItem): AppNotification {
+  const f = item.forwarding;
+  return {
+    id: `n-fwd-${f.id}`,
+    kind: "forwarding",
+    actorName: f.originOrganizationName,
+    postId: item.demand.postId ?? "",
+    postTitle: item.demand.title,
+    summary: `${f.originOrganizationName} encaminhou «${item.demand.title}» ao órgão`,
+    icon: "send",
+    href: institutionalDemandPath(item.demand.id),
+    createdAt: f.forwardedAt,
+  };
+}
+
 /** Query da lista do Poder Público (GET /api/posts/institutional/demands). */
 export function buildInstitutionalQuery(filter: InstitutionalDemandFilter = {}): string {
   const q = new URLSearchParams();
@@ -165,6 +254,17 @@ export function institutionalTimelineLabel(event: Pick<DemandTimelineEvent, "typ
     }
     case "apoio_institucional_oferecido":
       return `${org} ofereceu apoio`;
+    case "demanda_encaminhada":
+      return `${org} encaminhou a demanda a ${forwardingDestinationLabel(event.details ?? {})}`;
+    case "encaminhamento_status_alterado": {
+      const label = forwardingStatusLabel(event.details?.forwardingStatus);
+      const destination = forwardingDestinationLabel(event.details ?? {});
+      return label ? `Encaminhamento a ${destination}: ${label.toLowerCase()}` : `Encaminhamento a ${destination} atualizado`;
+    }
+    case "encaminhamento_atualizado":
+      return event.details?.updateKind === "providencia"
+        ? `${org} registrou providência no encaminhamento`
+        : `${org} atualizou o encaminhamento`;
     default:
       return null;
   }
@@ -182,6 +282,8 @@ export function institutionalTimelineDetail(event: Pick<DemandTimelineEvent, "ty
     return d.supportTypes.map(supportTypeLabel).join(", ");
   }
   if (event.type === "status_institucional_alterado" && d.note) return d.note;
+  if ((event.type === "demanda_encaminhada" || event.type === "encaminhamento_atualizado") && d.excerpt) return d.excerpt;
+  if (event.type === "encaminhamento_status_alterado" && d.note) return d.note;
   return null;
 }
 

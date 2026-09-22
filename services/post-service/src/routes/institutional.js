@@ -20,9 +20,15 @@
 //                                                programUrl, plannedFor, status?, statusNote? }
 //   POST /institutional/demands/:id/offers       { supportTypes[], description, connectionId? }
 //
+// Encaminhamentos (T14): routes/forwardings.js, registrado neste router
+// (diretório de órgãos, encaminhar, caixa recebidos/enviados, status e
+// providências). A visão do órgão sobre a demanda traz os encaminhamentos em
+// que ele é origem ou destino.
+//
 // Público (sem login; só demanda publicada em diante, fora `arquivada`):
 //   GET  /demands/:id/institutional              órgãos que acompanham (status e datas),
-//                                                respostas e ofertas, sem representante
+//                                                respostas, ofertas e tramitação dos
+//                                                encaminhamentos, sem representante nem responsável
 //
 // Respostas, status e ofertas abrem o acompanhamento quando ele ainda não
 // existe. A conexão com o Agente usa as rotas de conexões do user-service
@@ -42,6 +48,8 @@ const {
   checkTransition, validateStatusChange, validateResponse, validateResponsible, validateOffer,
 } = require('../institutional');
 const store = require('../institutional/store');
+const forwardingStore = require('../institutional/forwarding-store');
+const { registerForwardingRoutes } = require('./forwardings');
 
 const { HttpError, withTransaction } = demandStore;
 const {
@@ -165,7 +173,7 @@ const ownTrackSummary = (row) => (row.track_id ? {
     ? row.track_status_changed_at.toISOString() : row.track_status_changed_at ?? null,
 } : null);
 
-module.exports = ({ pool, auth, governmentActor, governmentProfile }) => {
+module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDirectory = null }) => {
   if (typeof auth !== 'function' || typeof governmentActor !== 'function' || typeof governmentProfile !== 'function') {
     throw new Error('institutional routes exigem auth, requireGovernmentActor e governmentProfile');
   }
@@ -178,7 +186,10 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile }) => {
     try {
       await fn(req, res);
     } catch (err) {
-      store.sendInstitutionalError(res, err);
+      const mapped = forwardingStore.mapForwardingError(err);
+      if (mapped) return res.status(mapped.status).json(mapped.body);
+      console.error(err);
+      return res.status(500).json({ error: 'Erro interno' });
     }
   };
 
@@ -217,12 +228,15 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile }) => {
         ORDER BY t.received_at, t.id`,
       [demandId, organizationId],
     );
+    const forwardings = await forwardingStore.loadDemandForwardings(db, demandId, { organizationId });
     return {
       demand: demandStore.serializePublicDemand(rows[0], items),
       track: track ? store.serializeTrack(track) : null,
       responses: own.responses.map((r) => store.serializeResponse(r)),
       offers: own.offers.map((o) => store.serializeOffer(o)),
       otherOrganizations: others.map(store.serializePublicTrack),
+      forwardings: forwardings.map(({ row, updates }) => forwardingStore.serializeForwarding(
+        row, updates, { viewerOrganizationId: organizationId })),
     };
   }
 
@@ -238,6 +252,16 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile }) => {
     );
     const counts = Object.fromEntries(INSTITUTIONAL_STATUSES.map((s) => [s, 0]));
     for (const r of rows) counts[r.status] = r.n;
+    // Encaminhamentos (T14): recebidos ainda sem resposta e enviados em aberto.
+    const { rows: [pending] } = await pool.query(
+      `SELECT count(*) FILTER (WHERE f.destination_organization_id = $1 AND f.status = 'enviado')::int AS received,
+              count(*) FILTER (WHERE f.organization_id = $1 AND f.status IN ('enviado', 'recebido'))::int AS sent
+         FROM demand_forwardings f
+         JOIN demands d ON d.id = f.demand_id
+        WHERE (f.destination_organization_id = $1 OR f.organization_id = $1)
+          AND d.status = ANY($2::demand_status[])`,
+      [req.government.organizationId, PUBLIC_STATUSES],
+    );
     res.json({
       organizationId: req.government.organizationId,
       organization: profile,
@@ -247,6 +271,7 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile }) => {
         uf: profile.governmentSphere === 'federal' ? null : profile.uf,
       },
       counts,
+      forwardings: { pendingReceived: pending?.received ?? 0, openSent: pending?.sent ?? 0 },
     });
   }));
 
@@ -392,6 +417,11 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile }) => {
     res.status(201).json(view);
   }));
 
+  // ── Encaminhamentos (T14) ─────────────────────────────────────────────────
+  registerForwardingRoutes(router, {
+    pool, store, gov, handle, profileOf, withTrack, changeStatus, governmentDirectory,
+  });
+
   // ── Público ───────────────────────────────────────────────────────────────
   router.get('/demands/:id/institutional', handle(async (req, res) => {
     await store.loadOpenDemand(pool, req.params.id);
@@ -401,11 +431,13 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile }) => {
       [req.params.id],
     );
     const { responses, offers } = await store.loadEntries(pool, req.params.id);
+    const forwardings = await forwardingStore.loadDemandForwardings(pool, req.params.id);
     res.set('Cache-Control', 'public, max-age=60');
     res.json({
       organizations: tracks.map(store.serializePublicTrack),
       responses: responses.map((r) => store.serializeResponse(r, { isPublic: true })),
       offers: offers.map((o) => store.serializeOffer(o, { isPublic: true })),
+      forwardings: forwardings.map(({ row, updates }) => forwardingStore.serializeForwarding(row, updates, { isPublic: true })),
     });
   }));
 

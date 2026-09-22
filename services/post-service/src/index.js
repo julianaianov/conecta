@@ -17,6 +17,7 @@ const { createPublicInstitutionClient } = require('./dossier/institution');
 const institutionalRoutes = require('./routes/institutional');
 const { requireGovernmentActor } = require('./institutional/gate');
 const { createGovernmentProfileClient } = require('./institutional/store');
+const { createGovernmentDirectoryClient } = require('./institutional/directory');
 
 /** Endereço público do portal (URL de verificação impressa no dossiê). */
 const siteUrl = (env) => (typeof env.DM_PUBLIC_SITE_URL === 'string' && env.DM_PUBLIC_SITE_URL.trim()
@@ -34,6 +35,8 @@ const createApp = ({
   dossierService,
   // Identificação pública do órgão do Poder Público (T13), pelo user-service.
   governmentProfile = createGovernmentProfileClient({ fetchInstitution: createPublicInstitutionClient() }),
+  // Diretório dos órgãos validados (T14, destino dos encaminhamentos), pelo user-service.
+  governmentDirectory = createGovernmentDirectoryClient(),
 } = {}) => {
   const dossiers = dossierService === undefined
     ? createDossierService({
@@ -58,8 +61,9 @@ const createApp = ({
   app.use('/uploads', createUploadRoutes({
     pool, auth, storage: uploadStorage, policy: createPostUploadPolicy(), operationUserIds,
   }));
-  // Atuação institucional do Poder Público (T13): /institutional/* e /demands/:id/institutional.
-  app.use('/', institutionalRoutes({ pool, auth, governmentActor, governmentProfile }));
+  // Atuação institucional do Poder Público (T13) e encaminhamentos (T14):
+  // /institutional/* e /demands/:id/institutional.
+  app.use('/', institutionalRoutes({ pool, auth, governmentActor, governmentProfile, governmentDirectory }));
   if (dossiers) app.use('/demands', dossierRoutes({ pool, auth, dossiers, operationUserIds }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));

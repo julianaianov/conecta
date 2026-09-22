@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/app/api";
 import { timeAgo } from "@/lib/app/format";
+import { forwardingNotification } from "@/lib/app/institutional";
 import type { AppNotification } from "@/lib/app/types";
 import { Icon, type IconName } from "./Icon";
 
@@ -25,7 +26,7 @@ function saveRead(userId: string, ids: Set<string>) {
   }
 }
 
-export function NotificationBell({ userId }: { userId: string | null }) {
+export function NotificationBell({ userId, government = false }: { userId: string | null; government?: boolean }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[]>([]);
   const [read, setRead] = useState<Set<string>>(new Set());
@@ -38,13 +39,19 @@ export function NotificationBell({ userId }: { userId: string | null }) {
     }
     let alive = true;
     setRead(loadRead(userId));
-    api.notifications(userId).then((list) => {
-      if (alive) setItems(list);
+    // Poder Público (T14): encaminhamentos recebidos e ainda sem resposta. Falha
+    // aqui não esconde as demais notificações.
+    const forwarded = government
+      ? api.institutionalForwardings("recebidos", ["enviado"]).then((list) => list.map(forwardingNotification)).catch(() => [])
+      : Promise.resolve([]);
+    Promise.all([api.notifications(userId).catch(() => []), forwarded]).then(([list, extra]) => {
+      if (!alive) return;
+      setItems([...extra, ...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 30));
     });
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [userId, government]);
 
   const markRead = useCallback(
     (ids: string[]) => {

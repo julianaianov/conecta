@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 010, post-service 011. Registre a migração em
+  auth-service 004, user-service 010, post-service 012. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -65,9 +65,10 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `organization_representatives` (contatos privados).
 - Rotas do user-service (`routes/institutions.js`): `GET/PUT /me/institution`,
   `POST /me/institution/submit`, `GET /me/institution/status`,
-  `GET /institutions/reference` e `GET /:userId/institution` (público, só
-  validada, sem contatos). Validação de CNPJ (inclusive alfanumérico) e CNAE em
-  `src/institution.js`.
+  `GET /institutions/reference`, `GET /:userId/institution` (público, só
+  validada, sem contatos) e o diretório do Poder Público validado
+  `GET /institutions/government[/:organizationId]` (T14). Validação de CNPJ
+  (inclusive alfanumérico) e CNAE em `src/institution.js`.
 - Estado `validation_status`: `pendente` → (titular envia) `em_analise` →
   (dm-gestao) `validada` | `devolvida` (parecer); `validada` → `revogada`
   (parecer). O titular edita e reenvia em `pendente`, `devolvida` e `revogada`.
@@ -371,8 +372,67 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Testes: `test/institutional-domain.test.js`, `test/institutional-routes.test.js`,
   `test/institutional-e2e.test.js` (no `test:e2e`) e
   `src/lib/app/institutional.test.mjs`.
-- Encaminhamentos (órgão e setor de destino, datas, providências) são a T14,
-  na migração 011, com FK composta para o acompanhamento.
+- Encaminhamentos: T14, abaixo.
+
+## Encaminhamentos da demanda (T14)
+
+- Fluxo 3, etapa 06 (slide 11): o órgão que recebeu a demanda e não é o
+  responsável a encaminha, registrando órgão responsável, setor de destino,
+  data, responsável pelo encaminhamento, status, providências e atualizações
+  posteriores (histórico de tramitação). Migração post 011
+  (`011-forwardings.sql`): `demand_forwardings` (FK composta
+  `(track_id, demand_id, organization_id)` para o acompanhamento de origem;
+  destino `orgao_plataforma` com `destination_organization_id` e FK composta
+  `destination_track_id`, `setor_interno` ou `orgao_externo` em texto;
+  retrato do nome/esfera/município do destino; `reason` pública; responsável
+  privado; status `enviado` → `recebido` → `aceito` | `devolvido` com motivo;
+  datas de cada etapa; um encaminhamento em aberto por origem × órgão de
+  destino) e `demand_forwarding_updates` (providência, atualização ou status,
+  só inserção, lado `origem`/`destino` gravado pelo trigger).
+- Regras no banco (triggers `forwardings_guard`, `forwarding_updates_guard`):
+  nasce `enviado`; origem, destino, motivo e responsável não mudam; transições
+  em `forwarding_status_transition_allowed` (espelho em
+  `src/institutional/forwardings.js` e `src/lib/app/institutional.ts`); quem
+  muda o status é o órgão de destino na plataforma e a própria origem fora
+  dela (`status_changed_by_organization`); registro de status só pelo trigger;
+  atualização só dos dois órgãos envolvidos; nada é excluído; demanda
+  publicada e fora de `arquivada`; `gestao_app` só lê (dm-infra
+  `010-gestao-app-post-forwardings.sql`).
+- Ao encaminhar (uma transação, `POST /institutional/demands/:id/forwardings`):
+  o acompanhamento de origem é aberto se preciso e vai para `encaminhada`
+  (setor interno) ou `encaminhada_ao_orgao_responsavel` (outro órgão), ou o
+  `trackStatus` escolhido, pela máquina de estados (409 `invalid_transition`
+  se não couber); o órgão de destino da plataforma tem o acompanhamento aberto
+  como `recebida`; a resposta `encaminhamento_realizado` é registrada.
+- Destino na plataforma: diretório do user-service
+  `GET /institutions/government` (busca por `q`, `sphere`, `municipality`,
+  `uf`) e `GET /institutions/government/:organizationId`, só `poder_publico`
+  `validada`, projeção pública, para o Poder Público validado; o post-service
+  chama com o token do representante (`src/institutional/directory.js`) e
+  confirma o destino no servidor (422 se não for órgão validado, 503
+  `directory_unavailable` sem resposta).
+- Rotas (`src/routes/forwardings.js`, no router institucional):
+  `GET /institutional/organizations`, `POST /institutional/demands/:id/forwardings`,
+  `GET /institutional/forwardings?direction=recebidos|enviados&status=`,
+  `GET /institutional/forwardings/:fid`, `POST .../:fid/status`
+  (403 `forwarding_forbidden`), `POST .../:fid/updates`. A visão do órgão
+  (`GET /institutional/demands/:id`) traz `forwardings` em que ele é origem ou
+  destino; `GET /institutional/me` traz `forwardings.pendingReceived` e
+  `openSent`; o público `GET /demands/:id/institutional` traz `forwardings`
+  sem responsável, representante nem ids.
+- Linha do tempo pública: `demanda_encaminhada`,
+  `encaminhamento_status_alterado`, `encaminhamento_atualizado` (e a abertura
+  do acompanhamento do destino), com `payload->'public'` exposto como `details`.
+- Frontend: seção "Encaminhamento e tramitação" em `/governo/demandas/[id]`
+  (`ForwardingForm` com busca de órgão validado ou texto livre, ações de status
+  e providências), abas "Encaminhadas a nós" e "Enviadas" no `/governo`,
+  notificação no sino para encaminhamento recebido sem resposta e
+  "Encaminhamentos e tramitação" na página pública da demanda
+  (`src/components/app/institutional/Forwarding*.tsx`).
+- Testes: `test/forwardings-domain.test.js`, `test/forwardings-routes.test.js`,
+  `test/forwarding-e2e.test.js` (no `test:e2e`), diretório em
+  `services/user-service/test/institutions-routes.test.js` e
+  `src/lib/app/institutional.test.mjs`.
 
 ## Segurança dos serviços
 

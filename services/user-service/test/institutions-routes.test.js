@@ -2,7 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
 const { createApp } = require('../src');
-const { PUBLIC_ORG_COLUMNS, OWNER_ORG_COLUMNS } = require('../src/routes/institutions');
+const {
+  PUBLIC_ORG_COLUMNS, OWNER_ORG_COLUMNS, DIRECTORY_COLUMNS, governmentDirectoryQuery,
+} = require('../src/routes/institutions');
 const { AGENT_INPUT, GOV_INPUT } = require('./institution-fixtures');
 
 const SECRET = 'user-service-test-secret-0123456789abcdef';
@@ -95,6 +97,14 @@ function createPool({ orgs = [], failStatus = false } = {}) {
     if (sql.startsWith(`SELECT ${OWNER_ORG_COLUMNS.map((c) => `o.${c}`).join(', ')}`)) {
       const org = byUser(params[0]);
       return { rows: org ? [Object.fromEntries(OWNER_ORG_COLUMNS.map((c) => [c, org[c] ?? null]))] : [] };
+    }
+    if (sql.startsWith('SELECT o.id AS organization_id')) {
+      // Diretório do Poder Público (T14): só validados; por id ($1) ou busca.
+      const list = state.orgs.filter((o) => o.institution_kind === 'poder_publico' && o.validation_status === 'validada'
+        && sql.includes("o.validation_status = 'validada'") && sql.includes("o.institution_kind = 'poder_publico'"));
+      const project = (o) => ({ organization_id: o.id, ...Object.fromEntries(DIRECTORY_COLUMNS.map((c) => [c, o[c] ?? null])) });
+      if (sql.includes('WHERE o.id = $1')) return { rows: list.filter((o) => o.id === params[0]).map(project) };
+      return { rows: list.map(project) };
     }
     if (sql.startsWith(`SELECT ${PUBLIC_ORG_COLUMNS.map((c) => `o.${c}`).join(', ')}`)) {
       const org = byUser(params[0]);
@@ -310,4 +320,62 @@ test('Poder Público sem validação não solicita conexão; validado passa pelo
     await request(base, headers(ANA, 'member', 'morador'));
   });
   assert.ok(!memberPool.state.calls.some(({ text }) => text.includes('o.institution_kind, o.validation_status')));
+});
+
+test('diretório do Poder Público (T14): só órgão validado, sem contatos, para o Poder Público validado', async () => {
+  const GOV_ORG = '44444444-4444-4444-8444-444444444444';
+  const orgs = [
+    { id: 'org-pref', profile_id: 'p-pref', institution_kind: 'poder_publico', validation_status: 'validada', legal_name: 'Prefeitura de Niterói' },
+    {
+      id: GOV_ORG, profile_id: 'p-outro', institution_kind: 'poder_publico', validation_status: 'validada',
+      legal_name: 'Secretaria de Obras', trade_name: 'SMO', government_sphere: 'municipal', municipality: 'Niterói', uf: 'RJ',
+      institutional_email: 'privado@exemplo.gov.br', institutional_phone: '2133334444', cnpj: '12ABC34501DE35',
+    },
+    { id: 'org-analise', profile_id: 'p-x', institution_kind: 'poder_publico', validation_status: 'em_analise', legal_name: 'Em análise' },
+    { id: 'org-agente', profile_id: 'p-ana', institution_kind: 'agente_transformacao', validation_status: 'validada', legal_name: 'ONG' },
+  ];
+  await withServer(createPool({ orgs }), async (base) => {
+    const member = await fetch(`${base}/institutions/government`, { headers: headers(OTHER, 'member', 'morador') });
+    assert.equal(member.status, 403);
+    assert.equal((await member.json()).code, 'not_government');
+    assert.equal((await fetch(`${base}/institutions/government`)).status, 401);
+    const res = await fetch(`${base}/institutions/government`, { headers: headers(PREF, 'government', 'prefeitura') });
+    assert.equal(res.status, 200);
+    const { organizations } = await res.json();
+    assert.deepEqual(organizations.map((o) => o.organization_id).sort(), [GOV_ORG, 'org-pref'].sort());
+    for (const o of organizations) {
+      for (const key of ['institutional_email', 'institutional_phone', 'cnpj', 'street', 'representative']) {
+        assert.ok(!(key in o), `${key} não sai no diretório`);
+      }
+    }
+    const one = await fetch(`${base}/institutions/government/${GOV_ORG}`, { headers: headers(PREF, 'government', 'prefeitura') });
+    assert.equal(one.status, 200);
+    assert.equal((await one.json()).trade_name, 'SMO');
+    assert.equal((await fetch(`${base}/institutions/government/nao-e-uuid`, { headers: headers(PREF, 'government', 'prefeitura') })).status, 404);
+    const missing = await fetch(`${base}/institutions/government/55555555-5555-4555-8555-555555555555`, { headers: headers(PREF, 'government', 'prefeitura') });
+    assert.equal(missing.status, 404);
+    const bad = await fetch(`${base}/institutions/government?sphere=distrital`, { headers: headers(PREF, 'government', 'prefeitura') });
+    assert.equal(bad.status, 422);
+  });
+  // Poder Público sem validação não consulta o diretório.
+  const pending = orgs.map((o) => (o.id === 'org-pref' ? { ...o, validation_status: 'em_analise' } : o));
+  await withServer(createPool({ orgs: pending }), async (base) => {
+    const res = await fetch(`${base}/institutions/government`, { headers: headers(PREF, 'government', 'prefeitura') });
+    assert.equal(res.status, 403);
+    assert.equal((await res.json()).code, 'institution_not_validated');
+  });
+  for (const column of ['institutional_email', 'institutional_phone', 'cnpj', 'street', 'cep']) {
+    assert.ok(!DIRECTORY_COLUMNS.includes(column), column);
+  }
+});
+
+test('busca do diretório: filtros parametrizados, curinga escapado e ordem alfabética', () => {
+  const { sql, params, errors } = governmentDirectoryQuery({ q: '50%_obras', sphere: 'municipal', municipality: 'Niterói', uf: 'rj', limit: '5' });
+  assert.deepEqual(errors, {});
+  assert.deepEqual(params, ['%50\\%\\_obras%', 'municipal', '%Niterói%', 'RJ', 5]);
+  assert.match(sql, /o.validation_status = 'validada'/);
+  assert.match(sql, /ORDER BY lower\(coalesce\(o.trade_name, o.legal_name\)\), o.id/);
+  assert.ok(!/SELECT \*/.test(sql));
+  const bad = governmentDirectoryQuery({ uf: 'Rio', limit: '500', sphere: 'x' });
+  assert.deepEqual(Object.keys(bad.errors).sort(), ['limit', 'sphere', 'uf']);
 });

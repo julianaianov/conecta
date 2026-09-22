@@ -39,6 +39,74 @@ const PUBLIC_ORG_COLUMNS = [
   'municipality', 'uf', 'website', 'validation_status', 'validation_reviewed_at',
 ];
 
+/** Diretório do Poder Público (T14): identificação pública do órgão validado. */
+const DIRECTORY_COLUMNS = [
+  'legal_name', 'trade_name', 'government_sphere', 'department', 'competence_areas', 'territory',
+  'municipality', 'uf',
+];
+
+const DIRECTORY_LIMIT_DEFAULT = 20;
+const DIRECTORY_LIMIT_MAX = 50;
+
+const likePattern = (value) => `%${value.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+/** Busca no diretório → SQL parametrizado (nome, esfera, município, UF), em ordem alfabética. */
+function governmentDirectoryQuery(query = {}) {
+  const errors = {};
+  const params = [];
+  const where = ["o.institution_kind = 'poder_publico'", "o.validation_status = 'validada'"];
+  const text = (key, max) => {
+    const raw = typeof query[key] === 'string' ? query[key].trim() : '';
+    if (raw.length > max) {
+      errors[key] = `Use no máximo ${max} caracteres`;
+      return '';
+    }
+    return raw;
+  };
+  const q = text('q', 120);
+  if (q) {
+    params.push(likePattern(q));
+    const p = `$${params.length}`;
+    where.push(`(o.trade_name ILIKE ${p} ESCAPE '\\' OR o.legal_name ILIKE ${p} ESCAPE '\\' OR o.department ILIKE ${p} ESCAPE '\\')`);
+  }
+  const sphere = text('sphere', 20);
+  if (sphere) {
+    if (GOVERNMENT_SPHERES.includes(sphere)) {
+      params.push(sphere);
+      where.push(`o.government_sphere = $${params.length}`);
+    } else {
+      errors.sphere = 'Esfera inválida';
+    }
+  }
+  const municipality = text('municipality', 120);
+  if (municipality) {
+    params.push(likePattern(municipality));
+    where.push(`o.municipality ILIKE $${params.length} ESCAPE '\\'`);
+  }
+  const uf = text('uf', 2).toUpperCase();
+  if (uf) {
+    if (/^[A-Z]{2}$/.test(uf)) {
+      params.push(uf);
+      where.push(`o.uf = $${params.length}`);
+    } else {
+      errors.uf = 'UF inválida';
+    }
+  }
+  let limit = DIRECTORY_LIMIT_DEFAULT;
+  if (query.limit !== undefined && query.limit !== '') {
+    const parsed = Number(query.limit);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > DIRECTORY_LIMIT_MAX) errors.limit = `Entre 1 e ${DIRECTORY_LIMIT_MAX}`;
+    else limit = parsed;
+  }
+  params.push(limit);
+  const sql = `SELECT o.id AS organization_id, ${DIRECTORY_COLUMNS.map((c) => `o.${c}`).join(', ')}
+                 FROM organizations o
+                WHERE ${where.join(' AND ')}
+                ORDER BY lower(coalesce(o.trade_name, o.legal_name)), o.id
+                LIMIT $${params.length}`;
+  return { sql, params, errors };
+}
+
 const REPRESENTATIVE_COLUMNS = [
   'full_name', 'position', 'institutional_email', 'institutional_phone',
   'proof_document_ref', 'proof_description', 'updated_at',
@@ -336,6 +404,45 @@ function routes(pool, auth, uploadStorage = null) {
     }
   });
 
+  // ── Diretório dos órgãos do Poder Público validados (T14) ─────────────────
+  // Escolha do órgão de destino de um encaminhamento de demanda. Só para o
+  // Poder Público com cadastro validado; projeção pública, sem contatos nem
+  // representante. O post-service confirma o destino por
+  // GET /institutions/government/:organizationId com o token do representante.
+  const governmentOnly = (req, res, next) => (normalizeRole(req.user?.role, req.user?.profileType) === 'government'
+    ? next()
+    : res.status(403).json({ error: 'O diretório de órgãos é do Poder Público', code: 'not_government' }));
+  const directoryGate = [auth, governmentOnly, requireInstitutionalAccess(pool)];
+
+  router.get('/institutions/government', ...directoryGate, async (req, res) => {
+    try {
+      const { sql, params, errors } = governmentDirectoryQuery(req.query);
+      if (Object.keys(errors).length) return res.status(422).json({ error: 'Filtro inválido', fields: errors });
+      const { rows } = await pool.query(sql, params);
+      res.json({ organizations: rows });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  router.get('/institutions/government/:organizationId', ...directoryGate, async (req, res) => {
+    if (!isUuid(req.params.organizationId)) return res.status(404).json(NOT_FOUND);
+    try {
+      const { rows } = await pool.query(
+        `SELECT o.id AS organization_id, ${cols(DIRECTORY_COLUMNS)}
+           FROM organizations o
+          WHERE o.id = $1 AND o.institution_kind = 'poder_publico' AND o.validation_status = 'validada'`,
+        [req.params.organizationId],
+      );
+      if (!rows.length) return res.status(404).json(NOT_FOUND);
+      res.json(rows[0]);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
   // GET /:userId/institution — instituição validada vinculada ao perfil (público).
   router.get('/:userId/institution', async (req, res) => {
     if (!isUuid(req.params.userId)) return res.status(404).json(NOT_FOUND);
@@ -364,3 +471,5 @@ module.exports.institutionStatus = institutionStatus;
 module.exports.OWNER_ORG_COLUMNS = OWNER_ORG_COLUMNS;
 module.exports.PUBLIC_ORG_COLUMNS = PUBLIC_ORG_COLUMNS;
 module.exports.REPRESENTATIVE_COLUMNS = REPRESENTATIVE_COLUMNS;
+module.exports.DIRECTORY_COLUMNS = DIRECTORY_COLUMNS;
+module.exports.governmentDirectoryQuery = governmentDirectoryQuery;

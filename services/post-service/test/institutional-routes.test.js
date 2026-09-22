@@ -136,6 +136,19 @@ test('rota pública: demanda fora do público é 404; projeção sem representan
       return { rows: [{ id: 'r1', track_id: TRACK, organization_name: 'Secretaria de Obras', response_type: 'recebimento', body: 'Recebida', track_status: 'recebida', author_id: GOV, author_name: 'Rep', created_at: new Date() }] };
     }
     if (/FROM demand_institutional_offers o/.test(text)) return { rows: [] };
+    if (/FROM demand_forwardings f\s+WHERE f.demand_id = \$1\s+ORDER BY/.test(text)) {
+      return { rows: [{
+        id: 'f1', track_id: TRACK, demand_id: DEMAND, organization_id: ORG, origin_organization_name: 'Secretaria de Obras',
+        destination_kind: 'orgao_externo', destination_organization_id: null, destination_track_id: null,
+        destination_organization_name: 'Companhia de Águas', destination_sector: 'Ouvidoria', reason: 'Rede de esgoto',
+        forwarded_by: GOV, forwarded_by_name: 'Rep', responsible_name: 'Ana Lima', responsible_role: 'Diretora',
+        status: 'enviado', status_note: null, status_changed_by: GOV, status_changed_by_organization: ORG,
+        status_changed_at: new Date(), forwarded_at: new Date(), received_at: null, accepted_at: null, returned_at: null,
+      }] };
+    }
+    if (/FROM demand_forwarding_updates u/.test(text)) {
+      return { rows: [{ id: 'u1', forwarding_id: 'f1', organization_name: 'Secretaria de Obras', side: 'origem', kind: 'providencia', body: 'Ofício enviado', author_id: GOV, author_name: 'Rep', created_at: new Date() }] };
+    }
     return null;
   });
   await withServer(pool, async (base) => {
@@ -147,6 +160,14 @@ test('rota pública: demanda fora do público é 404; projeção sem representan
     assert.equal(body.organizations[0].organizationName, 'Secretaria de Obras');
     assert.ok(!('responsibleName' in body.organizations[0]) && !('openedBy' in body.organizations[0]));
     assert.ok(!('authorId' in body.responses[0]) && !('authorName' in body.responses[0]));
+    // Tramitação (T14): órgãos, setor, status e providências; nunca o responsável ou o representante.
+    const [forwarding] = body.forwardings;
+    assert.equal(forwarding.destinationOrganizationName, 'Companhia de Águas');
+    assert.equal(forwarding.updates[0].body, 'Ofício enviado');
+    for (const hidden of ['responsibleName', 'responsibleRole', 'forwardedBy', 'forwardedByName', 'organizationId', 'trackId', 'statusChangedBy']) {
+      assert.ok(!(hidden in forwarding), `${hidden} não pode sair na rota pública`);
+    }
+    assert.ok(!('authorId' in forwarding.updates[0]) && !('authorName' in forwarding.updates[0]));
   });
 });
 

@@ -38,6 +38,7 @@ import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import { CategoryBadge, DemandStatusBadge, PriorityBadge } from "../demand/DemandParts";
 import { FormAlert, SelectInput, TextInput } from "../demand/fields";
 import { InstitutionalStatusBadge } from "./InstitutionalParts";
+import { ForwardingInbox } from "./ForwardingPanel";
 
 const InstitutionalMap = dynamic(() => import("./InstitutionalMapInner"), {
   ssr: false,
@@ -102,7 +103,8 @@ function DemandListItem({ demand }: { demand: InstitutionalDemandSummary }) {
 /**
  * Área institucional do Poder Público (T13; Fluxo 3, etapas 03 a 07): mapa e
  * lista filtrável das demandas do território, fila por status do
- * acompanhamento do órgão e acesso à análise de cada demanda.
+ * acompanhamento do órgão e acesso à análise de cada demanda. Abas
+ * "Encaminhadas a nós" e "Enviadas" com os encaminhamentos (T14).
  */
 export function InstitutionalDashboard() {
   const { user, status } = useAuth();
@@ -116,6 +118,12 @@ export function InstitutionalDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
   const [view, setView] = useState<"lista" | "mapa">("lista");
+  // Encaminhamentos (T14): demandas do território, "Encaminhadas a nós" e "Enviadas".
+  const [tab, setTab] = useState<"demandas" | "recebidos" | "enviados">("demandas");
+
+  const refreshContext = useCallback(() => {
+    api.institutionalContext().then(setCtx).catch(() => {});
+  }, []);
 
   const fail = useCallback((err: unknown) => {
     if (isInstitutionNotValidated(err)) setGate({ status: gateStatusFrom(err) });
@@ -158,6 +166,7 @@ export function InstitutionalDashboard() {
   }
 
   const apply = (next: Filters) => {
+    setTab("demandas");
     setDemands(null);
     setFilters(next);
     setApplied(next);
@@ -244,6 +253,28 @@ export function InstitutionalDashboard() {
         </section>
       )}
 
+      <div role="tablist" aria-label="Área institucional" className="flex flex-wrap gap-1 border-b" style={{ borderColor: "var(--th-border)" }}>
+        {([
+          ["demandas", "Demandas do território", 0],
+          ["recebidos", "Encaminhadas a nós", ctx?.forwardings?.pendingReceived ?? 0],
+          ["enviados", "Enviadas", 0],
+        ] as const).map(([key, label, badge]) => (
+          <button
+            key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
+            className="-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-semibold"
+            style={{ borderColor: tab === key ? "#f4841a" : "transparent", color: tab === key ? "var(--th-text)" : "var(--th-muted)" }}
+          >
+            {label}
+            {badge > 0 && (
+              <span className="rounded-full px-1.5 text-[11px] font-bold text-white" style={{ background: "#f4841a" }} aria-label={`${badge} sem resposta`}>{badge}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {tab !== "demandas" && <ForwardingInbox key={tab} direction={tab} onChanged={refreshContext} />}
+
+      {tab === "demandas" && <>
       <form
         className="app-card grid gap-3 rounded-2xl p-4 sm:grid-cols-2 lg:grid-cols-4"
         onSubmit={(e) => { e.preventDefault(); apply(filters); }}
@@ -322,6 +353,7 @@ export function InstitutionalDashboard() {
           <Button type="button" variant="outline" loading={loadingMore} onClick={() => void loadMore()}>Carregar mais</Button>
         </div>
       )}
+      </>}
     </div>
   );
 }

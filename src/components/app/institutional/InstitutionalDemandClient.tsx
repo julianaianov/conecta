@@ -24,6 +24,7 @@ import {
   normalizeRole,
   type ConnectionType,
   type DemandTimelineEvent,
+  type Forwarding,
   type InstitutionalDemandView,
   type InstitutionalResponseType,
   type InstitutionalStatus,
@@ -50,6 +51,8 @@ import {
 } from "../demand/DemandParts";
 import { Checkbox, FormAlert, SelectInput, TextArea, TextInput } from "../demand/fields";
 import { InstitutionalStatusBadge, OfferList, OrganizationTrackList, ResponseList } from "./InstitutionalParts";
+import { ForwardingCard } from "./ForwardingParts";
+import { ForwardingActions, ForwardingForm } from "./ForwardingPanel";
 
 type Fields = Record<string, string>;
 
@@ -341,7 +344,7 @@ function OfferForm({ view, onSaved }: { view: InstitutionalDemandView; onSaved: 
   );
 }
 
-/** Análise e atuação do órgão numa demanda (T13; Fluxo 3, etapas 03 a 07). */
+/** Análise e atuação do órgão numa demanda (T13; Fluxo 3, etapas 03 a 07) e encaminhamentos (T14). */
 export function InstitutionalDemandClient({ id }: { id: string }) {
   const { user, status } = useAuth();
   const isGovernment = Boolean(user && normalizeRole(user.role, user.profileType) === "government");
@@ -362,7 +365,12 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
 
   // A linha do tempo pública acompanha cada registro do órgão.
   const trackStamp = view?.track?.updatedAt ?? null;
-  const entries = (view?.responses.length ?? 0) + (view?.offers.length ?? 0);
+  const entries = (view?.responses.length ?? 0) + (view?.offers.length ?? 0)
+    + (view?.forwardings ?? []).reduce((n, f) => n + 1 + f.updates.length, 0);
+
+  const replaceForwarding = (f: Forwarding) => setView((v) => (v ? {
+    ...v, forwardings: (v.forwardings ?? []).map((x) => (x.id === f.id ? f : x)),
+  } : v));
   useEffect(() => {
     if (!view) return;
     let alive = true;
@@ -476,6 +484,24 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
           <div className="mt-5">
             <h3 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Respostas do órgão</h3>
             <ResponseList responses={view.responses} showAuthor />
+          </div>
+        )}
+      </ReadSection>
+
+      <ReadSection title="Encaminhamento e tramitação" icon="send">
+        <ForwardingForm view={view} onSaved={setView} />
+        {(view.forwardings ?? []).length > 0 && (
+          <div className="mt-5">
+            <h3 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Encaminhamentos que envolvem o órgão</h3>
+            <ul className="space-y-3">
+              {(view.forwardings ?? []).map((f) => (
+                <li key={f.id}>
+                  <ForwardingCard forwarding={f}>
+                    <ForwardingActions forwarding={f} onChanged={replaceForwarding} />
+                  </ForwardingCard>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </ReadSection>

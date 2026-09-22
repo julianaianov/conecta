@@ -30,6 +30,8 @@ import type { DemandDossierDownload, DemandDossierList, DossierVerification, Pub
 import type {
   InstitutionalContext, InstitutionalDemandFilter, InstitutionalDemandPage, InstitutionalDemandView,
   InstitutionalOfferInput, InstitutionalResponseInput, InstitutionalStatus, InstitutionalTrack,
+  ForwardingDirection, ForwardingInboxItem, ForwardingInput, ForwardingStatus, ForwardingUpdateKind, ForwardingView,
+  GovernmentOrganization,
   PublicDemandInstitutional, PublicDemandSummary,
 } from "./types";
 import { buildInstitutionalQuery } from "./institutional";
@@ -1069,6 +1071,36 @@ export const api = {
 
   addInstitutionalOffer(id: string, input: InstitutionalOfferInput): Promise<InstitutionalDemandView> {
     return demandRequired(`/demands/${encodeURIComponent(id)}/offers`, { method: "POST", ...json(input) }, INSTITUTIONAL);
+  },
+
+  // ── ENCAMINHAMENTOS (T14) ────────────────────────────────
+  /** Órgãos do Poder Público validados (destino do encaminhamento), sem o próprio órgão. */
+  async governmentOrganizations(filter: { q?: string; sphere?: string; municipality?: string; uf?: string } = {}): Promise<GovernmentOrganization[]> {
+    const q = new URLSearchParams();
+    for (const [key, value] of Object.entries(filter)) if (value) q.set(key, value);
+    return (await demandRequired<{ organizations: GovernmentOrganization[] }>(`/organizations?${q.toString()}`, {}, INSTITUTIONAL)).organizations;
+  },
+
+  /** Encaminha a demanda; devolve a visão do órgão com o encaminhamento e o status atualizado. */
+  forwardDemand(id: string, input: ForwardingInput): Promise<InstitutionalDemandView & { forwardingId: string }> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/forwardings`, { method: "POST", ...json(input) }, INSTITUTIONAL);
+  },
+
+  /** Caixa do órgão: encaminhamentos recebidos ou enviados, do mais recente ao mais antigo. */
+  async institutionalForwardings(direction: ForwardingDirection, status?: ForwardingStatus[]): Promise<ForwardingInboxItem[]> {
+    const q = new URLSearchParams({ direction });
+    if (status?.length) q.set("status", status.join(","));
+    return (await demandRequired<{ forwardings: ForwardingInboxItem[] }>(`/forwardings?${q.toString()}`, {}, INSTITUTIONAL)).forwardings;
+  },
+
+  /** Recebido, aceito ou devolvido (motivo obrigatório); 403 `forwarding_forbidden` fora de quem responde. */
+  changeForwardingStatus(forwardingId: string, status: ForwardingStatus, note: string | null): Promise<ForwardingView> {
+    return demandRequired(`/forwardings/${encodeURIComponent(forwardingId)}/status`, { method: "POST", ...json({ status, note }) }, INSTITUTIONAL);
+  },
+
+  /** Providência realizada ou atualização posterior (órgão de origem ou de destino). */
+  addForwardingUpdate(forwardingId: string, kind: Exclude<ForwardingUpdateKind, "status">, body: string): Promise<ForwardingView> {
+    return demandRequired(`/forwardings/${encodeURIComponent(forwardingId)}/updates`, { method: "POST", ...json({ kind, body }) }, INSTITUTIONAL);
   },
 
   /** Respostas institucionais e status por órgão (público); `null` se a demanda não é pública. */

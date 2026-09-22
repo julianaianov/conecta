@@ -240,10 +240,11 @@ export async function getPublicDemandTimeline(id: string): Promise<DemandTimelin
   return Array.isArray(data?.events) ? data.events : [];
 }
 
-/** Respostas institucionais e status por órgão (T13); `null` se a demanda não é pública. */
+/** Respostas institucionais, status por órgão (T13) e tramitação (T14); `null` se a demanda não é pública. */
 export async function getPublicDemandInstitutional(id: string): Promise<PublicDemandInstitutional | null> {
   const data = await fetchPublicJson<PublicDemandInstitutional>("posts", `/demands/${encodeURIComponent(id)}/institutional`);
-  return data && Array.isArray(data.organizations) ? data : null;
+  if (!data || !Array.isArray(data.organizations)) return null;
+  return { ...data, forwardings: Array.isArray(data.forwardings) ? data.forwardings : [] };
 }
 
 /** Demandas publicadas em diante, percorrendo o cursor até `max`. */

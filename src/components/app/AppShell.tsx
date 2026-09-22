@@ -94,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
             <SearchButton />
             <ThemeToggle />
-            <NotificationBell userId={user?.id ?? null} />
+            <NotificationBell userId={user?.id ?? null} government={isGovernment} />
 
             {/* avatar + menu */}
             {user ? <div className="relative">

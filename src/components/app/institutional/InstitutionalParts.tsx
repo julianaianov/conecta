@@ -21,6 +21,7 @@ import { formatDate } from "@/lib/app/format";
 import { formatIsoDate } from "@/lib/app/demand";
 import { Icon } from "../Icon";
 import { ReadSection } from "../demand/DemandParts";
+import { PublicForwardingList } from "./ForwardingParts";
 
 const SPHERE_LABELS: Record<string, string> = { municipal: "Municipal", estadual: "Estadual", federal: "Federal" };
 
@@ -123,11 +124,12 @@ export function OfferList({ offers }: { offers: InstitutionalOffer[] }) {
 
 /** Seção "Respostas institucionais" da página pública da demanda. */
 export function PublicInstitutionalSection({ data }: { data: PublicDemandInstitutional | null }) {
-  const empty = !data || (!data.organizations.length && !data.responses.length && !data.offers.length);
+  const forwardings = data?.forwardings ?? [];
+  const empty = !data || (!data.organizations.length && !data.responses.length && !data.offers.length && !forwardings.length);
   return (
     <ReadSection title="Respostas institucionais" icon="building">
       <p className="text-xs" style={{ color: "var(--th-muted)" }}>
-        Registro público da atuação do Poder Público nesta demanda: recebimento, respostas, status por órgão e apoio oferecido.
+        Registro público da atuação do Poder Público nesta demanda: recebimento, respostas, status por órgão, encaminhamentos e apoio oferecido.
       </p>
       {empty ? (
         <p className="mt-3 text-sm" style={{ color: "var(--th-muted)" }}>Nenhum órgão do Poder Público registrou atuação nesta demanda até agora.</p>
@@ -143,6 +145,12 @@ export function PublicInstitutionalSection({ data }: { data: PublicDemandInstitu
             <div>
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Respostas</h3>
               <ResponseList responses={data.responses} />
+            </div>
+          )}
+          {forwardings.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Encaminhamentos e tramitação</h3>
+              <PublicForwardingList forwardings={forwardings} />
             </div>
           )}
           {data.offers.length > 0 && (

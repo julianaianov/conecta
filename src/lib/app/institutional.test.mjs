@@ -4,6 +4,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import {
+  DEFAULT_ORIGIN_TRACK_STATUS,
+  FORWARDING_DESTINATION_KINDS,
+  FORWARDING_DESTINATION_KIND_LABELS,
+  FORWARDING_EVENT_TYPES,
+  FORWARDING_STATUSES,
+  FORWARDING_STATUS_LABELS,
+  FORWARDING_TRANSITIONS,
+  FORWARDING_UPDATE_KINDS,
+  FORWARDING_UPDATE_KIND_LABELS,
+  canForwardFrom,
+  forwardingDestinationLabel,
+  forwardingNotification,
   INSTITUTIONAL_STATUSES,
   INSTITUTIONAL_STATUS_LABELS,
   INSTITUTIONAL_TRANSITIONS,
@@ -74,4 +86,45 @@ test("mensagens de erro", () => {
   const err = Object.assign(new Error("x"), { code: "invalid_transition" });
   assert.match(institutionalErrorMessage(err), /não é permitida/);
   assert.match(institutionalErrorMessage(new Error("network")), /Sem conexão/);
+});
+
+test("encaminhamentos (T14): listas, transições e status da origem iguais aos do post-service", () => {
+  assert.deepEqual(FORWARDING_DESTINATION_KINDS, server.DESTINATION_KINDS);
+  assert.deepEqual(FORWARDING_DESTINATION_KIND_LABELS, server.DESTINATION_KIND_LABELS);
+  assert.deepEqual(FORWARDING_STATUSES, server.FORWARDING_STATUSES);
+  assert.deepEqual(FORWARDING_STATUS_LABELS, server.FORWARDING_STATUS_LABELS);
+  assert.deepEqual(FORWARDING_TRANSITIONS, server.FORWARDING_TRANSITIONS);
+  assert.deepEqual(FORWARDING_UPDATE_KINDS, server.UPDATE_KINDS);
+  assert.deepEqual(FORWARDING_UPDATE_KIND_LABELS, server.UPDATE_KIND_LABELS);
+  assert.deepEqual(DEFAULT_ORIGIN_TRACK_STATUS, server.DEFAULT_ORIGIN_TRACK_STATUS);
+  assert.deepEqual([...FORWARDING_EVENT_TYPES], server.FORWARDING_EVENT_TYPES);
+  // Encaminhar segue a máquina do status institucional.
+  assert.equal(canForwardFrom(null, "encaminhada"), true);
+  assert.equal(canForwardFrom("em_analise", "encaminhada_ao_orgao_responsavel"), true);
+  assert.equal(canForwardFrom("encaminhada_ao_orgao_responsavel", "encaminhada_ao_orgao_responsavel"), true);
+  assert.equal(canForwardFrom("acao_programada", "encaminhada"), false);
+  assert.equal(canForwardFrom("nao_e_de_competencia", "encaminhada_ao_orgao_responsavel"), false);
+});
+
+test("linha do tempo e sino: encaminhamento com órgão, destino e status, sem responsável", () => {
+  const forwarded = { type: "demanda_encaminhada", details: { organizationName: "Secretaria X", destinationKind: "orgao_plataforma", destinationOrganizationName: "Companhia Y", destinationSector: "Remoção", excerpt: "Competência da Companhia" } };
+  assert.equal(institutionalTimelineLabel(forwarded), "Secretaria X encaminhou a demanda a Companhia Y — Remoção");
+  assert.equal(institutionalTimelineDetail(forwarded), "Competência da Companhia");
+  const internal = { type: "demanda_encaminhada", details: { organizationName: "Secretaria X", destinationKind: "setor_interno", destinationOrganizationName: "Secretaria X", destinationSector: "Fiscalização" } };
+  assert.equal(timelineEventLabel({ ...internal, toStatus: null }), "Secretaria X encaminhou a demanda a Fiscalização");
+  const status = { type: "encaminhamento_status_alterado", details: { organizationName: "Companhia Y", destinationKind: "orgao_plataforma", destinationOrganizationName: "Companhia Y", forwardingStatus: "devolvido", note: "Rede é municipal" } };
+  assert.equal(institutionalTimelineLabel(status), "Encaminhamento a Companhia Y: devolvido");
+  assert.equal(institutionalTimelineDetail(status), "Rede é municipal");
+  const update = { type: "encaminhamento_atualizado", details: { organizationName: "Companhia Y", updateKind: "providencia", excerpt: "Equipe designada" } };
+  assert.equal(institutionalTimelineLabel(update), "Companhia Y registrou providência no encaminhamento");
+  assert.equal(forwardingDestinationLabel({ destinationKind: "orgao_externo", destinationOrganizationName: "Cedae" }), "Cedae");
+
+  const n = forwardingNotification({
+    forwarding: { id: "f1", originOrganizationName: "Secretaria X", forwardedAt: "2026-09-22T12:00:00.000Z" },
+    demand: { id: "d 1", title: "Praça", postId: "p1" },
+  });
+  assert.equal(n.id, "n-fwd-f1");
+  assert.equal(n.kind, "forwarding");
+  assert.equal(n.href, "/governo/demandas/d%201");
+  assert.match(n.summary, /Secretaria X encaminhou «Praça»/);
 });

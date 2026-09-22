@@ -8,7 +8,8 @@
 //   GET  /:id                      detalhe público (sem endereço fino, sem
 //                                  dados da análise, documentos sem link)
 //   GET  /:id/timeline             linha do tempo pública (demand_events.is_public;
-//                                  eventos institucionais com `details`, T13)
+//                                  eventos institucionais e de encaminhamento
+//                                  com `details`, T13/T14)
 //
 // Agente de Transformação autor (token; 404 para quem não é o autor):
 //   GET  /mine                     as próprias demandas, em qualquer estado
@@ -53,6 +54,10 @@ const {
 } = require('../demand/finance');
 const store = require('../demand/store');
 const { INSTITUTIONAL_EVENT_TYPES } = require('../institutional/constants');
+const { FORWARDING_EVENT_TYPES } = require('../institutional/forwardings');
+
+// Eventos com payload->'public' exposto como `details` (T13 e encaminhamentos da T14).
+const DETAILED_EVENT_TYPES = [...INSTITUTIONAL_EVENT_TYPES, ...FORWARDING_EVENT_TYPES];
 const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
 const { parseUploadRef, describeUploads } = require('../uploads');
 
@@ -643,7 +648,7 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
       `SELECT id, event_type, from_status, to_status, created_at,
               CASE WHEN event_type = ANY($2::text[]) THEN payload->'public' END AS details
          FROM demand_events WHERE demand_id = $1 AND is_public ORDER BY created_at, id`,
-      [req.params.id, INSTITUTIONAL_EVENT_TYPES],
+      [req.params.id, DETAILED_EVENT_TYPES],
     );
     res.json({
       events: rows.map((e) => ({

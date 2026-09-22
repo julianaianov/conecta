@@ -568,7 +568,7 @@ export interface Connection {
 }
 
 // ── Notificações ───────────────────────────────────────────
-export type NotificationKind = "comment" | "support" | "reaction" | "connection";
+export type NotificationKind = "comment" | "support" | "reaction" | "connection" | "forwarding";
 
 export interface AppNotification {
   id: string;
@@ -1193,6 +1193,14 @@ export interface DemandTimelineDetails {
   excerpt?: string | null;
   note?: string | null;
   supportTypes?: string[] | null;
+  /** Encaminhamentos (T14, migração post 011). */
+  destinationKind?: string | null;
+  destinationOrganizationName?: string | null;
+  destinationSector?: string | null;
+  originOrganizationName?: string | null;
+  forwardingStatus?: string | null;
+  fromForwardingStatus?: string | null;
+  updateKind?: string | null;
 }
 
 /** Evento da linha do tempo completa, visto pelo autor. */
@@ -1435,6 +1443,8 @@ export interface PublicDemandInstitutional {
   organizations: PublicInstitutionalTrack[];
   responses: InstitutionalResponse[];
   offers: InstitutionalOffer[];
+  /** Tramitação dos encaminhamentos (T14). */
+  forwardings: PublicForwarding[];
 }
 
 /** GET /api/posts/institutional/me. */
@@ -1452,6 +1462,8 @@ export interface InstitutionalContext {
   };
   jurisdiction: { governmentSphere: GovernmentSphere | null; municipality: string | null; uf: string | null };
   counts: Record<InstitutionalStatus, number>;
+  /** Encaminhamentos (T14): recebidos sem resposta e enviados em aberto. */
+  forwardings: { pendingReceived: number; openSent: number };
 }
 
 export type InstitutionalScope = "jurisdicao" | "todas";
@@ -1479,6 +1491,8 @@ export interface InstitutionalDemandView {
   responses: InstitutionalResponse[];
   offers: InstitutionalOffer[];
   otherOrganizations: PublicInstitutionalTrack[];
+  /** Encaminhamentos em que o órgão é origem ou destino (T14). */
+  forwardings: Forwarding[];
 }
 
 export interface InstitutionalResponseInput {
@@ -1496,4 +1510,107 @@ export interface InstitutionalOfferInput {
   supportTypes: InstitutionalSupportType[];
   description: string;
   connectionId?: string | null;
+}
+
+// ── ENCAMINHAMENTOS DA DEMANDA (T14) ────────────────────────
+// Espelha services/post-service/src/institutional/forwardings.js (o teste
+// src/lib/app/institutional.test.mjs compara as listas).
+
+export type ForwardingDestinationKind = "orgao_plataforma" | "setor_interno" | "orgao_externo";
+export type ForwardingStatus = "enviado" | "recebido" | "aceito" | "devolvido";
+export type ForwardingUpdateKind = "providencia" | "atualizacao" | "status";
+export type ForwardingDirection = "recebidos" | "enviados";
+
+/** Providência, atualização posterior ou mudança de status (histórico de tramitação). */
+export interface ForwardingUpdate {
+  id: string;
+  forwardingId: string;
+  organizationName: string;
+  side: "origem" | "destino";
+  kind: ForwardingUpdateKind;
+  body: string | null;
+  fromStatus: ForwardingStatus | null;
+  toStatus: ForwardingStatus | null;
+  createdAt: string;
+  /** Só na visão dos órgãos envolvidos. */
+  authorId?: string;
+  authorName?: string | null;
+}
+
+/** Encaminhamento na projeção pública (órgãos, setor, status, datas e tramitação). */
+export interface PublicForwarding {
+  id: string;
+  demandId: string;
+  originOrganizationName: string;
+  destinationKind: ForwardingDestinationKind;
+  destinationOrganizationName: string;
+  destinationSector: string | null;
+  destinationSphere: GovernmentSphere | null;
+  destinationMunicipality: string | null;
+  destinationUf: string | null;
+  reason: string;
+  status: ForwardingStatus;
+  statusNote: string | null;
+  statusChangedAt: string;
+  forwardedAt: string;
+  receivedAt: string | null;
+  acceptedAt: string | null;
+  returnedAt: string | null;
+  updates: ForwardingUpdate[];
+}
+
+/** Encaminhamento na visão de um órgão envolvido (origem ou destino). */
+export interface Forwarding extends PublicForwarding {
+  trackId: string;
+  organizationId: string;
+  destinationOrganizationId: string | null;
+  destinationTrackId: string | null;
+  forwardedBy: string;
+  forwardedByName: string | null;
+  responsibleName: string | null;
+  responsibleRole: string | null;
+  statusChangedBy: string | null;
+  /** Relativo ao órgão que vê: `enviado` (origem) ou `recebido` (destino). */
+  direction: "enviado" | "recebido";
+  canChangeStatus: boolean;
+  availableStatuses: ForwardingStatus[];
+}
+
+/** Órgão validado do diretório (destino de encaminhamento). */
+export interface GovernmentOrganization {
+  organizationId: string;
+  name: string;
+  legalName: string | null;
+  governmentSphere: GovernmentSphere | null;
+  department: string | null;
+  competenceAreas: string[];
+  territory: string | null;
+  municipality: string | null;
+  uf: string | null;
+}
+
+export interface ForwardingInput {
+  destinationKind: ForwardingDestinationKind;
+  destinationOrganizationId?: string | null;
+  destinationOrganizationName?: string | null;
+  destinationSector?: string | null;
+  destinationSphere?: GovernmentSphere | null;
+  destinationMunicipality?: string | null;
+  destinationUf?: string | null;
+  reason: string;
+  responsibleName?: string | null;
+  responsibleRole?: string | null;
+  trackStatus?: "encaminhada" | "encaminhada_ao_orgao_responsavel" | null;
+}
+
+/** Item da caixa do órgão (GET /api/posts/institutional/forwardings). */
+export interface ForwardingInboxItem {
+  forwarding: Forwarding;
+  demand: PublicDemandSummary;
+}
+
+/** GET /api/posts/institutional/forwardings/:id e respostas de status e providências. */
+export interface ForwardingView {
+  forwarding: Forwarding;
+  demand: PublicDemandSummary | null;
 }
