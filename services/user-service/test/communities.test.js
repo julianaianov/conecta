@@ -12,7 +12,7 @@ test('GET /communities returns the ordered community rows without authentication
   const pool = {
     async query(text, params = []) {
       calls.push({ text, params });
-      if (text.includes('SELECT * FROM communities ORDER BY member_count DESC, name ASC')) {
+      if (/FROM communities ORDER BY member_count DESC, name ASC/.test(text) && !text.includes('*')) {
         return {
           rows: [{
             id: 'c1',
@@ -42,7 +42,7 @@ test('GET /communities returns the ordered community rows without authentication
       image_url: '/images/comunidade.jpeg',
     }]);
     assert.equal(calls.length, 1);
-    assert.match(calls[0].text.replace(/\s+/g, ' '), /SELECT \* FROM communities ORDER BY member_count DESC, name ASC/);
+    assert.match(calls[0].text.replace(/\s+/g, " "), /SELECT id, name, description, category, member_count, image_url, created_at, updated_at FROM communities ORDER BY member_count DESC, name ASC/);
   } finally {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }

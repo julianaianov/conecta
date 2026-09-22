@@ -29,22 +29,26 @@ export default function AdminPage() {
   const [snap, setSnap] = useState<AdminSnapshot | null>(null);
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [loading, setLoading] = useState(true);
+  const [denied, setDenied] = useState(false);
 
-  const allowed = isPlatformAdmin(user);
+  const allowedByUi = isPlatformAdmin(user);
 
   useEffect(() => {
-    if (!allowed) { setLoading(false); return; }
+    if (!allowedByUi) { setLoading(false); return; }
     let alive = true;
-    api.adminSnapshot().then((s) => { if (alive) { setSnap(s); setLoading(false); } });
+    api.adminSnapshot()
+      .then((s) => { if (alive) { setSnap(s); setLoading(false); } })
+      // O servidor recusa contas fora de DM_OPERATION_USER_IDS (403): mostra a área restrita.
+      .catch(() => { if (alive) { setDenied(true); setLoading(false); } });
     return () => { alive = false; };
-  }, [allowed]);
+  }, [allowedByUi]);
 
   const m: AdminMetrics | null = useMemo(
     () => (snap ? buildAdminMetrics(snap, period) : null),
     [snap, period],
   );
 
-  if (!allowed) {
+  if (!allowedByUi || denied) {
     return (
       <div className="mx-auto max-w-lg py-10">
         <EmptyState

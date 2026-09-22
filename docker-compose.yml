@@ -16,7 +16,7 @@ services:
     build: ./services/auth-service
     environment:
       DATABASE_URL: postgresql://postgres:password@auth-db:5432/auth_db
-      JWT_SECRET: conecta_jwt_secret_local_dev
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env (openssl rand -hex 32)}
       PORT: 3001
     depends_on:
       auth-db:
@@ -48,7 +48,8 @@ services:
     build: ./services/user-service
     environment:
       DATABASE_URL: postgresql://postgres:password@user-db:5432/user_db
-      JWT_SECRET: conecta_jwt_secret_local_dev
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env (openssl rand -hex 32)}
+      DM_OPERATION_USER_IDS: ${DM_OPERATION_USER_IDS:-}
       PORT: 3002
     depends_on:
       user-db:
@@ -80,7 +81,8 @@ services:
     build: ./services/post-service
     environment:
       DATABASE_URL: postgresql://postgres:password@post-db:5432/post_db
-      JWT_SECRET: conecta_jwt_secret_local_dev
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env (openssl rand -hex 32)}
+      DM_OPERATION_USER_IDS: ${DM_OPERATION_USER_IDS:-}
       PORT: 3003
     depends_on:
       post-db:

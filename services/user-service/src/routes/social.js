@@ -1,11 +1,29 @@
 const express = require('express');
 const { ensureProfile, isForeignKeyViolation } = require('../profile-provision');
+const { isUuid } = require('../security');
 
-module.exports = (pool, auth) => {
+const MAX_CONTENT_LENGTH = 2000;
+
+// Valida o corpo de recados e depoimentos; devolve o erro ou os valores limpos.
+function socialInput(body, userId, { allowSelf }) {
+  const targetUserId = body?.targetUserId;
+  const content = typeof body?.content === 'string' ? body.content.trim() : '';
+  if (!targetUserId || !content) return { status: 400, error: 'targetUserId e content são obrigatórios' };
+  if (!isUuid(targetUserId)) return { status: 404, error: 'Perfil de destino não encontrado' };
+  if (content.length > MAX_CONTENT_LENGTH) return { status: 400, error: `O texto aceita até ${MAX_CONTENT_LENGTH} caracteres` };
+  if (!allowSelf && targetUserId.toLowerCase() === String(userId).toLowerCase()) {
+    return { status: 400, error: 'Não é possível escrever um depoimento para si mesmo' };
+  }
+  return { targetUserId, content };
+}
+
+module.exports = (pool, auth, operation) => {
+  if (typeof operation !== 'function') throw new Error('social routes exigem o middleware de operação');
   const router = express.Router();
 
   // ── Scraps (Recados) ──────────────────────────────────────
   router.get('/scraps/:userId', async (req, res) => {
+    if (!isUuid(req.params.userId)) return res.json([]);
     try {
       const { rows } = await pool.query(
         `SELECT s.id, s.author_id, s.target_user_id, s.content, s.created_at,
@@ -32,10 +50,9 @@ module.exports = (pool, auth) => {
   });
 
   router.post('/scraps', auth, async (req, res) => {
-    const { targetUserId, content } = req.body;
-    if (!targetUserId || !content) {
-      return res.status(400).json({ error: 'targetUserId e content são obrigatórios' });
-    }
+    const input = socialInput(req.body, req.user.userId, { allowSelf: true });
+    if (input.error) return res.status(input.status).json({ error: input.error });
+    const { targetUserId, content } = input;
     try {
       await ensureProfile(pool, req.user);
       const { rows } = await pool.query(
@@ -65,6 +82,7 @@ module.exports = (pool, auth) => {
 
   // ── Testimonials (Depoimentos) ───────────────────────────
   router.get('/testimonials/:userId', async (req, res) => {
+    if (!isUuid(req.params.userId)) return res.json([]);
     try {
       const { rows } = await pool.query(
         `SELECT t.id, t.author_id, t.target_user_id, t.content, t.created_at,
@@ -91,10 +109,9 @@ module.exports = (pool, auth) => {
   });
 
   router.post('/testimonials', auth, async (req, res) => {
-    const { targetUserId, content } = req.body;
-    if (!targetUserId || !content) {
-      return res.status(400).json({ error: 'targetUserId e content são obrigatórios' });
-    }
+    const input = socialInput(req.body, req.user.userId, { allowSelf: false });
+    if (input.error) return res.status(input.status).json({ error: input.error });
+    const { targetUserId, content } = input;
     try {
       await ensureProfile(pool, req.user);
       const { rows } = await pool.query(
@@ -125,7 +142,12 @@ module.exports = (pool, auth) => {
   // ── Ranking ──────────────────────────────────────────────
   router.get('/ranking', async (_req, res) => {
     try {
-      const { rows } = await pool.query('SELECT * FROM profiles ORDER BY name ASC');
+      const { rows } = await pool.query(
+        `SELECT user_id, name, avatar_url, role, profile_type, city
+           FROM profiles
+          WHERE role IN ('partner', 'agent', 'member')
+          ORDER BY name ASC`
+      );
       const partners = rows.filter((p) => p.role === 'partner');
       const agents = rows.filter((p) => p.role === 'agent');
       const members = rows.filter((p) => p.role === 'member');
@@ -238,14 +260,23 @@ module.exports = (pool, auth) => {
   });
 
   // ── Admin Snapshot (Base de usuários e conexões para overview) ─
-  router.get('/admin-snapshot', auth, async (_req, res) => {
+  // Leitura para a operação da plataforma (decisões de implementação §2: o dm-api
+  // não aprova nada). Só contas de DM_OPERATION_USER_IDS; sem telefone e sem o
+  // conteúdo privado das conexões (mensagem, desfecho, eventos).
+  router.get('/admin-snapshot', auth, operation, async (_req, res) => {
     try {
       const [users, communities, connections, scraps, testimonials] = await Promise.all([
-        pool.query('SELECT * FROM profiles ORDER BY name ASC'),
-        pool.query('SELECT * FROM communities ORDER BY member_count DESC'),
+        pool.query(
+          `SELECT user_id, name, role, profile_type, neighborhood, city, member_since, created_at, avatar_url
+             FROM profiles ORDER BY name ASC`
+        ),
+        pool.query(
+          `SELECT id, name, description, category, member_count, image_url
+             FROM communities ORDER BY member_count DESC`
+        ),
         pool.query(
           `SELECT
-             c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.outcome, c.events, c.created_at, c.updated_at,
+             c.id, c.type, c.status, c.post_id, c.post_title, c.created_at, c.updated_at,
              p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
              p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
            FROM connections c
@@ -306,13 +337,13 @@ module.exports = (pool, auth) => {
             role: r.to_role || null,
             profileType: r.to_profile_type || null,
           },
-          message: r.message,
+          message: '',
           postId: r.post_id || null,
           postTitle: r.post_title || null,
-          outcome: r.outcome || null,
+          outcome: null,
           createdAt: r.created_at,
           updatedAt: r.updated_at,
-          events: r.events || [],
+          events: [],
         })),
         scraps: scraps.rows.map((r) => ({
           id: r.id,

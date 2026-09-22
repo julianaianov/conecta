@@ -1,9 +1,33 @@
 const express = require('express');
 const { canPublish, canSupport } = require('../roles');
 const { normalizeCoordinates } = require('../location');
+const { isUuid } = require('../security');
 
-module.exports = (pool, auth) => {
+// Projeção pública de um post. Colunas novas ficam fora da API até serem
+// incluídas aqui de propósito.
+const POST_PUBLIC_COLUMNS = [
+  'id', 'author_id', 'author_name', 'author_avatar', 'type', 'title', 'description',
+  'status', 'latitude', 'longitude', 'neighborhood', 'city', 'images', 'videos', 'tags',
+  'reactions_count', 'comments_count', 'views_count', 'created_at', 'updated_at',
+];
+const POST_SQL = POST_PUBLIC_COLUMNS.join(', ');
+const COMMENT_SQL = 'id, post_id, author_id, author_name, content, created_at';
+// Apoio visto pelo próprio apoiador (e pela operação, sem mensagem nem detalhes).
+const SUPPORT_OWNER_SQL = 'id, post_id, user_id, user_name, type, message, amount, payment_method, details, status, created_at, updated_at';
+const SUPPORT_OPERATION_SQL = 'id, post_id, user_id, user_name, type, amount, payment_method, status, created_at';
+
+// Status que o autor pode definir (espelha o enum post_status do init.sql).
+const AUTHOR_POST_STATUSES = ['active', 'in_progress', 'resolved', 'cancelled'];
+
+module.exports = (pool, auth, operation) => {
+  if (typeof operation !== 'function') throw new Error('posts routes exigem o middleware de operação');
   const router = express.Router();
+
+  // Todo `/:id` é o UUID de um post; id malformado é "não encontrado" (e não 500).
+  router.param('id', (req, res, next, id) => {
+    if (!isUuid(id)) return res.status(404).json({ error: 'Post não encontrado' });
+    next();
+  });
 
   // GET / — list with filters
   router.get('/', async (req, res) => {
@@ -14,9 +38,13 @@ module.exports = (pool, auth) => {
     if (type)         { where += ` AND type=$${i++}`;                    params.push(type); }
     if (status)       { where += ` AND status=$${i++}`;                  params.push(status); }
     if (neighborhood) { where += ` AND neighborhood ILIKE $${i++}`;      params.push(`%${neighborhood}%`); }
-    if (author_id)    { where += ` AND author_id=$${i++}`;               params.push(author_id); }
+    if (author_id) {
+      if (!isUuid(author_id)) return res.json({ posts: [], total: 0, limit: +limit, offset: +offset });
+      where += ` AND author_id=$${i++}`;
+      params.push(author_id);
+    }
 
-    const query = `SELECT * FROM posts ${where} ORDER BY created_at DESC LIMIT $${i++} OFFSET $${i++}`;
+    const query = `SELECT ${POST_SQL} FROM posts ${where} ORDER BY created_at DESC LIMIT $${i++} OFFSET $${i++}`;
     params.push(parseInt(limit), parseInt(offset));
 
     try {
@@ -42,7 +70,7 @@ module.exports = (pool, auth) => {
 
     try {
       const { rows } = await pool.query(
-        `SELECT * FROM posts ${where} ORDER BY created_at DESC`,
+        `SELECT ${POST_SQL} FROM posts ${where} ORDER BY created_at DESC`,
         params
       );
       res.json(rows);
@@ -128,7 +156,7 @@ module.exports = (pool, auth) => {
   router.get('/my/supports', auth, async (req, res) => {
     try {
       const { rows } = await pool.query(
-        `SELECT s.*, p.title AS post_title, p.type AS post_type,
+        `SELECT ${SUPPORT_OWNER_SQL.split(', ').map((c) => `s.${c}`).join(', ')}, p.title AS post_title, p.type AS post_type,
                 p.neighborhood, p.city, p.status AS post_status
            FROM supports s
            JOIN posts p ON p.id = s.post_id
@@ -143,13 +171,15 @@ module.exports = (pool, auth) => {
     }
   });
 
-  // GET /admin-snapshot — dados persistidos usados pelo painel administrativo
-  router.get('/admin-snapshot', auth, async (_req, res) => {
+  // GET /admin-snapshot — leitura para o painel da operação (decisões de
+  // implementação §2: o dm-api não aprova nada). Só contas de DM_OPERATION_USER_IDS;
+  // apoios sem mensagem e detalhes livres, comentários sem o texto.
+  router.get('/admin-snapshot', auth, operation, async (_req, res) => {
     try {
       const [posts, supports, comments] = await Promise.all([
-        pool.query('SELECT * FROM posts ORDER BY created_at DESC'),
-        pool.query('SELECT * FROM supports ORDER BY created_at DESC'),
-        pool.query('SELECT * FROM comments ORDER BY created_at ASC'),
+        pool.query(`SELECT ${POST_SQL} FROM posts ORDER BY created_at DESC`),
+        pool.query(`SELECT ${SUPPORT_OPERATION_SQL} FROM supports ORDER BY created_at DESC`),
+        pool.query('SELECT id, post_id, author_id, author_name, created_at FROM comments ORDER BY created_at ASC'),
       ]);
       res.json({
         posts: posts.rows,
@@ -166,7 +196,7 @@ module.exports = (pool, auth) => {
   router.get('/:id', async (req, res) => {
     try {
       await pool.query('UPDATE posts SET views_count=views_count+1 WHERE id=$1', [req.params.id]);
-      const { rows } = await pool.query('SELECT * FROM posts WHERE id=$1', [req.params.id]);
+      const { rows } = await pool.query(`SELECT ${POST_SQL} FROM posts WHERE id=$1`, [req.params.id]);
       if (!rows.length) return res.status(404).json({ error: 'Post não encontrado' });
       res.json(rows[0]);
     } catch (err) {
@@ -189,7 +219,7 @@ module.exports = (pool, auth) => {
       const { rows } = await pool.query(
         `INSERT INTO posts
           (author_id,author_name,author_avatar,type,title,description,latitude,longitude,neighborhood,city,images,videos,tags)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING ${POST_SQL}`,
         [req.user.userId, req.user.name || req.user.email, req.user.avatarUrl || null, type, title, description,
          coordinates?.latitude ?? null, coordinates?.longitude ?? null, neighborhood, city, images || [], videos || [], tags || []]
       );
@@ -202,7 +232,9 @@ module.exports = (pool, auth) => {
 
   // PUT /:id
   router.put('/:id', auth, async (req, res) => {
-    const { title, description, status, images, videos, tags, latitude, longitude } = req.body;
+    const { title, description, status, images, videos, tags, latitude, longitude } = req.body ?? {};
+    if (status != null && !AUTHOR_POST_STATUSES.includes(status))
+      return res.status(400).json({ error: 'Status inválido' });
     const hasLocation = Object.prototype.hasOwnProperty.call(req.body, 'latitude')
       || Object.prototype.hasOwnProperty.call(req.body, 'longitude');
     const coordinates = normalizeCoordinates(latitude, longitude);
@@ -231,7 +263,7 @@ module.exports = (pool, auth) => {
 
       const { rows } = await pool.query(
         `UPDATE posts SET ${updates.join(', ')}, updated_at=NOW()
-         WHERE id=$${values.length} RETURNING *`,
+         WHERE id=$${values.length} RETURNING ${POST_SQL}`,
         values
       );
       res.json(rows[0]);
@@ -267,7 +299,7 @@ module.exports = (pool, auth) => {
   router.get('/:id/comments', async (req, res) => {
     try {
       const { rows } = await pool.query(
-        'SELECT * FROM comments WHERE post_id=$1 ORDER BY created_at ASC', [req.params.id]
+        `SELECT ${COMMENT_SQL} FROM comments WHERE post_id=$1 ORDER BY created_at ASC`, [req.params.id]
       );
       res.json(rows);
     } catch (err) {
@@ -282,7 +314,7 @@ module.exports = (pool, auth) => {
     if (!content) return res.status(400).json({ error: 'Conteúdo obrigatório' });
     try {
       const { rows } = await pool.query(
-        'INSERT INTO comments (post_id,author_id,author_name,content) VALUES ($1,$2,$3,$4) RETURNING *',
+        `INSERT INTO comments (post_id,author_id,author_name,content) VALUES ($1,$2,$3,$4) RETURNING ${COMMENT_SQL}`,
         [req.params.id, req.user.userId, req.user.name || req.user.email, content]
       );
       await pool.query('UPDATE posts SET comments_count=comments_count+1 WHERE id=$1', [req.params.id]);
@@ -317,7 +349,7 @@ module.exports = (pool, auth) => {
   router.get('/:id/supports/mine', auth, async (req, res) => {
     try {
       const { rows } = await pool.query(
-        'SELECT * FROM supports WHERE post_id=$1 AND user_id=$2 ORDER BY created_at DESC',
+        `SELECT ${SUPPORT_OWNER_SQL} FROM supports WHERE post_id=$1 AND user_id=$2 ORDER BY created_at DESC`,
         [req.params.id, req.user.userId]
       );
       res.json(rows);
@@ -364,7 +396,7 @@ module.exports = (pool, auth) => {
               SET message=$1, amount=$2, payment_method=$3, details=$4,
                   status=$5, updated_at=NOW()
             WHERE post_id=$6 AND user_id=$7 AND type=$8
-            RETURNING *`,
+            RETURNING ${SUPPORT_OWNER_SQL}`,
           [message || null, amount || null, payment_method || null,
            detailsJson, supportStatus, id, userId, type]
         );
@@ -374,7 +406,7 @@ module.exports = (pool, auth) => {
         const { rows } = await pool.query(
           `INSERT INTO supports
             (post_id,user_id,user_name,type,message,amount,payment_method,details,status)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING ${SUPPORT_OWNER_SQL}`,
           [id, userId, userName, type, message || null, amount || null,
            payment_method || null, detailsJson, supportStatus]
         );
@@ -420,3 +452,5 @@ module.exports = (pool, auth) => {
 
   return router;
 };
+
+module.exports.POST_PUBLIC_COLUMNS = POST_PUBLIC_COLUMNS;

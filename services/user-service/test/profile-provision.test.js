@@ -53,7 +53,7 @@ function memoryPool(initialProfiles = []) {
         profiles.set(userId, { id: `p-${userId}`, user_id: userId, name, avatar_url: avatarUrl, role, profile_type: profileType, phone: null });
         return { rows: [{ id: `p-${userId}` }], rowCount: 1 };
       }
-      if (text.startsWith('SELECT * FROM profiles WHERE user_id=$1')) {
+      if (/^SELECT [a-z_, ]+ FROM profiles WHERE user_id=\$1/.test(text)) {
         const row = profiles.get(params[0]);
         return { rows: row ? [row] : [], rowCount: row ? 1 : 0 };
       }

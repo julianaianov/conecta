@@ -3,8 +3,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
-const sign = (payload, expiresIn) => jwt.sign(payload, JWT_SECRET, { expiresIn });
+const { isAccessPayload } = require('../security');
 
 // As 5 categorias de perfil e seus subperfis (espelha src/lib/app/types.ts e
 // docs/perfis-e-permissoes.md).
@@ -18,8 +17,22 @@ const ROLE_PROFILES = {
 const ROLES = Object.keys(ROLE_PROFILES);
 const PROFILE_TYPES = Object.values(ROLE_PROFILES).flat();
 
-module.exports = (pool) => {
+// Colunas devolvidas ao próprio usuário (nunca password_hash).
+const USER_COLUMNS = 'id,email,name,role,profile_type,avatar_url,created_at';
+
+module.exports = (pool, { secret } = {}) => {
+  if (!secret) throw new Error('auth-service exige o segredo JWT');
   const router = express.Router();
+  const verify = (token) => jwt.verify(token, secret, { algorithms: ['HS256'] });
+  const signAccess = (u) => jwt.sign(
+    { userId: u.id, email: u.email, name: u.name, role: u.role, profileType: u.profile_type, avatarUrl: u.avatar_url },
+    secret,
+    { expiresIn: '7d', algorithm: 'HS256' },
+  );
+  const signRefresh = (u) => jwt.sign({ userId: u.id, typ: 'refresh' }, secret, { expiresIn: '30d', algorithm: 'HS256' });
+  // Refresh token válido: os novos têm `typ: 'refresh'`; os antigos só `userId`.
+  const isRefreshPayload = (p) => Boolean(p && typeof p.userId === 'string'
+    && (p.typ === 'refresh' || (p.typ === undefined && p.role === undefined)));
 
   // POST /register
   router.post('/register', [
@@ -44,14 +57,14 @@ module.exports = (pool) => {
 
       const hash = await bcrypt.hash(password, 10);
       const { rows } = await pool.query(
-        'INSERT INTO users (email,password_hash,name,role,profile_type) VALUES ($1,$2,$3,$4,$5) RETURNING id,email,name,role,profile_type,avatar_url,created_at',
+        `INSERT INTO users (email,password_hash,name,role,profile_type) VALUES ($1,$2,$3,$4,$5) RETURNING ${USER_COLUMNS}`,
         [email, hash, name, role, profileType]
       );
       const user = rows[0];
       res.status(201).json({
         user,
-        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role, profileType: user.profile_type, avatarUrl: user.avatar_url }, '7d'),
-        refreshToken: sign({ userId: user.id }, '30d'),
+        token:        signAccess(user),
+        refreshToken: signRefresh(user),
       });
     } catch (err) {
       console.error(err);
@@ -69,19 +82,17 @@ module.exports = (pool) => {
 
     const { email, password } = req.body;
     try {
-      const { rows } = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+      const { rows } = await pool.query(`SELECT ${USER_COLUMNS},password_hash FROM users WHERE email=$1`, [email]);
       if (!rows.length) return res.status(401).json({ error: 'Credenciais inválidas' });
 
-      const user = rows[0];
-      const ok = await bcrypt.compare(password, user.password_hash);
+      const { password_hash: passwordHash, ...user } = rows[0];
+      const ok = await bcrypt.compare(password, passwordHash);
       if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
 
-      const safe = { ...user };
-      delete safe.password_hash;
       res.json({
-        user: safe,
-        token:        sign({ userId: user.id, email: user.email, name: user.name, role: user.role, profileType: user.profile_type, avatarUrl: user.avatar_url }, '7d'),
-        refreshToken: sign({ userId: user.id }, '30d'),
+        user,
+        token:        signAccess(user),
+        refreshToken: signRefresh(user),
       });
     } catch (err) {
       console.error(err);
@@ -91,14 +102,14 @@ module.exports = (pool) => {
 
   // POST /refresh
   router.post('/refresh', async (req, res) => {
-    const { refreshToken } = req.body;
+    const { refreshToken } = req.body ?? {};
     if (!refreshToken) return res.status(401).json({ error: 'Token ausente' });
     try {
-      const decoded = jwt.verify(refreshToken, JWT_SECRET);
+      const decoded = verify(refreshToken);
+      if (!isRefreshPayload(decoded)) return res.status(401).json({ error: 'Token inválido' });
       const { rows } = await pool.query('SELECT id,email,name,role,profile_type,avatar_url FROM users WHERE id=$1', [decoded.userId]);
       if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
-      const u = rows[0];
-      res.json({ token: sign({ userId: u.id, email: u.email, name: u.name, role: u.role, profileType: u.profile_type, avatarUrl: u.avatar_url }, '7d') });
+      res.json({ token: signAccess(rows[0]) });
     } catch {
       res.status(401).json({ error: 'Token inválido' });
     }
@@ -109,7 +120,8 @@ module.exports = (pool) => {
     const header = req.headers.authorization;
     if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Sem token' });
     try {
-      const decoded = jwt.verify(header.slice(7), JWT_SECRET);
+      const decoded = verify(header.slice(7));
+      if (!isAccessPayload(decoded)) return res.status(401).json({ error: 'Token inválido' });
       const { rows } = await pool.query('SELECT id,email,name,role,profile_type,avatar_url FROM users WHERE id=$1', [decoded.userId]);
       if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
       res.json({ user: rows[0] });

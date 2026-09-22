@@ -19,7 +19,7 @@ test('apoio financeiro falha fechado sem provedor de pagamento real', async () =
   const server = createApp({ pool, secret: 'test-secret' }).listen(0);
 
   try {
-    const response = await fetch(`http://127.0.0.1:${server.address().port}/post-1/supports`, {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/supports`, {
       method: 'POST',
       headers: {
         authorization: `Bearer ${token}`,

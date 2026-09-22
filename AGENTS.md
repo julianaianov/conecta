@@ -41,6 +41,27 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `dmconecta-infra/db/init/10-load-application-schemas.sh`; bancos existentes
   são migrados por SSM.
 
+## Segurança dos serviços
+
+- `JWT_SECRET` é obrigatório e forte (32+ caracteres, sem valores de exemplo)
+  em todo ambiente fora de teste: sem ele, auth/user/post-service não sobem.
+  Não existe segredo padrão; no Compose local defina-o no `.env`
+  (`openssl rand -hex 32`). Refresh tokens (`typ: 'refresh'`) não valem como
+  token de acesso.
+- Rotas administrativas (`/admin-snapshot` do user-service e do post-service)
+  são só leitura para a operação: exigem token de uma conta listada em
+  `DM_OPERATION_USER_IDS` (UUIDs de `auth_db.users`, vírgula). Sem a variável,
+  respondem 403 para todos. `NEXT_PUBLIC_ADMIN_EMAILS` só esconde a interface.
+  O dm-api não aprova nada: validação e aprovação ficam no dm-gestao.
+- Respostas públicas usam projeção explícita de colunas (nada de `SELECT *`);
+  telefone, estado e metadados internos do perfil nunca saem em rota pública.
+  Coluna nova fica privada até ser incluída de propósito na projeção.
+- Recursos privados respondem 404 para quem não é parte (conexões) e escrita
+  exige o dono (posts, conexões com transições por papel: só o destinatário
+  aceita/recusa, só o remetente cancela).
+- `services/*/src/security.js` é a mesma cópia nos três serviços (há teste que
+  confere).
+
 ## Estrutura
 
 - `src/lib/app/runtime.ts`: decisão de ambiente.

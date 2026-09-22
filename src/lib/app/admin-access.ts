@@ -9,9 +9,10 @@
  *
  *     NEXT_PUBLIC_ADMIN_EMAILS="ana@dmconecta.com.br,dm@dmconecta.com.br"
  *
- * Sem a variável, nenhuma conta entra no painel. Isto é um controle de
- * **interface**: a mesma checagem precisa existir no servidor — o cliente
- * nunca é a fronteira de segurança.
+ * Sem a variável, nenhuma conta entra no painel. Isto é só um controle de
+ * **interface**. A fronteira de segurança fica nos serviços: `/admin-snapshot`
+ * do user-service e do post-service só responde às contas cujo UUID está em
+ * `DM_OPERATION_USER_IDS` (variável de servidor); as demais recebem 403.
  */
 import type { User } from "./types";
 

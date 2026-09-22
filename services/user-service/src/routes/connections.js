@@ -1,5 +1,6 @@
 const express = require('express');
 const { ensureProfile, isForeignKeyViolation } = require('../profile-provision');
+const { isUuid } = require('../security');
 
 function mapRow(r) {
   return {
@@ -28,6 +29,34 @@ function mapRow(r) {
     updatedAt: r.updated_at,
     events: r.events || [],
   };
+}
+
+const DETAIL_SQL = `SELECT
+           c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.outcome, c.events, c.created_at, c.updated_at,
+           p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
+           p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
+         FROM connections c
+         LEFT JOIN profiles p_from ON p_from.user_id = c.from_user_id
+         LEFT JOIN profiles p_to ON p_to.user_id = c.to_user_id
+         WHERE c.id = $1`;
+
+// Espelha ConnectionType em src/lib/app/types.ts.
+const CONNECTION_TYPES = ['support', 'sponsorship', 'partnership', 'meeting', 'resources', 'outreach'];
+const MAX_MESSAGE_LENGTH = 2000;
+
+/**
+ * Quem pode levar a conexão para cada status, a partir do status atual.
+ * pending → accepted/declined: só quem recebeu; pending → canceled: só quem pediu;
+ * accepted → done (com resultado): qualquer das partes. Estados finais não mudam.
+ */
+function transitionAllowed(current, next, { isFrom, isTo }) {
+  if (current === 'pending') {
+    if (next === 'accepted' || next === 'declined') return isTo;
+    if (next === 'canceled') return isFrom;
+    return false;
+  }
+  if (current === 'accepted') return next === 'done' && (isFrom || isTo);
+  return false;
 }
 
 module.exports = (pool, auth) => {
@@ -79,18 +108,15 @@ module.exports = (pool, auth) => {
   });
 
   // GET /:id — detalhes de uma conexão
+  // Só as duas partes enxergam a conexão; para qualquer outra conta ela "não existe"
+  // (404, sem revelar se o id é válido).
   router.get('/:id', auth, async (req, res) => {
+    if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Conexão não encontrada' });
     try {
       const { rows } = await pool.query(
-        `SELECT
-           c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.outcome, c.events, c.created_at, c.updated_at,
-           p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
-           p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
-         FROM connections c
-         LEFT JOIN profiles p_from ON p_from.user_id = c.from_user_id
-         LEFT JOIN profiles p_to ON p_to.user_id = c.to_user_id
-         WHERE c.id = $1`,
-        [req.params.id]
+        `${DETAIL_SQL}
+           AND (c.from_user_id = $2 OR c.to_user_id = $2)`,
+        [req.params.id, req.user.userId]
       );
       if (!rows.length) return res.status(404).json({ error: 'Conexão não encontrada' });
       res.json(mapRow(rows[0]));
@@ -102,10 +128,20 @@ module.exports = (pool, auth) => {
 
   // POST / — criar solicitação de conexão
   router.post('/', auth, async (req, res) => {
-    const { toUserId, type, message, postId, postTitle } = req.body;
+    const { toUserId, type, postId, postTitle } = req.body ?? {};
+    const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
     if (!toUserId || !type || !message) {
       return res.status(400).json({ error: 'toUserId, type e message são obrigatórios' });
     }
+    if (!isUuid(toUserId)) return res.status(404).json({ error: 'Perfil de destino não encontrado' });
+    if (toUserId.toLowerCase() === String(req.user.userId).toLowerCase()) {
+      return res.status(400).json({ error: 'Não é possível solicitar conexão consigo mesmo' });
+    }
+    if (!CONNECTION_TYPES.includes(type)) return res.status(400).json({ error: 'Tipo de conexão inválido' });
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      return res.status(400).json({ error: `A mensagem aceita até ${MAX_MESSAGE_LENGTH} caracteres` });
+    }
+    if (postId != null && postId !== '' && !isUuid(postId)) return res.status(400).json({ error: 'postId inválido' });
     const now = new Date().toISOString();
     const initialEvents = [
       { id: `e-${Date.now()}`, label: 'Conexão solicitada', detail: null, icon: 'send', at: now },
@@ -116,18 +152,12 @@ module.exports = (pool, auth) => {
         `INSERT INTO connections (type, status, from_user_id, to_user_id, message, post_id, post_title, events, created_at, updated_at)
          VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, NOW(), NOW())
          RETURNING id`,
-        [type, req.user.userId, toUserId, message, postId || null, postTitle || null, JSON.stringify(initialEvents)]
+        [type, req.user.userId, toUserId, message, postId || null,
+         typeof postTitle === 'string' && postTitle.trim() ? postTitle.trim().slice(0, 255) : null, JSON.stringify(initialEvents)]
       );
       const createdId = rows[0].id;
       const detail = await pool.query(
-        `SELECT
-           c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.outcome, c.events, c.created_at, c.updated_at,
-           p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
-           p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
-         FROM connections c
-         LEFT JOIN profiles p_from ON p_from.user_id = c.from_user_id
-         LEFT JOIN profiles p_to ON p_to.user_id = c.to_user_id
-         WHERE c.id = $1`,
+        DETAIL_SQL,
         [createdId]
       );
       res.status(201).json(mapRow(detail.rows[0]));
@@ -140,14 +170,24 @@ module.exports = (pool, auth) => {
 
   // PUT /:id — atualizar status e desfecho
   router.put('/:id', auth, async (req, res) => {
-    const { status, outcome } = req.body;
+    const { status, outcome } = req.body ?? {};
+    if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Conexão não encontrada' });
+    if (outcome != null && (typeof outcome !== 'string' || outcome.length > MAX_MESSAGE_LENGTH)) {
+      return res.status(400).json({ error: `O resultado aceita até ${MAX_MESSAGE_LENGTH} caracteres` });
+    }
     try {
-      const { rows: existing } = await pool.query('SELECT * FROM connections WHERE id = $1', [req.params.id]);
-      if (!existing.length) return res.status(404).json({ error: 'Conexão não encontrada' });
+      const { rows: existing } = await pool.query(
+        'SELECT id, status, from_user_id, to_user_id, outcome, events FROM connections WHERE id = $1',
+        [req.params.id]
+      );
       const c = existing[0];
-      const isFrom = c.from_user_id === req.user.userId;
-      const isTo = c.to_user_id === req.user.userId;
-      if (!isFrom && !isTo) return res.status(403).json({ error: 'Sem permissão' });
+      const isFrom = Boolean(c) && c.from_user_id === req.user.userId;
+      const isTo = Boolean(c) && c.to_user_id === req.user.userId;
+      // Quem não participa recebe o mesmo 404 de uma conexão inexistente.
+      if (!c || (!isFrom && !isTo)) return res.status(404).json({ error: 'Conexão não encontrada' });
+      if (!transitionAllowed(c.status, status, { isFrom, isTo })) {
+        return res.status(409).json({ error: 'Esta mudança de status não é permitida para você nesta etapa' });
+      }
 
       const now = new Date().toISOString();
       const events = Array.isArray(c.events) ? [...c.events] : [];
@@ -162,6 +202,9 @@ module.exports = (pool, auth) => {
       } else if (status === 'done') {
         label = 'Resultado registrado';
         icon = 'star';
+      } else if (status === 'canceled') {
+        label = 'Pedido cancelado';
+        icon = 'close';
       }
       events.push({ id: `e-${Date.now()}`, label, detail: outcome || null, icon, at: now });
 
@@ -171,20 +214,15 @@ module.exports = (pool, auth) => {
                 outcome = COALESCE($2, outcome),
                 events = $3,
                 updated_at = NOW()
-          WHERE id = $4
-          RETURNING *`,
-        [status || c.status, outcome !== undefined ? outcome : c.outcome, JSON.stringify(events), req.params.id]
+          WHERE id = $4 AND status = $5
+          RETURNING id`,
+        [status, outcome != null ? outcome : c.outcome, JSON.stringify(events), req.params.id, c.status]
       );
+      // Outra atualização mudou o status entre a leitura e a escrita.
+      if (!rows.length) return res.status(409).json({ error: 'A conexão foi atualizada por outra ação; recarregue' });
 
       const detail = await pool.query(
-        `SELECT
-           c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.outcome, c.events, c.created_at, c.updated_at,
-           p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
-           p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
-         FROM connections c
-         LEFT JOIN profiles p_from ON p_from.user_id = c.from_user_id
-         LEFT JOIN profiles p_to ON p_to.user_id = c.to_user_id
-         WHERE c.id = $1`,
+        DETAIL_SQL,
         [rows[0].id]
       );
       res.json(mapRow(detail.rows[0]));
@@ -196,3 +234,6 @@ module.exports = (pool, auth) => {
 
   return router;
 };
+
+module.exports.transitionAllowed = transitionAllowed;
+module.exports.CONNECTION_TYPES = CONNECTION_TYPES;

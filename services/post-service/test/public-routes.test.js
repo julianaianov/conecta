@@ -18,10 +18,10 @@ test('GET / accepts a public author_id filter without a token', async () => {
   };
   const server = createApp({ pool }).listen(0);
   try {
-    const response = await fetch(`http://127.0.0.1:${server.address().port}/?author_id=u-1`);
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/?author_id=11111111-1111-1111-1111-111111111111`);
     assert.equal(response.status, 200);
     assert.match(queries[0].sql, /author_id/);
-    assert.deepEqual(queries[0].params, ['u-1', 20, 0]);
+    assert.deepEqual(queries[0].params, ['11111111-1111-1111-1111-111111111111', 20, 0]);
   } finally {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
@@ -38,7 +38,7 @@ test('GET /:id/supports exposes only public support summary fields', async () =>
   };
   const server = createApp({ pool }).listen(0);
   try {
-    const response = await fetch(`http://127.0.0.1:${server.address().port}/p-1/supports`);
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/supports`);
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), {
       summary: [{ type: 'materials', count: 2 }],

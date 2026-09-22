@@ -5,9 +5,11 @@ const { createApp } = require('../src');
 
 const SECRET = 'test-secret';
 const POST_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const OPERATOR_ID = '99999999-9999-9999-9999-999999999999';
+const COMMON_ID = '11111111-1111-1111-1111-111111111111';
 
-function token() {
-  return jwt.sign({ userId: 'admin-user', email: 'admin@example.com', role: 'member' }, SECRET);
+function token(userId = OPERATOR_ID) {
+  return jwt.sign({ userId, email: 'conta@example.com', role: 'member' }, SECRET);
 }
 
 function createPool() {
@@ -52,7 +54,7 @@ function createPool() {
 }
 
 async function withServer(pool, callback) {
-  const server = createApp({ pool, secret: SECRET }).listen(0);
+  const server = createApp({ pool, secret: SECRET, operationUserIds: new Set([OPERATOR_ID]) }).listen(0);
   try {
     const address = server.address();
     await callback(`http://127.0.0.1:${address.port}`);
@@ -65,6 +67,46 @@ test('GET /admin-snapshot requires authentication', async () => {
   await withServer(createPool(), async (base) => {
     const response = await fetch(`${base}/admin-snapshot`);
     assert.equal(response.status, 401);
+  });
+});
+
+test('GET /admin-snapshot recusa conta autenticada que não é da operação', async () => {
+  const pool = createPool();
+  await withServer(pool, async (base) => {
+    const response = await fetch(`${base}/admin-snapshot`, {
+      headers: { authorization: `Bearer ${token(COMMON_ID)}` },
+    });
+    assert.equal(response.status, 403);
+    assert.equal(pool.calls.length, 0);
+  });
+});
+
+test('GET /admin-snapshot sem DM_OPERATION_USER_IDS falha fechado para todos', async () => {
+  const pool = createPool();
+  const server = createApp({ pool, secret: SECRET, operationUserIds: new Set() }).listen(0);
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/admin-snapshot`, {
+      headers: { authorization: `Bearer ${token()}` },
+    });
+    assert.equal(response.status, 403);
+    assert.equal(pool.calls.length, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('GET /admin-snapshot usa projeções explícitas, sem mensagem de apoio nem texto de comentário', async () => {
+  const pool = createPool();
+  await withServer(pool, async (base) => {
+    const response = await fetch(`${base}/admin-snapshot`, {
+      headers: { authorization: `Bearer ${token()}` },
+    });
+    assert.equal(response.status, 200);
+    for (const { text } of pool.calls) assert.doesNotMatch(text, /SELECT \*/);
+    const supports = pool.calls.find(({ text }) => text.includes('FROM supports')).text;
+    assert.doesNotMatch(supports, /message|details/);
+    const comments = pool.calls.find(({ text }) => text.includes('FROM comments')).text;
+    assert.doesNotMatch(comments, /content/);
   });
 });
 
