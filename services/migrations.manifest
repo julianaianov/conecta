@@ -1,0 +1,33 @@
+# Fonte única do schema do DM Conecta: ordem em que init.sql e migrações são
+# aplicados. Lida pela infra (dmconecta-infra/db/init/10-load-application-schemas.sh
+# em volume novo e scripts/apply-schema-migrations.sh a cada deploy).
+#
+# Formato: <banco> <arquivo relativo a services/> [entrada]
+#   entrada `auth-users-csv`: o arquivo lê pela entrada padrão (pstdin) as contas
+#   de auth_db.users em CSV (id, name, avatar_url, role, profile_type, created_at).
+#
+# Regras: todo arquivo aqui é idempotente, porque o deploy reaplica a lista
+# inteira; arquivo novo entra no fim do bloco do seu banco, com o próximo número.
+# Próximos números livres: auth-service 004, user-service 008, post-service 007.
+
+auth_db auth-service/init.sql
+auth_db auth-service/migrations/001-perfis-4-categorias.sql
+auth_db auth-service/migrations/002-perfis-5-categorias.sql
+auth_db auth-service/migrations/003-avatar-url.sql
+
+user_db user-service/init.sql
+user_db user-service/migrations/001-perfis-4-categorias.sql
+user_db user-service/migrations/002-perfis-5-categorias.sql
+user_db user-service/migrations/003-profile-display.sql
+user_db user-service/migrations/004-communities.sql
+user_db user-service/migrations/005-connections-social.sql
+user_db user-service/migrations/006-gestao-verification.sql
+user_db user-service/migrations/007-profiles-backfill.sql auth-users-csv
+
+post_db post-service/init.sql
+post_db post-service/migrate_supports.sql
+post_db post-service/migrate_supports_v2.sql
+post_db post-service/migrations/003-post-media.sql
+post_db post-service/migrations/004-gestao-fields.sql
+post_db post-service/migrations/005-post-type-message.sql
+post_db post-service/migrations/006-post-visibility.sql

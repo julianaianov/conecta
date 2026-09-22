@@ -1,9 +1,21 @@
+-- Tabelas de um banco novo. Bancos existentes evoluem pelas migrações
+-- (services/migrations.manifest), que repetem estas mudanças de forma idempotente.
+-- Este arquivo é reaplicado a cada deploy num banco que já existe: aqui só cabem
+-- índices de colunas presentes desde a criação da tabela; índice de coluna nova
+-- fica na migração que cria a coluna.
 DO $$ BEGIN
-  CREATE TYPE post_type AS ENUM ('problem','project','need','event','action');
+  CREATE TYPE post_type AS ENUM ('problem','project','need','event','action','message');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-  CREATE TYPE post_status AS ENUM ('active','in_progress','resolved','cancelled');
+  CREATE TYPE post_status AS ENUM (
+    'active','in_progress','resolved','cancelled',
+    'em_analise','encaminhada','em_execucao','resolvida','cancelada'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE post_visibility AS ENUM ('visible','hidden');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS posts (
@@ -25,6 +37,13 @@ CREATE TABLE IF NOT EXISTS posts (
   reactions_count INT     DEFAULT 0,
   comments_count  INT     DEFAULT 0,
   views_count     INT     DEFAULT 0,
+  urban_category  VARCHAR(100),
+  state           VARCHAR(100),
+  zipcode         VARCHAR(20),
+  visibility        post_visibility NOT NULL DEFAULT 'visible',
+  moderation_reason TEXT,
+  moderated_at      TIMESTAMPTZ,
+  moderated_by      VARCHAR(255),
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );

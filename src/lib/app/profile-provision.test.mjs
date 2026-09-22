@@ -28,11 +28,13 @@ test("cadastro coleta só o necessário (LGPD): sem nascimento, gênero ou telef
   assert.doesNotMatch(page, /phone|Celular|type="tel"/i);
 });
 
-test("migração de backfill de perfis existe e está registrada na carga da infra", () => {
+test("migração de backfill de perfis existe e está no manifesto que a infra aplica", () => {
   const migration = new URL("../../../services/user-service/migrations/007-profiles-backfill.sql", import.meta.url);
   assert.ok(existsSync(migration));
+  const manifest = readFileSync(new URL("../../../services/migrations.manifest", import.meta.url), "utf8");
+  assert.match(manifest, /^user_db user-service\/migrations\/007-profiles-backfill\.sql auth-users-csv$/m);
   const infraLoader = new URL("../../../../dmconecta-infra/db/init/10-load-application-schemas.sh", import.meta.url);
   if (existsSync(infraLoader)) {
-    assert.match(readFileSync(infraLoader, "utf8"), /user-service\/migrations\/007-profiles-backfill\.sql/);
+    assert.match(readFileSync(infraLoader, "utf8"), /migrations\.manifest/);
   }
 });

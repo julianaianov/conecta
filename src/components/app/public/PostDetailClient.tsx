@@ -11,10 +11,8 @@ import { formatDate, timeAgo } from "@/lib/app/format";
 import { normalizeCoordinates, type Coordinates } from "@/lib/app/location";
 import {
   allowedSupportTypes,
-  POST_STATUS_LABELS,
   type Comment,
   type Post,
-  type PostStatus,
   type SupportSummaryItem,
 } from "@/lib/app/types";
 import { AuthPrompt } from "../AuthPrompt";
@@ -27,8 +25,6 @@ const LocationPicker = dynamic(
   () => import("../LocationPicker").then((module) => module.LocationPicker),
   { ssr: false, loading: () => <div className="h-56 animate-pulse rounded-xl" style={{ background: "var(--th-card-alt)" }} /> },
 );
-
-const STATUS_OPTIONS: PostStatus[] = ["active", "in_progress", "resolved", "cancelled"];
 
 export function PostDetailClient({
   initialPost,
@@ -48,7 +44,6 @@ export function PostDetailClient({
   const [sending, setSending] = useState(false);
   const [reactions, setReactions] = useState(initialPost.reactionsCount);
   const [reacted, setReacted] = useState(false);
-  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(false);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(() => normalizeCoordinates(initialPost.latitude, initialPost.longitude));
   const [savingLocation, setSavingLocation] = useState(false);
@@ -87,21 +82,6 @@ export function PostDetailClient({
     }
   }
 
-  async function changeStatus(status: PostStatus) {
-    if (!isAuthor || status === post.status) {
-      setStatusMenuOpen(false);
-      return;
-    }
-    setStatusMenuOpen(false);
-    setActionError(null);
-    try {
-      const updated = await api.updatePostStatus(post.id, status);
-      if (updated) setPost(updated);
-    } catch {
-      setActionError("Não foi possível atualizar o status agora.");
-    }
-  }
-
   async function saveLocation() {
     if (!isAuthor || savingLocation) return;
     setSavingLocation(true);
@@ -131,23 +111,6 @@ export function PostDetailClient({
           <div className="flex flex-wrap items-center gap-2">
             <TypeBadge type={post.type} />
             <StatusBadge status={post.status} />
-            {isAuthor && (
-              <div className="relative ml-auto">
-                <Button type="button" variant="outline" size="sm" icon="edit" onClick={() => setStatusMenuOpen((open) => !open)} aria-expanded={statusMenuOpen}>
-                  Atualizar status
-                </Button>
-                {statusMenuOpen && (
-                  <div className="absolute right-0 top-full z-10 mt-2 min-w-44 rounded-xl border p-1.5 shadow-lg" style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}>
-                    {STATUS_OPTIONS.map((status) => (
-                      <button key={status} type="button" onClick={() => changeStatus(status)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-[var(--th-card-alt)]" style={{ color: "var(--th-text)" }}>
-                        {POST_STATUS_LABELS[status]}
-                        {status === post.status && <Icon name="check" size={15} />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           <h1 className="mt-3 text-2xl font-bold leading-tight" style={{ color: "var(--th-text)" }}>{post.title}</h1>
           <div className="mt-3 flex items-center gap-3"><Link href={profileHref}><Avatar name={post.authorName} src={post.authorAvatar} id={post.authorId} size={40} /></Link><div><Link href={profileHref} className="text-sm font-bold hover:underline" style={{ color: "var(--th-text)" }}>{post.authorName}</Link><p className="text-xs" style={{ color: "var(--th-muted)" }}>{formatDate(post.createdAt)}{post.neighborhood ? ` · ${post.neighborhood}` : ""}</p></div></div>

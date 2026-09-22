@@ -16,8 +16,11 @@ const COMMENT_SQL = 'id, post_id, author_id, author_name, content, created_at';
 const SUPPORT_OWNER_SQL = 'id, post_id, user_id, user_name, type, message, amount, payment_method, details, status, created_at, updated_at';
 const SUPPORT_OPERATION_SQL = 'id, post_id, user_id, user_name, type, amount, payment_method, status, created_at';
 
-// Status que o autor pode definir (espelha o enum post_status do init.sql).
-const AUTHOR_POST_STATUSES = ['active', 'in_progress', 'resolved', 'cancelled'];
+// Decisão 7 (dm-docs, decisoes-de-implementacao): o status dos posts antigos
+// não é mais editado; a moderação só alterna a visibilidade (visible/hidden).
+// Post oculto não aparece em rota pública nem aceita interação.
+const VISIBLE = "visibility = 'visible'";
+const VISIBLE_POST = `SELECT 1 FROM posts WHERE id=$1 AND ${VISIBLE}`;
 
 module.exports = (pool, auth, operation) => {
   if (typeof operation !== 'function') throw new Error('posts routes exigem o middleware de operação');
@@ -33,7 +36,7 @@ module.exports = (pool, auth, operation) => {
   router.get('/', async (req, res) => {
     const { type, status, neighborhood, author_id, limit = 20, offset = 0 } = req.query;
     const params = [];
-    let where = 'WHERE 1=1';
+    let where = `WHERE ${VISIBLE}`;
     let i = 1;
     if (type)         { where += ` AND type=$${i++}`;                    params.push(type); }
     if (status)       { where += ` AND status=$${i++}`;                  params.push(status); }
@@ -63,7 +66,7 @@ module.exports = (pool, auth, operation) => {
   router.get('/map', async (req, res) => {
     const { type, status } = req.query;
     const params = [];
-    let where = 'WHERE latitude IS NOT NULL AND longitude IS NOT NULL';
+    let where = `WHERE ${VISIBLE} AND latitude IS NOT NULL AND longitude IS NOT NULL`;
     let i = 1;
     if (type)   { where += ` AND type=$${i++}`;   params.push(type); }
     if (status) { where += ` AND status=$${i++}`; params.push(status); }
@@ -91,6 +94,7 @@ module.exports = (pool, auth, operation) => {
                  COALESCE(SUM(reactions_count), 0)::int AS reactions_received,
                  COALESCE(SUM(comments_count), 0)::int AS comments_received
             FROM posts
+           WHERE ${VISIBLE}
            GROUP BY author_id
         `),
         pool.query(`
@@ -177,7 +181,7 @@ module.exports = (pool, auth, operation) => {
   router.get('/admin-snapshot', auth, operation, async (_req, res) => {
     try {
       const [posts, supports, comments] = await Promise.all([
-        pool.query(`SELECT ${POST_SQL} FROM posts ORDER BY created_at DESC`),
+        pool.query(`SELECT ${POST_SQL}, visibility FROM posts ORDER BY created_at DESC`),
         pool.query(`SELECT ${SUPPORT_OPERATION_SQL} FROM supports ORDER BY created_at DESC`),
         pool.query('SELECT id, post_id, author_id, author_name, created_at FROM comments ORDER BY created_at ASC'),
       ]);
@@ -195,8 +199,8 @@ module.exports = (pool, auth, operation) => {
   // GET /:id
   router.get('/:id', async (req, res) => {
     try {
-      await pool.query('UPDATE posts SET views_count=views_count+1 WHERE id=$1', [req.params.id]);
-      const { rows } = await pool.query(`SELECT ${POST_SQL} FROM posts WHERE id=$1`, [req.params.id]);
+      await pool.query(`UPDATE posts SET views_count=views_count+1 WHERE id=$1 AND ${VISIBLE}`, [req.params.id]);
+      const { rows } = await pool.query(`SELECT ${POST_SQL} FROM posts WHERE id=$1 AND ${VISIBLE}`, [req.params.id]);
       if (!rows.length) return res.status(404).json({ error: 'Post não encontrado' });
       res.json(rows[0]);
     } catch (err) {
@@ -232,9 +236,9 @@ module.exports = (pool, auth, operation) => {
 
   // PUT /:id
   router.put('/:id', auth, async (req, res) => {
-    const { title, description, status, images, videos, tags, latitude, longitude } = req.body ?? {};
-    if (status != null && !AUTHOR_POST_STATUSES.includes(status))
-      return res.status(400).json({ error: 'Status inválido' });
+    const { title, description, images, videos, tags, latitude, longitude } = req.body ?? {};
+    if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'status'))
+      return res.status(400).json({ error: 'O status da publicação não é editável' });
     const hasLocation = Object.prototype.hasOwnProperty.call(req.body, 'latitude')
       || Object.prototype.hasOwnProperty.call(req.body, 'longitude');
     const coordinates = normalizeCoordinates(latitude, longitude);
@@ -249,12 +253,11 @@ module.exports = (pool, auth, operation) => {
       const updates = [
         'title=COALESCE($1,title)',
         'description=COALESCE($2,description)',
-        'status=COALESCE($3,status)',
-        'images=COALESCE($4,images)',
-        'videos=COALESCE($5,videos)',
-        'tags=COALESCE($6,tags)',
+        'images=COALESCE($3,images)',
+        'videos=COALESCE($4,videos)',
+        'tags=COALESCE($5,tags)',
       ];
-      const values = [title, description, status, images, videos, tags];
+      const values = [title, description, images, videos, tags];
       if (hasLocation) {
         updates.push(`latitude=$${values.length + 1}`, `longitude=$${values.length + 2}`);
         values.push(coordinates?.latitude ?? null, coordinates?.longitude ?? null);
@@ -278,6 +281,8 @@ module.exports = (pool, auth, operation) => {
     const { id } = req.params;
     const userId = req.user.userId;
     try {
+      const { rows: visible } = await pool.query(VISIBLE_POST, [id]);
+      if (!visible.length) return res.status(404).json({ error: 'Post não encontrado' });
       const { rows } = await pool.query(
         'SELECT id FROM reactions WHERE post_id=$1 AND user_id=$2', [id, userId]
       );
@@ -299,7 +304,7 @@ module.exports = (pool, auth, operation) => {
   router.get('/:id/comments', async (req, res) => {
     try {
       const { rows } = await pool.query(
-        `SELECT ${COMMENT_SQL} FROM comments WHERE post_id=$1 ORDER BY created_at ASC`, [req.params.id]
+        `SELECT ${COMMENT_SQL} FROM comments WHERE post_id=$1 AND EXISTS (${VISIBLE_POST}) ORDER BY created_at ASC`, [req.params.id]
       );
       res.json(rows);
     } catch (err) {
@@ -313,6 +318,8 @@ module.exports = (pool, auth, operation) => {
     const { content } = req.body;
     if (!content) return res.status(400).json({ error: 'Conteúdo obrigatório' });
     try {
+      const { rows: visible } = await pool.query(VISIBLE_POST, [req.params.id]);
+      if (!visible.length) return res.status(404).json({ error: 'Post não encontrado' });
       const { rows } = await pool.query(
         `INSERT INTO comments (post_id,author_id,author_name,content) VALUES ($1,$2,$3,$4) RETURNING ${COMMENT_SQL}`,
         [req.params.id, req.user.userId, req.user.name || req.user.email, content]
@@ -330,12 +337,12 @@ module.exports = (pool, auth, operation) => {
     try {
       const { rows } = await pool.query(
         `SELECT type, COUNT(*)::int AS count
-           FROM supports WHERE post_id=$1
+           FROM supports WHERE post_id=$1 AND EXISTS (${VISIBLE_POST})
           GROUP BY type ORDER BY count DESC`,
         [req.params.id]
       );
       const { rows: list } = await pool.query(
-        'SELECT id, type, created_at FROM supports WHERE post_id=$1 ORDER BY created_at DESC',
+        `SELECT id, type, created_at FROM supports WHERE post_id=$1 AND EXISTS (${VISIBLE_POST}) ORDER BY created_at DESC`,
         [req.params.id]
       );
       res.json({ summary: rows, supports: list });
@@ -379,7 +386,7 @@ module.exports = (pool, auth, operation) => {
     const detailsJson = JSON.stringify(details || {});
 
     try {
-      const { rows: postRows } = await pool.query('SELECT id FROM posts WHERE id=$1', [id]);
+      const { rows: postRows } = await pool.query(VISIBLE_POST, [id]);
       if (!postRows.length) return res.status(404).json({ error: 'Post não encontrado' });
 
       const { rows: existing } = await pool.query(

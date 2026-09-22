@@ -79,7 +79,7 @@ export interface TopPost {
   id: string;
   title: string;
   type: PostType;
-  status: PostStatus;
+  status: PostStatus | null;
   author: string;
   neighborhood: string;
   supports: number;
@@ -228,7 +228,7 @@ export function buildAdminMetrics(
 
   // ── Conteúdo ──
   const typeCount = countBy(posts, (p) => p.type);
-  const statusCount = countBy(posts, (p) => p.status);
+  const statusCount = countBy(posts, (p) => p.status ?? "");
   const geolocated = posts.filter((p) => p.latitude != null && p.longitude != null).length;
   const withMedia = posts.filter((p) => (p.images?.length ?? 0) + (p.videos?.length ?? 0) > 0).length;
   const resolved = statusCount.get("resolved") ?? 0;

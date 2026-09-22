@@ -123,7 +123,7 @@ test('id malformado responde 404 sem consultar o banco', async () => {
 
 // ── Autorização por dono ────────────────────────────────────
 
-test('PUT /:id só pelo autor e só com status conhecido', async () => {
+test('PUT /:id só pelo autor, e o status não é editável (decisão 7)', async () => {
   const pool = {
     calls: [],
     async query(text, params = []) {
@@ -142,9 +142,12 @@ test('PUT /:id só pelo autor e só com status conhecido', async () => {
     });
     assert.equal((await put('22222222-2222-2222-2222-222222222222', { title: 'Invasão' })).status, 403);
     assert.equal((await put(USER_ID, { status: 'em_execucao' })).status, 400);
-    assert.equal((await put(USER_ID, { status: 'resolved' })).status, 200);
+    assert.equal((await put(USER_ID, { status: 'resolved' })).status, 400);
+    assert.equal((await put(USER_ID, { status: null })).status, 400);
+    assert.equal((await put(USER_ID, { title: 'Novo título' })).status, 200);
   });
   assert.ok(!pool.calls.some(({ text, params }) => text.includes('UPDATE posts') && params.includes('Invasão')));
+  assert.ok(!pool.calls.some(({ text }) => /UPDATE posts SET[^]*status=/.test(text)));
 });
 
 test('os três serviços usam a mesma cópia de src/security.js', () => {

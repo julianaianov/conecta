@@ -253,7 +253,11 @@ export interface User {
 
 // ── Publicações ────────────────────────────────────────────
 export type PostType = "problem" | "project" | "need" | "event" | "action" | "message";
-export type PostStatus = "active" | "in_progress" | "resolved" | "cancelled";
+export type PostStatus =
+  | "active" | "in_progress" | "resolved" | "cancelled"
+  // Status operacionais que a gestão gravava em posts antigos. Pela decisão 7
+  // (dm-docs, decisoes-de-implementacao) ninguém mais os edita: só são exibidos.
+  | "em_analise" | "encaminhada" | "em_execucao" | "resolvida" | "cancelada";
 
 export const POST_TYPE_LABELS: Record<PostType, string> = {
   problem: "Problema",
@@ -289,6 +293,11 @@ export const POST_STATUS_LABELS: Record<PostStatus, string> = {
   in_progress: "Em andamento",
   resolved: "Resolvido",
   cancelled: "Cancelado",
+  em_analise: "Em análise",
+  encaminhada: "Encaminhada",
+  em_execucao: "Em execução",
+  resolvida: "Resolvida",
+  cancelada: "Cancelada",
 };
 
 export const POST_STATUS_COLORS: Record<PostStatus, string> = {
@@ -296,7 +305,20 @@ export const POST_STATUS_COLORS: Record<PostStatus, string> = {
   in_progress: "#f4841a",
   resolved: "#2e9e5b",
   cancelled: "#868e96",
+  em_analise: "#1b4f72",
+  encaminhada: "#2e7ba8",
+  em_execucao: "#f4841a",
+  resolvida: "#2e9e5b",
+  cancelada: "#868e96",
 };
+
+/** Status conhecido do post, ou `null` para valor ausente ou desconhecido
+    (a interface não mostra rótulo em vez de exibir um valor cru). */
+export function normalizePostStatus(value: unknown): PostStatus | null {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(POST_STATUS_LABELS, value)
+    ? (value as PostStatus)
+    : null;
+}
 
 export interface Post {
   id: string;
@@ -306,7 +328,7 @@ export interface Post {
   type: PostType;
   title: string;
   description: string;
-  status: PostStatus;
+  status: PostStatus | null;
   latitude?: number | null;
   longitude?: number | null;
   neighborhood?: string | null;

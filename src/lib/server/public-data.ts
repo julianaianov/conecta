@@ -1,4 +1,5 @@
 import {
+  normalizePostStatus,
   normalizeRole,
   type Comment,
   type Community,
@@ -32,7 +33,7 @@ function mapPost(record: RawRecord): Post {
     type: record.type as Post["type"],
     title: String(record.title ?? ""),
     description: String(record.description ?? ""),
-    status: record.status as Post["status"],
+    status: normalizePostStatus(record.status),
     latitude: coordinates?.latitude ?? null,
     longitude: coordinates?.longitude ?? null,
     neighborhood: (record.neighborhood ?? null) as string | null,

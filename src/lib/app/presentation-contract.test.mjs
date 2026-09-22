@@ -17,7 +17,8 @@ test("as ações existentes continuam disponíveis com apresentação discreta",
   assert.match(card, /api\.toggleReaction\(post\.id\)/);
   assert.match(card, /post\.reactionsCount/);
   assert.match(detail, /api\.toggleReaction\(post\.id\)/);
-  assert.match(detail, /api\.updatePostStatus/);
+  // Decisão 7: o autor não troca o status do post.
+  assert.doesNotMatch(detail, /updatePostStatus|Atualizar status/);
   assert.match(detail, /api\.updatePostLocation/);
   assert.match(feed, /useAuth/);
   assert.match(feed, /<PostCard/);

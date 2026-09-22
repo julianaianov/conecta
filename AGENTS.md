@@ -37,9 +37,22 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `NEXT_PUBLIC_*`.
 - Deploy: mudanças que precisam chegar a um ambiente vão para os dois remotos,
   `git push origin develop && git push web develop`.
-- Migrações novas em `services/*/migrations/` devem ser registradas também em
-  `dmconecta-infra/db/init/10-load-application-schemas.sh`; bancos existentes
-  são migrados por SSM.
+- Schema: fonte única em `services/migrations.manifest` (ordem de `init.sql`,
+  `migrate_*.sql` e `services/*/migrations/`). A infra não guarda SQL da
+  aplicação: `dmconecta-infra/db/init/10-load-application-schemas.sh` aplica o
+  manifesto inteiro em volume novo e a cada deploy
+  (`scripts/apply-schema-migrations.sh`). Por isso todo arquivo é idempotente
+  (`IF NOT EXISTS`, `ADD VALUE IF NOT EXISTS`, `CREATE TYPE` em bloco `DO` com
+  `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
+  da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
+  (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
+  auth-service 004, user-service 008, post-service 007. Registre a migração em
+  `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
+- Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
+  o status não é editável (PUT com `status` responde 400); a moderação só
+  alterna `visibility` (`visible`/`hidden`, migração post 006), e post oculto
+  não aparece em rota pública nem aceita comentário, reação ou apoio. Status
+  desconhecido não ganha rótulo na interface (`normalizePostStatus`).
 
 ## Segurança dos serviços
 

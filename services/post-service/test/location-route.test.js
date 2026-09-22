@@ -19,7 +19,7 @@ function createPool() {
       calls.push({ text, params });
       if (text.includes('SELECT author_id FROM posts')) return { rows: [{ author_id: USER_ID }] };
       if (text.includes('INSERT INTO posts')) return { rows: [{ id: POST_ID, latitude: params[6], longitude: params[7] }] };
-      if (text.includes('UPDATE posts')) return { rows: [{ id: POST_ID, latitude: params[6], longitude: params[7] }] };
+      if (text.includes('UPDATE posts')) return { rows: [{ id: POST_ID, latitude: params[5], longitude: params[6] }] };
       throw new Error(`Unexpected query: ${text}`);
     },
   };
@@ -79,7 +79,7 @@ test('POST e PUT persistem o mesmo par de coordenadas válidas', async () => {
     });
     assert.equal(updateResponse.status, 200);
     const update = pool.calls.find(({ text }) => text.includes('UPDATE posts'));
-    assert.deepEqual(update.params.slice(6, 8), [-23.025, -43.459]);
+    assert.deepEqual(update.params.slice(5, 7), [-23.025, -43.459]);
   });
 });
 

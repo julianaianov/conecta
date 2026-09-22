@@ -1,8 +1,9 @@
 /** Cliente de API com suporte explícito aos ambientes local, homologação e produção. */
 import {
+  normalizePostStatus,
   normalizeRole,
   type Post, type Comment, type SupportRecord, type SupportSummaryItem,
-  type User, type Profile, type UserRole, type ProfileType, type PostType, type PostStatus,
+  type User, type Profile, type UserRole, type ProfileType, type PostType,
   type SupportType, type PaymentMethod, type Community, type Scrap, type Testimonial,
   type AppNotification, type RankCategory, type RankEntry,
   type Connection, type ConnectionEvent, type ConnectionParty, type ConnectionStatus, type ConnectionType,
@@ -89,7 +90,7 @@ function mapPost(r: RawPost): Post {
     type: r.type as PostType,
     title: String(r.title ?? ""),
     description: String(r.description ?? ""),
-    status: r.status as PostStatus,
+    status: normalizePostStatus(r.status),
     latitude: coordinates?.latitude ?? null,
     longitude: coordinates?.longitude ?? null,
     neighborhood: (r.neighborhood ?? null) as string | null,
@@ -319,10 +320,6 @@ export const api = {
           longitude: coordinates?.longitude ?? null,
         }),
       }).then(mapPost);
-  },
-
-  updatePostStatus(id: string, status: PostStatus): Promise<Post | null> {
-    return request<RawPost>(`/api/posts/${id}`, { method: "PUT", body: JSON.stringify({ status }) }).then(mapPost);
   },
 
   // ── COMMENTS ─────────────────────────────────────────────

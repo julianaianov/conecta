@@ -17,12 +17,13 @@ export function TypeBadge({ type, size = "md" }: { type: PostType; size?: "sm" |
   );
 }
 
-export function StatusBadge({ status }: { status: PostStatus }) {
-  if (status === "active") return null;
+export function StatusBadge({ status }: { status: PostStatus | null | undefined }) {
+  // Sem rótulo para "ativo" e para qualquer valor desconhecido (nunca texto cru).
+  if (!status || status === "active" || !POST_STATUS_LABELS[status]) return null;
   const color = POST_STATUS_COLORS[status];
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${color}1a`, color }}>
-      {status === "resolved" && <Icon name="check" size={12} />}
+      {(status === "resolved" || status === "resolvida") && <Icon name="check" size={12} />}
       {POST_STATUS_LABELS[status]}
     </span>
   );

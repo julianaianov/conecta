@@ -1,3 +1,8 @@
+-- Tabelas de um banco novo. Bancos existentes evoluem pelas migrações
+-- (services/migrations.manifest), que repetem estas mudanças de forma idempotente.
+-- Este arquivo é reaplicado a cada deploy num banco que já existe: aqui só cabem
+-- índices de colunas presentes desde a criação da tabela; índice de coluna nova
+-- fica na migração que cria a coluna.
 CREATE TABLE IF NOT EXISTS profiles (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID UNIQUE NOT NULL,
@@ -29,6 +34,8 @@ CREATE TABLE IF NOT EXISTS organizations (
   latitude    DECIMAL(10,8),
   longitude   DECIMAL(11,8),
   verified    BOOLEAN DEFAULT false,
+  verified_at TIMESTAMPTZ,
+  verified_by VARCHAR(255),
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 

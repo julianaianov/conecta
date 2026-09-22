@@ -88,7 +88,6 @@ test('PUT /:id persists replacement videos', async () => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        status: 'in_progress',
         images: ['/images/horta.jpeg'],
         videos: ['/videos/horta-comunitaria.webm'],
         tags: ['sustentabilidade'],
@@ -99,6 +98,6 @@ test('PUT /:id persists replacement videos', async () => {
     const update = pool.calls.find(({ text }) => text.includes('UPDATE posts'));
     assert.ok(update);
     assert.match(update.text, /videos/);
-    assert.deepEqual(update.params[4], ['/videos/horta-comunitaria.webm']);
+    assert.deepEqual(update.params[3], ['/videos/horta-comunitaria.webm']);
   });
 });
