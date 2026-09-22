@@ -18,8 +18,10 @@ const POST_PUBLIC_COLUMNS = [
 const POST_SQL = POST_PUBLIC_COLUMNS.map((c) => (c === 'images' ? POST_IMAGES_SQL : c)).join(', ');
 const COMMENT_SQL = 'id, post_id, author_id, author_name, content, created_at';
 // Apoio visto pelo próprio apoiador (e pela operação, sem mensagem nem detalhes).
-const SUPPORT_OWNER_SQL = 'id, post_id, user_id, user_name, type, message, amount, payment_method, details, status, created_at, updated_at';
-const SUPPORT_OPERATION_SQL = 'id, post_id, user_id, user_name, type, amount, payment_method, status, created_at';
+// `modality` (T16, migração 013): as 6 modalidades da fonte; nos apoios do
+// feed vem do mapeamento dos tipos antigos.
+const SUPPORT_OWNER_SQL = 'id, post_id, user_id, user_name, type, modality, message, amount, payment_method, details, status, created_at, updated_at';
+const SUPPORT_OPERATION_SQL = 'id, post_id, user_id, user_name, type, modality, amount, payment_method, status, created_at';
 
 // Decisão 7 (dm-docs, decisoes-de-implementacao): o status dos posts antigos
 // não é mais editado; a moderação só alterna a visibilidade (visible/hidden).
@@ -118,6 +120,10 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
                  COUNT(DISTINCT post_id)::int AS supported_posts,
                  COALESCE(SUM(CASE WHEN type = 'financial' THEN amount ELSE 0 END), 0)::numeric AS financial_amount
             FROM supports
+           -- Apoio cancelado ou rejeitado não pontua; o Poder Público não
+           -- entra em ranking competitivo de apoiadores (fonte, slide 11).
+           WHERE canceled_at IS NULL AND status <> 'rejected'
+             AND (supporter_category IS NULL OR supporter_category <> 'poder_publico')
            GROUP BY user_id
         `),
         pool.query('SELECT user_id, COUNT(*)::int AS reactions FROM reactions GROUP BY user_id'),
@@ -171,7 +177,8 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
     'equipment', 'space', 'food', 'transport', 'knowledge', 'sharing',
   ];
 
-  // GET /my/supports — painel do apoiador (deve vir antes de /:id)
+  // GET /my/supports — painel do apoiador com os apoios do feed (deve vir antes
+  // de /:id). O apoio registrado em demanda está em GET /demands/supports/mine (T16).
   router.get('/my/supports', auth, async (req, res) => {
     try {
       const { rows } = await pool.query(
@@ -179,7 +186,7 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
                 p.neighborhood, p.city, p.status AS post_status
            FROM supports s
            JOIN posts p ON p.id = s.post_id
-          WHERE s.user_id = $1
+          WHERE s.user_id = $1 AND s.demand_id IS NULL
           ORDER BY s.created_at DESC`,
         [req.user.userId]
       );
@@ -419,11 +426,21 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
     const detailsJson = JSON.stringify(details || {});
 
     try {
-      const { rows: postRows } = await pool.query(VISIBLE_POST, [id]);
+      const { rows: postRows } = await pool.query(
+        `SELECT demand_id FROM posts WHERE id=$1 AND ${VISIBLE}`, [id]);
       if (!postRows.length) return res.status(404).json({ error: 'Post não encontrado' });
+      // Post-vitrine de demanda: o apoio é registrado na demanda (T16), com
+      // modalidade, valor declarado e confirmação do Agente.
+      if (postRows[0].demand_id) {
+        return res.status(409).json({
+          error: 'O apoio a esta demanda é registrado na página da demanda',
+          code: 'demand_support_flow',
+          demandId: postRows[0].demand_id,
+        });
+      }
 
       const { rows: existing } = await pool.query(
-        'SELECT id FROM supports WHERE post_id=$1 AND user_id=$2 AND type=$3',
+        'SELECT id FROM supports WHERE post_id=$1 AND user_id=$2 AND type=$3 AND demand_id IS NULL',
         [id, userId, type]
       );
 
@@ -435,7 +452,7 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
           `UPDATE supports
               SET message=$1, amount=$2, payment_method=$3, details=$4,
                   status=$5, updated_at=NOW()
-            WHERE post_id=$6 AND user_id=$7 AND type=$8
+            WHERE post_id=$6 AND user_id=$7 AND type=$8 AND demand_id IS NULL
             RETURNING ${SUPPORT_OWNER_SQL}`,
           [message || null, amount || null, payment_method || null,
            detailsJson, supportStatus, id, userId, type]
@@ -476,7 +493,7 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
 
     try {
       const { rowCount } = await pool.query(
-        'DELETE FROM supports WHERE post_id=$1 AND user_id=$2 AND type=$3',
+        'DELETE FROM supports WHERE post_id=$1 AND user_id=$2 AND type=$3 AND demand_id IS NULL',
         [id, req.user.userId, type]
       );
       if (!rowCount) return res.status(404).json({ error: 'Apoio não encontrado' });

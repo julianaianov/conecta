@@ -19,6 +19,7 @@ const { requireGovernmentActor } = require('./institutional/gate');
 const { createGovernmentProfileClient } = require('./institutional/store');
 const { createGovernmentDirectoryClient } = require('./institutional/directory');
 const interestsRoutes = require('./routes/interests');
+const supportsRoutes = require('./routes/supports');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
 /** Endereço público do portal (URL de verificação impressa no dossiê). */
@@ -74,6 +75,8 @@ const createApp = ({
   app.use('/demands', interestsRoutes({
     pool, auth, validatedAgent, governmentGate: institutional, institutionStatus, partnerProfile, connections,
   }));
+  // Registro de apoio realizado, dupla confirmação e histórico de apoio (T16).
+  app.use('/demands', supportsRoutes({ pool, auth, governmentGate: institutional, institutionStatus }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 
