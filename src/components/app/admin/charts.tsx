@@ -232,7 +232,7 @@ export function TimeSeries({ points }: { points: SeriesPointInput[] }) {
     <div>
       {/* legenda — sempre presente com 2 séries */}
       <div className="mb-2 flex flex-wrap items-center gap-4">
-        <LegendDot color="var(--viz-s1)" label="Publicações" value={int(totalPosts)} />
+        <LegendDot color="var(--viz-s1)" label="Sinais" value={int(totalPosts)} />
         <LegendDot color="var(--viz-s2)" label="Apoios" value={int(totalSupports)} />
         <button
           type="button"
@@ -250,7 +250,7 @@ export function TimeSeries({ points }: { points: SeriesPointInput[] }) {
             <thead className="sticky top-0" style={{ background: "var(--th-card-alt)" }}>
               <tr>
                 <Th>{grouped ? "Semana de" : "Dia"}</Th>
-                <Th align="right">Publicações</Th>
+                <Th align="right">Sinais</Th>
                 <Th align="right">Apoios</Th>
               </tr>
             </thead>
@@ -267,7 +267,7 @@ export function TimeSeries({ points }: { points: SeriesPointInput[] }) {
         </div>
       ) : (
         <div className="relative">
-          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Publicações e apoios ao longo do tempo">
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Sinais e apoios ao longo do tempo">
             <defs>
               <clipPath id={clipId}>
                 <rect x={PAD.left} y={0} width={W - PAD.left - PAD.right} height={H} />
@@ -351,7 +351,7 @@ export function TimeSeries({ points }: { points: SeriesPointInput[] }) {
               </p>
               <p className="mt-1 flex items-center gap-1.5" style={{ color: "var(--th-muted)" }}>
                 <span className="h-2 w-2 rounded-full" style={{ background: "var(--viz-s1)" }} />
-                Publicações <span className="font-numeric font-bold tabular-nums" style={{ color: "var(--th-text)" }}>{data[hover].posts}</span>
+                Sinais <span className="font-numeric font-bold tabular-nums" style={{ color: "var(--th-text)" }}>{data[hover].posts}</span>
               </p>
               <p className="flex items-center gap-1.5" style={{ color: "var(--th-muted)" }}>
                 <span className="h-2 w-2 rounded-full" style={{ background: "var(--viz-s2)" }} />

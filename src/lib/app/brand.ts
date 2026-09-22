@@ -17,7 +17,7 @@ export function brandToneColor(tone: BrandTone): string {
   return "inherit";
 }
 
-/** Tempo máximo para não manter a tela de abertura presa por uma rede lenta. */
+/** Tempo máximo para não manter a tela de abertura presa por uma conexão lenta. */
 export const BRAND_LOADING_MIN_MS = 1800 as const;
 export const BRAND_LOADING_MAX_MS = 12000 as const;
 

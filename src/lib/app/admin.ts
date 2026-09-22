@@ -203,7 +203,7 @@ export function buildAdminMetrics(
 
   // ── Usuários ──
   const roleCount = countBy(snap.users, (u) => u.role);
-  const profileCount = countBy(snap.users, (u) => u.profileType);
+  const profileCount = countBy(snap.users, (u) => u.profileType ?? "");
   const activeIds = new Set<string>([
     ...posts.map((p) => p.authorId),
     ...supports.map((s) => s.userId),
@@ -288,9 +288,11 @@ export function buildAdminMetrics(
 
   // ── Bairros atendidos ──
   const rows = new Map<string, NeighborhoodRow>();
-  const row = (name: string, city: string) => {
-    const key = name.toLowerCase();
-    if (!rows.has(key)) rows.set(key, { name, city, posts: 0, supports: 0, amount: 0, resolved: 0, users: 0, share: 0 });
+  const row = (name: string | null | undefined, city: string | null | undefined) => {
+    const normalizedName = name?.trim() || "Sem bairro";
+    const normalizedCity = city?.trim() || "—";
+    const key = normalizedName.toLowerCase();
+    if (!rows.has(key)) rows.set(key, { name: normalizedName, city: normalizedCity, posts: 0, supports: 0, amount: 0, resolved: 0, users: 0, share: 0 });
     return rows.get(key)!;
   };
   for (const p of posts) {
@@ -303,7 +305,7 @@ export function buildAdminMetrics(
     r.supports += 1;
     r.amount += s.amount ?? 0;
   }
-  for (const u of snap.users) row(u.neighborhood, u.city).users += 1;
+  for (const u of snap.users) row(u.neighborhood ?? "Sem bairro", u.city ?? "—").users += 1;
   const neighborhoods = [...rows.values()]
     .map((r) => ({ ...r, share: pct(r.posts, posts.length) }))
     .sort((a, b) => b.posts - a.posts || b.supports - a.supports || b.users - a.users);
@@ -316,7 +318,7 @@ export function buildAdminMetrics(
   const stageCounts: [string, string, string, number][] = [
     ["published", "Publicadas", "demandas, projetos e eventos criados", posts.length],
     ["geolocated", "Geolocalizadas", "com ponto no mapa", geolocated],
-    ["engaged", "Com engajamento", "receberam curtida ou comentário", engagedIds.size],
+    ["engaged", "Com atividade", "receberam apoio ou atualização", engagedIds.size],
     ["connected", "Com conexão", "geraram pedido direto entre duas contas", posts.filter((p) => connectedIds.has(p.id)).length],
     ["supported", "Com apoio", "receberam ao menos uma operação de apoio", supportedIds.size],
     ["executing", "Em execução", "status em andamento ou resolvido", executing],
@@ -386,14 +388,14 @@ export function buildAdminMetrics(
     })),
     ...supports.map((s) => ({
       id: `s-${s.id}`, kind: "support" as const,
-      icon: SUPPORT_TYPE_META[s.type]?.icon ?? "heart",
+      icon: SUPPORT_TYPE_META[s.type]?.icon ?? "volunteer",
       actor: s.userName ?? "Conta sem nome",
-      text: `apoiou «${s.postTitle ?? "publicação"}» com ${SUPPORT_TYPE_META[s.type]?.label.toLowerCase() ?? "apoio"}`,
+      text: `apoiou «${s.postTitle ?? "sinal"}» com ${SUPPORT_TYPE_META[s.type]?.label.toLowerCase() ?? "apoio"}`,
       neighborhood: s.neighborhood, amount: s.amount ?? null, at: s.createdAt,
     })),
     ...comments.map((c) => ({
       id: `c-${c.id}`, kind: "comment" as const, icon: "comment", actor: c.authorName,
-      text: "comentou em uma publicação", neighborhood: null, amount: null, at: c.createdAt,
+      text: "registrou uma atualização em um sinal", neighborhood: null, amount: null, at: c.createdAt,
     })),
   ]
     .sort((a, b) => b.at.localeCompare(a.at))

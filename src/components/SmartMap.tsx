@@ -1,14 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { MAP_ACTIVITIES } from "@/lib/banner-data";
+import { POST_TYPE_COLORS, POST_TYPE_LABELS, type Post } from "@/lib/app/types";
 import { ActivityPinIcon, MapPinMarker } from "./MapPinMarker";
 import { AppImage } from "./AppImage";
 import { Reveal } from "./Reveal";
 
-export function SmartMap() {
-  const [activeId, setActiveId] = useState(MAP_ACTIVITIES[0].id);
-  const active = MAP_ACTIVITIES.find((a) => a.id === activeId) ?? MAP_ACTIVITIES[0];
+function iconFor(type: Post["type"]): string {
+  return type === "problem" ? "!" : type === "project" ? "+" : type === "need" ? "?" : "•";
+}
+
+function markerPosition(post: Post, posts: Post[]): { left: string; top: string } {
+  const located = posts.filter((item) => item.latitude != null && item.longitude != null);
+  const latitudes = located.map((item) => item.latitude as number);
+  const longitudes = located.map((item) => item.longitude as number);
+  const minLat = Math.min(...latitudes);
+  const maxLat = Math.max(...latitudes);
+  const minLon = Math.min(...longitudes);
+  const maxLon = Math.max(...longitudes);
+  const normalize = (value: number, min: number, max: number) => (max === min ? 50 : ((value - min) / (max - min)) * 76 + 12);
+  return {
+    left: `${normalize(post.longitude as number, minLon, maxLon)}%`,
+    top: `${100 - normalize(post.latitude as number, minLat, maxLat)}%`,
+  };
+}
+
+export function SmartMap({ posts }: { posts: Post[] }) {
+  const [activeId, setActiveId] = useState<string | null>(posts[0]?.id ?? null);
+  const active = posts.find((post) => post.id === activeId) ?? posts[0] ?? null;
+  const locatedPosts = posts.filter((post) => post.latitude != null && post.longitude != null);
 
   return (
     <section id="mapa" className="relative py-20 lg:py-28">
@@ -39,18 +59,18 @@ export function SmartMap() {
               >
                 <MapBackdrop />
                 <span className="absolute left-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-navy shadow-sm backdrop-blur">
-                  <span className="h-1.5 w-1.5 rounded-full bg-orange" /> Mapa do bairro
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange" /> Sinais geolocalizados
                 </span>
 
-                {MAP_ACTIVITIES.map((activity) => (
+                {locatedPosts.map((post) => (
                   <MapPinMarker
-                    key={activity.id}
-                    category={activity.category}
-                    icon={activity.pinIcon}
-                    active={activeId === activity.id}
-                    onClick={() => setActiveId(activity.id)}
-                    label={`${activity.badge}: ${activity.title}`}
-                    style={{ left: `${activity.x}%`, top: `${activity.y}%` }}
+                    key={post.id}
+                    category={post.type}
+                    icon={iconFor(post.type)}
+                    active={activeId === post.id}
+                    onClick={() => setActiveId(post.id)}
+                    label={`${POST_TYPE_LABELS[post.type]}: ${post.title}`}
+                    style={markerPosition(post, posts)}
                   />
                 ))}
               </div>
@@ -58,49 +78,54 @@ export function SmartMap() {
               {/* Activity list */}
               <div style={{ background: "var(--th-card)" }} className="flex flex-col p-5 lg:p-6">
                 <h3 className="mb-4 text-sm font-bold" style={{ color: "var(--th-text)" }}>
-                  Atividades próximas
+                  Sinais publicados
                 </h3>
-                <div className="space-y-3">
-                  {MAP_ACTIVITIES.map((activity) => (
+                <div className="space-y-3 overflow-y-auto">
+                  {posts.length === 0 && (
+                    <p className="rounded-2xl border p-4 text-sm" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)" }}>
+                      Nenhum sinal público disponível para o mapa.
+                    </p>
+                  )}
+                  {posts.map((post) => (
                     <button
-                      key={activity.id}
+                      key={post.id}
                       type="button"
-                      onClick={() => setActiveId(activity.id)}
+                      onClick={() => setActiveId(post.id)}
                       style={{ background: "var(--th-surface)", borderColor: "var(--th-border)" }}
                       className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
-                        activeId === activity.id ? "ring-2 ring-orange/60" : "hover:shadow-md"
+                        activeId === post.id ? "ring-2 ring-orange/60" : "hover:shadow-md"
                       }`}
                     >
-                      <ActivityPinIcon category={activity.category} icon={activity.pinIcon} />
+                      <ActivityPinIcon category={post.type} icon={iconFor(post.type)} />
                       <div className="min-w-0 flex-1">
-                        {/* sem truncate: em telas estreitas o badge roubava a largura e cortava
-                            títulos como "Mutirão de Limpeza da Praia" no meio */}
-                        <p className="text-sm font-bold leading-snug" style={{ color: "var(--th-text)" }}>{activity.title}</p>
-                        <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>{activity.subtitle}</p>
+                        <p className="text-sm font-bold leading-snug" style={{ color: "var(--th-text)" }}>{post.title}</p>
+                        <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>
+                          {[post.neighborhood, post.city].filter(Boolean).join(" · ") || "Localização não informada"}
+                        </p>
                       </div>
                       <span
                         className="shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-[10px] font-bold"
-                        style={{ backgroundColor: activity.badgeBg, color: activity.badgeText }}
+                        style={{ backgroundColor: `${POST_TYPE_COLORS[post.type]}22`, color: POST_TYPE_COLORS[post.type] }}
                       >
-                        {activity.badge}
+                        {POST_TYPE_LABELS[post.type]}
                       </span>
                     </button>
                   ))}
                 </div>
 
-                {/* Preview card */}
-                <div
-                  style={{ borderColor: "var(--th-border)" }}
-                  className="mt-4 overflow-hidden rounded-2xl border"
-                >
-                  <div className="relative h-28">
-                    <AppImage src={active.image} alt={active.title} fill className="object-cover" sizes="400px" />
+                {active && (
+                  <div style={{ borderColor: "var(--th-border)" }} className="mt-4 overflow-hidden rounded-2xl border">
+                    {active.images[0] && (
+                      <div className="relative h-28">
+                        <AppImage src={active.images[0]} alt={active.title} fill className="object-cover" sizes="400px" />
+                      </div>
+                    )}
+                    <div style={{ background: "var(--th-surface)" }} className="p-3">
+                      <p className="text-sm font-bold" style={{ color: "var(--th-text)" }}>{active.title}</p>
+                      <p className="text-xs" style={{ color: "var(--th-muted)" }}>{active.description}</p>
+                    </div>
                   </div>
-                  <div style={{ background: "var(--th-surface)" }} className="p-3">
-                    <p className="text-sm font-bold" style={{ color: "var(--th-text)" }}>{active.title}</p>
-                    <p className="text-xs" style={{ color: "var(--th-muted)" }}>{active.subtitle}</p>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

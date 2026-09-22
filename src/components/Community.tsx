@@ -1,5 +1,5 @@
 import { APP_URL, COMMUNITY_BENEFITS } from "@/lib/constants";
-import { DEMO_COMMUNITIES, DEMO_PROFILES, IMAGES } from "@/lib/images";
+import { AVATARS, COMMUNITY_GRID, IMAGES } from "@/lib/images";
 import { AppImage } from "./AppImage";
 import { Button } from "./Navbar";
 import { Reveal } from "./Reveal";
@@ -10,7 +10,7 @@ export function Community() {
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 lg:grid-cols-2 lg:gap-16 lg:px-8">
         <Reveal>
           <div className="relative mb-8 grid grid-cols-2 gap-3 lg:mb-0">
-            {DEMO_COMMUNITIES.map((community, i) => (
+            {COMMUNITY_GRID.map((community, i) => (
               <div
                 key={community.id}
                 className={`relative overflow-hidden rounded-2xl border border-white/10 ${
@@ -18,8 +18,8 @@ export function Community() {
                 }`}
               >
                 <AppImage
-                  src={community.image}
-                  alt={`${community.name} — ${community.description}`}
+                  src={community.src}
+                  alt={community.name}
                   fill
                   className="object-cover transition-transform duration-500 hover:scale-105"
                   sizes="(max-width: 1024px) 50vw, 400px"
@@ -32,18 +32,18 @@ export function Community() {
             ))}
             <div className="absolute -bottom-4 -right-2 flex items-center gap-2 rounded-2xl border border-white/10 bg-navy-light/95 px-3 py-2 shadow-xl backdrop-blur-md sm:-right-4">
               <div className="flex -space-x-2">
-                {DEMO_PROFILES.slice(0, 3).map((profile) => (
+                {Object.entries(AVATARS).slice(0, 3).map(([id, avatar]) => (
                   <AppImage
-                    key={profile.id}
-                    src={profile.avatar}
-                    alt={profile.name}
+                    key={id}
+                    src={avatar}
+                    alt="Participante da plataforma"
                     width={32}
                     height={32}
                     className="h-8 w-8 rounded-full border-2 border-navy object-cover"
                   />
                 ))}
               </div>
-              <span className="text-xs font-medium text-white">+120 no bairro</span>
+              <span className="text-xs font-medium text-white">Participe da ação local</span>
             </div>
           </div>
 
@@ -51,13 +51,12 @@ export function Community() {
             Conexões
           </span>
           <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
-            Grupos do demo
+            Frentes do território
             <br />
             no seu bairro
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-blue-muted">
-            Moradores do bairro, Mutirão Bairro Verde, Ciclistas da Orla e Feira de
-            Sustentabilidade — os mesmos grupos do app.
+            Moradores, projetos, coletivos e parceiros podem se encontrar nas frentes públicas do território.
           </p>
 
           <ul className="mt-8 space-y-4">
@@ -74,7 +73,7 @@ export function Community() {
           <div className="relative overflow-hidden rounded-3xl border border-white/10">
             <AppImage
               src={IMAGES.communityCta}
-              alt="Horta comunitária do bairro — projeto demo do dmconecta"
+              alt="Horta comunitária do bairro"
               fill
               className="object-cover"
               sizes="(max-width: 1024px) 100vw, 50vw"
@@ -83,7 +82,7 @@ export function Community() {
             <div className="relative p-8 lg:p-10">
               <h3 className="text-2xl font-bold text-white">Comece agora</h3>
               <p className="mt-2 text-blue-muted">
-                Entre com a conta demo do bairro ou crie a sua
+                Entre com sua conta ou crie uma nova para participar
               </p>
 
               <div className="mt-8 space-y-4">

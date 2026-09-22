@@ -448,7 +448,7 @@ body {
   }
   .app-textarea { resize: vertical; min-height: 6rem; line-height: 1.6; }
 
-  /* ── Auth (login/cadastro) — estilo vitrine Facebook ───── */
+  /* ── Auth (login/cadastro) — estilo vitrine institucional ─ */
   .auth-input {
     width: 100%;
     height: 3.5rem;

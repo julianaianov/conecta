@@ -2,11 +2,13 @@ import React from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { metadataForPage } from "@/lib/seo/site";
 
-export const metadata = {
+export const metadata = metadataForPage({
   title: "Padrões de Segurança Infantil — DM Conecta",
   description: "Padrões de segurança e tolerância zero contra exploração e abuso sexual infantil (CSAM/CSAE) no DM Conecta.",
-};
+  path: "/seguranca-infantil",
+});
 
 export default function SegurancaInfantilPage() {
   return (

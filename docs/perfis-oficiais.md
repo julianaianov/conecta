@@ -48,7 +48,7 @@ voluntários para transformar demandas locais em ações reais.
 > - Criar conexões com moradores, associações, ONGs, prefeituras e empresas.
 > - Acompanhar atualizações, comentários e resultados das ações.
 >
-> Gratuito para cidadãos e voluntários. Entre para a rede que conecta quem identifica
+> Gratuito para cidadãos e voluntários. Entre para a plataforma que conecta quem identifica
 > uma necessidade a quem pode ajudar a transformá-la em solução.
 
 ## Uso da marca

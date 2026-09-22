@@ -34,7 +34,6 @@ services:
     volumes:
       - auth-db-data:/var/lib/postgresql/data
       - ./services/auth-service/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./services/auth-service/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -67,7 +66,6 @@ services:
     volumes:
       - user-db-data:/var/lib/postgresql/data
       - ./services/user-service/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./services/user-service/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -100,7 +98,6 @@ services:
     volumes:
       - post-db-data:/var/lib/postgresql/data
       - ./services/post-service/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./services/post-service/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s

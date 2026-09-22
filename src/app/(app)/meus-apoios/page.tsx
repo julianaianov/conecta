@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from "@/lib/app/format";
 import { PAYMENT_METHODS, SUPPORT_TYPE_META, type SupportRecord, type SupportType } from "@/lib/app/types";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Card, EmptyState } from "@/components/app/ui";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 const FILTERS: { value: SupportType | "all"; label: string }[] = [
   { value: "all", label: "Todos" },
@@ -30,6 +31,18 @@ export default function MySupportsPage() {
 
   const totalFinancial = useMemo(() => supports.filter((s) => s.type === "financial").reduce((sum, s) => sum + (s.amount ?? 0), 0), [supports]);
   const visible = useMemo(() => (filter === "all" ? supports : supports.filter((s) => s.type === filter)), [supports, filter]);
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg py-10">
+        <Card>
+          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Ações apoiadas</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>Este painel é privado e mostra os registros associados à sua conta.</p>
+          <div className="mt-4"><AuthPrompt action="ver suas ações apoiadas" returnTo="/meus-apoios" /></div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -60,7 +73,7 @@ export default function MySupportsPage() {
         {loading ? (
           <div className="flex justify-center py-16"><span className="app-spinner" style={{ width: 28, height: 28 }} /></div>
         ) : visible.length === 0 ? (
-          <EmptyState icon="heart" title="Você ainda não apoiou nada" hint="Explore o feed e apoie uma causa do seu bairro." />
+          <EmptyState icon="volunteer" title="Você ainda não apoiou nada" hint="Explore o pulso e registre apoio em uma demanda do seu bairro." />
         ) : (
           visible.map((s) => <SupportTile key={s.id} s={s} />)
         )}
@@ -99,7 +112,7 @@ function SupportTile({ s }: { s: SupportRecord }) {
             <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--th-muted)" }}>
               {s.neighborhood && <><Icon name="location" size={12} /><span>{s.neighborhood}</span><span>·</span></>}
               <span>{formatDate(s.createdAt)}</span>
-              <span className="ml-auto inline-flex items-center gap-1 font-semibold" style={{ color: "#f4841a" }}>Ver publicação <Icon name="chevronRight" size={13} /></span>
+              <span className="ml-auto inline-flex items-center gap-1 font-semibold" style={{ color: "#f4841a" }}>Ver sinal <Icon name="chevronRight" size={13} /></span>
             </div>
           </div>
         </div>

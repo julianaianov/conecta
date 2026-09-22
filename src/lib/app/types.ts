@@ -1,6 +1,6 @@
 /**
  * DM Conecta — modelos de domínio da plataforma web.
- * Espelha os models do app Flutter (user_model, post_model, social_models,
+ * Espelha os models do app Flutter (user_model, post_model, interaction_models,
  * support_type, support_record, payment_method) e o contrato da API.
  */
 
@@ -25,7 +25,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 /** O papel da categoria no ecossistema, em uma palavra. */
 export const ROLE_FUNCTIONS: Record<UserRole, string> = {
-  agent: "Publicadores",
+  agent: "Iniciadores",
   member: "Participantes",
   partner: "Apoiadores",
   government: "Articulação",
@@ -155,8 +155,8 @@ export type Permission =
   | "publish"                 // publicar demandas, projetos, eventos e ações
   | "update_results"          // atualizar andamento, resultados e impacto dos próprios projetos
   | "institutional_response"  // publicar respostas institucionais, programas e serviços
-  | "interact"                // curtir, comentar
-  | "share"                   // compartilhar e divulgar iniciativas
+  | "interact"                // registrar atualizações e participar
+  | "share"                   // divulgar iniciativas
   | "connect"                 // solicitar conexão
   | "express_interest"        // demonstrar interesse
   | "support"                 // apoiar projetos / oferecer recursos, produtos ou serviços
@@ -198,15 +198,15 @@ export function allowedPostTypes(role: string | null | undefined, profileType?: 
 /** Texto exibido no cadastro — espelha a especificação de perfis. */
 export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
   agent: [
-    "Criar e gerenciar perfil", "Publicar demandas", "Publicar projetos",
-    "Publicar eventos e ações", "Adicionar fotos, documentos e informações",
+    "Criar e gerenciar perfil", "Registrar demandas", "Registrar projetos",
+    "Registrar eventos e ações", "Adicionar fotos, documentos e informações",
     "Receber solicitações de conexão", "Conversar com parceiros",
     "Atualizar o andamento dos projetos", "Registrar resultados e impactos",
     "Informar necessidades de apoio", "Participar de indicadores de impacto",
   ],
   member: [
-    "Criar perfil", "Visualizar demandas e projetos", "Curtir e apoiar",
-    "Comentar", "Compartilhar", "Solicitar conexão",
+    "Criar perfil", "Visualizar demandas e projetos", "Apoiar iniciativas",
+    "Registrar atualizações", "Divulgar iniciativas", "Solicitar conexão",
     "Demonstrar interesse em participar", "Inscrever-se em eventos",
     "Oferecer voluntariado", "Apoiar projetos",
   ],
@@ -221,25 +221,25 @@ export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
     "Criar perfil institucional", "Visualizar mapa de demandas e projetos",
     "Acompanhar iniciativas do território", "Solicitar conexão",
     "Responder demandas relacionadas à sua atuação",
-    "Publicar respostas institucionais",
-    "Informar programas, serviços ou oportunidades", "Compartilhar iniciativas",
+    "Registrar respostas institucionais",
+    "Informar programas, serviços ou oportunidades", "Divulgar iniciativas",
     "Acompanhar indicadores e resultados", "Filtrar oportunidades de apoio",
     "Demonstrar interesse", "Oferecer recursos", "Apoiar projetos",
   ],
   media: [
     "Criar perfil profissional ou institucional",
     "Visualizar demandas, projetos e resultados", "Solicitar conexão",
-    "Identificar pautas", "Compartilhar iniciativas",
+    "Identificar pautas", "Divulgar iniciativas",
     "Divulgar projetos e resultados",
     "Acompanhar informações públicas do território",
   ],
 };
 
 export const ROLE_RESTRICTIONS: Partial<Record<UserRole, string>> = {
-  member: "Não publica demandas ou projetos em nome de uma organização ou comunidade sem vínculo ou autorização.",
-  partner: "Apoia, oferece recursos e se conecta — demandas e projetos são publicados pelos Agentes de Transformação.",
-  government: "Publica respostas institucionais e programas; não participa do ranking competitivo de apoiadores.",
-  media: "Amplifica e divulga iniciativas — demandas e projetos são publicados pelos Agentes de Transformação.",
+  member: "Não registra demandas ou projetos em nome de uma organização ou comunidade sem vínculo ou autorização.",
+  partner: "Apoia, oferece recursos e se conecta — demandas e projetos são iniciados pelos Agentes de Transformação.",
+  government: "Registra respostas institucionais e programas; não participa do ranking competitivo de apoiadores.",
+  media: "Amplifica e divulga iniciativas — demandas e projetos são iniciados pelos Agentes de Transformação.",
 };
 
 export interface User {
@@ -361,7 +361,7 @@ export const SUPPORT_TYPES: SupportTypeMeta[] = [
   { type: "food", label: "Alimentos", subtitle: "Doação de comida ou bebidas", icon: "restaurant" },
   { type: "transport", label: "Transporte", subtitle: "Veículo, frete ou logística", icon: "shipping" },
   { type: "knowledge", label: "Conhecimento", subtitle: "Mentoria, consultoria ou palestra", icon: "school" },
-  { type: "sharing", label: "Divulgação", subtitle: "Compartilhar nas redes e grupos", icon: "share" },
+  { type: "sharing", label: "Divulgação", subtitle: "Divulgar em canais locais", icon: "share" },
 ];
 
 export const SUPPORT_TYPE_META: Record<SupportType, SupportTypeMeta> = Object.fromEntries(
@@ -386,11 +386,6 @@ export const PAYMENT_METHODS: { method: PaymentMethod; label: string; subtitle: 
   { method: "debit", label: "Cartão de débito", subtitle: "Débito em conta", icon: "card" },
   { method: "credit", label: "Cartão de crédito", subtitle: "Parcelamento disponível", icon: "card" },
 ];
-
-export const PAYMENT_CONFIG = {
-  pixKey: "recreio.verde@pix.demo",
-  pixName: "Associação Bairro Verde",
-};
 
 export interface SupportSummaryItem {
   type: SupportType;
@@ -434,7 +429,7 @@ export interface RankEntry {
   role: UserRole;
   profileType?: ProfileType | null;
   city?: string | null;
-  /** pontuação calculada a partir de valor + projetos (ver demo.ranking). */
+  /** Pontuação calculada a partir dos eventos persistidos dos serviços. */
   points: number;
   /** posição 1-based, preenchida após a ordenação. */
   rank: number;
@@ -486,7 +481,7 @@ export const CONNECTION_TYPES: ConnectionTypeMeta[] = [
   { type: "partnership", label: "Parceria", subtitle: "Trabalhem juntos de forma contínua", icon: "link" },
   { type: "meeting", label: "Reunião", subtitle: "Marque uma conversa para alinhar", icon: "calendar" },
   { type: "resources", label: "Recursos", subtitle: "Ofereça ou peça materiais e equipamentos", icon: "inventory" },
-  { type: "outreach", label: "Divulgação", subtitle: "Amplifique a causa nas suas redes", icon: "megaphone" },
+  { type: "outreach", label: "Divulgação", subtitle: "Amplifique a causa em canais locais", icon: "megaphone" },
 ];
 
 export const CONNECTION_TYPE_META: Record<ConnectionType, ConnectionTypeMeta> = Object.fromEntries(
@@ -525,7 +520,7 @@ export interface ConnectionParty {
   userId: string;
   name: string;
   avatarUrl?: string | null;
-  role: UserRole;
+  role: UserRole | null;
   profileType?: ProfileType | null;
 }
 
@@ -565,7 +560,7 @@ export interface AppNotification {
   createdAt: string;
 }
 
-// ── Social (estilo Orkut) ──────────────────────────────────
+// ── Perfil, histórico e referências de atuação ────────────
 export interface Profile {
   userId: string;
   name: string;
@@ -616,9 +611,9 @@ export interface DirectoryUser {
   id: string;
   name: string;
   role: UserRole;
-  profileType: ProfileType;
-  neighborhood: string;
-  city: string;
+  profileType: ProfileType | null;
+  neighborhood: string | null;
+  city: string | null;
   memberSince: string;
   avatarUrl?: string | null;
 }
@@ -634,7 +629,6 @@ export interface AdminSnapshot {
   connections: Connection[];
 }
 
-// ── Defaults ───────────────────────────────────────────────
-export const DEFAULT_NEIGHBORHOOD = "Centro";
-export const DEFAULT_CITY = "Rio de Janeiro";
+// ── Map presentation ──────────────────────────────────────
+// This is only the initial viewport; it is never persisted as post data.
 export const MAP_CENTER: [number, number] = [-23.0247, -43.4567];

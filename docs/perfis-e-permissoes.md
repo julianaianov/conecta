@@ -42,8 +42,8 @@ para todos os perfis.
 | `publish` — demandas, projetos, eventos e ações | ✓ | | | | |
 | `update_results` — andamento, resultados e impacto | ✓ | | | | |
 | `institutional_response` — respostas institucionais, programas e serviços | | | | ✓ | |
-| `interact` — curtir e comentar | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `share` — compartilhar e divulgar | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `interact` — registrar atualizações e participar | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `share` — divulgar iniciativas | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `connect` — solicitar e receber conexões | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `express_interest` — demonstrar interesse | | ✓ | ✓ | ✓ | |
 | `support` — apoiar projetos, oferecer recursos, produtos ou serviços | | ✓ | ✓ | ✓ | |

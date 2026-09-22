@@ -1,4 +1,4 @@
-import { DEMO_POSTS, IMAGES, profileAvatar } from "./images";
+import { IMAGES } from "./images";
 
 /** Rotas do app dentro do próprio site (string vazia → caminhos locais /login, /feed…). */
 export const APP_URL = "";
@@ -20,9 +20,9 @@ export const TRUST_ROLES = [
 
 export const FEATURES = [
   {
-    title: "Feed comunitário",
+    title: "Pulso do território",
     description:
-      "Problemas, projetos, necessidades, eventos e ações — filtre por tipo e acompanhe o que importa no seu bairro.",
+      "Demandas, projetos, necessidades, eventos e ações — filtre por tipo e acompanhe o que pede atenção no seu bairro.",
     tags: ["Problemas", "Projetos", "Eventos", "Ações"],
     large: true,
     accent: false,
@@ -33,7 +33,7 @@ export const FEATURES = [
   {
     title: "Mapa interativo",
     description:
-      "Visualize publicações geolocalizadas e descubra o que acontece ao redor de você em tempo real.",
+      "Localize sinais do território e descubra o que pede atenção ao redor de você em tempo real.",
     large: false,
     accent: true,
     icon: "map",
@@ -53,7 +53,7 @@ export const FEATURES = [
   {
     title: "Conexões",
     description:
-      "Organize grupos por interesse, bairro ou causa. Construa rede e engajamento duradouro.",
+      "Encontre iniciativas por interesse, bairro ou causa. Articule apoio e acompanhe o andamento.",
     large: false,
     accent: false,
     icon: "community",
@@ -76,7 +76,7 @@ export const FEATURES = [
 export const STEPS = [
   {
     number: "01",
-    title: "Publique",
+    title: "Acione",
     description:
       "Conte um problema, lance um projeto ou convoque uma ação. Adicione localização no mapa.",
     image: IMAGES.stepPublish,
@@ -84,7 +84,7 @@ export const STEPS = [
   },
   {
     number: "02",
-    title: "Conecte",
+    title: "Articule",
     description:
       "Transforme investimento em impacto social e ambiental. Conecte sua empresa a projetos reais por meio de patrocínio, doações, voluntariado corporativo e ações ESG.",
     image: IMAGES.stepConnect,
@@ -105,15 +105,3 @@ export const COMMUNITY_BENEFITS = [
   "Web, Android e iOS",
   "Dados seguros e privacidade respeitada",
 ] as const;
-
-/** Posts exibidos no mockup do celular — mesmos do app demo */
-export const MOCK_POSTS = DEMO_POSTS.slice(0, 3).map((post) => ({
-  type: post.typeLabel,
-  title: post.title,
-  meta: post.meta,
-  variant: post.type as "problem" | "project" | "need" | "event" | "action",
-  image: post.image,
-  author: post.author.split(" ")[0],
-  authorId: post.authorId,
-  avatar: profileAvatar(post.authorId),
-}));

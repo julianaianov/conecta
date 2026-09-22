@@ -5,11 +5,11 @@
 Mapa completo: `DmConnecta/dm-docs` → `docs/arquitetura.md`. No workspace
 local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 
-| Ambiente | Onde roda | Endereço | Branch | Dados demo |
+| Ambiente | Onde roda | Endereço | Branch | Dados sintéticos |
 | --- | --- | --- | --- | --- |
-| Local | Docker Compose | `localhost` | qualquer | permitidos |
-| Homologação | AWS | `https://homologacao.dmconecta.org` | `develop` | permitidos |
-| Produção | AWS EC2 + Cloudflare | `https://dmconecta.org` | `stable` | proibidos |
+| Local | Docker Compose | `localhost` | qualquer | **proibidos** |
+| Homologação | AWS | `https://homologacao.dmconecta.org` | `develop` | **proibidos** |
+| Produção | AWS EC2 + Cloudflare | `https://dmconecta.org` | `stable` | **proibidos** |
 
 - **Não existe mais Vercel.** Produção e homologação são AWS; menções a Vercel
   são dívida a remover. A homologação na AWS roda sob `https://homologacao.dmconecta.org`.
@@ -22,9 +22,9 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   (Caddy → Next.js `web:3000` e `/api/auth|users|posts` → serviços Node 3001–3003 →
   PostgreSQL com `auth_db`, `user_db`, `post_db`), imagens no ECR compartilhado,
   parâmetros no SSM `/dmconecta/<ambiente>/*`, releases no S3. Sem SSH: tudo por SSM.
-- Catálogo do feed é a fonte canônica dos seeds SQL (`services/*/seed.sql`), com
-  4 usuários, 4 perfis, 4 comunidades (`/communities`), 10 posts com suporte a
-  vídeos, 9 comentários e 27 apoios tipados.
+- O feed, os perfis, comunidades, comentários e apoios só podem vir de dados
+  persistidos criados pelo uso real da aplicação. Fixtures são permitidas
+  exclusivamente dentro dos testes isolados.
 - Cloudflare: zona `dmconecta.org` manual, fora do Terraform.
 - Trabalhe em `develop` (ou branch criada dela); produção é `stable`.
 
@@ -44,8 +44,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 ## Estrutura
 
 - `src/lib/app/runtime.ts`: decisão de ambiente.
-- `src/lib/app/api.ts`: cliente HTTP e fallback permitido.
-- `src/lib/app/demo.ts`: dados somente de demonstração.
+- `src/lib/app/api.ts`: cliente HTTP; não possui fallback local.
 - `src/lib/app/types.ts`: perfis, permissões e modelos (ver
   `docs/perfis-e-permissoes.md`).
 - `services/`: APIs Node (auth 3001, user 3002, post 3003), schemas e migrações.

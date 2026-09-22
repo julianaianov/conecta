@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/app/*.test.mjs src/lib/seo/*.test.mjs"
+    "test": "node --experimental-strip-types --test src/lib/app/*.test.mjs src/lib/seo/*.test.mjs src/lib/server/*.test.mjs src/app/*.test.mjs scripts/*.test.mjs",
+    "test:services": "npm --prefix services/auth-service test && npm --prefix services/user-service test && npm --prefix services/post-service test",
+    "seo:audit": "node scripts/audit-public-seo.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

@@ -1,32 +1,5 @@
-/** Reexporta o catálogo demo do sistema — use demo-catalog.ts como fonte única. */
-
-import {
-
-  DEMO_COMMUNITIES,
-
-  DEMO_POSTS,
-
-  DEMO_PROFILES,
-
-  POST_IDS,
-
-  postImage,
-
-  profileAvatar,
-
-  TYPE_COLORS,
-
-  type PostType,
-
-} from "./demo-catalog";
-
 import { BANNER_PHOTOS } from "./banner-photos";
-
-
-
-export { DEMO_COMMUNITIES, DEMO_POSTS, DEMO_PROFILES, POST_IDS, postImage, profileAvatar, TYPE_COLORS, type PostType };
-
-
+import type { PostType } from "./app/types";
 
 /** Atalhos para seções da landing — fotos reais inspiradas no banner */
 
@@ -74,35 +47,11 @@ export const AVATARS = {
 
 
 
-export const COMMUNITY_GRID = DEMO_COMMUNITIES.map((c) => ({
-
-  id: c.id,
-
-  src: c.image,
-
-  name: c.name,
-
-}));
-
-
-
-/** Publicações reais do demo — mesmas do app */
-
-export const IMPACT_GALLERY = DEMO_POSTS.map((post) => ({
-
-  src: post.image,
-
-  alt: `${post.typeLabel}: ${post.title} — ${post.neighborhood}`,
-
-  label: post.typeLabel,
-
-  type: post.type,
-
-  title: post.title,
-
-  author: post.author,
-
-}));
+export const COMMUNITY_GRID = [
+  { id: "associacoes", src: BANNER_PHOTOS.communityMobilidade, name: "Associações" },
+  { id: "projetos", src: BANNER_PHOTOS.communityOrla, name: "Projetos e coletivos" },
+  { id: "voluntariado", src: BANNER_PHOTOS.communityEvento, name: "Voluntariado" },
+];
 
 
 
@@ -121,3 +70,5 @@ export const TRUST_ROLE_IMAGES = {
   Voluntários: AVATARS.maria,
 
 } as const;
+
+export type { PostType };

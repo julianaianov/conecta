@@ -17,21 +17,21 @@ export function PostCard({ post }: { post: Post }) {
   const supportTypes = allowedSupportTypes(user?.role, user?.profileType);
   const onlyShares = supportTypes.length === 1 && supportTypes[0] === "sharing";
   const [reactions, setReactions] = useState(post.reactionsCount);
-  const [liked, setLiked] = useState(false);
+  const [reacted, setReacted] = useState(false);
   const cover = post.images?.[0];
   const video = post.videos?.[0];
 
-  async function toggleLike(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    const next = !liked;
-    setLiked(next);
-    setReactions((r) => r + (next ? 1 : -1));
+  async function toggleReaction(event: React.MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const next = !reacted;
+    setReacted(next);
+    setReactions((current) => current + (next ? 1 : -1));
     try {
       await api.toggleReaction(post.id);
     } catch {
-      setLiked(!next);
-      setReactions((r) => r + (next ? -1 : 1));
+      setReacted(!next);
+      setReactions((current) => current + (next ? -1 : 1));
     }
   }
 
@@ -42,7 +42,7 @@ export function PostCard({ post }: { post: Post }) {
       onClick={() => router.push(`/post/${post.id}`)}
     >
       <div className="p-4 sm:p-5">
-        {/* cabeçalho */}
+      {/* identificação do responsável pelo sinal */}
         <div className="flex items-center gap-3">
           <Link href={`/perfil/${post.authorId}`} onClick={(e) => e.stopPropagation()}>
             <Avatar name={post.authorName} src={post.authorAvatar} id={post.authorId} size={42} />
@@ -52,6 +52,8 @@ export function PostCard({ post }: { post: Post }) {
               {post.authorName}
             </Link>
             <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--th-muted)" }}>
+              <span>Responsável</span>
+              <span>·</span>
               <span className="font-numeric">{timeAgo(post.createdAt)}</span>
               {post.neighborhood && (
                 <>
@@ -101,9 +103,15 @@ export function PostCard({ post }: { post: Post }) {
 
       {/* rodapé */}
       <div className="flex items-center gap-1 border-t px-2 py-1.5" style={{ borderColor: "var(--th-border)" }}>
-        <ActionButton icon="heart" label={String(reactions)} active={liked} onClick={toggleLike} />
-        <ActionButton icon="comment" label={String(post.commentsCount)} onClick={(e) => { e.stopPropagation(); router.push(`/post/${post.id}`); }} />
-        <ActionButton icon="eye" label={String(post.viewsCount)} muted />
+        <ActionButton
+          icon="volunteer"
+          label={`${reactions} sinais de apoio`}
+          active={reacted}
+          onClick={toggleReaction}
+          ariaLabel={reacted ? "Remover sinal de apoio" : "Sinalizar apoio"}
+        />
+        <ActionButton icon="comment" label={`${post.commentsCount} atualizações`} onClick={(e) => { e.stopPropagation(); router.push(`/post/${post.id}`); }} />
+        <ActionButton icon="eye" label={`${post.viewsCount} visualizações`} muted />
         {supportTypes.length > 0 && (
           <Link
             href={onlyShares ? `/post/${post.id}/apoiar?type=sharing` : `/post/${post.id}/apoiar`}
@@ -119,16 +127,17 @@ export function PostCard({ post }: { post: Post }) {
   );
 }
 
-function ActionButton({ icon, label, active, muted, onClick }: { icon: "heart" | "comment" | "eye"; label: string; active?: boolean; muted?: boolean; onClick?: (e: React.MouseEvent) => void }) {
+function ActionButton({ icon, label, active, muted, onClick, ariaLabel }: { icon: "volunteer" | "comment" | "eye"; label: string; active?: boolean; muted?: boolean; onClick?: (e: React.MouseEvent) => void; ariaLabel?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={ariaLabel ?? label}
       className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--th-card-alt)]"
-      style={{ color: active ? "#e53935" : "var(--th-muted)", cursor: muted ? "default" : "pointer" }}
+      style={{ color: active ? "#f4841a" : "var(--th-muted)", cursor: muted ? "default" : "pointer" }}
     >
-      <Icon name={icon} size={17} fill={active} strokeWidth={active ? 0 : 1.9} />
-      <span className="font-numeric">{label}</span>
+      <Icon name={icon} size={17} strokeWidth={active ? 2.5 : 1.9} />
+      <span>{label}</span>
     </button>
   );
 }

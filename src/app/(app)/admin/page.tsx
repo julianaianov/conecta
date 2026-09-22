@@ -12,21 +12,20 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
-import { isPlatformAdmin, DEMO_ADMIN_EMAIL } from "@/lib/app/admin-access";
+import { isPlatformAdmin } from "@/lib/app/admin-access";
 import { buildAdminMetrics, neighborhoodsCsv, PERIODS, type AdminMetrics, type PeriodKey } from "@/lib/app/admin";
 import type { AdminSnapshot } from "@/lib/app/types";
 import { ROLE_LABELS, normalizeRole } from "@/lib/app/types";
 import { timeAgo } from "@/lib/app/format";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Avatar } from "@/components/app/Avatar";
-import { Button } from "@/components/app/Button";
 import { Card, EmptyState, SectionTitle, StatusBadge, TypeBadge } from "@/components/app/ui";
 import {
   BarList, Funnel, StackedBar, StatTile, Td, Th, TimeSeries, brl, int, pctLabel,
 } from "@/components/app/admin/charts";
 
 export default function AdminPage() {
-  const { user, demoMode, loginDemo, demoAllowed } = useAuth();
+  const { user } = useAuth();
   const [snap, setSnap] = useState<AdminSnapshot | null>(null);
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [loading, setLoading] = useState(true);
@@ -34,18 +33,11 @@ export default function AdminPage() {
   const allowed = isPlatformAdmin(user);
 
   useEffect(() => {
-    if (!allowed && demoAllowed && typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("as") === "admin") {
-        void loginDemo(DEMO_ADMIN_EMAIL, "demo123").then(() => window.location.reload());
-        return;
-      }
-    }
     if (!allowed) { setLoading(false); return; }
     let alive = true;
     api.adminSnapshot().then((s) => { if (alive) { setSnap(s); setLoading(false); } });
     return () => { alive = false; };
-  }, [allowed, demoAllowed, loginDemo]);
+  }, [allowed]);
 
   const m: AdminMetrics | null = useMemo(
     () => (snap ? buildAdminMetrics(snap, period) : null),
@@ -58,23 +50,10 @@ export default function AdminPage() {
         <EmptyState
           icon="shield"
           title="Área restrita à operação do DM Conecta"
-          hint={`Esta conta não tem acesso ao painel. Entre com uma conta de administração — na demo, ${DEMO_ADMIN_EMAIL} / demo123.`}
+          hint="Esta conta não tem acesso ao painel. Entre com uma conta de administração autorizada."
         />
         <div className="mt-5 flex flex-col items-center gap-3">
-          {demoAllowed && (
-            <Button
-              variant="primary"
-              size="md"
-              icon="shield"
-              onClick={async () => {
-                await loginDemo(DEMO_ADMIN_EMAIL, "demo123");
-                window.location.reload();
-              }}
-            >
-              Entrar como administrador da operação
-            </Button>
-          )}
-          <Link href="/feed" className="text-sm font-semibold" style={{ color: "#f4841a" }}>Voltar ao feed</Link>
+          <Link href="/feed" className="text-sm font-semibold" style={{ color: "#f4841a" }}>Voltar ao pulso</Link>
         </div>
       </div>
     );
@@ -120,7 +99,7 @@ export default function AdminPage() {
             </div>
             <h1 className="mt-2 text-2xl font-bold">DM Conecta em números</h1>
             <p className="mt-1 text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
-              {m.period.label} · {int(m.users.total)} contas · {int(m.coverage.served)} bairros com publicação
+              {m.period.label} · {int(m.users.total)} contas · {int(m.coverage.served)} bairros com sinais
             </p>
           </div>
           <button
@@ -154,7 +133,7 @@ export default function AdminPage() {
             style={{ background: "rgba(255,255,255,0.14)", color: "#fff" }}
           >
             <Icon name="info" size={12} />
-            {demoMode || !api.hasApi ? "Fonte: base demo" : "Fonte: API"}
+            {api.hasApi ? "Fonte: API persistente" : "Fonte indisponível"}
           </span>
         </div>
       </div>
@@ -167,7 +146,7 @@ export default function AdminPage() {
           value={int(m.users.total)}
           hint={m.period.days ? `${int(m.users.newInPeriod)} novas em ${m.period.days} dias` : `${int(m.users.activeInPeriod)} ativas`}
         />
-        <StatTile icon="megaphone" label="Publicações" value={int(m.content.postsInPeriod)} hint={`${int(m.content.posts)} no total`} />
+        <StatTile icon="megaphone" label="Sinais" value={int(m.content.postsInPeriod)} hint={`${int(m.content.posts)} no total`} />
         <StatTile icon="volunteer" label="Operações de apoio" value={int(m.operations.inPeriod)} hint={`${int(m.operations.nonFinancial)} não financeiras`} accent />
         <StatTile icon="payments" label="Movimentação" value={brl(m.operations.amount)} hint={`ticket médio ${brl(m.operations.avgTicket)}`} accent />
         <StatTile icon="location" label="Bairros atendidos" value={int(m.coverage.served)} hint={`${int(m.coverage.withOperations)} já com apoio`} />
@@ -177,9 +156,9 @@ export default function AdminPage() {
       {/* ── Fluxo + série ─────────────────────────────────── */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <Card>
-          <SectionTitle icon="filter">Fluxo da plataforma</SectionTitle>
-          <p className="-mt-1 mb-3 text-xs" style={{ color: "var(--th-muted)" }}>
-            Da publicação ao impacto registrado — onde a rede perde gente pelo caminho.
+            <SectionTitle icon="filter">Fluxo de transformação</SectionTitle>
+            <p className="-mt-1 mb-3 text-xs" style={{ color: "var(--th-muted)" }}>
+            Do sinal ao impacto registrado — onde a ação avança ou precisa de atenção.
           </p>
           <Funnel stages={m.funnel} />
         </Card>
@@ -206,7 +185,7 @@ export default function AdminPage() {
             <thead style={{ background: "var(--th-card-alt)" }}>
               <tr>
                 <Th>Bairro</Th>
-                <Th align="right">Publicações</Th>
+                <Th align="right">Sinais</Th>
                 <Th align="right">Resolvidas</Th>
                 <Th align="right">Apoios</Th>
                 <Th align="right">Movimentação</Th>
@@ -317,7 +296,7 @@ export default function AdminPage() {
       {/* ── Conteúdo ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <Card>
-          <SectionTitle icon="megaphone">Publicações por tipo</SectionTitle>
+          <SectionTitle icon="megaphone">Sinais por tipo</SectionTitle>
           <BarList items={m.content.byType.map((s) => ({ key: s.key, label: s.label, value: s.value }))} />
         </Card>
 
@@ -331,16 +310,16 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      {/* ── Engajamento ───────────────────────────────────── */}
+      {/* ── Atividade do território ───────────────────────── */}
       <Card>
-        <SectionTitle icon="heart">Engajamento na rede</SectionTitle>
+        <SectionTitle icon="bolt">Atividade do território</SectionTitle>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <MiniStat label="Curtidas" value={int(m.engagement.reactions)} />
-          <MiniStat label="Comentários" value={int(m.engagement.comments)} />
+          <MiniStat label="Sinais de apoio" value={int(m.engagement.reactions)} />
+          <MiniStat label="Atualizações" value={int(m.engagement.comments)} />
           <MiniStat label="Visualizações" value={int(m.engagement.views)} />
-          <MiniStat label="Recados" value={int(m.engagement.scraps)} />
-          <MiniStat label="Depoimentos" value={int(m.engagement.testimonials)} />
-          <MiniStat label="Grupos · membros" value={`${int(m.engagement.communities)} · ${int(m.engagement.members)}`} />
+          <MiniStat label="Registros de atuação" value={int(m.engagement.scraps)} />
+          <MiniStat label="Referências" value={int(m.engagement.testimonials)} />
+          <MiniStat label="Frentes · participantes" value={`${int(m.engagement.communities)} · ${int(m.engagement.members)}`} />
         </div>
       </Card>
 
@@ -348,15 +327,15 @@ export default function AdminPage() {
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <Card padded={false}>
           <div className="px-4 pt-4 sm:px-5 sm:pt-5">
-            <SectionTitle icon="star">Publicações com mais tração</SectionTitle>
+            <SectionTitle icon="star">Sinais com mais tração</SectionTitle>
             <p className="-mt-1 mb-3 text-xs" style={{ color: "var(--th-muted)" }}>
-              Tração = curtidas + 3× comentários + 5× apoios.
+              Relevância = sinais de apoio + 3× atualizações + 5× apoios.
             </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead style={{ background: "var(--th-card-alt)" }}>
-                <tr><Th>Publicação</Th><Th align="right">Tração</Th><Th align="right">Apoios</Th><Th align="right">Valor</Th></tr>
+                <tr><Th>Sinal</Th><Th align="right">Tração</Th><Th align="right">Apoios</Th><Th align="right">Valor</Th></tr>
               </thead>
               <tbody>
                 {m.topPosts.map((p) => (
@@ -419,7 +398,7 @@ export default function AdminPage() {
         <Card>
           <SectionTitle icon="bell" action={
             <span className="text-xs" style={{ color: "var(--th-muted)" }}>
-              {int(m.engagement.activityVolume)} interações no período (publicações, apoios, comentários e curtidas)
+              {int(m.engagement.activityVolume)} movimentações no período (sinais, apoios, atualizações e registros)
             </span>
           }>
             Últimas movimentações
@@ -456,12 +435,12 @@ export default function AdminPage() {
           <ul className="space-y-3 text-sm">
             <HealthLine
               ok={semGeo === 0}
-              label="Publicações no mapa"
+              label="Sinais no mapa"
               detail={semGeo === 0 ? "todas geolocalizadas" : `${int(semGeo)} sem coordenada — não aparecem no mapa`}
             />
             <HealthLine
               ok={semMidia === 0}
-              label="Publicações com mídia"
+              label="Sinais com mídia"
               detail={semMidia === 0 ? "todas com foto ou vídeo" : `${int(semMidia)} sem foto ou vídeo`}
             />
             <HealthLine
@@ -475,17 +454,17 @@ export default function AdminPage() {
               detail="ainda não são coletados: sem fotos antes/depois, metas ou pessoas impactadas"
             />
             <HealthLine
-              ok={api.hasApi && !demoMode}
+              ok={api.hasApi}
               label="Persistência"
               detail={
-                api.hasApi && !demoMode
-                  ? "conectado à API — publicações e apoios persistem"
-                  : "base demo em memória — conexões, ranking e recados não persistem"
+                api.hasApi
+                  ? "conectado à API — sinais e apoios persistem"
+                  : "API não configurada — os dados reais não estão disponíveis"
               }
             />
           </ul>
           <p className="mt-4 text-xs" style={{ color: "var(--th-muted)" }}>
-            Toda métrica desta tela é contada a partir de publicações, apoios, comentários e contas — nenhum número é fixo.
+            Toda métrica desta tela é contada a partir de sinais, apoios, atualizações e contas — nenhum número é fixo.
           </p>
         </Card>
       </div>

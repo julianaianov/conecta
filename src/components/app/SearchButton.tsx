@@ -9,9 +9,9 @@ import { TypeBadge } from "./ui";
 
 /**
  * Busca global do app — lupa no header, abre um painel com resultados ao vivo.
- * Procura em publicações (título, descrição, tags, autor, bairro) e em conexões.
- * Os dados do demo cabem em memória, então o filtro é no cliente; quando houver
- * backend de busca, é só trocar o corpo do useMemo por uma chamada à API.
+ * Procura em sinais (título, descrição, tags, autor, bairro) e em conexões.
+ * Os resultados vêm da API persistente e o filtro textual é aplicado no cliente
+ * enquanto não há endpoint de busca dedicado.
  */
 export function SearchButton() {
   const [open, setOpen] = useState(false);
@@ -102,7 +102,7 @@ export function SearchButton() {
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar publicações, conexões, bairros..."
+                placeholder="Buscar sinais, conexões, bairros..."
                 className="h-14 flex-1 bg-transparent text-[15px] outline-none"
                 style={{ color: "var(--th-text)" }}
                 aria-label="Termo de busca"
@@ -126,7 +126,7 @@ export function SearchButton() {
               ) : (
                 <>
                   {foundPosts.length > 0 && (
-                    <Section title="Publicações">
+                    <Section title="Sinais">
                       {foundPosts.map((p) => (
                         <Link
                           key={p.id}

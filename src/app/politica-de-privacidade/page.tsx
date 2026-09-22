@@ -2,11 +2,13 @@ import React from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { metadataForPage } from "@/lib/seo/site";
 
-export const metadata = {
+export const metadata = metadataForPage({
   title: "Política de Privacidade — DM Conecta",
   description: "Política de privacidade e proteção de dados do aplicativo DM Conecta.",
-};
+  path: "/politica-de-privacidade",
+});
 
 export default function PoliticaPrivacidadePage() {
   return (
@@ -38,7 +40,7 @@ export default function PoliticaPrivacidadePage() {
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1 text-slate-300 pl-4">
               <li><strong>Dados de Cadastro:</strong> Nome, e-mail e foto de perfil opcional para identificação de autoria nas demandas e conexões.</li>
-              <li><strong>Conteúdo Publicado:</strong> Demandas, propostas de apoio, comentários e interações que você opta por publicar na comunidade.</li>
+              <li><strong>Conteúdo registrado:</strong> Demandas, propostas de apoio, atualizações e interações que você opta por registrar no território.</li>
               <li><strong>Localização aproximada (opcional):</strong> Utilizada exclusivamente se você optar por buscar demandas ou projetos próximos no mapa interativo.</li>
             </ul>
           </div>
@@ -62,7 +64,7 @@ export default function PoliticaPrivacidadePage() {
               O aplicativo Android do DM Conecta solicita apenas permissões essenciais:
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1 text-slate-300 pl-4">
-              <li><strong>Acesso à Internet:</strong> Necessário para comunicação com o servidor e exibição do feed.</li>
+              <li><strong>Acesso à Internet:</strong> Necessário para comunicação com o servidor e exibição do pulso do território.</li>
               <li><strong>Câmera / Armazenamento (opcional):</strong> Utilizado caso você decida enviar fotos para ilustrar uma demanda comunitária ou foto de perfil.</li>
             </ul>
           </div>

@@ -9,7 +9,7 @@ export function Steps() {
         <Reveal>
           <div className="mx-auto mb-16 max-w-xl text-center">
             <span className="text-sm font-semibold uppercase tracking-widest text-orange">
-              Como a rede funciona
+              Como a transformação acontece
             </span>
             <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl" style={{ color: "var(--th-text)" }}>
               Da ideia ao impacto
@@ -17,7 +17,7 @@ export function Steps() {
               <span className="gradient-text">em 3 passos</span>
             </h2>
             <p className="mt-4" style={{ color: "var(--th-muted)" }}>
-              Publique, conecte e transforme o seu bairro — é simples e gratuito.
+              Registre, articule e transforme o seu bairro — é simples e gratuito.
             </p>
           </div>
         </Reveal>

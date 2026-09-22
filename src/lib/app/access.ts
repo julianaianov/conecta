@@ -38,6 +38,12 @@ export function loginHref(pathname: string): string {
   return `/login?next=${encodeURIComponent(pathname)}`;
 }
 
+export type ProtectedAction = "create-post" | "comment" | "reaction" | "support" | "connection" | "profile-write";
+
+export function actionRequiresAuth(action: ProtectedAction | "read-post"): boolean {
+  return action !== "read-post";
+}
+
 export function isIndexablePath(pathname: string): boolean {
   const path = normalizePathname(pathname);
 

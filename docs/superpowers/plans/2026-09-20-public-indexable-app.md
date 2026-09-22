@@ -1,5 +1,10 @@
 # DM Conecta público e indexável Implementation Plan
 
+> **Superseded on 2026-09-21:** the platform now has a strict real-data
+> contract in every environment. Any reference below to demo data, demo
+> fallback or demo-enabled local/homologation behavior is historical and must
+> not be implemented or restored.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (recommended for this session) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** entregar HTML público, navegável e server-rendered para conteúdo do DM Conecta, mantendo autenticação apenas em mutações e fluxos privados, com sinais técnicos completos para Google e crawlers de IA.
@@ -435,7 +440,7 @@ git commit -m "feat: server-render public discovery screens"
 - Create: `src/components/app/public/ProfileClient.tsx`
 - Modify: `src/app/(app)/post/[id]/page.tsx`
 - Modify: `src/app/(app)/perfil/[id]/page.tsx`
-- Modify: `src/components/app/OrkutProfile.tsx` or replace it with the client component while preserving its public markup.
+- Modify: `src/components/app/ProfileView.tsx` or replace it with the client component while preserving its public markup.
 
 **Interfaces:**
 - `PostDetailClient` accepts `{ initialPost, initialComments, initialSupports }`.
@@ -502,7 +507,7 @@ Render the JSON-LD object in a `<script type="application/ld+json">` from the se
 
 - [ ] **Step 6: Implement the profile Server Component and metadata**
 
-Load profile and author posts in parallel, call `notFound()` for a missing profile, render the profile name/bio/posts in server-delivered content, and pass the data to `ProfileClient`. Public visitors can follow post/author links; recados, depoimentos and connection requests show `AuthPrompt`.
+Load profile and author posts in parallel, call `notFound()` for a missing profile, render the profile name/bio/posts in server-delivered content, and pass the data to `ProfileClient`. Public visitors can follow post/author links; profile updates, references and connection requests show `AuthPrompt`.
 
 - [ ] **Step 7: Run focused checks**
 
@@ -515,7 +520,7 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/components/app/public/PostDetailClient.tsx src/components/app/public/ProfileClient.tsx src/app/'(app)'/post/'[id]'/page.tsx src/app/'(app)'/perfil/'[id]'/page.tsx src/components/app/OrkutProfile.tsx src/lib/seo
+git add src/components/app/public/PostDetailClient.tsx src/components/app/public/ProfileClient.tsx src/app/'(app)'/post/'[id]'/page.tsx src/app/'(app)'/perfil/'[id]'/page.tsx src/components/app/ProfileView.tsx src/lib/seo
 git commit -m "feat: render public posts and profiles on the server"
 ```
 

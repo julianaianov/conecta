@@ -5,8 +5,8 @@ import { Icon } from "@/components/app/Icon";
 import { BANNER_PHOTOS } from "@/lib/banner-photos";
 
 /**
- * Vitrine das telas de auth (login/cadastro/recuperar) — inspirada no login
- * do Facebook, adaptada ao DM Conecta.
+ * Vitrine das telas de autenticação — uma abertura institucional adaptada ao
+ * DM Conecta, com foco em território e participação.
  *   • Desktop (lg+): painel lateral claro com título grande + colagem de cards.
  *   • Mobile (<lg): banner no topo do formulário com fotos das conexões.
  * `photos={false}` mantém tipografia e marca, sem nenhuma foto (usado no login).
@@ -54,7 +54,7 @@ function MobileBanner({ photos }: { photos: boolean }) {
             <span style={{ color: "#f4841a" }}>transforme</span> o seu bairro.
           </p>
           <p className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>
-            Rede social de impacto local · do seu bairro à sua cidade
+            Plataforma de ação local · do seu bairro à sua cidade
           </p>
         </div>
       </div>
@@ -86,7 +86,7 @@ function DesktopPanel({ photos }: { photos: boolean }) {
       {photos && <Collage />}
 
       <p className="relative z-10 text-sm font-medium" style={{ color: "var(--th-muted)" }}>
-        Rede social de impacto local · do seu bairro à sua cidade
+        Plataforma de ação local · do seu bairro à sua cidade
       </p>
     </div>
   );
@@ -121,7 +121,7 @@ function Collage() {
         </span>
         <figcaption className="absolute inset-x-0 bottom-0 p-3 text-white" style={{ background: "linear-gradient(to top, rgba(13,45,66,0.85), transparent)" }}>
           <p className="text-[13px] font-bold leading-tight">Vizinhos em ação</p>
-          <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.85)" }}>+128 participando no bairro</p>
+          <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.85)" }}>Participação registrada no território</p>
         </figcaption>
       </figure>
 
@@ -145,7 +145,7 @@ function Collage() {
       </span>
 
       <span className="absolute right-0 top-1/2 flex h-12 w-12 items-center justify-center rounded-full text-white" style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)", boxShadow: "0 14px 30px rgba(244,132,26,0.40)" }}>
-        <Icon name="heart" size={22} />
+        <Icon name="volunteer" size={22} />
       </span>
 
       <span className="absolute bottom-6 right-10 h-20 w-20 overflow-hidden rounded-full" style={{ border: "4px solid #fff", boxShadow: "0 16px 34px rgba(13,45,66,0.28)", outline: "3px solid #f4841a", outlineOffset: "-1px" }}>

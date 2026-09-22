@@ -13,12 +13,8 @@ export function Footer() {
               <DMLogo size={32} tone="plain" />
             </Link>
             <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--th-muted)" }}>
-              A rede social de impacto local. Conectando bairros, transformando realidades.
+              A plataforma de impacto local. Transformando demandas do bairro em ações acompanhadas.
             </p>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="text-xl font-extrabold text-orange">+1.200</span>
-              <span className="text-sm" style={{ color: "var(--th-muted)" }}>membros ativos</span>
-            </div>
           </div>
 
           <FooterLinks
@@ -81,7 +77,7 @@ export function Footer() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-5 py-6 text-sm sm:flex-row lg:px-8"
           style={{ color: "var(--th-muted)" }}>
           <p>&copy; {new Date().getFullYear()} DM Conecta. Todos os direitos reservados.</p>
-          <p className="text-xs">Feito com ♥ para conexões de todo o Brasil</p>
+          <p className="text-xs">Feito para transformar demandas locais em resultados</p>
         </div>
       </div>
     </footer>

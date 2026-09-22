@@ -1,7 +1,10 @@
-"use client";
+import type { Metadata } from "next";
+import { AuthProviderClient } from "@/components/app/AuthProviderClient";
 
-import { AuthProvider } from "@/lib/app/auth";
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
+};
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return <AuthProvider>{children}</AuthProvider>;
+  return <AuthProviderClient>{children}</AuthProviderClient>;
 }

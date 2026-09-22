@@ -18,7 +18,7 @@ module.exports = (pool, auth) => {
       res.json(rows.map((r) => ({
         id: r.id,
         authorId: r.author_id,
-        authorName: r.author_name || 'Usuário',
+        authorName: r.author_name || '',
         authorAvatar: r.author_avatar || null,
         targetUserId: r.target_user_id,
         content: r.content,
@@ -48,7 +48,7 @@ module.exports = (pool, auth) => {
       res.status(201).json({
         id: s.id,
         authorId: s.author_id,
-        authorName: p?.name || req.user.name || 'Usuário',
+        authorName: p?.name || req.user.name || '',
         authorAvatar: p?.avatar_url || req.user.avatarUrl || null,
         targetUserId: s.target_user_id,
         content: s.content,
@@ -75,7 +75,7 @@ module.exports = (pool, auth) => {
       res.json(rows.map((r) => ({
         id: r.id,
         authorId: r.author_id,
-        authorName: r.author_name || 'Usuário',
+        authorName: r.author_name || '',
         authorAvatar: r.author_avatar || null,
         targetUserId: r.target_user_id,
         content: r.content,
@@ -105,7 +105,7 @@ module.exports = (pool, auth) => {
       res.status(201).json({
         id: t.id,
         authorId: t.author_id,
-        authorName: p?.name || req.user.name || 'Usuário',
+        authorName: p?.name || req.user.name || '',
         authorAvatar: p?.avatar_url || req.user.avatarUrl || null,
         targetUserId: t.target_user_id,
         content: t.content,
@@ -125,52 +125,21 @@ module.exports = (pool, auth) => {
       const agents = rows.filter((p) => p.role === 'agent');
       const members = rows.filter((p) => p.role === 'member');
 
-      const formatRank = (list, calcPoints, makeHighlights) => {
-        return list
-          .map((p) => {
-            const points = calcPoints(p);
-            return {
-              userId: p.user_id,
-              name: p.name,
-              avatarUrl: p.avatar_url || null,
-              role: p.role,
-              city: p.city || 'Rio de Janeiro',
-              points,
-              highlights: makeHighlights(p, points),
-            };
-          })
-          .sort((a, b) => b.points - a.points)
-          .map((item, index) => ({ ...item, rank: index + 1 }));
-      };
+      const formatRank = (list) => list.map((p) => ({
+        userId: p.user_id,
+        name: p.name,
+        avatarUrl: p.avatar_url || null,
+        role: p.role,
+        profileType: p.profile_type || null,
+        city: p.city || null,
+      }));
 
+      // A pontuação e a posição dependem dos eventos persistidos no post-service.
+      // Este serviço fornece somente a identidade real dos perfis elegíveis.
       const result = {
-        partner: formatRank(
-          partners,
-          (p) => 1000 + (p.friend_count || 1) * 80,
-          (p, pts) => [
-            { icon: 'payments', label: `R$ ${pts.toLocaleString('pt-BR')} apoiados` },
-            { icon: 'heart', label: `${p.friend_count || 1} conexões` },
-            { icon: 'star', label: 'Parceiro ativo' },
-          ]
-        ),
-        agent: formatRank(
-          agents,
-          (p) => 500 + (p.friend_count || 1) * 50,
-          (p) => [
-            { icon: 'megaphone', label: 'Projetos comunitários' },
-            { icon: 'heart', label: `${p.friend_count || 1} apoiadores` },
-            { icon: 'users', label: `${p.neighborhood || 'Bairro'}` },
-          ]
-        ),
-        volunteer: formatRank(
-          members,
-          (p) => 200 + (p.friend_count || 1) * 30,
-          (p) => [
-            { icon: 'volunteer', label: 'Participação ativa' },
-            { icon: 'heart', label: `${p.friend_count || 1} amigos` },
-            { icon: 'clock', label: 'Voluntário da rede' },
-          ]
-        ),
+        partner: formatRank(partners),
+        agent: formatRank(agents),
+        volunteer: formatRank(members),
       };
 
       res.json(result);
@@ -199,10 +168,10 @@ module.exports = (pool, auth) => {
         notifs.push({
           id: `n-conn-${r.id}`,
           kind: 'connection',
-          actorName: r.from_name || 'Alguém',
+          actorName: r.from_name || '',
           postId: '',
           postTitle: 'Conexão',
-          summary: `${r.from_name || 'Alguém'} enviou uma solicitação de conexão`,
+          summary: r.from_name ? `${r.from_name} enviou uma solicitação de conexão` : 'Uma solicitação de conexão foi recebida',
           icon: 'link',
           href: `/conexoes/${r.id}`,
           createdAt: r.created_at,
@@ -222,10 +191,10 @@ module.exports = (pool, auth) => {
         notifs.push({
           id: `n-acc-${r.id}`,
           kind: 'connection',
-          actorName: r.to_name || 'Alguém',
+          actorName: r.to_name || '',
           postId: '',
           postTitle: 'Conexão aceita',
-          summary: `${r.to_name || 'Alguém'} aceitou sua conexão`,
+          summary: r.to_name ? `${r.to_name} aceitou sua conexão` : 'Sua conexão foi aceita',
           icon: 'check',
           href: `/conexoes/${r.id}`,
           createdAt: r.updated_at,
@@ -245,10 +214,10 @@ module.exports = (pool, auth) => {
         notifs.push({
           id: `n-scr-${r.id}`,
           kind: 'comment',
-          actorName: r.author_name || 'Alguém',
+          actorName: r.author_name || '',
           postId: '',
           postTitle: 'Recado',
-          summary: `${r.author_name || 'Alguém'} deixou um recado no seu perfil`,
+          summary: r.author_name ? `${r.author_name} deixou um recado no seu perfil` : 'Um recado foi deixado no seu perfil',
           icon: 'chat',
           href: `/perfil/${userId}`,
           createdAt: r.created_at,
@@ -264,7 +233,7 @@ module.exports = (pool, auth) => {
   });
 
   // ── Admin Snapshot (Base de usuários e conexões para overview) ─
-  router.get('/admin-snapshot', async (_req, res) => {
+  router.get('/admin-snapshot', auth, async (_req, res) => {
     try {
       const [users, communities, connections, scraps, testimonials] = await Promise.all([
         pool.query('SELECT * FROM profiles ORDER BY name ASC'),
@@ -301,8 +270,8 @@ module.exports = (pool, auth) => {
           name: u.name,
           role: u.role,
           profileType: u.profile_type,
-          neighborhood: u.neighborhood || 'Centro',
-          city: u.city || 'Rio de Janeiro',
+          neighborhood: u.neighborhood || null,
+          city: u.city || null,
           memberSince: u.member_since || u.created_at,
           avatarUrl: u.avatar_url || null,
         })),
@@ -320,16 +289,16 @@ module.exports = (pool, auth) => {
           status: r.status,
           from: {
             userId: r.from_user_id,
-            name: r.from_name || 'Usuário',
+            name: r.from_name || '',
             avatarUrl: r.from_avatar_url || null,
-            role: r.from_role || 'member',
+            role: r.from_role || null,
             profileType: r.from_profile_type || null,
           },
           to: {
             userId: r.to_user_id,
-            name: r.to_name || 'Usuário',
+            name: r.to_name || '',
             avatarUrl: r.to_avatar_url || null,
-            role: r.to_role || 'member',
+            role: r.to_role || null,
             profileType: r.to_profile_type || null,
           },
           message: r.message,
@@ -343,7 +312,7 @@ module.exports = (pool, auth) => {
         scraps: scraps.rows.map((r) => ({
           id: r.id,
           authorId: r.author_id,
-          authorName: r.author_name || 'Usuário',
+          authorName: r.author_name || '',
           authorAvatar: r.author_avatar || null,
           targetUserId: r.target_user_id,
           content: r.content,
@@ -352,7 +321,7 @@ module.exports = (pool, auth) => {
         testimonials: testimonials.rows.map((r) => ({
           id: r.id,
           authorId: r.author_id,
-          authorName: r.author_name || 'Usuário',
+          authorName: r.author_name || '',
           authorAvatar: r.author_avatar || null,
           targetUserId: r.target_user_id,
           content: r.content,

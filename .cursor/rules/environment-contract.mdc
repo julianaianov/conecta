@@ -6,8 +6,8 @@ alwaysApply: true
 
 # Contrato de ambientes
 
-- Local: Docker Compose; dados de demonstração permitidos.
-- Homologação: AWS em `https://homologacao.dmconecta.org` (branch `develop`); dados de demonstração permitidos.
+- Local: Docker Compose; somente dados persistidos reais.
+- Homologação: AWS em `https://homologacao.dmconecta.org` (branch `develop`); somente dados persistidos reais.
 - A Vercel não é mais usada. Mapa completo: `DmConnecta/dm-docs` → `docs/arquitetura.md`.
 - Produção: AWS + Cloudflare em `https://dmconecta.org`; fallback de demonstração proibido.
 

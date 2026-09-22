@@ -13,7 +13,7 @@ import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { Button } from "./Button";
 
-export function OrkutProfile({ userId }: { userId: string }) {
+export function ProfileView({ userId }: { userId: string }) {
   const { user } = useAuth();
   const router = useRouter();
   const isOwn = user?.id === userId;
@@ -86,7 +86,7 @@ export function OrkutProfile({ userId }: { userId: string }) {
           <div className="absolute inset-0" style={{ background: "linear-gradient(135deg,rgba(13,45,66,0.45),transparent)" }} />
         </div>
         <div className="-mt-9 px-1">
-          <Avatar name={profile.name} src={profile.avatarUrl} id={profile.userId} size={72} ring />
+          <Avatar name={profile.name} src={profile.avatarUrl} email={profile.email ?? (isOwn ? user?.email : undefined)} id={profile.userId} size={72} ring />
         </div>
       </div>
       <h1 className="mt-2 text-lg font-bold leading-tight" style={{ color: "var(--th-text)" }}>{profile.name}</h1>
@@ -101,8 +101,8 @@ export function OrkutProfile({ userId }: { userId: string }) {
         {profile.bio && <p>{profile.bio}</p>}
         {(profile.neighborhood || profile.city) && <InfoLine icon="location">{[profile.neighborhood, profile.city].filter(Boolean).join(", ")}</InfoLine>}
         {profile.website && <InfoLine icon="globe">{profile.website}</InfoLine>}
-        {profile.memberSince && <InfoLine icon="calendar">Membro desde {formatDate(profile.memberSince)}</InfoLine>}
-        <InfoLine icon="users"><span className="font-numeric font-semibold" style={{ color: "var(--th-text)" }}>{profile.friendCount ?? friends.length}</span> conexões</InfoLine>
+        {profile.memberSince && <InfoLine icon="calendar">Participante desde {formatDate(profile.memberSince)}</InfoLine>}
+        <InfoLine icon="link"><span className="font-numeric font-semibold" style={{ color: "var(--th-text)" }}>{profile.friendCount ?? friends.length}</span> colaborações registradas</InfoLine>
       </div>
 
       {!isOwn && (
@@ -116,14 +116,14 @@ export function OrkutProfile({ userId }: { userId: string }) {
               Já existe um pedido em aberto com este perfil.
             </p>
           )}
-          <Button block size="sm" variant="outline" icon="star" onClick={() => setShowTestimonialBox((v) => !v)}>Escrever depoimento</Button>
+          <Button block size="sm" variant="outline" icon="star" onClick={() => setShowTestimonialBox((v) => !v)}>Adicionar referência</Button>
         </div>
       )}
     </Panel>
   );
 
   const communitiesPanel = (
-    <Panel accent="#2e7ba8" icon="groups" title={`Conexões (${communities.length})`}>
+    <Panel accent="#2e7ba8" icon="map" title={`Frentes de atuação (${communities.length})`}>
       <div className="grid grid-cols-4 gap-2">
         {communities.map((c) => (
           <Link key={c.id} href="/conexoes" className="text-center">
@@ -135,8 +135,8 @@ export function OrkutProfile({ userId }: { userId: string }) {
     </Panel>
   );
 
-  const friendsPanel = (
-    <Panel accent="#f4841a" icon="users" title={`Amigos (${friends.length})`}>
+  const partnersPanel = (
+    <Panel accent="#f4841a" icon="link" title={`Pessoas e organizações (${friends.length})`}>
       <div className="grid grid-cols-4 gap-2">
         {friends.map((f) => (
           <Link key={f.userId} href={`/perfil/${f.userId}`} className="text-center">
@@ -149,9 +149,9 @@ export function OrkutProfile({ userId }: { userId: string }) {
   );
 
   const postsPanel = (
-    <Panel accent="#1b4f72" icon="home" title={`Publicações (${posts.length})`}>
+    <Panel accent="#1b4f72" icon="bolt" title={`Histórico de atuação (${posts.length})`}>
       {posts.length === 0 ? (
-        <p className="py-3 text-center text-sm" style={{ color: "var(--th-muted)" }}>Nenhuma publicação ainda.</p>
+        <p className="py-3 text-center text-sm" style={{ color: "var(--th-muted)" }}>Nenhum sinal registrado ainda.</p>
       ) : (
         <div className="space-y-2.5">
           {posts.map((p) => (
@@ -163,7 +163,7 @@ export function OrkutProfile({ userId }: { userId: string }) {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold" style={{ color: "var(--th-text)" }}>{p.title}</p>
                 <p className="text-xs clamp-2" style={{ color: "var(--th-muted)" }}>{p.description}</p>
-                <p className="mt-0.5 text-[11px] font-numeric" style={{ color: "var(--th-muted)" }}>{timeAgo(p.createdAt)} · {p.reactionsCount} apoios</p>
+                <p className="mt-0.5 text-[11px] font-numeric" style={{ color: "var(--th-muted)" }}>{timeAgo(p.createdAt)} · {p.commentsCount} atualizações</p>
               </div>
             </Link>
           ))}
@@ -172,27 +172,24 @@ export function OrkutProfile({ userId }: { userId: string }) {
     </Panel>
   );
 
-  const scrapsPanel = (
-    <Panel accent="#2e9e5b" icon="scrap" title={`Recados (${scraps.length})`}>
+  const updatesPanel = (
+    <Panel accent="#2e9e5b" icon="bolt" title={`Atualizações do perfil (${scraps.length})`}>
       <div className="mb-3 flex items-start gap-2.5">
-        <Avatar name={user?.name ?? ""} src={user?.avatarUrl} id={user?.id} size={34} />
+        <Avatar name={user?.name ?? ""} src={user?.avatarUrl} email={user?.email} id={user?.id} size={34} />
         <div className="flex-1">
-          <textarea value={scrapDraft} onChange={(e) => setScrapDraft(e.target.value)} placeholder={isOwn ? "Deixe um recado no seu mural..." : `Deixe um recado para ${profile.name.split(" ")[0]}...`} className="app-textarea" style={{ minHeight: "3rem" }} />
-          <div className="mt-2 flex justify-end"><Button size="sm" icon="send" onClick={sendScrap} disabled={!scrapDraft.trim()}>Enviar recado</Button></div>
+          <textarea value={scrapDraft} onChange={(e) => setScrapDraft(e.target.value)} placeholder={isOwn ? "Registre uma atualização da sua atuação..." : `Registre uma atualização para ${profile.name.split(" ")[0]}...`} className="app-textarea" style={{ minHeight: "3rem" }} />
+          <div className="mt-2 flex justify-end"><Button size="sm" icon="send" onClick={sendScrap} disabled={!scrapDraft.trim()}>Registrar atualização</Button></div>
         </div>
       </div>
       <div className="space-y-3">
-        {scraps.length === 0 && <p className="py-2 text-center text-sm" style={{ color: "var(--th-muted)" }}>Nenhum recado ainda.</p>}
+        {scraps.length === 0 && <p className="py-2 text-center text-sm" style={{ color: "var(--th-muted)" }}>Nenhuma atualização ainda.</p>}
         {scraps.map((s) => (
-          <div key={s.id} className="flex gap-2.5">
-            <Link href={`/perfil/${s.authorId}`}><Avatar name={s.authorName} src={s.authorAvatar} id={s.authorId} size={34} /></Link>
-            <div className="flex-1 rounded-2xl rounded-tl-sm px-3.5 py-2.5" style={{ background: "var(--th-card-alt)" }}>
-              <div className="flex items-baseline gap-2">
-                <Link href={`/perfil/${s.authorId}`} className="text-sm font-bold hover:underline" style={{ color: "var(--th-text)" }}>{s.authorName}</Link>
-                <span className="text-xs font-numeric" style={{ color: "var(--th-muted)" }}>{timeAgo(s.createdAt)}</span>
-              </div>
-              <p className="mt-0.5 text-sm" style={{ color: "var(--th-text)" }}>{s.content}</p>
+          <div key={s.id} className="border-l-2 pl-3" style={{ borderColor: "#2e9e5b" }}>
+            <div className="flex items-baseline gap-2">
+              <Link href={`/perfil/${s.authorId}`} className="text-sm font-bold hover:underline" style={{ color: "var(--th-text)" }}>{s.authorName}</Link>
+              <span className="text-xs font-numeric" style={{ color: "var(--th-muted)" }}>{timeAgo(s.createdAt)}</span>
             </div>
+            <p className="mt-0.5 text-sm" style={{ color: "var(--th-text)" }}>{s.content}</p>
           </div>
         ))}
       </div>
@@ -200,18 +197,18 @@ export function OrkutProfile({ userId }: { userId: string }) {
   );
 
   const testimonialsPanel = (
-    <Panel accent="#f4841a" icon="star" title={`Depoimentos (${testimonials.length})`}>
+    <Panel accent="#f4841a" icon="star" title={`Referências de atuação (${testimonials.length})`}>
       {!isOwn && showTestimonialBox && (
         <div className="mb-3 rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
-          <textarea value={testimonialDraft} onChange={(e) => setTestimonialDraft(e.target.value)} placeholder={`Escreva um depoimento sobre ${profile.name.split(" ")[0]}...`} className="app-textarea" style={{ minHeight: "3.5rem" }} />
+          <textarea value={testimonialDraft} onChange={(e) => setTestimonialDraft(e.target.value)} placeholder={`Escreva uma referência sobre a atuação de ${profile.name.split(" ")[0]}...`} className="app-textarea" style={{ minHeight: "3.5rem" }} />
           <div className="mt-2 flex justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowTestimonialBox(false)}>Cancelar</Button>
-            <Button size="sm" icon="star" onClick={sendTestimonial} disabled={!testimonialDraft.trim()}>Publicar</Button>
+            <Button size="sm" icon="star" onClick={sendTestimonial} disabled={!testimonialDraft.trim()}>Registrar</Button>
           </div>
         </div>
       )}
       <div className="space-y-3">
-        {testimonials.length === 0 && <p className="py-2 text-center text-sm" style={{ color: "var(--th-muted)" }}>Nenhum depoimento ainda.</p>}
+        {testimonials.length === 0 && <p className="py-2 text-center text-sm" style={{ color: "var(--th-muted)" }}>Nenhuma referência ainda.</p>}
         {testimonials.map((t) => (
           <div key={t.id} className="rounded-xl border-l-2 px-3 py-2" style={{ borderColor: "#f4841a", background: "var(--th-card-alt)" }}>
             <p className="text-sm italic" style={{ color: "var(--th-text)" }}>“{t.content}”</p>
@@ -232,8 +229,8 @@ export function OrkutProfile({ userId }: { userId: string }) {
         <Icon name="arrowLeft" size={18} /> Voltar
       </button>
       <div className="mx-auto grid max-w-2xl grid-cols-1 gap-4 lg:mx-0 lg:max-w-none lg:grid-cols-[300px_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-4">{infoCard}{communitiesPanel}{friendsPanel}</div>
-        <div className="min-w-0 space-y-4">{postsPanel}{scrapsPanel}{testimonialsPanel}</div>
+        <div className="min-w-0 space-y-4">{infoCard}{communitiesPanel}{partnersPanel}</div>
+        <div className="min-w-0 space-y-4">{postsPanel}{updatesPanel}{testimonialsPanel}</div>
       </div>
     </div>
   );

@@ -1,10 +1,14 @@
-"use client";
+import type { Metadata } from "next";
+import { MyProfileClient } from "@/components/app/MyProfileClient";
+import { metadataForPage } from "@/lib/seo/site";
 
-import { useAuth } from "@/lib/app/auth";
-import { OrkutProfile } from "@/components/app/OrkutProfile";
+export const metadata: Metadata = metadataForPage({
+  title: "Meu perfil — DM Conecta",
+  description: "Área privada para acompanhar seu perfil e sua atuação no DM Conecta.",
+  path: "/perfil",
+  indexable: false,
+});
 
 export default function MyProfilePage() {
-  const { user } = useAuth();
-  if (!user) return null;
-  return <OrkutProfile userId={user.id} />;
+  return <MyProfileClient />;
 }

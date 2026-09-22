@@ -5,33 +5,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/app/auth";
 import { DMLogo } from "@/components/app/DMLogo";
-import { Button } from "@/components/app/Button";
 import { Icon } from "@/components/app/Icon";
 import { AuthShowcase } from "@/components/app/AuthShowcase";
-import { DEMO_ADMIN_EMAIL, DEMO_CREDENTIALS } from "@/lib/app/admin-access";
 
 export default function LoginPage() {
-  const { login, loginDemo, status, demoAllowed } = useAuth();
+  const { login, status } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const [loading, setLoading] = useState<"login" | "demo" | "admin" | null>(null);
+  const [loading, setLoading] = useState<"login" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && demoAllowed) {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("as") === "admin") {
-        setLoading("admin");
-        loginDemo(DEMO_ADMIN_EMAIL, "demo123")
-          .then(() => router.replace("/admin"))
-          .catch(() => setLoading(null));
-        return;
-      }
-    }
     if (status === "authenticated") router.replace("/feed");
-  }, [demoAllowed, status, loginDemo, router]);
+  }, [status, router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -46,44 +34,12 @@ export default function LoginPage() {
     }
   }
 
-  async function handleDemo() {
-    setError(null);
-    setLoading("demo");
-    try {
-      await loginDemo();
-      router.replace("/feed");
-    } catch {
-      setLoading(null);
-    }
-  }
-
-  function fillDemo() {
-    setEmail(DEMO_CREDENTIALS.email);
-    setPassword(DEMO_CREDENTIALS.password);
-  }
-
-  async function handleAdminDemo() {
-    setError(null);
-    setLoading("admin");
-    try {
-      await loginDemo(DEMO_ADMIN_EMAIL, "demo123");
-      router.replace("/admin");
-    } catch {
-      setLoading(null);
-    }
-  }
-
-  function fillAdminDemo() {
-    setEmail(DEMO_ADMIN_EMAIL);
-    setPassword("demo123");
-  }
-
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row" style={{ background: "var(--th-bg)" }}>
       {/* Vitrine: banner no mobile + painel lateral no desktop */}
       <AuthShowcase photos={false} />
 
-      {/* Divisória vertical sutil, como no Facebook */}
+      {/* Divisória vertical sutil para separar a apresentação do formulário */}
       <div className="hidden w-px lg:block" style={{ background: "var(--th-border)" }} />
 
       {/* Form */}
@@ -125,28 +81,6 @@ export default function LoginPage() {
           <Link href="/register" className="auth-btn-outline" style={{ borderColor: "#f4841a", color: "#f4841a" }}>
             Criar nova conta
           </Link>
-
-          {demoAllowed && (
-            <div className="mt-6 rounded-xl border p-4" style={{ borderColor: "rgba(244,132,26,0.28)", background: "rgba(244,132,26,0.05)" }}>
-              <div className="flex items-center gap-2">
-                <Icon name="bolt" size={16} style={{ color: "#f4841a" }} />
-                <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>Modo demonstração</p>
-              </div>
-              <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
-                Explore sem backend. Morador: <b>{DEMO_CREDENTIALS.email}</b> | Painel: <b>{DEMO_ADMIN_EMAIL}</b> (senha: <b>demo123</b>)
-              </p>
-              <div className="mt-3 space-y-2">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button variant="secondary" size="sm" block onClick={handleDemo} loading={loading === "demo"} icon="bolt">Entrar como Morador</Button>
-                  <Button variant="outline" size="sm" block onClick={fillDemo} icon="edit">Preencher Morador</Button>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button variant="secondary" size="sm" block onClick={handleAdminDemo} loading={loading === "admin"} icon="shield">Entrar como Admin</Button>
-                  <Button variant="outline" size="sm" block onClick={fillAdminDemo} icon="edit">Preencher Admin</Button>
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="mt-8 flex justify-center opacity-70">
             <DMLogo size={22} tone="petroleo" />

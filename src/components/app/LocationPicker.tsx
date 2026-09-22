@@ -90,7 +90,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
           </button>
         )}
         <span className="basis-full text-[11px]" style={{ color: error ? "#e53935" : "var(--th-muted)" }}>
-          {error ?? (value ? `${value.latitude.toFixed(5)}, ${value.longitude.toFixed(5)}` : "A localização é aproximada e aparece junto da publicação.")}
+          {error ?? (value ? `${value.latitude.toFixed(5)}, ${value.longitude.toFixed(5)}` : "A localização é aproximada e aparece junto do sinal.")}
         </span>
       </div>
     </div>

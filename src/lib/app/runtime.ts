@@ -9,7 +9,6 @@ export interface RuntimeConfig {
   environment: RuntimeEnvironment;
   apiBase: string;
   hasApi: boolean;
-  demoAllowed: boolean;
   isProduction: boolean;
 }
 
@@ -29,13 +28,8 @@ export function resolveRuntime(input: RuntimeInput = {}): RuntimeConfig {
     apiBase,
     // In production an empty base means same-origin requests through Caddy.
     hasApi: isProduction || apiBase.length > 0,
-    demoAllowed: !isProduction,
     isProduction,
   };
-}
-
-export function shouldUseDemoFallback(config: RuntimeConfig, demoMode: boolean): boolean {
-  return config.demoAllowed && (!config.hasApi || demoMode);
 }
 
 export const runtime = resolveRuntime({

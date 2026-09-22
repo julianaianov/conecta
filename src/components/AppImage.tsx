@@ -5,18 +5,25 @@ type AppImageProps = Omit<ImageProps, "alt" | "src"> & {
   src?: string | null;
 };
 
-const FALLBACK_SRC = "/images/posts/buraco.svg";
-
-function resolveSrc(src?: string | null): string {
-  if (!src || !src.startsWith("/") && !src.startsWith("http")) {
-    return FALLBACK_SRC;
-  }
+function resolveSrc(src?: string | null): string | null {
+  if (!src || (!src.startsWith("/") && !src.startsWith("http"))) return null;
   return src;
 }
 
 /** Wrapper para next/image com defaults do dmconecta. */
 export function AppImage({ alt, className, fill, src, ...props }: AppImageProps) {
   const safeSrc = resolveSrc(src);
+
+  if (!safeSrc) {
+    return (
+      <div
+        role="img"
+        aria-label={alt}
+        className={`${fill ? "absolute inset-0 " : ""}${className ?? ""}`}
+        style={{ background: "var(--th-card-alt)" }}
+      />
+    );
+  }
 
   if (fill) {
     return (

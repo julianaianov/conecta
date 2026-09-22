@@ -25,12 +25,17 @@ function saveRead(userId: string, ids: Set<string>) {
   }
 }
 
-export function NotificationBell({ userId }: { userId: string }) {
+export function NotificationBell({ userId }: { userId: string | null }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[]>([]);
   const [read, setRead] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!userId) {
+      setItems([]);
+      setRead(new Set());
+      return;
+    }
     let alive = true;
     setRead(loadRead(userId));
     api.notifications(userId).then((list) => {
@@ -41,10 +46,9 @@ export function NotificationBell({ userId }: { userId: string }) {
     };
   }, [userId]);
 
-  const unread = items.filter((n) => !read.has(n.id)).length;
-
   const markRead = useCallback(
     (ids: string[]) => {
+      if (!userId) return;
       setRead((prev) => {
         const next = new Set(prev);
         ids.forEach((id) => next.add(id));
@@ -54,6 +58,21 @@ export function NotificationBell({ userId }: { userId: string }) {
     },
     [userId],
   );
+
+  if (!userId) {
+    return (
+      <Link
+        href="/login?next=%2Ffeed"
+        className="flex h-9 w-9 items-center justify-center rounded-lg border"
+        style={{ borderColor: "var(--th-border)", color: "var(--th-muted)", background: "var(--th-surface)" }}
+        aria-label="Entrar para ver notificações"
+      >
+        <Icon name="bell" size={17} />
+      </Link>
+    );
+  }
+
+  const unread = items.filter((n) => !read.has(n.id)).length;
 
   /** A navegação fica a cargo do <Link>; aqui só marcamos como lida e fechamos. */
   function openItem(n: AppNotification) {

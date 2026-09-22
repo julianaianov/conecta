@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { APP_URL } from "@/lib/constants";
-import { DEMO_PROFILES } from "@/lib/images";
+import type { RankEntry } from "@/lib/app/types";
 import { AppImage } from "./AppImage";
 import { CountUp } from "./CountUp";
 
@@ -22,14 +22,7 @@ const SHOWCASE = [
   },
 ];
 
-const STATS = [
-  { value: "+1.200", label: "Membros ativos" },
-  { value: "50+", label: "Projetos publicados" },
-  { value: "5", label: "Tipos de publicação" },
-  { value: "100%", label: "Gratuito" },
-];
-
-export function Hero() {
+export function Hero({ profiles, stats }: { profiles: RankEntry[]; stats: { value: string; label: string }[] }) {
   return (
     <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden pb-24 pt-24 lg:pt-28">
       {/* Background blobs */}
@@ -72,8 +65,8 @@ export function Hero() {
         <p
           className="hero-muted mx-auto mt-6 max-w-xl text-lg leading-relaxed sm:text-xl"
         >
-          Publique problemas, lance projetos e convoque ações. Conecte vizinhos,
-          ONGs, governo e empresas em uma só rede.
+          Registre problemas, lance projetos e convoque ações. Articule vizinhos,
+          ONGs, governo e empresas em um só fluxo de transformação.
         </p>
 
         {/* CTAs */}
@@ -93,14 +86,14 @@ export function Hero() {
           </Link>
         </div>
 
-        {/* Social proof */}
+        {/* Participação no território */}
         <div className="mt-8 flex items-center justify-center gap-3">
           <div className="flex -space-x-2.5">
-            {DEMO_PROFILES.slice(0, 4).map((p) => (
+            {profiles.filter((profile) => profile.avatarUrl).slice(0, 4).map((profile) => (
               <AppImage
-                key={p.id}
-                src={p.avatar}
-                alt={p.name}
+                key={profile.userId}
+                src={profile.avatarUrl}
+                alt={profile.name}
                 width={32}
                 height={32}
                 className="hero-avatar-border h-8 w-8 rounded-full border-2 object-cover"
@@ -108,8 +101,8 @@ export function Hero() {
             ))}
           </div>
           <p className="text-sm leading-tight">
-            <strong className="hero-text font-semibold">+1.200 membros</strong>{" "}
-            <span className="hero-muted">de todo o Brasil</span>
+            <strong className="hero-text font-semibold">{stats[0]?.value ?? "0"} perfis publicados</strong>{" "}
+            <span className="hero-muted">na plataforma pública</span>
           </p>
         </div>
       </div>
@@ -147,7 +140,7 @@ export function Hero() {
           className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl sm:grid-cols-4"
           style={{ background: "var(--th-border)" }}
         >
-          {STATS.map((stat) => (
+          {stats.map((stat) => (
             <div
               key={stat.label}
               className="flex flex-col items-center py-5"

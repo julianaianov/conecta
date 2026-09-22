@@ -54,7 +54,7 @@ test('GET /connections/targets returns profile list without current user', async
 
 test('POST /connections creates connection and returns mapped party object', async () => {
   const pool = {
-    async query(text, params) {
+    async query(text) {
       if (text.includes('INSERT INTO connections')) {
         return { rows: [{ id: 'cx-123' }] };
       }
@@ -142,6 +142,8 @@ test('GET /ranking returns partner, agent and volunteer tiers', async () => {
     assert.equal(data.partner[0].userId, 'p1');
     assert.equal(data.agent[0].userId, 'a1');
     assert.equal(data.volunteer[0].userId, 'm1');
+    assert.equal('points' in data.partner[0], false);
+    assert.equal('highlights' in data.agent[0], false);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

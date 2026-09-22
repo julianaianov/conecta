@@ -30,7 +30,7 @@ export function CTABanner() {
                 <h2 className="text-3xl font-extrabold sm:text-4xl lg:text-5xl" style={{ color: "var(--th-text)" }}>
                   Pronto para fazer
                   <br />
-                  <span className="gradient-text">parte da rede?</span>
+                  <span className="gradient-text">entrar na ação?</span>
                 </h2>
 
                 <p className="mt-5 text-lg" style={{ color: "var(--th-muted)" }}>

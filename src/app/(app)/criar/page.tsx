@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import type { Coordinates } from "@/lib/app/location";
 import {
-  DEFAULT_CITY, DEFAULT_NEIGHBORHOOD, POST_TYPE_COLORS, POST_TYPE_LABELS,
+  POST_TYPE_COLORS, POST_TYPE_LABELS,
   allowedPostTypes, normalizeRole, ROLE_LABELS, ROLE_RESTRICTIONS, type PostType,
 } from "@/lib/app/types";
 import { Icon, type IconName } from "@/components/app/Icon";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 import { Button } from "@/components/app/Button";
 import { Card } from "@/components/app/ui";
 
@@ -28,7 +29,7 @@ const TYPES: { type: PostType; icon: IconName }[] = [
   { type: "message", icon: "message" },
 ];
 
-export default function CreatePostPage() {
+function CreatePostContent() {
   const router = useRouter();
   const search = useSearchParams();
   const { user } = useAuth();
@@ -40,8 +41,8 @@ export default function CreatePostPage() {
   const type = picked && postTypes.includes(picked) ? picked : postTypes[0];
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [neighborhood, setNeighborhood] = useState(DEFAULT_NEIGHBORHOOD);
-  const [city, setCity] = useState(DEFAULT_CITY);
+  const [neighborhood, setNeighborhood] = useState("");
+  const [city, setCity] = useState("");
   const [tags, setTags] = useState("");
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export default function CreatePostPage() {
     e.preventDefault();
     if (!user || !type) return;
     if (!coordinates) {
-      setLocationError("Escolha no mapa onde esta publicação acontece.");
+      setLocationError("Escolha no mapa onde esta demanda acontece.");
       return;
     }
     setSubmitting(true);
@@ -60,7 +61,8 @@ export default function CreatePostPage() {
       const post = await api.createPost(
         {
           type, title: title.trim(), description: description.trim(),
-          neighborhood, city,
+          neighborhood: neighborhood.trim() || undefined,
+          city: city.trim() || undefined,
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
           tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
@@ -79,15 +81,27 @@ export default function CreatePostPage() {
           <Icon name="arrowLeft" size={18} /> Voltar
         </button>
         <Card>
-          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Publicação indisponível</h1>
+          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Registro indisponível</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>
             {ROLE_RESTRICTIONS[role] ??
               `Perfis do tipo "${ROLE_LABELS[role]}" não publicam demandas, projetos ou eventos.`}
           </p>
           <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>
-            Você continua podendo acompanhar demandas e projetos, compartilhar e solicitar conexões.
+          Você continua podendo acompanhar demandas e projetos, divulgar e solicitar conexões.
           </p>
-          <Button className="mt-4" onClick={() => router.push("/feed")}>Voltar ao feed</Button>
+          <Button className="mt-4" onClick={() => router.push("/feed")}>Voltar ao pulso</Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <Card>
+          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Registrar um sinal</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>A publicação é uma ação autenticada para manter a autoria e a segurança dos registros.</p>
+          <div className="mt-4"><AuthPrompt action="registrar um sinal" returnTo="/criar" /></div>
         </Card>
       </div>
     );
@@ -100,7 +114,7 @@ export default function CreatePostPage() {
       </button>
 
       <Card>
-        <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Nova publicação</h1>
+        <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Novo sinal</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>
           {normalizeRole(user?.role, user?.profileType) === "government"
             ? "Publique uma resposta institucional ou informe programas, serviços e oportunidades."
@@ -146,9 +160,9 @@ export default function CreatePostPage() {
           </div>
 
           <div>
-            <span className="mb-1.5 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>Localização da publicação</span>
+            <span className="mb-1.5 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>Localização do sinal</span>
             <p className="mb-2 text-xs" style={{ color: "var(--th-muted)" }}>
-              Marque no mapa o ponto aproximado da demanda. A localização é necessária para que a publicação apareça no mapa.
+              Marque no mapa o ponto aproximado da demanda. A localização é necessária para que o sinal apareça no mapa.
             </p>
             <LocationPicker
               value={coordinates}
@@ -165,9 +179,17 @@ export default function CreatePostPage() {
             <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="infraestrutura, urgente, vias" className="app-input" />
           </label>
 
-          <Button type="submit" block size="lg" loading={submitting} icon="send" disabled={!title.trim() || !description.trim() || !coordinates}>Publicar</Button>
+          <Button type="submit" block size="lg" loading={submitting} icon="send" disabled={!title.trim() || !description.trim() || !coordinates}>Registrar sinal</Button>
         </form>
       </Card>
     </div>
+  );
+}
+
+export default function CreatePostPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-24"><span className="app-spinner" /></div>}>
+      <CreatePostContent />
+    </Suspense>
   );
 }

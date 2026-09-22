@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
-import { PIN_COLORS, type PinCategory } from "@/lib/banner-data";
+import { POST_TYPE_COLORS, type PostType } from "@/lib/app/types";
 
 type MapPinMarkerProps = {
-  category: PinCategory;
+  category: PostType;
   icon: string;
   active?: boolean;
   onClick?: () => void;
@@ -20,7 +20,7 @@ export function MapPinMarker({
   style,
   label,
 }: MapPinMarkerProps) {
-  const color = PIN_COLORS[category];
+  const color = POST_TYPE_COLORS[category];
   const Tag = onClick ? "button" : "span";
 
   return (
@@ -62,13 +62,13 @@ export function MapPinMarker({
 }
 
 type ActivityIconProps = {
-  category: PinCategory;
+  category: PostType;
   icon: string;
   size?: "sm" | "md";
 };
 
 export function ActivityPinIcon({ category, icon, size = "md" }: ActivityIconProps) {
-  const color = PIN_COLORS[category];
+  const color = POST_TYPE_COLORS[category];
   const dim = size === "sm" ? "h-9 w-9 text-xs" : "h-11 w-11 text-sm";
 
   return (

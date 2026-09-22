@@ -7,10 +7,10 @@ description: Contrato de ambientes, configuração e verificação da aplicaçã
 
 ## Ambientes
 
-| Ambiente | Plataforma | URL | Demo |
+| Ambiente | Plataforma | URL | Dados sintéticos |
 | --- | --- | --- | --- |
-| Local | Docker Compose | `localhost` | permitida |
-| Homologação | AWS | `https://homologacao.dmconecta.org` | permitida |
+| Local | Docker Compose | `localhost` | proibidos |
+| Homologação | AWS | `https://homologacao.dmconecta.org` | proibidos |
 | Produção | AWS + Cloudflare | `https://dmconecta.org` | proibida |
 
 ## Configuração
@@ -19,8 +19,8 @@ description: Contrato de ambientes, configuração e verificação da aplicaçã
 - Homologação: `NEXT_PUBLIC_RUNTIME_ENV=homologation`.
 - Produção: `NEXT_PUBLIC_RUNTIME_ENV=production` e
   `NEXT_PUBLIC_API_URL=` para chamadas same-origin.
-- O catálogo em `src/lib/app/demo.ts` não pode ser usado como resposta de
-  erro em produção.
+- Nenhum ambiente usa catálogo, seed ou fallback sintético. Em caso de
+  indisponibilidade, a interface mostra erro ou estado vazio honesto.
 
 ## Verificação
 

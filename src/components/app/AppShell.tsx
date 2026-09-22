@@ -13,13 +13,13 @@ import { SearchButton } from "./SearchButton";
 import { ThemeToggle } from "../ThemeToggle";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
-  { href: "/feed", label: "Início", icon: "home" },
-  { href: "/mapa", label: "Mapa", icon: "map" },
-  { href: "/conexoes", label: "Conexões", icon: "groups" },
-  { href: "/perfil", label: "Perfil", icon: "person" },
+  { href: "/feed", label: "O pulso", icon: "bolt" },
+  { href: "/mapa", label: "Território", icon: "map" },
+  { href: "/conexoes", label: "Conexões", icon: "link" },
+  { href: "/perfil", label: "Meu sinal", icon: "person" },
   // A barra inferior do mobile usa NAV[0..3] por índice; itens a partir daqui
   // aparecem só no menu do topo (desktop) e no dropdown da conta (mobile).
-  { href: "/ranking", label: "Ranking", icon: "trophy" },
+  { href: "/ranking", label: "Impacto", icon: "trophy" },
 ];
 
 /** Só para contas da operação (ver lib/app/admin-access.ts). */
@@ -28,7 +28,7 @@ const ADMIN_NAV: { href: string; label: string; icon: IconName } = { href: "/adm
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, demoMode, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = isPlatformAdmin(user);
 
@@ -72,29 +72,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            {demoMode && (
-              <span
-                className="hidden rounded-full px-2.5 py-1 text-[11px] font-bold xl:inline-block"
-                style={{ background: "rgba(244,132,26,0.14)", color: "#f4841a" }}
-              >
-                MODO DEMO
-              </span>
+            {!user && (
+              <Link href="/login?next=%2Fcriar" className="hidden rounded-lg px-3 py-2 text-sm font-semibold lg:inline-flex" style={{ color: "#f4841a" }}>
+                Entrar
+              </Link>
             )}
             <Link
               href="/criar"
               className="hidden h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white lg:inline-flex"
               style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}
             >
-              <Icon name="plus" size={18} /> Publicar
+              <Icon name="plus" size={18} /> Registrar sinal
             </Link>
             <SearchButton />
             <ThemeToggle />
-            <NotificationBell userId={user?.id ?? "guest"} />
+            <NotificationBell userId={user?.id ?? null} />
 
             {/* avatar + menu */}
-            <div className="relative">
+            {user ? <div className="relative">
               <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Conta">
-                <Avatar name={user?.name ?? "Visitante"} src={user?.avatarUrl} id={user?.id} size={36} />
+                <Avatar name={user.name} src={user.avatarUrl} email={user.email} id={user.id} size={36} />
               </button>
               {menuOpen && (
                 <>
@@ -108,14 +105,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>{user?.email}</p>
                     </div>
                     <MenuItem icon="person" label="Meu perfil" onClick={() => { setMenuOpen(false); router.push("/perfil"); }} />
-                    <MenuItem icon="trophy" label="Ranking" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
-                    <MenuItem icon="heart" label="Meus apoios" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
+                    <MenuItem icon="trophy" label="Impacto" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
+                    <MenuItem icon="volunteer" label="Ações apoiadas" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
                     {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => { setMenuOpen(false); router.push("/admin"); }} />}
                     <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />
                   </div>
                 </>
               )}
-            </div>
+            </div> : <Link href="/login?next=%2Fperfil" aria-label="Entrar ou criar conta"><Avatar name="Visitante" size={36} /></Link>}
           </div>
         </div>
       </header>
@@ -131,14 +128,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="relative mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
           <BottomItem item={NAV[0]} active={isActive(NAV[0].href)} />
           <BottomItem item={NAV[1]} active={isActive(NAV[1].href)} />
-          {/* FAB de publicar — visível para todos os perfis; /criar é quem
-              explica a restrição a quem não pode publicar */}
+            {/* FAB de registro — visível para todos os perfis; /criar explica a
+              restrição a quem não pode registrar sinais */}
           <div className="flex justify-center">
             <Link
               href="/criar"
               className="-mt-8 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
               style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)", boxShadow: "0 8px 20px rgba(244,132,26,0.4)" }}
-              aria-label="Publicar"
+              aria-label="Registrar sinal"
             >
               <Icon name="plus" size={26} />
             </Link>

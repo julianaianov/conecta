@@ -1,6 +1,5 @@
 import { STAKEHOLDERS } from "@/lib/banner-data";
 import { AppImage } from "./AppImage";
-import { CountUp } from "./CountUp";
 import { Reveal } from "./Reveal";
 
 export function Stakeholders() {
@@ -10,7 +9,7 @@ export function Stakeholders() {
         <Reveal>
           <div className="mx-auto mb-12 max-w-xl text-center">
             <span className="text-sm font-semibold uppercase tracking-widest text-orange">
-              Quem está na rede
+              Quem move o território
             </span>
             <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl" style={{ color: "var(--th-text)" }}>
               Uma plataforma
@@ -56,7 +55,7 @@ export function Stakeholders() {
                     type="button"
                     className="mt-3 rounded-full border border-orange/30 px-3 py-1 text-[10px] font-semibold text-orange transition-all hover:bg-orange/10 hover:border-orange/60"
                   >
-                    Conectar
+                    Atuar junto
                   </button>
                 </div>
               </div>
@@ -64,28 +63,7 @@ export function Stakeholders() {
           ))}
         </div>
 
-        {/* Stats bar */}
-        <Reveal delay={400}>
-          <div
-            style={{ background: "var(--th-card-alt)", borderColor: "var(--th-border)" }}
-            className="mt-10 grid grid-cols-2 gap-4 rounded-2xl border p-6 sm:grid-cols-4"
-          >
-            <StatItem value="+1.200" label="Membros ativos" />
-            <StatItem value="165" label="Bairros suportados" />
-            <StatItem value="50+" label="Projetos publicados" />
-            <StatItem value="6" label="Tipos de perfil" />
-          </div>
-        </Reveal>
       </div>
     </section>
-  );
-}
-
-function StatItem({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="text-center">
-      <CountUp value={value} className="block text-2xl font-extrabold text-orange" />
-      <div className="mt-0.5 text-sm" style={{ color: "var(--th-muted)" }}>{label}</div>
-    </div>
   );
 }

@@ -1,11 +1,15 @@
 # DM Conecta público e indexável — Especificação de design
 
+> **Superseded on 2026-09-21:** the platform now has a strict real-data
+> contract in every environment. References to demo catalogs or demo fallback
+> below are historical and must not be restored.
+
 **Data:** 20 de setembro de 2026  
 **Objetivo:** permitir que visitantes e crawlers naveguem pelo conteúdo público do DM Conecta sem login, mantendo autenticação apenas nas mutações e nos fluxos privados.
 
 ## Entendimento validado
 
-O DM Conecta é uma rede de impacto local. O conteúdo que uma pessoa publica para a comunidade — publicações, comentários já publicados, autores e páginas institucionais — precisa ser descoberto por links HTML e entregue no HTML inicial, para que Google e crawlers de IA consigam entendê-lo sem depender da sessão do navegador.
+O DM Conecta é uma plataforma de impacto local. O conteúdo que uma pessoa registra para a comunidade — sinais, atualizações, responsáveis e páginas institucionais — precisa ser descoberto por links HTML e entregue no HTML inicial, para que Google e crawlers de IA consigam entendê-lo sem depender da sessão do navegador.
 
 O pedido de produto é:
 
@@ -61,7 +65,7 @@ O grupo `(app)` continuará fornecendo `AuthProvider`, mas deixará de bloquear 
 | `/admin` | login + permissão administrativa | não |
 | `/login`, `/register`, `/recuperar-senha` | navega | `noindex,follow` |
 
-As páginas de conteúdo não redirecionarão visitantes. Botões mutáveis (`publicar`, `comentar`, `reagir`, `apoiar`, `solicitar conexão`, `escrever recado/depoimento`) usarão uma CTA de login preservando a URL de retorno. O backend continuará sendo a autoridade de autorização para toda mutação.
+As páginas de conteúdo não redirecionarão visitantes. Botões mutáveis (`registrar`, `atualizar`, `apoiar`, `solicitar conexão`, `registrar atualização/referência`) usarão uma CTA de login preservando a URL de retorno. O backend continuará sendo a autoridade de autorização para toda mutação.
 
 ### 2. Dados públicos no servidor
 
@@ -83,7 +87,7 @@ O adaptador usará, nesta ordem:
 3. catálogo demo somente quando `runtime.demoAllowed` for verdadeiro;
 4. em produção sem endpoint interno disponível, retornará erro controlado/estado vazio e nunca dados demo.
 
-As respostas serão cacheadas por curto período (`revalidate` de aproximadamente 60 segundos) nas páginas públicas. Falha de rede não deve transformar uma página pública em redirect para login; post inexistente usa `notFound()` e falha transitória mostra estado de indisponibilidade sem expor dados falsos.
+As respostas serão cacheadas por curto período (`revalidate` de aproximadamente 60 segundos) nas páginas públicas. Falha de conexão não deve transformar uma página pública em redirect para login; registro inexistente usa `notFound()` e falha transitória mostra estado de indisponibilidade sem expor dados falsos.
 
 O post-service aceitará `author_id` como filtro público. O cliente existente passará esse filtro em `postsByAuthor`, eliminando a dependência de `limit=50` e permitindo que perfis tenham links completos para suas publicações.
 
@@ -146,5 +150,5 @@ O Compose de produção passará `DM_INTERNAL_POST_API_URL=http://post-service:3
 ## Fora do escopo desta entrega
 
 - Garantir posição, frequência de rastreamento ou presença efetiva em resultados externos.
-- Criar um endpoint persistente de ranking, comunidades, recados, depoimentos ou conexões; a superfície pública deverá degradar de forma honesta até esses dados terem backend.
+- Criar um endpoint persistente de indicadores, comunidades, atualizações de perfil, referências ou conexões; a superfície pública deverá degradar de forma honesta até esses dados terem backend.
 - Alterar regras de privacidade de conteúdo publicado ou adicionar mecanismo editorial de moderação além do comportamento existente.

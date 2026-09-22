@@ -119,7 +119,7 @@ app usam as mesmas** — não criar paletas paralelas.
   dourado `#F5C542`).
 - Laranjas "drift" (`#F7941D`, `#F8833A`, `#F66B0E`) — o laranja é **só** `#F4841A`/`#F89B45`.
 - Azuis não-oficiais (`#205375`, `#5483A9`, `#112B3C`).
-- Redes sociais ou telas que redesenhem o monograma com texto, badge, átomo ou estrela.
+- Canais de divulgação ou telas que redesenhem o monograma com texto, badge, átomo ou estrela.
 - O nome em minúsculo ("dmconecta") como wordmark.
 - Hex fixo para superfícies de tema — use as variáveis `--th-*`.
 

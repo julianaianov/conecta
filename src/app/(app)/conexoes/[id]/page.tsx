@@ -17,6 +17,7 @@ import { Button } from "@/components/app/Button";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Card, EmptyState } from "@/components/app/ui";
 import { ConnectionStatusBadge, ConnectionTypePill, partyLabel } from "@/components/app/ConnectionCard";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 export default function ConnectionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,10 +30,14 @@ export default function ConnectionDetailPage() {
   const [showOutcome, setShowOutcome] = useState(false);
 
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     let alive = true;
     api.getConnection(id).then((conn) => { if (alive) { setC(conn); setLoading(false); } });
     return () => { alive = false; };
-  }, [id]);
+  }, [id, user]);
 
   async function update(status: ConnectionStatus, texto?: string) {
     setBusy(true);
@@ -42,6 +47,18 @@ export default function ConnectionDetailPage() {
       setShowOutcome(false);
       setOutcome("");
     } finally { setBusy(false); }
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg py-10">
+        <Card>
+          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Detalhes da conexão</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>Este fluxo é privado e só pode ser consultado pelos participantes autenticados.</p>
+          <div className="mt-4"><AuthPrompt action="consultar esta conexão" returnTo={`/conexoes/${encodeURIComponent(id)}`} /></div>
+        </Card>
+      </div>
+    );
   }
 
   if (loading) return <div className="flex justify-center py-24"><span className="app-spinner" style={{ width: 30, height: 30 }} /></div>;

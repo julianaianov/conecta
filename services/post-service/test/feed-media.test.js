@@ -61,6 +61,8 @@ test('POST / persists post videos with the image and tag payload', async () => {
         type: 'project',
         title: 'Mutirão de limpeza da praia',
         description: 'Todo sábado de manhã.',
+        latitude: -23.0245,
+        longitude: -43.458,
         images: ['/images/uploads/mutirao-praia.jpg'],
         videos: ['/videos/mutirao-praia.webm'],
         tags: ['meio-ambiente'],

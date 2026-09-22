@@ -62,7 +62,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
                   onClick={() => router.push(`/post/${p.id}`)}
                   style={{ marginTop: 8, width: "100%", padding: "6px 0", borderRadius: 8, border: "none", background: "#f4841a", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}
                 >
-                  Ver publicação
+                  Ver sinal
                 </button>
               </div>
             </Popup>

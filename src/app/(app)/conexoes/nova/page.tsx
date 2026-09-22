@@ -6,7 +6,7 @@
  * app não precisar aprender duas gramáticas diferentes.
  *
  * Aceita `?para=<userId>` (vindo do perfil) e `?post=<postId>` (vindo de uma
- * publicação) para pular etapas já resolvidas.
+ * sinal) para pular etapas já resolvidas.
  */
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -20,6 +20,7 @@ import { Button } from "@/components/app/Button";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Card } from "@/components/app/ui";
 import { partyLabel } from "@/components/app/ConnectionCard";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 export default function NewConnectionPage() {
   return (
@@ -67,6 +68,19 @@ function NewConnectionFlow() {
     return targets.filter((t) => t.name.toLowerCase().includes(q) || partyLabel(t).toLowerCase().includes(q));
   }, [targets, query]);
 
+  if (!user) {
+    const query = search.toString();
+    return (
+      <div className="mx-auto max-w-lg py-10">
+        <Card>
+          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Solicitar conexão</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>Conexões são ações autenticadas para proteger as pessoas e o contexto do pedido.</p>
+          <div className="mt-4"><AuthPrompt action="solicitar uma conexão" returnTo={`/conexoes/nova${query ? `?${query}` : ""}`} /></div>
+        </Card>
+      </div>
+    );
+  }
+
   const progress = (step + 1) / 3;
 
   async function send() {
@@ -97,7 +111,7 @@ function NewConnectionFlow() {
         <Card>
           <h1 className="text-lg font-bold" style={{ color: "var(--th-text)" }}>Com quem você quer se conectar?</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>
-            Empresas, ONGs, coletivos, órgãos públicos e moradores da rede.
+            Empresas, ONGs, coletivos, órgãos públicos e participantes do território.
           </p>
 
           <div className="relative mt-4">
@@ -189,7 +203,7 @@ function NewConnectionFlow() {
           {posts.length > 0 && (
             <div className="mt-2">
               <span className="mb-1.5 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>
-                Vincular a uma publicação <span className="font-normal" style={{ color: "var(--th-muted)" }}>(opcional)</span>
+                Vincular a um sinal <span className="font-normal" style={{ color: "var(--th-muted)" }}>(opcional)</span>
               </span>
               <div className="space-y-1.5">
                 {posts.slice(0, 5).map((p) => (

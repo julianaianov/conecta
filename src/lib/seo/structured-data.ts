@@ -20,6 +20,11 @@ function compact(input: JsonLd): JsonLd {
 export function postJsonLd(post: Post, url: string): JsonLd {
   const images = (post.images ?? []).filter(Boolean).map(mediaUrl);
   const locationName = [post.neighborhood, post.city].filter(Boolean).join(", ");
+  const author = compact({
+    "@type": "Person",
+    name: post.authorName,
+    ...(post.authorId ? { url: absoluteUrl(`/perfil/${post.authorId}`) } : {}),
+  });
 
   return compact({
     "@context": "https://schema.org",
@@ -29,11 +34,7 @@ export function postJsonLd(post: Post, url: string): JsonLd {
     headline: post.title,
     description: post.description,
     datePublished: post.createdAt,
-    author: {
-      "@type": "Person",
-      name: post.authorName,
-      url: absoluteUrl(`/perfil/${post.authorId}`),
-    },
+    author,
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     ...(images.length ? { image: images } : {}),
     ...(post.tags.length ? { keywords: post.tags.join(", ") } : {}),

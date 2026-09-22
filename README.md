@@ -7,9 +7,9 @@ serviços Node.js.
 
 | Ambiente | URL | Regra |
 | --- | --- | --- |
-| Local | `http://localhost:3000` | dados de demonstração permitidos |
-| Homologação | `https://homologacao.dmconecta.org` (AWS) | dados de demonstração permitidos |
-| Produção | `https://dmconecta.org` | API real; fallback demo proibido |
+| Local | `http://localhost:3000` | somente dados persistidos reais |
+| Homologação | `https://homologacao.dmconecta.org` (AWS) | somente dados persistidos reais |
+| Produção | `https://dmconecta.org` | somente dados persistidos reais |
 
 Homologação e produção rodam na AWS: `develop` alimenta a homologação e `stable` a
 produção. Mapa completo em `DmConnecta/dm-docs` →
@@ -27,8 +27,8 @@ npm run dev
 
 O frontend abre em `http://localhost:3000`. Para usar os serviços locais,
 defina `NEXT_PUBLIC_API_URL=http://localhost:8080` e suba o Compose local da
-aplicação. Sem uma API local, `local` e `homologation` podem usar o catálogo de
-demonstração. A conta de demonstração é somente para esses ambientes.
+aplicação. Sem uma API local, a interface permanece sem dados reais e não cria
+uma sessão ou catálogo substituto.
 
 ## Variáveis
 
@@ -80,7 +80,8 @@ O pedido direto de uma conta a outra — comunidade ↔ empresa, projeto ↔
 patrocinador, governo ↔ demanda, ONG ↔ voluntário. Seis tipos de pedido
 (apoio, patrocínio, parceria, reunião, recursos, divulgação), ciclo
 `pendente → aceita → concluída` e linha do tempo com o histórico de cada passo.
-No modo demo as conexões ficam no localStorage para sobreviver ao recarregar.
+As conexões são lidas e persistidas pelo `user-service`; não há armazenamento
+local substituto.
 
 ## Painel administrativo (`/admin`)
 
@@ -90,15 +91,14 @@ série temporal, destaques e saúde da operação. As métricas são derivadas d
 base em `src/lib/app/admin.ts`.
 
 O acesso é uma lista de contas, não uma quinta categoria de perfil. Configure
-`NEXT_PUBLIC_ADMIN_EMAILS` no ambiente quando o backend estiver pronto; sem a
-variável, o modo demo usa `admin@dmconecta.com.br` / `demo123`.
+`NEXT_PUBLIC_ADMIN_EMAILS` no ambiente. Sem a variável, nenhuma conta recebe
+acesso de interface ao painel.
 
 ## Organização do código
 
 - `src/lib/app/runtime.ts`: contrato de ambiente.
-- `src/lib/app/api.ts`: cliente da API e regras de fallback.
+- `src/lib/app/api.ts`: cliente HTTP sem fallback local.
 - `src/lib/app/auth.tsx`: sessão e autenticação.
-- `src/lib/app/demo.ts`: dados exclusivos de demonstração.
 - `src/components/app/`: componentes do portal autenticado.
 - `services/`: `auth-service`, `user-service` e `post-service`.
 - `.github/workflows/ci.yml`: validação automatizada da aplicação.

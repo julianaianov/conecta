@@ -52,11 +52,77 @@ module.exports = (pool, auth) => {
     }
   });
 
+  // GET /ranking — métricas agregadas exclusivamente a partir de registros persistidos
+  router.get('/ranking', async (_req, res) => {
+    try {
+      const [posts, supports, reactions, comments] = await Promise.all([
+        pool.query(`
+          SELECT author_id AS user_id,
+                 COUNT(*)::int AS posts,
+                 COUNT(*) FILTER (WHERE status = 'resolved')::int AS resolved_posts,
+                 COALESCE(SUM(reactions_count), 0)::int AS reactions_received,
+                 COALESCE(SUM(comments_count), 0)::int AS comments_received
+            FROM posts
+           GROUP BY author_id
+        `),
+        pool.query(`
+          SELECT user_id,
+                 COUNT(*)::int AS supports,
+                 COUNT(DISTINCT post_id)::int AS supported_posts,
+                 COALESCE(SUM(CASE WHEN type = 'financial' THEN amount ELSE 0 END), 0)::numeric AS financial_amount
+            FROM supports
+           GROUP BY user_id
+        `),
+        pool.query('SELECT user_id, COUNT(*)::int AS reactions FROM reactions GROUP BY user_id'),
+        pool.query('SELECT author_id AS user_id, COUNT(*)::int AS comments FROM comments GROUP BY author_id'),
+      ]);
+
+      const metrics = new Map();
+      const get = (userId) => {
+        if (!metrics.has(userId)) {
+          metrics.set(userId, {
+            userId,
+            posts: 0,
+            resolvedPosts: 0,
+            reactionsReceived: 0,
+            commentsReceived: 0,
+            supportsReceived: 0,
+            supports: 0,
+            supportedPosts: 0,
+            reactions: 0,
+            comments: 0,
+            financialAmount: 0,
+          });
+        }
+        return metrics.get(userId);
+      };
+      for (const row of posts.rows) {
+        const item = get(row.user_id);
+        item.posts = Number(row.posts) || 0;
+        item.resolvedPosts = Number(row.resolved_posts) || 0;
+        item.reactionsReceived = Number(row.reactions_received) || 0;
+        item.commentsReceived = Number(row.comments_received) || 0;
+      }
+      for (const row of supports.rows) {
+        const item = get(row.user_id);
+        item.supports = Number(row.supports) || 0;
+        item.supportedPosts = Number(row.supported_posts) || 0;
+        item.financialAmount = Number(row.financial_amount) || 0;
+      }
+      for (const row of reactions.rows) get(row.user_id).reactions = Number(row.reactions) || 0;
+      for (const row of comments.rows) get(row.user_id).comments = Number(row.comments) || 0;
+
+      res.json([...metrics.values()]);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
   const SUPPORT_TYPES = [
     'financial', 'materials', 'labor', 'volunteering',
     'equipment', 'space', 'food', 'transport', 'knowledge', 'sharing',
   ];
-  const PAYMENT_METHODS = ['pix', 'debit', 'credit'];
 
   // GET /my/supports — painel do apoiador (deve vir antes de /:id)
   router.get('/my/supports', auth, async (req, res) => {
@@ -71,6 +137,25 @@ module.exports = (pool, auth) => {
         [req.user.userId]
       );
       res.json(rows);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // GET /admin-snapshot — dados persistidos usados pelo painel administrativo
+  router.get('/admin-snapshot', auth, async (_req, res) => {
+    try {
+      const [posts, supports, comments] = await Promise.all([
+        pool.query('SELECT * FROM posts ORDER BY created_at DESC'),
+        pool.query('SELECT * FROM supports ORDER BY created_at DESC'),
+        pool.query('SELECT * FROM comments ORDER BY created_at ASC'),
+      ]);
+      res.json({
+        posts: posts.rows,
+        supports: supports.rows,
+        comments: comments.rows,
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });
@@ -97,10 +182,9 @@ module.exports = (pool, auth) => {
       return res.status(400).json({ error: 'type, title e description são obrigatórios' });
     if (!canPublish(req.user, type))
       return res.status(403).json({ error: `Seu perfil não publica "${type}"` });
-    const hasLocation = latitude != null || longitude != null;
     const coordinates = normalizeCoordinates(latitude, longitude);
-    if (hasLocation && !coordinates)
-      return res.status(400).json({ error: 'latitude e longitude devem formar uma localização válida' });
+    if (!coordinates)
+      return res.status(400).json({ error: 'latitude e longitude são obrigatórias e devem formar uma localização válida' });
     try {
       const { rows } = await pool.query(
         `INSERT INTO posts
@@ -219,7 +303,7 @@ module.exports = (pool, auth) => {
         [req.params.id]
       );
       const { rows: list } = await pool.query(
-        'SELECT * FROM supports WHERE post_id=$1 ORDER BY created_at DESC',
+        'SELECT id, type, created_at FROM supports WHERE post_id=$1 ORDER BY created_at DESC',
         [req.params.id]
       );
       res.json({ summary: rows, supports: list });
@@ -245,22 +329,21 @@ module.exports = (pool, auth) => {
 
   // POST /:id/supports — criar ou atualizar apoio com detalhes
   router.post('/:id/supports', auth, async (req, res) => {
-    const { type, message, amount, payment_method, details, status } = req.body;
+    const { type, message, amount, payment_method, details } = req.body;
     if (!type || !SUPPORT_TYPES.includes(type))
       return res.status(400).json({ error: 'Tipo de apoio inválido' });
     if (!canSupport(req.user, type))
       return res.status(403).json({ error: 'Seu perfil apoia com divulgação' });
     if (type === 'financial') {
-      if (!amount || amount <= 0)
-        return res.status(400).json({ error: 'Valor financeiro obrigatório' });
-      if (!payment_method || !PAYMENT_METHODS.includes(payment_method))
-        return res.status(400).json({ error: 'Forma de pagamento inválida' });
+      return res.status(503).json({
+        error: 'Apoio financeiro indisponível: nenhum provedor de pagamento está configurado.',
+      });
     }
 
     const { id } = req.params;
     const userId = req.user.userId;
     const userName = req.user.name || req.user.email;
-    const supportStatus = status || 'confirmed';
+    const supportStatus = 'confirmed';
     const detailsJson = JSON.stringify(details || {});
 
     try {

@@ -30,6 +30,15 @@ jobs:
       - name: Testar contrato de ambiente
         run: npm run test
 
+      - name: Instalar dependências dos serviços
+        run: |
+          for service in auth-service user-service post-service; do
+            npm --prefix "services/$service" install --no-audit --no-fund
+          done
+
+      - name: Testar serviços
+        run: npm run test:services
+
       - name: Verificar estilo
         run: npm run lint -- --max-warnings=0
 
