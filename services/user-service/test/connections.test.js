@@ -55,6 +55,9 @@ test('GET /connections/targets returns profile list without current user', async
 test('POST /connections creates connection and returns mapped party object', async () => {
   const pool = {
     async query(text) {
+      if (text.includes('INSERT INTO profiles')) {
+        return { rows: [], rowCount: 0 };
+      }
       if (text.includes('INSERT INTO connections')) {
         return { rows: [{ id: 'cx-123' }] };
       }

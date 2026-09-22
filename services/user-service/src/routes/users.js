@@ -1,4 +1,5 @@
 const express = require('express');
+const { ensureProfile } = require('../profile-provision');
 
 module.exports = (pool, auth) => {
   const router = express.Router();
@@ -9,6 +10,20 @@ module.exports = (pool, auth) => {
       const { rows } = await pool.query('SELECT * FROM profiles WHERE user_id=$1', [req.user.userId]);
       if (!rows.length) return res.status(404).json({ error: 'Perfil não encontrado' });
       res.json(rows[0]);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // POST /me/provision — garante o perfil da conta autenticada (idempotente).
+  // Chamado pelo frontend após cadastro, login e restauração de sessão.
+  router.post('/me/provision', auth, async (req, res) => {
+    try {
+      const created = await ensureProfile(pool, req.user);
+      const { rows } = await pool.query('SELECT * FROM profiles WHERE user_id=$1', [req.user.userId]);
+      if (!rows.length) return res.status(422).json({ error: 'Não foi possível criar o perfil: token sem nome' });
+      res.status(created ? 201 : 200).json(rows[0]);
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });

@@ -20,9 +20,6 @@ export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
-  const [birthdate, setBirthdate] = useState("");
-  const [gender, setGender] = useState("");
-  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("member");
@@ -40,13 +37,6 @@ export default function RegisterPage() {
   useEffect(() => {
     if (status === "authenticated") router.replace("/feed");
   }, [status, router]);
-
-  function maskPhone(value: string): string {
-    const d = value.replace(/\D/g, "").slice(0, 11);
-    if (d.length <= 2) return d.length ? `(${d}` : "";
-    if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -93,23 +83,6 @@ export default function RegisterPage() {
                 <input value={surname} onChange={(e) => setSurname(e.target.value)} placeholder="Seu sobrenome" className="app-input" />
               </Field>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Data de nascimento">
-                <input type="date" required value={birthdate} onChange={(e) => setBirthdate(e.target.value)} className="app-input" />
-              </Field>
-              <Field label="Gênero">
-                <select value={gender} onChange={(e) => setGender(e.target.value)} className="app-input">
-                  <option value="">Selecione</option>
-                  <option value="female">Feminino</option>
-                  <option value="male">Masculino</option>
-                  <option value="other">Outro</option>
-                  <option value="undisclosed">Prefiro não informar</option>
-                </select>
-              </Field>
-            </div>
-            <Field label="Celular">
-              <input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} placeholder="(00) 00000-0000" className="app-input" />
-            </Field>
             <Field label="E-mail">
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@exemplo.com" className="app-input" />
             </Field>

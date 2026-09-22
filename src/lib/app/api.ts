@@ -247,6 +247,16 @@ export const api = {
     }
   },
 
+  /**
+   * Garante a linha do perfil no user-service (idempotente). O cadastro grava a
+   * conta só no auth-service; sem o perfil a conta não aparece no ranking nem
+   * consegue criar conexões, recados ou depoimentos.
+   */
+  async provisionProfile(): Promise<void> {
+    if (!HAS_API || !getToken()) return;
+    await request<RawPost>("/api/users/me/provision", { method: "POST", body: "{}" });
+  },
+
   async verify(): Promise<User | null> {
     if (!HAS_API) {
       clearSession();

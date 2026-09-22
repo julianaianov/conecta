@@ -1,4 +1,5 @@
 const express = require('express');
+const { ensureProfile, isForeignKeyViolation } = require('../profile-provision');
 
 module.exports = (pool, auth) => {
   const router = express.Router();
@@ -36,6 +37,7 @@ module.exports = (pool, auth) => {
       return res.status(400).json({ error: 'targetUserId e content são obrigatórios' });
     }
     try {
+      await ensureProfile(pool, req.user);
       const { rows } = await pool.query(
         `INSERT INTO scraps (author_id, target_user_id, content, created_at)
          VALUES ($1, $2, $3, NOW())
@@ -55,6 +57,7 @@ module.exports = (pool, auth) => {
         createdAt: s.created_at,
       });
     } catch (err) {
+      if (isForeignKeyViolation(err)) return res.status(404).json({ error: 'Perfil de destino não encontrado' });
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });
     }
@@ -93,6 +96,7 @@ module.exports = (pool, auth) => {
       return res.status(400).json({ error: 'targetUserId e content são obrigatórios' });
     }
     try {
+      await ensureProfile(pool, req.user);
       const { rows } = await pool.query(
         `INSERT INTO testimonials (author_id, target_user_id, content, created_at)
          VALUES ($1, $2, $3, NOW())
@@ -112,6 +116,7 @@ module.exports = (pool, auth) => {
         createdAt: t.created_at,
       });
     } catch (err) {
+      if (isForeignKeyViolation(err)) return res.status(404).json({ error: 'Perfil de destino não encontrado' });
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });
     }

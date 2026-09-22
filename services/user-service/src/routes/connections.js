@@ -1,4 +1,5 @@
 const express = require('express');
+const { ensureProfile, isForeignKeyViolation } = require('../profile-provision');
 
 function mapRow(r) {
   return {
@@ -110,6 +111,7 @@ module.exports = (pool, auth) => {
       { id: `e-${Date.now()}`, label: 'Conexão solicitada', detail: null, icon: 'send', at: now },
     ];
     try {
+      await ensureProfile(pool, req.user);
       const { rows } = await pool.query(
         `INSERT INTO connections (type, status, from_user_id, to_user_id, message, post_id, post_title, events, created_at, updated_at)
          VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, NOW(), NOW())
@@ -130,6 +132,7 @@ module.exports = (pool, auth) => {
       );
       res.status(201).json(mapRow(detail.rows[0]));
     } catch (err) {
+      if (isForeignKeyViolation(err)) return res.status(404).json({ error: 'Perfil de destino não encontrado' });
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });
     }

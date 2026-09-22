@@ -18,6 +18,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Provisiona o perfil sem bloquear o acesso; o user-service repete a garantia nas escritas. */
+async function provisionProfile(): Promise<void> {
+  try {
+    await api.provisionProfile();
+  } catch {
+    // Falha de rede ou serviço: a próxima sessão ou a próxima escrita tenta de novo.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthStatus>("unknown");
@@ -33,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (verified) {
       setUser(verified);
       setStatus("authenticated");
+      void provisionProfile();
     } else {
       api.logout();
       setUser(null);
@@ -46,12 +56,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const u = await api.login(email, password);
+    await provisionProfile();
     setUser(u);
     setStatus("authenticated");
   }, []);
 
   const register = useCallback(async (input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }) => {
     const u = await api.register(input);
+    await provisionProfile();
     setUser(u);
     setStatus("authenticated");
   }, []);
