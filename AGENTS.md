@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 011, post-service 019. Registre a migração em
+  auth-service 004, user-service 011, post-service 020. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -897,6 +897,100 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.14.
 - Testes: `test/report-domain.test.js`, `test/reports-routes.test.js`,
   `test/report-e2e.test.js` (no `test:e2e`) e `src/lib/app/report.test.mjs`.
+
+## Área de governo e gestão pública (T22)
+
+- Fonte: Apresentação Institucional, slide 24 ("Área de governo e gestão
+  pública": monitoramento em tempo real, respostas oficiais, priorização de
+  áreas, divulgação de ações, medição de impacto) e Fluxo do Poder Público,
+  slide 14 (os 10 indicadores: demandas recebidas, por território, por
+  categoria, urgentes, encaminhadas, em execução, concluídas, projetos
+  apoiados, beneficiários alcançados e resultados registrados). Amplia a área
+  `/governo` da T13/T14.
+- **Sem tabela de agregação.** "Monitoramento em tempo real" aqui é consulta a
+  cada abertura, com **cache curto no processo** (`src/government/cache.js`,
+  60 s por órgão × visão × recorte; `DM_GOVERNMENT_CACHE_TTL_MS` ajusta, 0
+  desliga) e os **índices** da migração post 019. Cada visão faz **uma**
+  consulta agregada (CTE `base` + `count(*) FILTER`), nunca uma por indicador.
+  O padrão materializado da T21 (`ranking_snapshots`) continua valendo só para
+  os rankings públicos, que agregam a plataforma inteira. O recorte relativo é
+  arredondado para o minuto seguinte, para o cache acertar sem perder o que
+  acabou de ser publicado.
+- Migração post 019 (`019-government-indicators.sql`): `government_actions`
+  (divulgação de ações — órgão, retrato institucional, `post_id` da publicação
+  no feed, `demand_id` e `response_id` opcionais, tipo `government_action_kind`
+  ∈ ação/programa/serviço/obra/evento público/edital, título, resumo, programa
+  com URL https, território/município/UF, início e término) com os gatilhos
+  `government_actions_guard` (nunca o post-vitrine da demanda; só demanda
+  publicada; órgão, publicação, demanda e data imutáveis; nada é excluído;
+  `gestao_app` só lê) e `government_actions_record_event`
+  (`acao_institucional_divulgada`, público, na linha do tempo da demanda). E os
+  índices do painel: `idx_demands_indicators_place_published`,
+  `idx_demands_indicators_published`, `idx_institutional_tracks_org_received`,
+  `idx_institutional_responses_org_created` e `_demand_org`,
+  `idx_institutional_offers_org_created`, `idx_forwardings_origin_org`,
+  `_demand_org` e `_destination_org`, `idx_demand_accountability_concluded` e
+  `idx_demand_accountability_results_demand`.
+- Recortes (`scope`): `competencia` (demandas em que o órgão já atuou — a
+  competência declarada no cadastro é texto livre e não classifica demanda),
+  `jurisdicao` (padrão; município/UF pela esfera, como na T13) e `todas`.
+  Período: `7d`, `30d` (padrão), `90d`, `12m`, `tudo` ou `from`/`to` próprios;
+  também `category`, `priority` e `territory`.
+- Como cada indicador sai (o painel e o PDF mostram a frase, slide 25 — só dado
+  verificável): recebidas = demandas publicadas no recorte; urgentes =
+  prioridade `urgente` ou categoria `problema_urgente`; encaminhadas =
+  encaminhamento do órgão ou acompanhamento em `encaminhada`/
+  `encaminhada_ao_orgao_responsavel`; em execução e concluídas = status da
+  demanda ou do acompanhamento do órgão; projetos apoiados = demandas com apoio
+  não cancelado (T16); beneficiários alcançados = soma de
+  `demand_accountability.beneficiaries_reached` das prestações concluídas
+  (T18); resultados registrados = `demand_accountability_results`. As duas
+  distribuições (território e categoria) vêm com total, urgentes e concluídas;
+  as 5 categorias aparecem sempre, inclusive zeradas.
+- Priorização de áreas: por território e por categoria, com volume, urgência e
+  **tempo sem resposta institucional do próprio órgão** (`withoutResponse`,
+  `oldestWaitDays`, `averageWaitDays`). A ordem vem de `rankAreas`/
+  `priorityScore` (urgência × 3 + sem resposta × 2 + volume + espera/30), com
+  empate desfeito pelo nome. Não há comparação nem ranking entre órgãos.
+- Medição de impacto: demandas com atuação do órgão, concluídas, prestações
+  concluídas, beneficiários alcançados, resultados registrados, metas
+  atingidas, total executado, apoios nas demandas, e o que o próprio órgão
+  registrou no período (respostas, ofertas, encaminhamentos, ações).
+- Divulgação de ações: `POST /government/actions` grava, numa transação, a
+  publicação no feed (`posts.type = 'message'`, o tipo do Poder Público desde a
+  migração 005), a resposta institucional da T13 quando há `demandId`
+  (`programa_publico_relacionado` em programa/serviço/edital — que exige o nome
+  do programa —, `acao_prevista` nos demais) e o vínculo em `government_actions`.
+  A ação entra no feed e, ligada a uma demanda, na linha do tempo pública dela
+  por dois caminhos: a resposta institucional e o evento
+  `acao_institucional_divulgada` (em `DETAILED_EVENT_TYPES` de `routes/demands.js`).
+- Rotas (`src/routes/government-indicators.js`, montada em `/` antes das rotas
+  de demanda e de posts; mesmo gate da T13 — 403 `not_government` /
+  `institution_not_validated`, 503 sem confirmação): `GET /government/indicators`,
+  `GET /government/priority-areas`, `GET /government/impact`,
+  `GET /government/indicators/export?format=csv|pdf`, `GET|POST /government/actions`
+  e, pública, `GET /demands/:id/government-actions`. Filtro inválido → 422
+  `validation_failed` com `fields`.
+- Exportação: CSV com separador `;` e BOM (Excel em português) e PDF pelo
+  pdfkit com as fontes e a marca do dossiê (`src/government/pdf.js`). Os dois
+  trazem só números agregados, rótulos e o nome do próprio órgão — **nenhum
+  dado pessoal**, nenhum id de conta (há teste no e2e e nas rotas).
+- Domínio em `services/post-service/src/government/`: `constants.js` (os 10
+  indicadores, a frase de origem de cada um, recortes, períodos, tipos de ação
+  e o evento), `indicators.js` (período, validação do filtro, priorização e
+  CSV), `actions.js` (validação da ação e o corpo da resposta institucional),
+  `cache.js`, `store.js` (as consultas) e `pdf.js`.
+- Frontend: `src/lib/app/government.ts` (espelho puro, comparado em
+  `government.test.mjs`) e `government-client.ts` (cliente; fica fora de
+  `api.ts` porque a exportação baixa um Blob). Páginas `/governo/indicadores`
+  (`GovernmentIndicators`) e `/governo/acoes` (`GovernmentActions`), ligadas no
+  cabeçalho do `/governo`; ambas privadas e cobertas pelo `Disallow: /governo`
+  do `robots.ts`. Os gráficos (`IndicatorCharts.tsx`) são **tabelas** com
+  barras decorativas (`aria-hidden`): o mesmo número serve leitor de tela,
+  teclado e impressão, e nada depende de cor.
+- Testes: `test/government-domain.test.js`, `test/government-routes.test.js`,
+  `test/government-e2e.test.js` (no `test:e2e`, suíte `government`) e
+  `src/lib/app/government.test.mjs`.
 
 ## Segurança dos serviços
 

@@ -15,6 +15,8 @@ const dossierRoutes = require('./routes/dossiers');
 const { createDossierService } = require('./dossier/service');
 const { createPublicInstitutionClient } = require('./dossier/institution');
 const institutionalRoutes = require('./routes/institutional');
+const governmentRoutes = require('./routes/government-indicators');
+const { createIndicatorCache } = require('./government/cache');
 const { requireGovernmentActor } = require('./institutional/gate');
 const { createGovernmentProfileClient } = require('./institutional/store');
 const { createGovernmentDirectoryClient } = require('./institutional/directory');
@@ -32,6 +34,13 @@ const { createPartnerProfileClient, createConnectionsClient } = require('./inter
 const siteUrl = (env) => (typeof env.DM_PUBLIC_SITE_URL === 'string' && env.DM_PUBLIC_SITE_URL.trim()
   ? env.DM_PUBLIC_SITE_URL.trim()
   : 'https://dmconecta.org');
+
+/** TTL do cache do painel do governo pelo ambiente; sem a variável, o padrão. */
+const governmentCacheOptions = (env) => {
+  const raw = typeof env.DM_GOVERNMENT_CACHE_TTL_MS === 'string' ? env.DM_GOVERNMENT_CACHE_TTL_MS.trim() : '';
+  const ttlMs = Number(raw);
+  return raw !== '' && Number.isFinite(ttlMs) ? { ttlMs } : {};
+};
 
 const createApp = ({
   pool = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -52,6 +61,9 @@ const createApp = ({
   // Recálculo dos rankings e selos (T21). `null` desliga (as tabelas
   // materializadas ficam como estão).
   rankings,
+  // Cache curto do painel do Poder Público (T22). `DM_GOVERNMENT_CACHE_TTL_MS`
+  // ajusta o TTL (padrão 60 s); 0 desliga o cache (usado no e2e).
+  governmentCache = createIndicatorCache(governmentCacheOptions(process.env)),
 } = {}) => {
   const dossiers = dossierService === undefined
     ? createDossierService({
@@ -79,6 +91,10 @@ const createApp = ({
   // Atuação institucional do Poder Público (T13) e encaminhamentos (T14):
   // /institutional/* e /demands/:id/institutional.
   app.use('/', institutionalRoutes({ pool, auth, governmentActor, governmentProfile, governmentDirectory }));
+  // Área de governo e gestão pública (T22): /government/indicators,
+  // /government/priority-areas, /government/impact, a exportação CSV/PDF e a
+  // divulgação de ações. Antes das rotas de demanda e de posts.
+  app.use('/', governmentRoutes({ pool, auth, governmentActor, governmentProfile, cache: governmentCache }));
   if (dossiers) app.use('/demands', dossierRoutes({ pool, auth, dossiers, operationUserIds }));
   // Interesse, conexão e oportunidades de apoio (T15): antes do `/:id` da demanda.
   app.use('/demands', interestsRoutes({

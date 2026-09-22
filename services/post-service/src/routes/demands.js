@@ -62,15 +62,18 @@ const { FORWARDING_EVENT_TYPES } = require('../institutional/forwardings');
 const { INTEREST_EVENT_TYPES } = require('../interest/constants');
 const { SUPPORT_EVENT_TYPES } = require('../support/constants');
 const { ACCOUNTABILITY_EVENT_TYPES } = require('../accountability/constants');
+const { GOVERNMENT_EVENT_TYPES } = require('../government/constants');
 const {
   EXECUTION_EVENT_TYPES, TRANSITION_REQUIRED_MILESTONE, RECORD_MILESTONE_LABELS,
 } = require('../execution/constants');
 
 // Eventos com payload->'public' exposto como `details` (T13, encaminhamentos da
-// T14, interesse/conexão da T15, apoio da T16 e execução da T17).
+// T14, interesse/conexão da T15, apoio da T16, execução da T17, prestação de
+// contas da T18 e divulgação de ações do Poder Público da T22).
 const DETAILED_EVENT_TYPES = [
   ...INSTITUTIONAL_EVENT_TYPES, ...FORWARDING_EVENT_TYPES, ...INTEREST_EVENT_TYPES,
   ...SUPPORT_EVENT_TYPES, ...EXECUTION_EVENT_TYPES, ...ACCOUNTABILITY_EVENT_TYPES,
+  ...GOVERNMENT_EVENT_TYPES,
 ];
 const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
 const { parseUploadRef, describeUploads } = require('../uploads');

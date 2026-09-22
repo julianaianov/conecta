@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { DEMAND_CATEGORIES, DEMAND_PRIORITIES } from "@/lib/app/demand";
+import { GOVERNMENT_ACTIONS_PATH, GOVERNMENT_INDICATORS_PATH } from "@/lib/app/government";
 import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
 import {
   INSTITUTIONAL_AREA_PATH,
@@ -213,6 +214,12 @@ export function InstitutionalDashboard() {
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <header>
+        {/* Área de governo e gestão pública (T22): indicadores e divulgação de ações. */}
+        <nav aria-label="Área do Poder Público" className="mb-2 flex flex-wrap gap-2 text-sm">
+          <Link href={GOVERNMENT_INDICATORS_PATH} className="font-semibold" style={{ color: "#2e7ba8" }}>Indicadores do território</Link>
+          <span style={{ color: "var(--th-muted)" }}>·</span>
+          <Link href={GOVERNMENT_ACTIONS_PATH} className="font-semibold" style={{ color: "#2e7ba8" }}>Divulgação de ações</Link>
+        </nav>
         <h1 className="text-2xl font-bold" style={{ color: "var(--th-text)" }}>Atuação institucional</h1>
         {ctx ? (
           <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>
