@@ -7,6 +7,8 @@
 
 const { computeComposition, MAX_BUDGET_CENTS } = require('./finance');
 const { applyAction, isEditable, availableActions } = require('./state-machine');
+const { UploadError } = require('../uploads');
+const { publicMediaUrl } = require('../upload-policy');
 
 /** Erro com status e corpo HTTP, lançado de dentro da transação. */
 class HttpError extends Error {
@@ -38,6 +40,7 @@ async function withTransaction(pool, callback) {
  */
 function mapDbError(err) {
   if (err instanceof HttpError) return err;
+  if (err instanceof UploadError) return new HttpError(err.status, err.body);
   const message = typeof err?.message === 'string' ? err.message : '';
   switch (err?.code) {
     case '23514': // check_violation (demands_guard, demand_items_guard e CHECKs)
@@ -221,6 +224,9 @@ function serializeScalars(row) {
     beneficiariesProfile: row.beneficiaries_profile ?? null,
     priority: row.priority ?? null,
     photoRef: row.photo_ref ?? null,
+    // Endereço de leitura: público e estável; a visão do autor troca por URL
+    // assinada (upload-policy.attachOwnerUploads), porque rascunho não é público.
+    photoUrl: publicMediaUrl(row.photo_ref),
     district: row.district ?? null,
     municipality: row.municipality ?? null,
     uf: row.uf ?? null,
@@ -292,6 +298,7 @@ function serializePublicSummary(row) {
     description: row.description,
     priority: row.priority,
     photoRef: row.photo_ref ?? null,
+    photoUrl: publicMediaUrl(row.photo_ref),
     district: row.district ?? null,
     municipality: row.municipality ?? null,
     uf: row.uf ?? null,

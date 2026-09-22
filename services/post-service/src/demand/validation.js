@@ -21,6 +21,7 @@ const {
   CATEGORIES, PRIORITIES, RECORD_MILESTONES, RESOURCE_KINDS, RESOURCE_TYPES_BY_KIND, DOCUMENT_TYPES,
 } = require('./constants');
 const { quantityToMilli, lineTotalCents, computeComposition, MAX_BUDGET_CENTS } = require('./finance');
+const { parseUploadRef, formatUploadRef } = require('../uploads');
 
 const UFS = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR',
@@ -94,10 +95,15 @@ function oneOf(errors, key, raw, allowed, message) {
   return raw;
 }
 
-/** Referência de arquivo: URL https até o upload da T08. */
+/**
+ * Referência de arquivo: upload confirmado (`upload:<id>` ou o id puro, T08;
+ * a rota confere dono, finalidade e vínculo) ou link https (compatibilidade).
+ */
 function reference(errors, key, raw, label) {
   const value = text(errors, key, raw, LIMITS.reference);
   if (value === null || errors[key]) return value;
+  const uploadId = parseUploadRef(value);
+  if (uploadId) return formatUploadRef(uploadId);
   let url;
   try {
     url = new URL(value);
@@ -105,7 +111,7 @@ function reference(errors, key, raw, label) {
     url = null;
   }
   if (!url || url.protocol !== 'https:' || !url.hostname) {
-    errors[key] = `${label}: use um link https`;
+    errors[key] = `${label}: envie o arquivo ou use um link https`;
   }
   return value;
 }
@@ -266,7 +272,7 @@ function normalizeDocument(errors, raw, i) {
   };
   if (doc.type === null && !errors[key('type')]) errors[key('type')] = 'Selecione o tipo do documento';
   if (doc.title === null && !errors[key('title')]) errors[key('title')] = 'Informe o nome do documento';
-  if (doc.reference === null && !errors[key('reference')]) errors[key('reference')] = 'Informe o link do documento';
+  if (doc.reference === null && !errors[key('reference')]) errors[key('reference')] = 'Anexe o documento';
   return doc;
 }
 

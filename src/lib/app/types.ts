@@ -701,9 +701,14 @@ export interface InstitutionRepresentative {
   position: string;
   institutionalEmail: string;
   institutionalPhone: string;
-  /** Referência ao documento de comprovação (o upload real vem na T08). */
+  /**
+   * Comprovação da representação: `upload:<id>` de um upload confirmado (T08)
+   * ou a referência de texto/link de cadastros anteriores.
+   */
   proofDocumentRef: string | null;
   proofDescription: string | null;
+  /** Arquivo da comprovação, quando enviado por upload (só na leitura). */
+  proofDocument?: UploadedFile | null;
 }
 
 export interface InstitutionValidationEvent {
@@ -738,7 +743,7 @@ export interface InstitutionInput {
   institutionalEmail?: string | null;
   institutionalPhone?: string | null;
   website?: string | null;
-  representative: Omit<InstitutionRepresentative, "proofDocumentRef" | "proofDescription">
+  representative: Omit<InstitutionRepresentative, "proofDocumentRef" | "proofDescription" | "proofDocument">
     & Partial<Pick<InstitutionRepresentative, "proofDocumentRef" | "proofDescription">>;
 }
 
@@ -987,7 +992,7 @@ export interface DemandResource extends DemandResourceInput {
 export interface DemandDocumentInput {
   type: DemandDocumentType;
   title: string;
-  /** Link https até o upload da T08. */
+  /** `upload:<id>` de upload confirmado desta demanda (T08) ou link https. */
   reference: string;
   description?: string | null;
   position?: number;
@@ -996,6 +1001,8 @@ export interface DemandDocumentInput {
 export interface DemandDocument extends DemandDocumentInput {
   id: string;
   position: number;
+  /** Arquivo enviado por upload, com URL de leitura curta (só o autor). */
+  file?: UploadedFile | null;
 }
 
 /** Documento na rota pública: sem o link. */
@@ -1069,6 +1076,9 @@ export interface Demand extends Required<DemandInput> {
   updatedAt: string;
   /** Post-vitrine no feed, depois da publicação. */
   postId: string | null;
+  /** Leitura da foto: URL assinada curta para o autor (rascunho não é público). */
+  photoUrl: string | null;
+  photoFile?: UploadedFile | null;
   editable: boolean;
   availableActions: DemandAction[];
   /** Ausentes na listagem (GET /demands/mine). */
@@ -1094,6 +1104,8 @@ export interface PublicDemand {
   beneficiariesProfile: string;
   priority: DemandPriority;
   photoRef: string | null;
+  /** Endereço público estável da foto (`/api/posts/uploads/<id>/content`) ou link. */
+  photoUrl: string | null;
   district: string | null;
   municipality: string | null;
   uf: string | null;
@@ -1125,6 +1137,7 @@ export interface PublicDemandSummary {
   description: string;
   priority: DemandPriority;
   photoRef: string | null;
+  photoUrl: string | null;
   district: string | null;
   municipality: string | null;
   uf: string | null;
@@ -1193,4 +1206,47 @@ export interface DemandValidation {
   fields: DemandFieldErrors;
   warnings: DemandFieldErrors;
   composition: DemandComposition | null;
+}
+
+// ── Upload de arquivos (T08) ─────────────────────────────────
+
+/** Finalidades de upload (espelho de services/post-service/src/uploads.js). */
+export type UploadPurpose =
+  | "demand_photo"
+  | "demand_evidence_photo"
+  | "demand_evidence_video"
+  | "demand_document"
+  | "institution_proof";
+
+/** Serviço que guarda o arquivo: `posts` (demanda) ou `users` (instituição). */
+export type UploadService = "posts" | "users";
+
+/** Arquivo confirmado (resposta da confirmação e das visões privadas). */
+export interface UploadedFile {
+  id: string;
+  /** Valor gravado nas referências: `upload:<id>`. */
+  ref: string;
+  purpose: UploadPurpose;
+  status: "pendente" | "confirmado";
+  contentType: string;
+  size: number;
+  fileName: string | null;
+  sha256: string | null;
+  demandId?: string | null;
+  organizationId?: string | null;
+  createdAt: string | null;
+  confirmedAt: string | null;
+  /** URL de leitura curta (alguns minutos); peça outra com `api.getUpload`. */
+  url: string | null;
+}
+
+/** Autorização de envio (POST /uploads/presign). */
+export interface UploadTicket {
+  uploadId: string;
+  ref: string;
+  method: "PUT";
+  url: string;
+  headers: Record<string, string>;
+  expiresAt: string;
+  maxBytes: number;
 }

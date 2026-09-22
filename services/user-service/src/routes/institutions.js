@@ -11,6 +11,8 @@ const express = require('express');
 const { ensureProfile } = require('../profile-provision');
 const { isUuid } = require('../security');
 const { normalizeRole } = require('../roles');
+const { UploadError } = require('../uploads');
+const { assertProofUpload, describeProof } = require('../upload-policy');
 const {
   INSTITUTION_KINDS, VALIDATION_STATUSES, EDITABLE_STATUSES, GOVERNMENT_SPHERES, UFS,
   LINKED_AGENT_PROFILES, CNAE_REFERENCE, COMPETENCE_AREA_SUGGESTIONS,
@@ -66,7 +68,7 @@ function formatAddress(org) {
   return parts.length ? parts.join(' — ') : null;
 }
 
-async function loadOwn(db, userId) {
+async function loadOwn(db, userId, uploadStorage = null) {
   const { rows } = await db.query(OWN_ORG_SQL, [userId]);
   if (!rows.length) return null;
   const org = rows[0];
@@ -81,7 +83,12 @@ async function loadOwn(db, userId) {
       [org.id],
     ),
   ]);
-  return { ...org, representative: reps[0] ?? null, events };
+  const representative = reps[0] ?? null;
+  if (representative) {
+    // Comprovação enviada por upload (T08): nome, tipo, tamanho e URL curta.
+    representative.proof_document = await describeProof(db, uploadStorage, representative.proof_document_ref);
+  }
+  return { ...org, representative, events };
 }
 
 /** Estado institucional da conta: usado pela interface e pelo gate dos serviços. */
@@ -147,7 +154,8 @@ class HttpError extends Error {
   }
 }
 
-function routes(pool, auth) {
+function routes(pool, auth, uploadStorage = null) {
+  const own = (userId) => loadOwn(pool, userId, uploadStorage);
   const router = express.Router();
 
   // GET /institutions/reference — listas para o formulário (público).
@@ -166,7 +174,7 @@ function routes(pool, auth) {
   // GET /me/institution — cadastro completo do titular, com parecer e trilha.
   router.get('/me/institution', auth, async (req, res) => {
     try {
-      const institution = await loadOwn(pool, req.user.userId);
+      const institution = await own(req.user.userId);
       if (!institution) return res.status(404).json(NOT_FOUND);
       res.json(institution);
     } catch (err) {
@@ -252,6 +260,14 @@ function routes(pool, auth) {
           organizationId = rows[0].id;
         }
 
+        // Upload da comprovação: confirmado, do titular e vinculado a este
+        // cadastro (cadastro novo ainda não tem upload vinculado).
+        await assertProofUpload(db, {
+          ref: rep.proof_document_ref,
+          ownerId: req.user.userId,
+          organizationId: existing.length ? organizationId : null,
+        });
+
         await db.query(
           `INSERT INTO organization_representatives
              (organization_id, user_id, full_name, position, institutional_email, institutional_phone,
@@ -270,9 +286,9 @@ function routes(pool, auth) {
         return !existing.length;
       });
 
-      res.status(created ? 201 : 200).json(await loadOwn(pool, req.user.userId));
+      res.status(created ? 201 : 200).json(await own(req.user.userId));
     } catch (err) {
-      if (err instanceof HttpError) return res.status(err.status).json(err.body);
+      if (err instanceof HttpError || err instanceof UploadError) return res.status(err.status).json(err.body);
       if (err?.code === '23505') return res.status(409).json({ error: 'Cadastro institucional já existe para este perfil' });
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });
@@ -312,7 +328,7 @@ function routes(pool, auth) {
           [org.id],
         );
       });
-      res.json(await loadOwn(pool, req.user.userId));
+      res.json(await own(req.user.userId));
     } catch (err) {
       if (err instanceof HttpError) return res.status(err.status).json(err.body);
       console.error(err);

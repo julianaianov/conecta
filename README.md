@@ -42,6 +42,19 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 Valores públicos `NEXT_PUBLIC_*` não são segredos. Senhas, tokens e URLs de
 banco não devem ser colocados neste repositório.
 
+### Upload de arquivos (T08)
+
+Os serviços `post-service` e `user-service` geram URLs pré-assinadas do S3 e o
+navegador envia o arquivo direto ao bucket. Sem `DM_UPLOADS_BUCKET`, as rotas
+`/api/posts/uploads/*` e `/api/users/uploads/*` respondem 503
+(`uploads_unavailable`) e o componente `FileUpload` mostra que o envio não está
+disponível; não existe armazenamento local substituto. Para testar localmente,
+defina no `.env` do Compose `DM_UPLOADS_BUCKET`, `DM_UPLOADS_REGION` e
+credenciais temporárias (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`AWS_SESSION_TOKEN`) de um bucket de desenvolvimento cujo CORS aceite
+`http://localhost:3000`. Os buckets de homologação e produção só aceitam as
+origens do próprio ambiente.
+
 ## Verificação
 
 ```bash

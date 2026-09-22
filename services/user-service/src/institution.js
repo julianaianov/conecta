@@ -9,6 +9,7 @@
 // que o cadastro enviado está bem formado.
 
 const { normalizeRole } = require('./roles');
+const { parseUploadRef, formatUploadRef } = require('./uploads');
 
 const INSTITUTION_KINDS = ['agente_transformacao', 'poder_publico'];
 
@@ -329,6 +330,10 @@ function validateInstitution(kind, input = {}) {
     proof_document_ref: read('representative.proofDocumentRef', rep, 'proofDocumentRef', 500, { label: 'Referência do documento de comprovação' }),
     proof_description: read('representative.proofDescription', rep, 'proofDescription', 2000, { label: 'Informação de comprovação' }),
   };
+  // Comprovação por upload (T08): `upload:<id>` (ou o id puro) é normalizado;
+  // a rota confere dono e vínculo. Texto/link antigo continua aceito.
+  const proofUploadId = parseUploadRef(representative.proof_document_ref);
+  if (proofUploadId) representative.proof_document_ref = formatUploadRef(proofUploadId);
   if (representative.institutional_email && !isValidEmail(representative.institutional_email)) {
     errors['representative.institutionalEmail'] = 'E-mail institucional do representante inválido';
   }

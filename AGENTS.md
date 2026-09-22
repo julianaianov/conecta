@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 009, post-service 008. Registre a migração em
+  auth-service 004, user-service 010, post-service 009. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -89,7 +89,9 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   o servidor é quem decide e os erros de `fields` aparecem no campo e no resumo.
 - Fluxo: salvar rascunho (PUT, fica `pendente`), enviar para validação (PUT +
   submit), status com parecer e trilha; em `em_analise` e `validada` a ficha
-  fica só leitura. Comprovação por link até existir upload (T08).
+  fica só leitura. A comprovação da representação é um upload (`FileUpload`,
+  finalidade `institution_proof`), liberado depois do primeiro rascunho salvo;
+  referência de texto antiga continua exibida até ser substituída.
 - O CEP pode ser consultado no ViaCEP (`api.lookupCep`, só o CEP sai do
   navegador); sem resposta, o titular preenche o endereço.
 - Onboarding: depois do cadastro de conta, Agente e Poder Público vão para a
@@ -179,6 +181,54 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   temporário (Homebrew; `PG_BIN` para escolher), aplica o manifesto do
   `post_db` duas vezes, cria o papel `gestao_app` com os grants do dm-infra e
   apaga o cluster no fim. Sem `DM_E2E_DATABASE_URL`, o `npm test` pula esse arquivo.
+
+## Upload de arquivos (T08)
+
+- Módulo `src/uploads.js`, **a mesma cópia** no post-service e no user-service
+  (teste confere), com AWS SDK v3. Cada serviço tem a política em
+  `src/upload-policy.js` e a tabela `uploads` (post migração 008, user
+  migração 009): dono, finalidade, `tmp_key`, `object_key`, tipo, tamanho
+  declarado e confirmado, sha256 opcional, nome original, status
+  `pendente`/`confirmado` e vínculo (`demand_id` / `organization_id`).
+- Finalidades: `demand_photo` e `demand_evidence_photo` (JPEG/PNG/WEBP/HEIC,
+  15 MB), `demand_evidence_video` (MP4/MOV, 500 MB em PUT único, sem
+  multipart), `demand_document` e `institution_proof` (PDF/DOCX/XLSX/ODT/ODS/
+  JPG/PNG, 25 MB). Frontend espelha em `src/lib/app/uploads.ts` (teste compara).
+- Rotas (`/api/posts/uploads` para a demanda, `/api/users/uploads` para a
+  instituição): `POST /presign` (token; grava pendente, devolve PUT
+  pré-assinado para `tmp/<uuid>` com `Content-Type` assinado e, se houver,
+  `x-amz-checksum-sha256`; limite de 30 pendentes/hora), `POST /:id/confirm`
+  (HeadObject, tamanho = declarado e ≤ limite, tipo, assinatura dos primeiros
+  bytes e sha256; copia para `demands/<id>/<photo|documents|evidence>/<id>.<ext>`
+  ou `institutions/<id>/proof/<id>.<ext>` e apaga o tmp; recusa apaga tmp e
+  registro), `GET /:id` (token; dono, `DM_OPERATION_USER_IDS` ou público →
+  metadados + GET assinado de 5 min) e `GET /:id/content` (sem token; 302 para
+  GET assinado, só foto/evidência de demanda publicada; `Cache-Control` 10 min).
+- Alvo: arquivos da demanda só do Agente autor; foto e documentos com a
+  demanda em rascunho/devolvida, evidências da publicação em diante. A
+  comprovação exige o cadastro salvo e editável (`institution_required`,
+  `institution_not_editable`).
+- Referências gravam `upload:<id>` (a API aceita também o id puro e, por
+  compatibilidade, link https): `demands.photo_ref`,
+  `demand_documents.reference` e `organization_representatives.proof_document_ref`.
+  A rota confere que o upload está confirmado, é do autor, da finalidade e do
+  mesmo alvo (422 no campo). `photoUrl` sai como `/api/posts/uploads/<id>/content`
+  na visão pública; na visão do autor, como GET assinado (`photoFile`,
+  `documents[].file`, `representative.proof_document`). `posts.images` do
+  post-vitrine é traduzido na projeção (`POST_IMAGES_SQL`); o frontend prefixa
+  `/api/...` com `NEXT_PUBLIC_API_URL` (`resolveMediaUrl`).
+- Sem `DM_UPLOADS_BUCKET` as rotas respondem 503 `uploads_unavailable`; não há
+  armazenamento falso. Credencial: cadeia padrão do SDK (instance profile por
+  IMDSv2 na AWS). O IAM só tem Put/Get/DeleteObject: HeadObject de chave
+  inexistente dá 403 e é tratado como ausente. Clientes S3 com
+  `requestChecksumCalculation: WHEN_REQUIRED` (sem CRC32 automático na URL).
+- A gestão lê `uploads` pelo `gestao_app` (SELECT padrão) e assina o GET de
+  `object_key` com a credencial da instância; contas da operação também leem
+  por `GET /uploads/:id`. Arquivo substituído ou removido do formulário
+  continua no bucket (sem limpeza automática).
+- Testes: `services/post-service/test/uploads.test.js` (S3 simulado, URL
+  assinada real com credencial estática de teste), `services/user-service/test/uploads.test.js`,
+  `src/lib/app/uploads.test.mjs` e o trecho de upload no e2e da demanda.
 
 ## Segurança dos serviços
 

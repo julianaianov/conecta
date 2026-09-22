@@ -27,7 +27,9 @@ import {
   type InstitutionFieldErrors,
   type InstitutionKind,
   type ProfileType,
+  type UploadedFile,
 } from "@/lib/app/types";
+import { formatBytes, parseUploadRef } from "@/lib/app/uploads";
 import { AuthPrompt } from "../AuthPrompt";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
@@ -58,7 +60,7 @@ const FIELD_LABELS: Record<string, string> = {
   institutionalPhone: "Telefone institucional", institutionalContact: "Contato institucional", website: "Site",
   "representative.fullName": "Nome do representante", "representative.position": "Cargo ou função",
   "representative.institutionalEmail": "E-mail do representante", "representative.institutionalPhone": "Telefone do representante",
-  "representative.proofDocumentRef": "Link de comprovação", "representative.proofDescription": "Informação de comprovação",
+  "representative.proofDocumentRef": "Documento de comprovação", "representative.proofDescription": "Informação de comprovação",
 };
 
 function labelFor(key: string): string {
@@ -96,6 +98,36 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+/** Abre a comprovação com uma URL de leitura nova (a anterior expira em minutos). */
+function ProofDocumentLink({ file }: { file: UploadedFile }) {
+  const [error, setError] = useState<string | null>(null);
+  async function open() {
+    setError(null);
+    const tab = window.open("about:blank", "_blank");
+    try {
+      const fresh = await api.getUpload("users", file.id);
+      if (!fresh.url) throw new Error("indisponível");
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = fresh.url;
+      } else {
+        window.location.assign(fresh.url);
+      }
+    } catch {
+      tab?.close();
+      setError("Não foi possível abrir o arquivo agora.");
+    }
+  }
+  return (
+    <span className="inline-flex flex-col gap-1">
+      <button type="button" onClick={() => void open()} className="inline-flex items-center gap-1 text-left font-semibold underline" style={{ color: "#1b4f72" }}>
+        <Icon name="eye" size={14} />{file.fileName ?? "Documento de comprovação"} ({formatBytes(file.size)})
+      </button>
+      {error && <span role="alert" className="text-xs font-semibold" style={{ color: "#e53935" }}>{error}</span>}
+    </span>
+  );
+}
+
 /** Dados enviados, só leitura (em análise ou validada). */
 function InstitutionSummary({ institution }: { institution: Institution }) {
   const rep = institution.representative;
@@ -127,7 +159,9 @@ function InstitutionSummary({ institution }: { institution: Institution }) {
         <Row label="Site">{institution.website}</Row>
         {rep && <Row label={isAgent ? "Responsável" : "Representante"}>{`${rep.fullName} — ${rep.position}`}</Row>}
         {rep && <Row label="Contato do representante">{[rep.institutionalEmail, rep.institutionalPhone].filter(Boolean).join(" · ")}</Row>}
-        {rep?.proofDocumentRef && <Row label="Comprovação">{rep.proofDocumentRef}</Row>}
+        {rep?.proofDocument
+          ? <Row label="Comprovação"><ProofDocumentLink file={rep.proofDocument} /></Row>
+          : rep?.proofDocumentRef && !parseUploadRef(rep.proofDocumentRef) && <Row label="Comprovação">{rep.proofDocumentRef}</Row>}
       </dl>
     </section>
   );
@@ -149,6 +183,7 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"draft" | "submit" | null>(null);
+  const [proofDocument, setProofDocument] = useState<UploadedFile | null>(null);
   const summaryRef = useRef<HTMLDivElement | null>(null);
   const noticeRef = useRef<HTMLDivElement | null>(null);
 
@@ -160,6 +195,7 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
       setInstitution(own);
       setReference(ref);
       setForm(own ? formFromInstitution(own) : emptyInstitutionForm());
+      setProofDocument(own?.representative?.proofDocument ?? null);
     } catch {
       setLoadError("Não foi possível carregar o cadastro institucional agora. Verifique a conexão e tente de novo.");
     } finally {
@@ -206,6 +242,7 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
       const saved = await api.saveMyInstitution(inputFromForm(kind, form));
       setInstitution(saved);
       setForm(formFromInstitution(saved));
+      setProofDocument(saved.representative?.proofDocument ?? null);
       setErrors({});
       setFormMessage(null);
       syncAccess(saved);
@@ -351,6 +388,12 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
                 reference={reference}
                 busy={busy}
                 hasSavedRecord={Boolean(institution)}
+                proofDocument={proofDocument}
+                onProofDocument={(file) => {
+                  // Atualização funcional: o envio termina depois de outras edições.
+                  setProofDocument(file);
+                  setForm((current) => ({ ...current, representative: { ...current.representative, proofDocumentRef: file?.ref ?? "" } }));
+                }}
                 onSaveDraft={() => void saveDraft()}
                 onSubmit={() => void submit()}
               />

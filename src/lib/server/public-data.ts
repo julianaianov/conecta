@@ -14,6 +14,8 @@ import {
 import { buildRanking, type RankingMetrics, type RankingUser } from "../app/ranking.ts";
 import { normalizeCoordinates } from "../app/location.ts";
 import { mapPublicInstitutionRecord } from "../app/institution.ts";
+import { resolveMediaUrl } from "../app/uploads.ts";
+import { runtime } from "../app/runtime.ts";
 import { boundedPublicLimit, fetchPublicJson, MAX_PUBLIC_LIST_LIMIT } from "./public-api.ts";
 
 type RawRecord = Record<string, unknown>;
@@ -40,7 +42,11 @@ function mapPost(record: RawRecord): Post {
     longitude: coordinates?.longitude ?? null,
     neighborhood: (record.neighborhood ?? null) as string | null,
     city: (record.city ?? null) as string | null,
-    images: Array.isArray(record.images) ? record.images.filter((value): value is string => typeof value === "string") : [],
+    // Foto por upload (T08) vem como /api/posts/uploads/<id>/content: o navegador
+    // a busca pela base pública da API, não pelo endereço interno do SSR.
+    images: Array.isArray(record.images)
+      ? record.images.filter((value): value is string => typeof value === "string").map((url) => resolveMediaUrl(url, runtime.apiBase))
+      : [],
     videos: Array.isArray(record.videos) ? record.videos.filter((value): value is string => typeof value === "string") : [],
     tags: Array.isArray(record.tags) ? record.tags.filter((value): value is string => typeof value === "string") : [],
     reactionsCount: numberValue(record.reactions_count ?? record.reactionsCount),

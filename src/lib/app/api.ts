@@ -14,6 +14,7 @@ import { runtime } from "./runtime";
 import { normalizeCoordinates } from "./location";
 import { buildPostQuery, type PostListFilter } from "./post-query";
 import { mapPublicInstitutionRecord, normalizeCep } from "./institution";
+import { resolveMediaUrl } from "./uploads";
 import type {
   CnaeEntry, Institution, InstitutionAccess, InstitutionFieldErrors, InstitutionInput,
   InstitutionKind, InstitutionValidationEvent, InstitutionValidationStatus, GovernmentSphere,
@@ -24,6 +25,7 @@ import type {
   DemandItemInputs, DemandItemKind, DemandItems, DemandListFilter, DemandPage, DemandReview,
   DemandTimelineEvent, DemandValidation, PublicDemand, DemandBudgetItemInput,
 } from "./types";
+import type { UploadedFile, UploadPurpose, UploadService, UploadTicket } from "./types";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -121,7 +123,7 @@ function mapPost(r: RawPost): Post {
     longitude: coordinates?.longitude ?? null,
     neighborhood: (r.neighborhood ?? null) as string | null,
     city: (r.city ?? null) as string | null,
-    images: (r.images as string[]) ?? [],
+    images: ((r.images as string[]) ?? []).map((url) => resolveMediaUrl(url, BASE)),
     videos: (r.videos as string[]) ?? [],
     tags: (r.tags as string[]) ?? [],
     reactionsCount: Number(r.reactions_count ?? r.reactionsCount ?? 0),
@@ -340,6 +342,7 @@ export function mapInstitution(r: RawPost): Institution {
         institutionalPhone: String(rep.institutional_phone ?? ""),
         proofDocumentRef: str(rep.proof_document_ref),
         proofDescription: str(rep.proof_description),
+        proofDocument: (rep.proof_document as UploadedFile | null | undefined) ?? null,
       }
       : null,
     events: Array.isArray(r.events)
@@ -453,6 +456,88 @@ export function buildDemandQuery(filter: DemandListFilter = {}): string {
 }
 
 const json = (body: unknown): RequestInit => ({ body: JSON.stringify(body ?? {}) });
+
+// ── Upload de arquivos (T08) ───────────────────────────────
+/** Erro do fluxo de upload; `code` (ex.: `uploads_unavailable`) e `fields` do servidor. */
+export class UploadRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null = null,
+    readonly fields: Record<string, string> = {},
+  ) {
+    super(message);
+  }
+}
+
+/** A confirmação copia o arquivo no S3 (vídeos de até 500 MB): prazo maior. */
+const UPLOAD_API_TIMEOUT_MS = 60_000;
+
+async function uploadRequest<T>(service: UploadService, path: string, init: RequestInit = {}): Promise<T> {
+  if (!HAS_API) throw new UploadRequestError("O envio de arquivos está indisponível.", 503, "uploads_unavailable");
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), UPLOAD_API_TIMEOUT_MS);
+  const token = getToken();
+  try {
+    const res = await fetch(`${BASE}/api/${service}/uploads${path}`, {
+      ...init,
+      signal: ctrl.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init.headers ?? {}),
+      },
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      const fields = (body.fields as Record<string, string>) ?? {};
+      const detail = Object.values(fields)[0];
+      throw new UploadRequestError(
+        detail ?? String(body.error ?? `Erro ${res.status}`),
+        res.status,
+        (body.code as string) ?? null,
+        fields,
+      );
+    }
+    return body as T;
+  } catch (err) {
+    if (err instanceof UploadRequestError) throw err;
+    throw new UploadRequestError("Não foi possível falar com o serviço de arquivos. Tente de novo.", 0, "network");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+}
+
+/**
+ * Envia o arquivo direto ao S3 pela URL pré-assinada, com progresso
+ * (XMLHttpRequest: `fetch` não informa o progresso do envio).
+ */
+export function putToStorage(
+  ticket: UploadTicket,
+  file: Blob,
+  { onProgress, signal }: { onProgress?: (progress: UploadProgress) => void; signal?: AbortSignal } = {},
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(ticket.method, ticket.url);
+    for (const [name, value] of Object.entries(ticket.headers)) xhr.setRequestHeader(name, value);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress?.({ loaded: event.loaded, total: event.total });
+    };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300
+      ? resolve()
+      : reject(new UploadRequestError(`O armazenamento recusou o arquivo (erro ${xhr.status}). Tente de novo.`, xhr.status, "storage_rejected")));
+    xhr.onerror = () => reject(new UploadRequestError("A conexão caiu durante o envio. Tente de novo.", 0, "network"));
+    xhr.onabort = () => reject(new UploadRequestError("Envio cancelado.", 0, "aborted"));
+    signal?.addEventListener("abort", () => xhr.abort(), { once: true });
+    xhr.send(file);
+  });
+}
 
 export const api = {
   hasApi: HAS_API,
@@ -761,6 +846,25 @@ export const api = {
       supports: postData.supports.map(mapSupport),
       comments: postData.comments.map(mapComment),
     };
+  },
+
+  // ── UPLOAD (T08) ─────────────────────────────────────────
+  /** Autorização de envio: URL pré-assinada de PUT para `tmp/<id>`. */
+  presignUpload(
+    service: UploadService,
+    input: { purpose: UploadPurpose; contentType: string; size: number; fileName?: string | null; sha256?: string | null },
+  ): Promise<UploadTicket> {
+    return uploadRequest<UploadTicket>(service, "/presign", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  /** Confirma o envio e vincula o arquivo (`demandId` nos arquivos da demanda). */
+  confirmUpload(service: UploadService, uploadId: string, target: { demandId?: string } = {}): Promise<UploadedFile> {
+    return uploadRequest<UploadedFile>(service, `/${encodeURIComponent(uploadId)}/confirm`, { method: "POST", body: JSON.stringify(target) });
+  },
+
+  /** Metadados e URL de leitura nova (a anterior expira em minutos). */
+  getUpload(service: UploadService, uploadId: string): Promise<UploadedFile> {
+    return uploadRequest<UploadedFile>(service, `/${encodeURIComponent(uploadId)}`);
   },
 
   // ── CADASTRO INSTITUCIONAL (T04) ─────────────────────────

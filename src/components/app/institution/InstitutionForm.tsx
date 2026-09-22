@@ -18,8 +18,11 @@ import {
   type GovernmentSphere,
   type InstitutionFieldErrors,
   type InstitutionKind,
+  type UploadedFile,
 } from "@/lib/app/types";
+import { parseUploadRef } from "@/lib/app/uploads";
 import { Button } from "../Button";
+import { FileUpload } from "../FileUpload";
 import { Icon } from "../Icon";
 
 /** Id do campo a partir da chave de erro do servidor ("representative.fullName"). */
@@ -231,11 +234,16 @@ export interface InstitutionFormProps {
   reference: InstitutionReference;
   busy: "draft" | "submit" | null;
   hasSavedRecord: boolean;
+  /** Comprovação enviada por upload (T08); o `ref` vai em representative.proofDocumentRef. */
+  proofDocument: UploadedFile | null;
+  onProofDocument: (file: UploadedFile | null) => void;
   onSaveDraft: () => void;
   onSubmit: () => void;
 }
 
-export function InstitutionForm({ kind, form, onChange, errors, reference, busy, hasSavedRecord, onSaveDraft, onSubmit }: InstitutionFormProps) {
+export function InstitutionForm({
+  kind, form, onChange, errors, reference, busy, hasSavedRecord, proofDocument, onProofDocument, onSaveDraft, onSubmit,
+}: InstitutionFormProps) {
   const [cepStatus, setCepStatus] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
   const sphereName = useId();
@@ -437,13 +445,24 @@ export function InstitutionForm({ kind, form, onChange, errors, reference, busy,
         <TextField name="representative.position" label="Cargo ou função" required value={form.representative.position} onValue={(v) => setRep("position", v)} errors={errors} maxLength={255} autoComplete="organization-title" />
         <TextField name="representative.institutionalEmail" label="E-mail institucional" required type="email" value={form.representative.institutionalEmail} onValue={(v) => setRep("institutionalEmail", v)} errors={errors} maxLength={255} autoComplete="email" />
         <TextField name="representative.institutionalPhone" label="Telefone institucional" required type="tel" value={form.representative.institutionalPhone} onValue={(v) => setRep("institutionalPhone", maskPhone(v))} errors={errors} autoComplete="tel" placeholder="(00) 00000-0000" />
-        <TextField
-          name="representative.proofDocumentRef" label="Link ou referência do documento de comprovação" inputMode="url"
-          value={form.representative.proofDocumentRef} onValue={(v) => setRep("proofDocumentRef", v)} errors={errors} maxLength={500} placeholder="https://"
+        <FileUpload
+          id={fieldId("representative.proofDocumentRef")}
+          label="Documento de comprovação"
+          purpose="institution_proof"
+          value={proofDocument}
+          onChange={onProofDocument}
+          error={errors["representative.proofDocumentRef"]}
+          disabled={!hasSavedRecord}
+          disabledReason="Salve o rascunho da ficha para anexar o documento."
           hint={isAgent
-            ? "Quando aplicável: ata de eleição da diretoria, estatuto ou procuração. O envio de arquivos está em desenvolvimento; por enquanto, informe um link."
-            : "Quando aplicável: ato de nomeação publicado em diário oficial ou documento de designação. O envio de arquivos está em desenvolvimento; por enquanto, informe um link."}
+            ? "Quando aplicável: ata de eleição da diretoria, estatuto ou procuração. O arquivo fica na ficha quando você salvar o rascunho ou enviar para validação; só você e a equipe de validação têm acesso."
+            : "Quando aplicável: ato de nomeação publicado em diário oficial ou documento de designação. O arquivo fica na ficha quando você salvar o rascunho ou enviar para validação; só você e a equipe de validação têm acesso."}
         />
+        {!proofDocument && form.representative.proofDocumentRef && !parseUploadRef(form.representative.proofDocumentRef) && (
+          <p className="text-xs sm:col-span-2" style={{ color: "var(--th-muted)" }}>
+            Referência informada antes: <span className="break-all font-semibold" style={{ color: "var(--th-text)" }}>{form.representative.proofDocumentRef}</span>. Ela continua na ficha até você anexar o arquivo.
+          </p>
+        )}
         <div>
           <label htmlFor={fieldId("representative.proofDescription")} className="mb-1.5 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>Informação para a comprovação</label>
           <textarea

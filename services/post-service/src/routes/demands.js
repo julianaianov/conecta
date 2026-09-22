@@ -23,6 +23,11 @@
 //   POST /:id/transitions          { action }: buscar_parceiro, conectar,
 //                                  iniciar_execucao, concluir, prestar_contas
 //
+// Arquivos (T08): `photoRef` e `documents[].reference` aceitam `upload:<id>`
+// de upload confirmado desta demanda (rotas em /uploads, src/uploads.js); a
+// visão do autor traz URL de leitura curta (`photoFile`, `documents[].file`),
+// a pública, `photoUrl` estável (/api/posts/uploads/<id>/content).
+//
 // Erros: 422 `{ error, code, fields }` (fields: campo → mensagem), 403
 // `institution_not_validated` / `demand_author_not_agent`, 409 estado inválido
 // (`demand_not_editable`, `invalid_transition`, `invalid_state`), 404.
@@ -43,6 +48,8 @@ const {
   compositionFromItems, computeComposition, lineTotalCents, MAX_BUDGET_CENTS,
 } = require('../demand/finance');
 const store = require('../demand/store');
+const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
+const { parseUploadRef, describeUploads } = require('../uploads');
 
 const { HttpError, withTransaction, sendError } = store;
 
@@ -273,17 +280,26 @@ function publicListQuery(query) {
   return { sql, params, limit };
 }
 
-async function ownerView(db, demandId, userId) {
-  const row = await store.loadOwnDemand(db, demandId, userId);
-  const items = await store.loadItems(db, demandId);
-  return store.serializeOwnerDemand(row, items);
-}
-
-module.exports = ({ pool, auth, validatedAgent }) => {
+module.exports = ({ pool, auth, validatedAgent, uploadStorage = null }) => {
   if (typeof auth !== 'function' || typeof validatedAgent !== 'function') {
     throw new Error('demands routes exigem auth e requireValidatedAgent');
   }
   const router = express.Router();
+
+  /** Visão do autor, com URL de leitura curta dos arquivos enviados (T08). */
+  async function ownerView(db, demandId, userId) {
+    const row = await store.loadOwnDemand(db, demandId, userId);
+    const items = await store.loadItems(db, demandId);
+    return attachOwnerUploads(db, uploadStorage, store.serializeOwnerDemand(row, items));
+  }
+
+  /** Referência de upload no corpo: confirmada, do autor e desta demanda. */
+  const checkPhoto = (db, req, changes, demandId) => {
+    const photo = changes.find(([col]) => col === 'photo_ref');
+    return photo && assertDemandUpload(db, {
+      ref: photo[1], ownerId: req.user.userId, demandId, purpose: 'demand_photo', field: 'photoRef',
+    });
+  };
 
   const notFound = (res) => res.status(404).json({ error: 'Demanda não encontrada' });
   router.param('id', (req, res, next, id) => (isUuid(id) ? next() : notFound(res)));
@@ -314,7 +330,16 @@ module.exports = ({ pool, auth, validatedAgent }) => {
         ORDER BY d.created_at DESC, d.id DESC LIMIT 200`,
       params,
     );
-    res.json({ demands: rows.map((row) => store.serializeOwnerDemand(row)) });
+    const demands = rows.map((row) => store.serializeOwnerDemand(row));
+    const photoIds = demands.map((d) => parseUploadRef(d.photoRef)).filter(Boolean);
+    if (photoIds.length) {
+      const files = await describeUploads(pool, uploadStorage, photoIds, 'demand_id');
+      for (const demand of demands) {
+        const id = parseUploadRef(demand.photoRef);
+        if (id) demand.photoUrl = files.get(id)?.url ?? null;
+      }
+    }
+    res.json({ demands });
   }));
 
   router.get('/mine/:id', auth, requireAgent, handle(async (req, res) => {
@@ -395,6 +420,8 @@ module.exports = ({ pool, auth, validatedAgent }) => {
       ...changes.map(([, value]) => value),
     ];
     const created = await withTransaction(pool, async (client) => {
+      // Sem demanda ainda, não há upload vinculado: a foto entra depois do rascunho.
+      await checkPhoto(client, req, changes, null);
       const { rows } = await client.query(
         `INSERT INTO demands (${columns.join(', ')})
          VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING id`,
@@ -410,6 +437,7 @@ module.exports = ({ pool, auth, validatedAgent }) => {
     const updated = await withTransaction(pool, async (client) => {
       const row = await store.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
       store.assertEditable(row);
+      await checkPhoto(client, req, changes, req.params.id);
       if (changes.length) {
         await client.query(
           `UPDATE demands SET ${changes.map(([col], i) => `${col} = $${i + 2}`).join(', ')} WHERE id = $1`,
@@ -431,10 +459,9 @@ module.exports = ({ pool, auth, validatedAgent }) => {
                 platform_fee_cents, total_amount_cents FROM demands WHERE id = $1`,
         [demandId],
       );
-      return {
-        item: row ? store.ITEM_SERIALIZERS[kind.key](row, { isPublic: false }) : null,
-        composition: store.serializeComposition(demand),
-      };
+      const item = row ? store.ITEM_SERIALIZERS[kind.key](row, { isPublic: false }) : null;
+      if (item && kind.key === 'documents') await attachOwnerUploads(client, uploadStorage, { documents: [item] });
+      return { item, composition: store.serializeComposition(demand) };
     };
 
     const checkScheduleLink = async (client, demandId, item) => {
@@ -447,6 +474,10 @@ module.exports = ({ pool, auth, validatedAgent }) => {
         throw validationError({ scheduleItemId: 'A etapa vinculada não faz parte do cronograma desta demanda' });
       }
     };
+
+    const checkDocument = (client, req, item) => kind.key === 'documents' && assertDemandUpload(client, {
+      ref: item.reference, ownerId: req.user.userId, demandId: req.params.id, purpose: 'demand_document', field: 'reference',
+    });
 
     const writeGuard = async (client, req) => {
       const row = await store.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
@@ -465,6 +496,7 @@ module.exports = ({ pool, auth, validatedAgent }) => {
       const { item, position } = validateItem(kind, req.body);
       const result = await withTransaction(pool, async (client) => {
         await writeGuard(client, req);
+        await checkDocument(client, req, item);
         const { rows: [count] } = await client.query(
           `SELECT count(*)::int AS n FROM ${kind.table} WHERE demand_id = $1`, [req.params.id],
         );
@@ -488,6 +520,7 @@ module.exports = ({ pool, auth, validatedAgent }) => {
       const { item, position } = validateItem(kind, req.body);
       const result = await withTransaction(pool, async (client) => {
         await writeGuard(client, req);
+        await checkDocument(client, req, item);
         await checkScheduleLink(client, req.params.id, item);
         const cols = Object.entries(kind.columns(item));
         const { rows } = await client.query(

@@ -50,6 +50,15 @@ services:
       DATABASE_URL: postgresql://postgres:password@user-db:5432/user_db
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env (openssl rand -hex 32)}
       DM_OPERATION_USER_IDS: ${DM_OPERATION_USER_IDS:-}
+      # Uploads (T08). Vazio: rotas /uploads respondem 503 (não há armazenamento
+      # falso). Para testar com um bucket de desenvolvimento, defina o bucket e
+      # credenciais temporárias (AWS_ACCESS_KEY_ID/SECRET/SESSION_TOKEN) no .env;
+      # o CORS do bucket precisa aceitar a origem local.
+      DM_UPLOADS_BUCKET: ${DM_UPLOADS_BUCKET:-}
+      DM_UPLOADS_REGION: ${DM_UPLOADS_REGION:-us-east-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       PORT: 3002
     depends_on:
       user-db:
@@ -85,6 +94,15 @@ services:
       DM_OPERATION_USER_IDS: ${DM_OPERATION_USER_IDS:-}
       # Gate institucional do Poder Público: consulta /me/institution/status.
       DM_INTERNAL_USER_API_URL: http://user-service:3002
+      # Uploads (T08). Vazio: rotas /uploads respondem 503 (não há armazenamento
+      # falso). Para testar com um bucket de desenvolvimento, defina o bucket e
+      # credenciais temporárias (AWS_ACCESS_KEY_ID/SECRET/SESSION_TOKEN) no .env;
+      # o CORS do bucket precisa aceitar a origem local.
+      DM_UPLOADS_BUCKET: ${DM_UPLOADS_BUCKET:-}
+      DM_UPLOADS_REGION: ${DM_UPLOADS_REGION:-us-east-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       PORT: 3003
     depends_on:
       post-db:

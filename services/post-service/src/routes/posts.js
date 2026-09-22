@@ -2,6 +2,7 @@ const express = require('express');
 const { canPublish, canSupport } = require('../roles');
 const { normalizeCoordinates } = require('../location');
 const { isUuid } = require('../security');
+const { POST_IMAGES_SQL } = require('../upload-policy');
 
 // Projeção pública de um post. Colunas novas ficam fora da API até serem
 // incluídas aqui de propósito.
@@ -12,7 +13,9 @@ const POST_PUBLIC_COLUMNS = [
   // Post-vitrine de demanda publicada (T06/T07): o frontend linka a demanda.
   'demand_id',
 ];
-const POST_SQL = POST_PUBLIC_COLUMNS.join(', ');
+// `images` com `upload:<id>` (foto da demanda no post-vitrine, T08) sai como
+// endereço público estável /api/posts/uploads/<id>/content.
+const POST_SQL = POST_PUBLIC_COLUMNS.map((c) => (c === 'images' ? POST_IMAGES_SQL : c)).join(', ');
 const COMMENT_SQL = 'id, post_id, author_id, author_name, content, created_at';
 // Apoio visto pelo próprio apoiador (e pela operação, sem mensagem nem detalhes).
 const SUPPORT_OWNER_SQL = 'id, post_id, user_id, user_name, type, message, amount, payment_method, details, status, created_at, updated_at';

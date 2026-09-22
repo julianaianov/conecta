@@ -61,7 +61,24 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
     gestaoUrl.password = '';
     const gestao = new Pool({ connectionString: gestaoUrl.toString() });
 
-    const server = createApp({ pool, secret: SECRET, institutionStatus, operationUserIds: new Set() }).listen(0);
+    // S3 simulado em memória (T08): o resto do fluxo é o banco real.
+    const objects = new Map();
+    const uploadStorage = {
+      async presignPut({ key, contentType }) {
+        return { url: `https://s3.test/${key}`, headers: { 'Content-Type': contentType }, expiresIn: 900 };
+      },
+      async presignGet({ key }) { return `https://s3.test/${key}?get`; },
+      async head(key) {
+        const o = objects.get(key);
+        return o ? { size: o.bytes.length, contentType: o.contentType, checksumSha256: null } : null;
+      },
+      async readPrefix(key, length) { return objects.get(key).bytes.slice(0, length); },
+      async copy(from, to) { objects.set(to, objects.get(from)); },
+      async remove(key) { objects.delete(key); },
+    };
+    const server = createApp({
+      pool, secret: SECRET, institutionStatus, operationUserIds: new Set(), uploadStorage,
+    }).listen(0);
     const base = `http://127.0.0.1:${server.address().port}`;
     const call = async (method, url, { as = AGENT, body, auth = true } = {}) => {
       const headers = { 'content-type': 'application/json' };
@@ -211,6 +228,37 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
       const edited = await call('PUT', `/demands/${id}`, { body: { title: 'Horta comunitária da praça central' } });
       assert.equal(edited.status, 200);
       assert.equal(edited.body.title, 'Horta comunitária da praça central');
+
+      // ── Upload da fotografia e de um documento (T08) ────────────────────
+      const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 1, 2, 3]);
+      const pdf = Buffer.from('%PDF-1.7\n%âãÏÓ\n1 0 obj', 'latin1');
+      async function upload(purpose, contentType, bytes, fileName) {
+        const ticket = await call('POST', '/uploads/presign', { body: { purpose, contentType, size: bytes.length, fileName } });
+        assert.equal(ticket.status, 201, JSON.stringify(ticket.body));
+        objects.set(`tmp/${ticket.body.uploadId}`, { bytes: Uint8Array.from(bytes), contentType });
+        const confirmed = await call('POST', `/uploads/${ticket.body.uploadId}/confirm`, { body: { demandId: id } });
+        assert.equal(confirmed.status, 200, JSON.stringify(confirmed.body));
+        return confirmed.body;
+      }
+      const photo = await upload('demand_photo', 'image/png', png, 'praça.png');
+      assert.equal(photo.demandId, id);
+      assert.ok(objects.has(`demands/${id}/photo/${photo.id}.png`) && !objects.has(`tmp/${photo.id}`));
+      const withPhoto = await call('PUT', `/demands/${id}`, { body: { photoRef: photo.ref } });
+      assert.equal(withPhoto.status, 200, JSON.stringify(withPhoto.body));
+      assert.equal(withPhoto.body.photoFile.fileName, 'praça.png');
+      const doc = await upload('demand_document', 'application/pdf', pdf, 'cotação da terra.pdf');
+      const docItem = await call('POST', `/demands/${id}/documents`, {
+        body: { type: 'orcamentos_e_cotacoes', title: 'Cotação da terra', reference: doc.id },
+      });
+      assert.equal(docItem.status, 201, JSON.stringify(docItem.body));
+      assert.equal(docItem.body.item.reference, `upload:${doc.id}`);
+      assert.equal(docItem.body.item.file.url, `https://s3.test/demands/${id}/documents/${doc.id}.pdf?get`);
+      // Upload de outra finalidade ou de outra conta não serve de referência.
+      assert.equal((await call('PUT', `/demands/${id}`, { body: { photoRef: doc.ref } })).status, 422);
+      assert.equal((await call('GET', `/uploads/${doc.id}`, { as: AGENT_PENDING })).status, 404);
+      assert.equal((await call('GET', `/uploads/${photo.id}/content`, { auth: false })).status, 404);
+      const { rows: [stored] } = await pool.query('SELECT status, object_key, size_bytes FROM uploads WHERE id = $1', [photo.id]);
+      assert.deepEqual(stored, { status: 'confirmado', object_key: `demands/${id}/photo/${photo.id}.png`, size_bytes: String(png.length) });
       const mine = await call('GET', `/demands/mine/${id}`);
       const b = mine.body.budgetItems.find((item) => !item.isAudiovisualRecord);
       const changed = await call('PUT', `/demands/${id}/budget-items/${b.id}`, {
@@ -236,9 +284,16 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
       assert.deepEqual(Object.keys(published.body.documents[0]).sort(), ['id', 'position', 'title', 'type']);
       assert.equal(published.body.composition.totalAmountCents, 1_111_000);
 
+      assert.equal(published.body.photoUrl, `/api/posts/uploads/${photo.id}/content`);
       const feed = await call('GET', '/', { auth: false });
       const showcase = feed.body.posts.find((p) => p.demand_id === id);
       assert.ok(showcase, 'post-vitrine no feed com demand_id');
+      // A foto por upload sai no feed pelo endereço público estável.
+      assert.deepEqual(showcase.images, [`/api/posts/uploads/${photo.id}/content`]);
+      const photoRes = await fetch(`${base}/uploads/${photo.id}/content`, { redirect: 'manual' });
+      assert.equal(photoRes.status, 302);
+      assert.equal(photoRes.headers.get('location'), `https://s3.test/demands/${id}/photo/${photo.id}.png?get`);
+      assert.equal((await fetch(`${base}/uploads/${doc.id}/content`, { redirect: 'manual' })).status, 404);
       assert.equal(showcase.id, published.body.postId);
       assert.equal((await call('GET', `/${showcase.id}`, { auth: false })).body.demand_id, id);
       const putShowcase = await call('PUT', `/${showcase.id}`, { body: { title: 'Outro' } });
