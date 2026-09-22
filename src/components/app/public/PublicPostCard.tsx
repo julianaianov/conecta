@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { timeAgo } from "@/lib/app/format";
+import { demandPublicPath } from "@/lib/app/demand";
 import type { Post } from "@/lib/app/types";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
@@ -38,6 +39,11 @@ export function PublicPostCard({ post }: { post: Post }) {
           <h2 className="mt-3 text-[17px] font-bold leading-snug" style={{ color: "var(--th-text)" }}>{post.title}</h2>
           <p className="mt-1.5 text-sm leading-relaxed clamp-3" style={{ color: "var(--th-muted)" }}>{post.description}</p>
         </Link>
+        {post.demandId && (
+          <Link href={demandPublicPath(post.demandId)} className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold hover:underline" style={{ color: "#2e7ba8" }}>
+            <Icon name="inventory" size={15} /> Ver a demanda estruturada
+          </Link>
+        )}
 
         {post.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">

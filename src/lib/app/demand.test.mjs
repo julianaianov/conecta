@@ -1,0 +1,293 @@
+// Assistente da demanda (T09). As demandas abaixo existem só neste teste;
+// nenhuma tela usa dados de exemplo.
+import test from "node:test";
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import {
+  DEMAND_ACTION_LABELS,
+  DEMAND_ACTION_TARGET,
+  DEMAND_CATEGORIES,
+  DEMAND_PRIORITIES,
+  DEMAND_STEPS,
+  DOCUMENT_TYPES,
+  DOCUMENT_TYPE_LABELS,
+  RECORD_MILESTONES,
+  RESOURCE_TYPE_LABELS,
+  STEP_FIELDS,
+  UFS,
+  adjacentStep,
+  budgetItemInput,
+  budgetItemToInput,
+  centsToInput,
+  computeComposition,
+  demandEditPath,
+  demandFieldLabel,
+  demandPublicPath,
+  demandStatusText,
+  demandStepStates,
+  emptyDemandForm,
+  errorsByStep,
+  firstPendingStep,
+  formFromDemand,
+  formatIsoDate,
+  goalInput,
+  isStepDirty,
+  lineTotalCents,
+  localSubmitErrors,
+  parseMoneyToCents,
+  physicalFinancialRows,
+  scheduleItemInput,
+  stepForErrorKey,
+  stepInput,
+  timelineEventLabel,
+} from "./demand.ts";
+import { DEMAND_RESOURCE_TYPES } from "./types.ts";
+import { institutionGateMessage } from "./institution.ts";
+
+const require = createRequire(import.meta.url);
+const constants = require("../../../services/post-service/src/demand/constants.js");
+const finance = require("../../../services/post-service/src/demand/finance.js");
+const { validateDemand, UFS: SERVER_UFS } = require("../../../services/post-service/src/demand/validation.js");
+const { ACTIONS } = require("../../../services/post-service/src/demand/state-machine.js");
+const store = require("../../../services/post-service/src/demand/store.js");
+
+const PHOTO = "upload:eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+const STAGE_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const STAGE_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
+/** Demanda completa, no formato da visão do autor (GET /demands/mine/:id). */
+function completeDemand(overrides = {}) {
+  return {
+    category: "problema_urbano",
+    title: "Recuperação da praça",
+    description: "Praça com piso quebrado e sem iluminação.",
+    objective: "Recuperar o piso e a iluminação.",
+    justification: "Moradores deixaram de usar o espaço à noite.",
+    beneficiariesEstimate: 800,
+    beneficiariesProfile: "Moradores do entorno",
+    priority: "alta",
+    photoRef: PHOTO,
+    cep: "20040020",
+    street: null,
+    addressNumber: null,
+    addressComplement: null,
+    district: "Centro",
+    municipality: "Rio de Janeiro",
+    uf: "RJ",
+    latitude: null,
+    longitude: null,
+    territory: "Centro",
+    hasPhysicalExecution: true,
+    budgetItems: [
+      { id: "11111111-1111-4111-8111-111111111111", description: "Piso", quantity: 10, unit: "m²", unitPriceCents: 95000, totalCents: 950000, isAudiovisualRecord: false, scheduleItemId: STAGE_A },
+      { id: "22222222-2222-4222-8222-222222222222", description: "Registro audiovisual", quantity: 1, unit: "serviço", unitPriceCents: 50000, totalCents: 50000, isAudiovisualRecord: true, scheduleItemId: null },
+    ],
+    scheduleItems: [
+      { id: STAGE_A, stage: "Obra", activities: "Troca do piso", startsOn: "2026-10-01", endsOn: "2026-10-20", responsible: null, recordMilestones: ["antes", "acompanhamento", "depois"] },
+    ],
+    goals: [{ goal: "Piso novo", expectedResult: "Praça usada", indicator: "m² recuperados", measurementMethod: "Medição" }],
+    resources: [{ kind: "necessario", type: "materiais", description: null }],
+    documents: [],
+    ...overrides,
+  };
+}
+
+function serverSubmitErrors(demand) {
+  const input = {
+    ...demand,
+    budgetItems: (demand.budgetItems ?? []).map((item) => ({ ...item, quantity: String(item.quantity) })),
+  };
+  return validateDemand(input, { forSubmission: true }).errors;
+}
+
+test("nove etapas numeradas, na ordem dos passos 03 a 11 do fluxo completo", () => {
+  assert.deepEqual(DEMAND_STEPS.map((s) => s.number), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(DEMAND_STEPS.map((s) => s.sourceStep), [
+    "Passo 03", "Passo 04", "Passo 05", "Passo 06", "Passo 07", "Passo 08", "Passo 09", "Passo 10", "Passo 11",
+  ]);
+  assert.equal(adjacentStep("classificacao", -1), null);
+  assert.equal(adjacentStep("classificacao", 1), "descricao");
+  assert.equal(adjacentStep("revisao", 1), null);
+  assert.equal(demandEditPath("abc", "orcamento"), "/demandas/abc/editar?etapa=orcamento");
+  assert.equal(demandPublicPath("a b"), "/demandas/a%20b");
+});
+
+test("toda coluna escalar do servidor tem etapa (a foto grava no upload)", () => {
+  const covered = new Set(Object.values(STEP_FIELDS).flat());
+  const missing = Object.keys(store.SCALAR_COLUMNS).filter((key) => !covered.has(key) && key !== "photoRef");
+  assert.deepEqual(missing, []);
+  for (const field of covered) assert.ok(field in store.SCALAR_COLUMNS, field);
+});
+
+test("vocabulário igual ao do post-service", () => {
+  assert.deepEqual(DEMAND_CATEGORIES, constants.CATEGORIES);
+  assert.deepEqual(DEMAND_PRIORITIES, constants.PRIORITIES);
+  assert.deepEqual(RECORD_MILESTONES, constants.RECORD_MILESTONES);
+  assert.deepEqual(DOCUMENT_TYPES, constants.DOCUMENT_TYPES);
+  assert.deepEqual(UFS, SERVER_UFS);
+  assert.deepEqual(DEMAND_RESOURCE_TYPES, constants.RESOURCE_TYPES_BY_KIND);
+  for (const type of [...constants.NEEDED_RESOURCE_TYPES, ...constants.COUNTERPART_RESOURCE_TYPES]) {
+    assert.ok(RESOURCE_TYPE_LABELS[type], type);
+  }
+  for (const type of constants.DOCUMENT_TYPES) assert.ok(DOCUMENT_TYPE_LABELS[type], type);
+});
+
+test("ações do Agente com os rótulos e destinos da máquina de estados", () => {
+  for (const [action, label] of Object.entries(DEMAND_ACTION_LABELS)) {
+    assert.equal(label, ACTIONS[action].label, action);
+    assert.ok(ACTIONS[action].actors.includes("agente"), action);
+  }
+  for (const [action, target] of Object.entries(DEMAND_ACTION_TARGET)) {
+    assert.equal(target, ACTIONS[action].to.status, action);
+  }
+});
+
+test("formulário → PUT da etapa: só os campos dela, brancos viram null", () => {
+  const form = { ...emptyDemandForm(), category: "projeto_social", title: "  Horta  ", cep: "20040-020", uf: "rj", beneficiariesEstimate: "1.500" };
+  assert.deepEqual(stepInput("classificacao", form), { category: "projeto_social" });
+  const descricao = stepInput("descricao", form);
+  assert.equal(descricao.title, "Horta");
+  assert.equal(descricao.cep, "20040020");
+  assert.equal(descricao.uf, "RJ");
+  assert.equal(descricao.description, null);
+  assert.equal("category" in descricao, false);
+  assert.equal(stepInput("publico", form).beneficiariesEstimate, 1500);
+  assert.equal(stepInput("publico", { ...form, beneficiariesEstimate: "muitas" }).beneficiariesEstimate, "muitas");
+  assert.deepEqual(stepInput("orcamento", form), { hasPhysicalExecution: true });
+  assert.deepEqual(stepInput("metas", form), {});
+
+  // O servidor aceita o parcial do rascunho sem erro.
+  for (const step of DEMAND_STEPS) {
+    const { errors } = validateDemand(stepInput(step.id, { ...form, beneficiariesEstimate: "1500" }));
+    assert.deepEqual(errors, {}, step.id);
+  }
+});
+
+test("rascunho gravado → formulário e detecção de alteração", () => {
+  const demand = completeDemand();
+  const form = formFromDemand(demand);
+  assert.equal(form.cep, "20040-020");
+  assert.equal(form.beneficiariesEstimate, "800");
+  assert.equal(isStepDirty("descricao", form, form), false);
+  assert.equal(isStepDirty("descricao", { ...form, title: "Outro" }, form), true);
+  assert.equal(isStepDirty("publico", { ...form, title: "Outro" }, form), false);
+  assert.equal(isStepDirty("descricao", { ...form, title: "Recuperação da praça  " }, form), false);
+});
+
+test("conferência local do envio tem as mesmas chaves do servidor", () => {
+  const cases = [
+    {},
+    completeDemand(),
+    completeDemand({ photoRef: null, cep: null, goals: [] }),
+    completeDemand({ budgetItems: completeDemand().budgetItems.map((i) => ({ ...i, isAudiovisualRecord: false })) }),
+    completeDemand({ scheduleItems: [{ ...completeDemand().scheduleItems[0], recordMilestones: ["acompanhamento"] }] }),
+    completeDemand({ hasPhysicalExecution: false, budgetItems: [completeDemand().budgetItems[0]], scheduleItems: [{ ...completeDemand().scheduleItems[0], recordMilestones: [] }] }),
+    completeDemand({ budgetItems: [], scheduleItems: [] }),
+  ];
+  for (const demand of cases) {
+    assert.deepEqual(Object.keys(localSubmitErrors(demand)).sort(), Object.keys(serverSubmitErrors(demand)).sort());
+  }
+  assert.deepEqual(localSubmitErrors(completeDemand()), {});
+});
+
+test("erros do servidor caem na etapa certa", () => {
+  const errors = serverSubmitErrors({});
+  for (const key of Object.keys(errors)) assert.notEqual(stepForErrorKey(key), "revisao", key);
+  assert.equal(stepForErrorKey("budgetItems[0].quantity"), "orcamento");
+  assert.equal(stepForErrorKey("audiovisualRecord"), "orcamento");
+  assert.equal(stepForErrorKey("recordMilestones"), "cronograma");
+  assert.equal(stepForErrorKey("physicalFinancial"), "cronograma");
+  assert.equal(stepForErrorKey("documents[2].reference"), "documentos");
+  assert.equal(stepForErrorKey("desconhecido"), "revisao");
+  const grouped = errorsByStep({ photoRef: "x", goals: "y", cep: "z" });
+  assert.deepEqual(grouped.descricao.map(([k]) => k), ["photoRef", "cep"]);
+  assert.equal(demandFieldLabel("budgetItems[0].quantity"), "Orçamento, item 1: Quantidade");
+  assert.equal(demandFieldLabel("goals[1].description"), "Meta 2: Descrição");
+  assert.equal(demandFieldLabel("photoRef"), "Fotografia");
+});
+
+test("barra de progresso: etapas pendentes e retomada", () => {
+  const empty = demandStepStates({});
+  assert.equal(empty.classificacao, "pendente");
+  assert.equal(empty.documentos, "opcional");
+  assert.equal(empty.revisao, "pendente");
+  assert.equal(firstPendingStep({}), "classificacao");
+  const done = demandStepStates(completeDemand());
+  assert.ok(Object.values(done).every((s) => s === "completa" || s === "opcional"));
+  assert.equal(firstPendingStep(completeDemand()), "revisao");
+  assert.equal(firstPendingStep(completeDemand({ goals: [] })), "metas");
+  assert.equal(demandStepStates(completeDemand({ resources: [] })).recursos, "pendente");
+});
+
+test("dinheiro em reais → centavos", () => {
+  assert.equal(parseMoneyToCents("10.000,00"), 1_000_000);
+  assert.equal(parseMoneyToCents("R$ 1.234,5"), 123_450);
+  assert.equal(parseMoneyToCents("1234.56"), 123_456);
+  assert.equal(parseMoneyToCents("10.000"), 1_000_000);
+  assert.equal(parseMoneyToCents("0"), 0);
+  assert.equal(parseMoneyToCents(""), null);
+  assert.equal(parseMoneyToCents("-5"), null);
+  assert.equal(parseMoneyToCents("1,234"), null);
+  assert.equal(parseMoneyToCents("abc"), null);
+  assert.equal(centsToInput(123_456), "1234,56");
+  assert.equal(centsToInput(5), "0,05");
+});
+
+test("total do item e composição 4%/6% iguais ao post-service", () => {
+  const quantities = ["1", "2,5", "0.001", "3.333", 7, "999"];
+  const prices = [0, 1, 99, 12_345, 1_000_000, 33_333];
+  for (const q of quantities) {
+    for (const p of prices) assert.equal(lineTotalCents(q, p), finance.lineTotalCents(typeof q === "string" ? q.replace(",", ".") : q, p), `${q} × ${p}`);
+  }
+  assert.equal(lineTotalCents("0", 100), null);
+  assert.equal(lineTotalCents("1,2345", 100), null);
+  for (const base of [0, 1, 12, 13, 25, 99, 1_000_000, 123_457, 99_999_999_999]) {
+    assert.deepEqual(computeComposition(base), finance.computeComposition(base), String(base));
+  }
+  const example = computeComposition(1_000_000);
+  assert.equal(example.agentFeeCents, 40_000);
+  assert.equal(example.platformFeeCents, 60_000);
+  assert.equal(example.totalAmountCents, 1_100_000);
+});
+
+test("formulários dos itens conferem os obrigatórios antes de gravar", () => {
+  const bad = budgetItemInput({ description: " ", quantity: "0", unit: "", unitPrice: "x", isAudiovisualRecord: false, scheduleItemId: "" });
+  assert.deepEqual(Object.keys(bad.errors).sort(), ["description", "quantity", "unit", "unitPriceCents"]);
+  const ok = budgetItemInput({ description: "Filmagem", quantity: "2,5", unit: "diária", unitPrice: "1.200,00", isAudiovisualRecord: true, scheduleItemId: "" });
+  assert.deepEqual(ok.errors, {});
+  assert.deepEqual(ok.input, { description: "Filmagem", quantity: "2.5", unit: "diária", unitPriceCents: 120_000, isAudiovisualRecord: true, scheduleItemId: null });
+  assert.deepEqual(validateDemand({ budgetItems: [ok.input] }).errors, {});
+  const relinked = budgetItemToInput(completeDemand().budgetItems[0], { scheduleItemId: STAGE_B });
+  assert.equal(relinked.scheduleItemId, STAGE_B);
+  assert.equal(relinked.quantity, "10");
+
+  const stage = scheduleItemInput({ stage: "Obra", activities: "Piso", startsOn: "2026-10-10", endsOn: "2026-10-01", responsible: "", recordMilestones: ["depois", "antes"] });
+  assert.deepEqual(Object.keys(stage.errors), ["endsOn"]);
+  assert.deepEqual(stage.input.recordMilestones, ["antes", "depois"]);
+  assert.equal(stage.input.responsible, null);
+
+  assert.deepEqual(Object.keys(goalInput({ goal: "a", expectedResult: "", indicator: "c", measurementMethod: " " }).errors), ["expectedResult", "measurementMethod"]);
+});
+
+test("cronograma físico-financeiro soma o custo por etapa", () => {
+  const demand = completeDemand();
+  const rows = physicalFinancialRows(demand.budgetItems, demand.scheduleItems);
+  assert.deepEqual(rows.map((r) => [r.scheduleItemId, r.itemCount, r.totalCents]), [[STAGE_A, 1, 950_000], [null, 1, 50_000]]);
+  assert.equal(formatIsoDate("2026-10-05"), "05/10/2026");
+  assert.equal(formatIsoDate(null), "");
+});
+
+test("status e linha do tempo nunca mostram o código cru", () => {
+  assert.equal(demandStatusText({ status: "em_analise", reviewState: "devolvida" }), "Em análise · Devolvida para ajustes");
+  assert.equal(demandStatusText({ status: "publicada", reviewState: "aprovada" }), "Publicada");
+  assert.equal(timelineEventLabel({ type: "status_alterado", toStatus: "conectada" }), "Conectada");
+  assert.equal(timelineEventLabel({ type: "enviada_para_analise", toStatus: "em_analise", payload: { reenvio: true } }), "Reenviada para análise");
+  assert.equal(timelineEventLabel({ type: "algo_novo", toStatus: null }), "Atualização");
+});
+
+test("aviso do gate fala da instituição do Agente", () => {
+  assert.match(institutionGateMessage("enviar_demanda", null, "agente_transformacao"), /CNPJ \+ CNAE/);
+  assert.match(institutionGateMessage("enviar_demanda", "em_analise", "agente_transformacao"), /instituição/);
+  assert.doesNotMatch(institutionGateMessage("mover_demanda", null, "agente_transformacao"), /Poder Público/);
+  assert.match(institutionGateMessage("publicar", null), /Poder Público/);
+});

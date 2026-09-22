@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/app/api";
 import { timeAgo } from "@/lib/app/format";
+import { demandPublicPath } from "@/lib/app/demand";
 import { useAuth } from "@/lib/app/auth";
 import { allowedSupportTypes, type Post } from "@/lib/app/types";
 import { Avatar } from "./Avatar";
@@ -73,6 +74,16 @@ export function PostCard({ post }: { post: Post }) {
         {/* corpo */}
         <h2 className="mt-3 text-[17px] font-bold leading-snug" style={{ color: "var(--th-text)", letterSpacing: "-0.01em" }}>{post.title}</h2>
         <p className="mt-1.5 text-sm leading-relaxed clamp-3" style={{ color: "var(--th-muted)" }}>{post.description}</p>
+        {post.demandId && (
+          <Link
+            href={demandPublicPath(post.demandId)}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold hover:underline"
+            style={{ color: "#2e7ba8" }}
+          >
+            <Icon name="inventory" size={15} /> Ver a demanda estruturada
+          </Link>
+        )}
 
         {post.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">

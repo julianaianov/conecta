@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/app/auth";
 import { isPlatformAdmin } from "@/lib/app/admin-access";
+import { MY_DEMANDS_PATH } from "@/lib/app/demand";
+import { normalizeRole } from "@/lib/app/types";
 import { DMLogo } from "./DMLogo";
 import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./Avatar";
@@ -32,6 +34,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = isPlatformAdmin(user);
+  // Agente de Transformação estrutura demandas (T09).
+  const isAgent = Boolean(user && normalizeRole(user.role, user.profileType) === "agent");
 
   const isActive = (href: string) =>
     href === "/perfil" ? pathname === "/perfil" : pathname === href || pathname.startsWith(href + "/");
@@ -108,6 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <MenuItem icon="person" label="Meu perfil" onClick={() => { setMenuOpen(false); router.push("/perfil"); }} />
                     <MenuItem icon="trophy" label="Impacto" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
                     <MenuItem icon="volunteer" label="Ações apoiadas" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
+                    {isAgent && <MenuItem icon="inventory" label="Minhas demandas" onClick={() => { setMenuOpen(false); router.push(MY_DEMANDS_PATH); }} />}
                     {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => { setMenuOpen(false); router.push("/admin"); }} />}
                     <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />
                   </div>

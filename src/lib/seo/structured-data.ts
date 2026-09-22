@@ -1,4 +1,4 @@
-import type { Post, Profile } from "../app/types.ts";
+import type { Post, Profile, PublicDemand } from "../app/types.ts";
 import { absoluteUrl } from "./site.ts";
 
 type JsonLd = Record<string, unknown>;
@@ -59,5 +59,28 @@ export function profileJsonLd(profile: Profile, url: string): JsonLd {
     url,
     name: `${profile.name} — DM Conecta`,
     mainEntity: person,
+  });
+}
+
+/** Demanda publicada (T09): só dados da projeção pública. */
+export function demandJsonLd(demand: PublicDemand, url: string): JsonLd {
+  const locationName = [demand.territory, demand.municipality, demand.uf].filter(Boolean).join(", ");
+  return compact({
+    "@context": "https://schema.org",
+    "@type": "CreativeWork",
+    "@id": `${url}#demanda`,
+    url,
+    headline: demand.title,
+    description: demand.description,
+    datePublished: demand.publishedAt,
+    dateModified: demand.updatedAt,
+    image: demand.photoUrl ? mediaUrl(demand.photoUrl) : undefined,
+    author: compact({
+      "@type": "Organization",
+      name: demand.authorName,
+      url: absoluteUrl(`/perfil/${demand.authorId}`),
+    }),
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    ...(locationName ? { contentLocation: { "@type": "Place", name: locationName } } : {}),
   });
 }

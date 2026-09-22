@@ -433,7 +433,9 @@ export function isInstitutionNotValidated(err: unknown): boolean {
   return Boolean(err && typeof err === "object" && (err as { code?: unknown }).code === INSTITUTION_NOT_VALIDATED);
 }
 
-export type GatedAction = "publicar" | "editar" | "comentar" | "apoiar" | "conectar";
+export type GatedAction =
+  | "publicar" | "editar" | "comentar" | "apoiar" | "conectar"
+  | "enviar_demanda" | "mover_demanda";
 
 const GATED_ACTION_TEXT: Record<GatedAction, string> = {
   publicar: "publicar",
@@ -441,22 +443,36 @@ const GATED_ACTION_TEXT: Record<GatedAction, string> = {
   comentar: "comentar",
   apoiar: "registrar apoio",
   conectar: "solicitar conexões",
+  enviar_demanda: "enviar a demanda para análise",
+  mover_demanda: "atualizar o andamento da demanda",
 };
 
-/** Mensagem amigável para o 403, conforme o estado do cadastro. */
-export function institutionGateMessage(action: GatedAction, status: InstitutionValidationStatus | null | undefined): string {
+/**
+ * Mensagem amigável para o 403, conforme o estado do cadastro. `kind` diz de
+ * quem é o cadastro: o órgão do Poder Público (padrão) ou a instituição com
+ * CNPJ + CNAE do Agente de Transformação.
+ */
+export function institutionGateMessage(
+  action: GatedAction,
+  status: InstitutionValidationStatus | null | undefined,
+  kind: InstitutionKind = "poder_publico",
+): string {
   const what = GATED_ACTION_TEXT[action];
+  const agent = kind === "agente_transformacao";
+  const subject = agent ? "a instituição (CNPJ + CNAE)" : "o órgão";
   switch (status) {
     case "em_analise":
-      return `Seu cadastro institucional está em análise. Você poderá ${what} assim que a equipe validar o órgão.`;
+      return `Seu cadastro institucional está em análise. Você poderá ${what} assim que a equipe validar ${subject}.`;
     case "devolvida":
       return `Para ${what}, ajuste o cadastro institucional conforme o parecer da equipe e envie de novo.`;
     case "revogada":
       return `A validação institucional foi revogada. Para ${what}, atualize o cadastro e envie para nova análise.`;
     case "pendente":
-      return `Para ${what}, envie o cadastro institucional do órgão para validação.`;
+      return `Para ${what}, envie o cadastro institucional ${agent ? "da instituição" : "do órgão"} para validação.`;
     default:
-      return `Para ${what}, o Poder Público precisa de cadastro institucional validado. Faça o cadastro do órgão e do representante.`;
+      return agent
+        ? `Para ${what}, o Agente de Transformação precisa de cadastro institucional com CNPJ + CNAE validado. Faça o cadastro da instituição.`
+        : `Para ${what}, o Poder Público precisa de cadastro institucional validado. Faça o cadastro do órgão e do representante.`;
   }
 }
 

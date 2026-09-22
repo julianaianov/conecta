@@ -939,11 +939,13 @@ export const api = {
   // ── DEMANDA (T07) ────────────────────────────────────────
   /** Demandas publicadas em diante (paginação por `nextCursor`). */
   async listPublicDemands(filter?: DemandListFilter): Promise<DemandPage> {
-    return (await demandRequest<DemandPage>(`/?${buildDemandQuery(filter)}`)) ?? { demands: [], nextCursor: null };
+    const page = (await demandRequest<DemandPage>(`/?${buildDemandQuery(filter)}`)) ?? { demands: [], nextCursor: null };
+    return { ...page, demands: page.demands.map((d) => ({ ...d, photoUrl: d.photoUrl ? resolveMediaUrl(d.photoUrl, BASE) : null })) };
   },
 
-  getPublicDemand(id: string): Promise<PublicDemand | null> {
-    return demandRequest<PublicDemand>(`/${encodeURIComponent(id)}`);
+  async getPublicDemand(id: string): Promise<PublicDemand | null> {
+    const demand = await demandRequest<PublicDemand>(`/${encodeURIComponent(id)}`);
+    return demand && { ...demand, photoUrl: demand.photoUrl ? resolveMediaUrl(demand.photoUrl, BASE) : null };
   },
 
   async publicDemandTimeline(id: string): Promise<DemandTimelineEvent[]> {

@@ -13,6 +13,7 @@ import {
 import {
   INSTITUTION_STATUS_LABELS,
   type Institution,
+  type InstitutionKind,
   type InstitutionValidationStatus,
 } from "@/lib/app/types";
 import { Icon, type IconName } from "../Icon";
@@ -101,12 +102,16 @@ export function InstitutionStatusCard({ institution }: { institution: Institutio
 }
 
 /** Aviso amigável para o 403 `institution_not_validated`. */
-export function InstitutionGateNotice({ action, status }: { action: GatedAction; status: InstitutionValidationStatus | null }) {
+export function InstitutionGateNotice({ action, status, kind }: {
+  action: GatedAction;
+  status: InstitutionValidationStatus | null;
+  kind?: InstitutionKind;
+}) {
   return (
     <div role="alert" className="rounded-xl border p-3" style={{ borderColor: "rgba(46,123,168,0.35)", background: "rgba(46,123,168,0.08)" }}>
       <p className="flex items-start gap-2 text-sm" style={{ color: "var(--th-text)" }}>
         <Icon name="shield" size={16} className="mt-0.5 shrink-0" style={{ color: "#2e7ba8" }} />
-        <span>{institutionGateMessage(action, status)}</span>
+        <span>{institutionGateMessage(action, status, kind)}</span>
       </p>
       <Link href={INSTITUTION_HUB_PATH} className="mt-2 inline-flex text-sm font-bold" style={{ color: "#f4841a" }}>
         {status === "em_analise" ? "Acompanhar o cadastro institucional →" : "Ir para o cadastro institucional →"}

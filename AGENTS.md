@@ -230,6 +230,45 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   assinada real com credencial estática de teste), `services/user-service/test/uploads.test.js`,
   `src/lib/app/uploads.test.mjs` e o trecho de upload no e2e da demanda.
 
+## Assistente da demanda (T09)
+
+- Páginas: `/demandas/nova` (etapa 1, cria o rascunho com a categoria),
+  `/demandas/[id]/editar?etapa=<id>` (assistente; `noindex`),
+  `/minhas-demandas` (`noindex`) e `/demandas/[id]` (pública, SSR, indexável,
+  `revalidate` 60 s, JSON-LD `demandJsonLd`, entra no sitemap). `robots.ts`
+  bloqueia `/demandas/nova`, `/demandas/*/editar` e `/minhas-demandas`.
+- Componentes em `src/components/app/demand/`: `DemandWizard` (etapas),
+  `DemandProgress` (barra numerada, `aria-current="step"`), `BudgetEditor`,
+  `ScheduleEditor`, `ItemEditors` (metas, recursos/contrapartida, documentos),
+  `DemandSummary` (revisão), `MyDemandsClient`, `PublicDemandView`,
+  `DemandParts` (leitura sem estado, serve ao SSR) e `DemandMap`.
+- Etapas (`DEMAND_STEPS` em `src/lib/app/demand.ts`, passos 03 a 11 do slide
+  25): 1 classificação, 2 descrição + foto + localização (CEP no ViaCEP,
+  `LocationPicker`, território), 3 público/objetivo/justificativa/prioridade,
+  4 orçamento (execução física, item audiovisual obrigatório, composição 4%/6%
+  ao vivo por `POST /composition/preview`), 5 cronograma físico-financeiro
+  (vínculo item → etapa, marcos antes/acompanhamento/depois), 6 metas, 7
+  recursos e contrapartida, 8 documentos (upload `demand_document`, opcional),
+  9 revisão (`POST /:id/validate`, erros agrupados por etapa) e envio.
+- Rascunho: cada etapa grava só os seus campos (`STEP_FIELDS`, `PUT /:id`) ao
+  avançar, voltar ou trocar de etapa; itens gravam na hora pelas rotas próprias
+  e a foto grava quando o upload termina. O post-service já aceita rascunho
+  parcial (validação completa só no `validate`/`submit`); a API não mudou.
+- `demand.ts` espelha `validation.js` (chaves do envio), `finance.js`
+  (composição) e `state-machine.js` (rótulos e destinos das ações);
+  `src/lib/app/demand.test.mjs` compara com os módulos do post-service.
+- Instituição não validada: o rascunho segue livre; o envio e as ações depois
+  da publicação mostram `InstitutionGateNotice` com `kind="agente_transformacao"`
+  (ações `enviar_demanda` e `mover_demanda`), inclusive no 403 do servidor.
+- "Minhas demandas": status canônico (em análise com a etapa da análise),
+  parecer da devolução, retomada da edição e as ações de `availableActions`
+  (`buscar_parceiro`, `conectar`, `iniciar_execucao`, `concluir`,
+  `prestar_contas`) com confirmação.
+- Post-vitrine: `PostCard`, `PublicPostCard` e o detalhe do post linkam para
+  `/demandas/<demandId>`; o detalhe não oferece "Editar ponto" no post-vitrine.
+  O `/criar` do Agente aponta para o assistente e para "Minhas demandas"; o menu
+  da conta do Agente tem "Minhas demandas".
+
 ## Segurança dos serviços
 
 - `JWT_SECRET` é obrigatório e forte (32+ caracteres, sem valores de exemplo)

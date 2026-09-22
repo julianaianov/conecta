@@ -12,6 +12,9 @@ const PRIVATE_PATHS = [
   "/conexoes/",
   "/post/*/apoiar",
   "/cadastro-institucional",
+  "/demandas/nova",
+  "/demandas/*/editar",
+  "/minhas-demandas",
 ];
 
 export default function robots(): MetadataRoute.Robots {

@@ -6,6 +6,9 @@ import {
   type Post,
   type Profile,
   type ProfileType,
+  type PublicDemand,
+  type PublicDemandSummary,
+  type DemandTimelineEvent,
   type PublicInstitution,
   type RankCategory,
   type RankEntry,
@@ -213,4 +216,39 @@ export async function getPublicRanking(): Promise<Record<RankCategory, RankEntry
 export async function getPublicCommunities(): Promise<Community[]> {
   const data = await fetchPublicJson<RawRecord[]>("users", "/communities");
   return data?.map(mapCommunity) ?? [];
+}
+
+// ── Demanda (T09) ──────────────────────────────────────────
+// O post-service já responde a projeção pública em camelCase (sem CEP, rua,
+// número, instituição, parecer, responsável do cronograma nem link de
+// documento). Aqui só a foto ganha a base pública da API.
+
+function withPublicPhoto<T extends { photoUrl: string | null }>(record: T): T {
+  return { ...record, photoUrl: record.photoUrl ? resolveMediaUrl(record.photoUrl, runtime.apiBase) : null };
+}
+
+export async function getPublicDemand(id: string): Promise<PublicDemand | null> {
+  const data = await fetchPublicJson<PublicDemand>("posts", `/demands/${encodeURIComponent(id)}`);
+  return data && typeof data.id === "string" ? withPublicPhoto(data) : null;
+}
+
+export async function getPublicDemandTimeline(id: string): Promise<DemandTimelineEvent[]> {
+  const data = await fetchPublicJson<{ events?: DemandTimelineEvent[] }>("posts", `/demands/${encodeURIComponent(id)}/timeline`);
+  return Array.isArray(data?.events) ? data.events : [];
+}
+
+/** Demandas publicadas em diante, percorrendo o cursor até `max`. */
+export async function getPublicDemandSummaries(max = 500): Promise<PublicDemandSummary[]> {
+  const out: PublicDemandSummary[] = [];
+  let cursor: string | null = null;
+  do {
+    const query = new URLSearchParams({ limit: "50" });
+    if (cursor) query.set("cursor", cursor);
+    const page: { demands?: PublicDemandSummary[]; nextCursor?: string | null } | null =
+      await fetchPublicJson("posts", `/demands?${query.toString()}`);
+    if (!page || !Array.isArray(page.demands)) break;
+    out.push(...page.demands.map(withPublicPhoto));
+    cursor = page.nextCursor ?? null;
+  } while (cursor && out.length < max);
+  return out.slice(0, max);
 }

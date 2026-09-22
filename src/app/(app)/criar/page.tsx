@@ -19,6 +19,7 @@ import { InstitutionGateNotice } from "@/components/app/institution/InstitutionS
 import { useInstitutionAccess } from "@/components/app/institution/useInstitutionAccess";
 import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
 import type { InstitutionValidationStatus } from "@/lib/app/types";
+import { DEMAND_NEW_PATH, MY_DEMANDS_PATH } from "@/lib/app/demand";
 
 const LocationPicker = dynamic(
   () => import("@/components/app/LocationPicker").then((mod) => mod.LocationPicker),
@@ -154,6 +155,25 @@ function CreatePostContent() {
       </button>
 
       <InstitutionBanner dismissible={false} className="mb-4" />
+      {normalizeRole(user?.role, user?.profileType) === "agent" && (
+        <Card className="mb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: "rgba(244,132,26,0.12)", color: "#f4841a" }}>
+              <Icon name="inventory" size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold" style={{ color: "var(--th-text)" }}>Estruturar uma demanda</p>
+              <p className="mt-0.5 text-sm" style={{ color: "var(--th-muted)" }}>
+                Categoria, fotografia, localização com CEP, orçamento detalhado, cronograma, metas e documentos. Passa pela análise da equipe antes da publicação.
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button href={DEMAND_NEW_PATH} size="sm" icon="plus">Nova demanda</Button>
+              <Button href={MY_DEMANDS_PATH} size="sm" variant="outline">Minhas demandas</Button>
+            </div>
+          </div>
+        </Card>
+      )}
       <Card>
         <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Novo sinal</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>

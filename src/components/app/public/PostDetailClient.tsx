@@ -23,6 +23,7 @@ import { Card, StatusBadge, SupportPill, TypeBadge } from "../ui";
 import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import { gateStatusFrom, isInstitutionNotValidated, type GatedAction } from "@/lib/app/institution";
 import type { InstitutionValidationStatus } from "@/lib/app/types";
+import { demandPublicPath } from "@/lib/app/demand";
 
 const LocationPicker = dynamic(
   () => import("../LocationPicker").then((module) => module.LocationPicker),
@@ -127,6 +128,16 @@ export function PostDetailClient({
           <h1 className="mt-3 text-2xl font-bold leading-tight" style={{ color: "var(--th-text)" }}>{post.title}</h1>
           <div className="mt-3 flex items-center gap-3"><Link href={profileHref}><Avatar name={post.authorName} src={post.authorAvatar} id={post.authorId} size={40} /></Link><div><Link href={profileHref} className="text-sm font-bold hover:underline" style={{ color: "var(--th-text)" }}>{post.authorName}</Link><p className="text-xs" style={{ color: "var(--th-muted)" }}>{formatDate(post.createdAt)}{post.neighborhood ? ` · ${post.neighborhood}` : ""}</p></div></div>
           <p className="mt-4 whitespace-pre-line text-[15px] leading-relaxed" style={{ color: "var(--th-text)" }}>{post.description}</p>
+          {post.demandId && (
+            <Link href={demandPublicPath(post.demandId)} className="mt-4 flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-[var(--th-card-alt)]" style={{ borderColor: "rgba(46,123,168,0.35)" }}>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: "rgba(46,123,168,0.12)", color: "#2e7ba8" }}><Icon name="inventory" size={18} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold" style={{ color: "var(--th-text)" }}>Ver a demanda estruturada</span>
+                <span className="block text-xs" style={{ color: "var(--th-muted)" }}>Orçamento, composição financeira, cronograma, metas, recursos e linha do tempo.</span>
+              </span>
+              <Icon name="chevronRight" size={18} style={{ color: "var(--th-muted)" }} />
+            </Link>
+          )}
           {post.tags.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{post.tags.map((tag) => <span key={tag} className="rounded-md px-2 py-1 text-xs font-semibold" style={{ background: "var(--th-card-alt)", color: "var(--th-muted)" }}>#{tag}</span>)}</div>}
           <div className="mt-5 flex flex-wrap items-center gap-3 border-y py-2 text-sm" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)" }}>
             {user ? (
@@ -146,7 +157,7 @@ export function PostDetailClient({
                 <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Ponto no território</p>
                 <p className="mt-1 text-sm font-semibold" style={{ color: "var(--th-text)" }}>{post.latitude != null && post.longitude != null ? `${post.neighborhood || "Território"}${post.city ? ` · ${post.city}` : ""}` : "Este registro ainda não possui localização pública."}</p>
               </div>
-              {isAuthor && !editingLocation && <Button type="button" variant="ghost" size="sm" icon="edit" onClick={() => setEditingLocation(true)}>Editar ponto</Button>}
+              {isAuthor && !post.demandId && !editingLocation && <Button type="button" variant="ghost" size="sm" icon="edit" onClick={() => setEditingLocation(true)}>Editar ponto</Button>}
             </div>
             {editingLocation ? (
               <div className="mt-3 space-y-3">

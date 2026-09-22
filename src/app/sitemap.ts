@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getPublicPosts } from "../lib/server/public-data.ts";
+import { getPublicDemandSummaries, getPublicPosts } from "../lib/server/public-data.ts";
 import { absoluteUrl } from "../lib/seo/site.ts";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +33,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   } catch {
     // Stable public URLs remain available even when the content service is down.
+  }
+
+  try {
+    // Página pública da demanda (T09): só publicada em diante.
+    for (const demand of await getPublicDemandSummaries()) {
+      if (demand.id) addUnique(entries, `/demandas/${encodeURIComponent(demand.id)}`, demand.publishedAt ?? undefined);
+    }
+  } catch {
+    // Idem: sem o serviço, o sitemap segue com as demais URLs.
   }
 
   return [...entries.values()];

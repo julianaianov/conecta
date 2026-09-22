@@ -1,0 +1,239 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { api } from "@/lib/app/api";
+import { useAuth } from "@/lib/app/auth";
+import {
+  DEMAND_ACTION_LABELS,
+  DEMAND_ACTION_TARGET,
+  DEMAND_NEW_PATH,
+  MY_DEMANDS_PATH,
+  demandEditPath,
+  demandErrorMessage,
+  demandGuidance,
+  demandPublicPath,
+  formatCents,
+  isAgentTransition,
+} from "@/lib/app/demand";
+import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
+import {
+  DEMAND_PUBLIC_STATUSES,
+  DEMAND_STATUS_LABELS,
+  normalizeRole,
+  type Demand,
+  type DemandAgentAction,
+  type InstitutionValidationStatus,
+} from "@/lib/app/types";
+import { AuthPrompt } from "../AuthPrompt";
+import { Button } from "../Button";
+import { Card, EmptyState } from "../ui";
+import { InstitutionGateNotice } from "../institution/InstitutionStatus";
+import { CategoryBadge, DemandStatusBadge, StatusTrack } from "./DemandParts";
+import { FormAlert } from "./fields";
+
+function dateTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: Demand) => void }) {
+  const [confirming, setConfirming] = useState<DemandAgentAction | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
+  const actions = demand.availableActions.filter(isAgentTransition);
+  const isPublic = DEMAND_PUBLIC_STATUSES.includes(demand.status);
+  const title = demand.title || "Rascunho sem título";
+
+  async function run(action: DemandAgentAction) {
+    setBusy(true);
+    setError(null);
+    setGate(null);
+    try {
+      const updated = await api.transitionDemand(demand.id, action);
+      // A resposta traz a visão completa; a lista mantém a foto já assinada.
+      onUpdated({ ...updated, photoUrl: updated.photoUrl ?? demand.photoUrl });
+      setConfirming(null);
+    } catch (err) {
+      if (isInstitutionNotValidated(err)) setGate({ status: gateStatusFrom(err) });
+      else setError(demandErrorMessage(err, "Não foi possível atualizar o andamento agora."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li>
+      <article className="app-card overflow-hidden rounded-2xl" aria-labelledby={`dm-${demand.id}-title`}>
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:p-5">
+          {demand.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={demand.photoUrl} alt="" className="h-32 w-full shrink-0 rounded-xl object-cover sm:h-28 sm:w-40" />
+          ) : (
+            <div className="hidden h-28 w-40 shrink-0 items-center justify-center rounded-xl border border-dashed text-xs sm:flex" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)" }}>Sem fotografia</div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <DemandStatusBadge status={demand.status} reviewState={demand.reviewState} />
+              <CategoryBadge category={demand.category} />
+            </div>
+            <h2 id={`dm-${demand.id}-title`} className="mt-2 text-base font-bold leading-snug" style={{ color: "var(--th-text)" }}>{title}</h2>
+            <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>{demandGuidance(demand)}</p>
+            <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: "var(--th-muted)" }}>
+              {demand.territory && <div><dt className="inline">Território: </dt><dd className="inline">{demand.territory}</dd></div>}
+              {demand.composition.totalAmountCents > 0 && <div><dt className="inline">Valor total: </dt><dd className="inline font-numeric">{formatCents(demand.composition.totalAmountCents)}</dd></div>}
+              <div><dt className="inline">Atualizada em </dt><dd className="inline font-numeric">{dateTime(demand.updatedAt)}</dd></div>
+            </dl>
+          </div>
+        </div>
+
+        {demand.reviewState === "devolvida" && demand.reviewNote && (
+          <div className="mx-4 mb-4 rounded-xl border p-3 sm:mx-5" style={{ borderColor: "rgba(244,132,26,0.45)", background: "rgba(244,132,26,0.08)" }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#f4841a" }}>Parecer da equipe</p>
+            <p className="mt-1 whitespace-pre-line text-sm" style={{ color: "var(--th-text)" }}>{demand.reviewNote}</p>
+            {demand.reviewedAt && <p className="mt-1 text-xs font-numeric" style={{ color: "var(--th-muted)" }}>{dateTime(demand.reviewedAt)}</p>}
+          </div>
+        )}
+        {demand.status === "arquivada" && demand.archiveReason && (
+          <div className="mx-4 mb-4 rounded-xl border p-3 sm:mx-5" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)" }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Motivo do arquivamento</p>
+            <p className="mt-1 whitespace-pre-line text-sm" style={{ color: "var(--th-text)" }}>{demand.archiveReason}</p>
+          </div>
+        )}
+
+        {isPublic && <div className="px-4 pb-3 sm:px-5"><StatusTrack status={demand.status} /></div>}
+
+        <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+          {demand.editable && (
+            <Button href={demandEditPath(demand.id, demand.reviewState === "devolvida" ? "revisao" : undefined)} size="sm" icon="edit">
+              {demand.reviewState === "devolvida" ? "Ajustar e reenviar" : "Continuar preenchimento"}
+            </Button>
+          )}
+          {!demand.editable && demand.status === "em_analise" && (
+            <Button href={demandEditPath(demand.id)} size="sm" variant="outline" icon="eye">Ver o que foi enviado</Button>
+          )}
+          {isPublic && <Button href={demandPublicPath(demand.id)} size="sm" variant="outline" icon="eye">Página pública</Button>}
+          {isPublic && demand.postId && <Button href={`/post/${demand.postId}`} size="sm" variant="ghost" icon="bolt">No pulso</Button>}
+          {actions.map((action) => (
+            <Button
+              key={action}
+              type="button"
+              size="sm"
+              variant={confirming === action ? "primary" : "secondary"}
+              disabled={busy && confirming !== action}
+              onClick={() => setConfirming(confirming === action ? null : action)}
+              aria-expanded={confirming === action}
+              aria-controls={`dm-${demand.id}-confirm`}
+            >
+              {DEMAND_ACTION_LABELS[action]}
+            </Button>
+          ))}
+        </div>
+
+        {confirming && (
+          <div id={`dm-${demand.id}-confirm`} className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)" }}>
+            <p className="text-sm" style={{ color: "var(--th-text)" }}>
+              {DEMAND_ACTION_LABELS[confirming]}: o status passa de <strong>{DEMAND_STATUS_LABELS[demand.status]}</strong> para{" "}
+              <strong>{DEMAND_STATUS_LABELS[DEMAND_ACTION_TARGET[confirming]]}</strong> e o registro entra na linha do tempo pública.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <Button type="button" size="sm" icon="check" loading={busy} onClick={() => void run(confirming)}>Confirmar</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setConfirming(null)} disabled={busy}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+        {(error || gate) && (
+          <div className="px-4 pb-4 sm:px-5">
+            {error && <FormAlert message={error} />}
+            {gate && <InstitutionGateNotice action="mover_demanda" status={gate.status} kind="agente_transformacao" />}
+          </div>
+        )}
+      </article>
+    </li>
+  );
+}
+
+/** "Minhas demandas" (T09): as demandas do Agente em qualquer estado. */
+export function MyDemandsClient() {
+  const { user, status } = useAuth();
+  const isAgent = Boolean(user && normalizeRole(user.role, user.profileType) === "agent");
+  const [demands, setDemands] = useState<Demand[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !isAgent) return;
+    let alive = true;
+    api.myDemands()
+      .then((list) => { if (alive) { setDemands(list); setError(null); } })
+      .catch((err) => { if (alive) setError(demandErrorMessage(err, "Não foi possível carregar suas demandas.")); });
+    return () => { alive = false; };
+  }, [status, isAgent, reload]);
+
+  if (status === "unknown") return <div className="flex justify-center py-24"><span className="app-spinner" aria-label="Carregando" /></div>;
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <Card>
+          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Minhas demandas</h1>
+          <div className="mt-4"><AuthPrompt action="acompanhar suas demandas" returnTo={MY_DEMANDS_PATH} /></div>
+        </Card>
+      </div>
+    );
+  }
+  if (!isAgent) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <Card>
+          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Minhas demandas</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>Demandas são criadas e acompanhadas por Agentes de Transformação.</p>
+          <Button className="mt-4" href="/feed">Ver o pulso</Button>
+        </Card>
+      </div>
+    );
+  }
+
+  const inProgress = demands?.filter((d) => d.status === "em_analise") ?? [];
+  const others = demands?.filter((d) => d.status !== "em_analise") ?? [];
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--th-text)" }}>Minhas demandas</h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>Rascunhos, análise, publicação, execução e prestação de contas.</p>
+        </div>
+        <Button href={DEMAND_NEW_PATH} icon="plus">Nova demanda</Button>
+      </header>
+
+      {error && (
+        <div className="space-y-2">
+          <FormAlert message={error} />
+          <Button type="button" size="sm" variant="outline" onClick={() => setReload((n) => n + 1)}>Tentar de novo</Button>
+        </div>
+      )}
+      {!demands && !error && <div className="flex justify-center py-16"><span className="app-spinner" aria-label="Carregando suas demandas" /></div>}
+      {demands && demands.length === 0 && (
+        <EmptyState icon="plus" title="Você ainda não estruturou nenhuma demanda" hint="Comece pela categoria; o rascunho fica salvo e você completa as etapas no seu ritmo." />
+      )}
+
+      {inProgress.length > 0 && (
+        <section aria-labelledby="dm-analise">
+          <h2 id="dm-analise" className="mb-2 text-sm font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Em preparação e análise</h2>
+          <ul className="space-y-3">
+            {inProgress.map((d) => <DemandRow key={d.id} demand={d} onUpdated={(n) => setDemands((list) => list?.map((x) => (x.id === n.id ? n : x)) ?? null)} />)}
+          </ul>
+        </section>
+      )}
+      {others.length > 0 && (
+        <section aria-labelledby="dm-publicadas">
+          <h2 id="dm-publicadas" className="mb-2 text-sm font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Da publicação em diante</h2>
+          <ul className="space-y-3">
+            {others.map((d) => <DemandRow key={d.id} demand={d} onUpdated={(n) => setDemands((list) => list?.map((x) => (x.id === n.id ? n : x)) ?? null)} />)}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
