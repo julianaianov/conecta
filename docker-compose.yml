@@ -103,6 +103,8 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      # Dossiê da Demanda (T10): URL de verificação impressa no PDF.
+      DM_PUBLIC_SITE_URL: ${DM_PUBLIC_SITE_URL:-http://localhost:3000}
       PORT: 3003
     depends_on:
       post-db:

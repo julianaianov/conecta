@@ -23,6 +23,9 @@
 //   POST /:id/transitions          { action }: buscar_parceiro, conectar,
 //                                  iniciar_execucao, concluir, prestar_contas
 //
+// Dossiê da Demanda (T10): rotas em src/routes/dossiers.js; o envio pede a
+// geração sem esperar (src/dossier/service.js).
+//
 // Arquivos (T08): `photoRef` e `documents[].reference` aceitam `upload:<id>`
 // de upload confirmado desta demanda (rotas em /uploads, src/uploads.js); a
 // visão do autor traz URL de leitura curta (`photoFile`, `documents[].file`),
@@ -280,7 +283,7 @@ function publicListQuery(query) {
   return { sql, params, limit };
 }
 
-module.exports = ({ pool, auth, validatedAgent, uploadStorage = null }) => {
+module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers = null }) => {
   if (typeof auth !== 'function' || typeof validatedAgent !== 'function') {
     throw new Error('demands routes exigem auth e requireValidatedAgent');
   }
@@ -587,6 +590,8 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null }) => {
       return ownerView(client, req.params.id, req.user.userId);
     });
     res.json(submitted);
+    // Dossiê da Demanda (T10): gerado depois da resposta; falha não afeta o envio.
+    if (dossiers) void dossiers.request(req.params.id);
   }));
 
   router.post('/:id/transitions', auth, requireAgent, validatedAgent, handle(async (req, res) => {

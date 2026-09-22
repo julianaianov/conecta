@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 010, post-service 009. Registre a migração em
+  auth-service 004, user-service 010, post-service 010. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -268,6 +268,53 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `/demandas/<demandId>`; o detalhe não oferece "Editar ponto" no post-vitrine.
   O `/criar` do Agente aponta para o assistente e para "Minhas demandas"; o menu
   da conta do Agente tem "Minhas demandas".
+
+## Dossiê da Demanda (T10)
+
+- "Documento Oficial da Demanda — Dossiê da Demanda" (slides 18–19 do Fluxo 2)
+  em PDF, gerado pelo post-service em `src/dossier/`: `content.js` (snapshot,
+  redação da versão pública, JSON canônico e SHA-256), `pdf.js` (pdfkit, sem
+  dependência nativa; DM Sans e Inter embutidas de `assets/fonts`, licença OFL;
+  paleta e monograma do manual de marca), `service.js` (fila e versões),
+  `institution.js` (projeção pública da instituição no user-service, sem token).
+- Versões em `demand_dossiers` (migração post 009): envio (v1), cada reenvio
+  (v2, v3…) e publicação (vN `integral` + vN `publica`), com número
+  `DMC-<ano>-<seq>` por demanda, `trigger_kind`, `snapshot` congelado no pedido,
+  `status` `pendente`/`gerado`/`falhou`/`indisponivel` + `status_reason`,
+  `content` + `content_sha256` (impresso no PDF e no QR), `file_sha256`,
+  `upload_id` (linha em `uploads`, finalidade `demand_dossier`) e
+  `object_key` `demands/<id>/dossie/v<n>.pdf` (`v<n>-publica.pdf`). Trigger:
+  dossiê gerado é imutável, nada é excluído, `gestao_app` só lê.
+- Fora do caminho crítico: o `submit` responde e só então pede a geração
+  (`dossiers.request`, nunca lança). O laço em processo (`DM_DOSSIER_INTERVAL_MS`,
+  padrão 60 s; 0 desliga) reconcilia envios e publicações (a publicação vem do
+  dm-gestao direto no banco) e repete falhas com espera exponencial (6
+  tentativas); depois disso, `POST /:id/dossiers/regenerate`. Sem
+  `DM_UPLOADS_BUCKET` a versão fica `indisponivel` com o motivo e é gerada
+  quando houver bucket. `DM_PUBLIC_SITE_URL` (padrão `https://dmconecta.org`)
+  forma a URL de verificação.
+- Cada versão integral gerada grava `dossie_gerado` em `demand_events`
+  (`sistema`, payload com versão, gatilho e hash; pública só na publicação).
+- Rotas (`src/routes/dossiers.js`, antes das da demanda): públicas
+  `GET /demands/dossiers/verify/:hash` (conteúdo ou arquivo; título da demanda
+  só se publicada), `GET /demands/:id/dossie-publico` (302 para URL assinada
+  de 5 min da versão pública; só demanda publicada) e
+  `GET /demands/:id/dossie-publico/info`; autor ou `DM_OPERATION_USER_IDS`:
+  `GET /demands/:id/dossiers`, `GET /demands/:id/dossiers/:dossierId/download`
+  (`{ url, expiresAt, fileName }`, 60 s) e `POST /demands/:id/dossiers/regenerate`
+  (503 `uploads_unavailable` sem bucket).
+- Versão pública: sem CEP, rua, número, complemento, coordenadas, responsáveis
+  do cronograma, descrição/origem de documentos e ids internos. A instituição
+  vem da projeção pública (CNPJ, CNAE, razão social; nunca contatos).
+- Frontend: `src/lib/app/dossier.ts` (rótulos, caminhos, SHA-256 no navegador),
+  bloco "DOSSIÊ DA DEMANDA (T10)" em `api.ts` e `types.ts`, `DossierPanel`
+  (Minhas demandas, revisão do assistente e leitura depois do envio), seção
+  "Documento oficial" na página pública e `/dossie/verificar[/<hash>]`
+  (`noindex`, bloqueada no `robots.ts`).
+- Testes: `test/dossier.test.js` (conteúdo, redação, hash, PDF com fontes e
+  foto) e `test/dossier-e2e.test.js` (S3 fora no envio, regeneração, reenvio,
+  publicação, versão pública, verificação, imutabilidade, sem bucket),
+  `src/lib/app/dossier.test.mjs`.
 
 ## Segurança dos serviços
 

@@ -26,6 +26,7 @@ import type {
   DemandTimelineEvent, DemandValidation, PublicDemand, DemandBudgetItemInput,
 } from "./types";
 import type { UploadedFile, UploadPurpose, UploadService, UploadTicket } from "./types";
+import type { DemandDossierDownload, DemandDossierList, DossierVerification, PublicDossierInfo } from "./types";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -1015,5 +1016,31 @@ export const api = {
 
   transitionDemand(id: string, action: DemandAgentAction): Promise<Demand> {
     return demandRequired<Demand>(`/${encodeURIComponent(id)}/transitions`, { method: "POST", ...json({ action }) });
+  },
+
+  // ── DOSSIÊ DA DEMANDA (T10) ──────────────────────────────
+  /** Versões do dossiê (autor ou operação), com o estado da geração. */
+  myDemandDossiers(id: string): Promise<DemandDossierList> {
+    return demandRequired<DemandDossierList>(`/${encodeURIComponent(id)}/dossiers`);
+  },
+
+  /** URL assinada curta (60 s) de uma versão gerada; 409 `dossier_not_generated`. */
+  demandDossierDownload(id: string, dossierId: string): Promise<DemandDossierDownload> {
+    return demandRequired<DemandDossierDownload>(`/${encodeURIComponent(id)}/dossiers/${encodeURIComponent(dossierId)}/download`);
+  },
+
+  /** Gera agora o que ficou pendente ou falhou; 503 `uploads_unavailable` sem bucket. */
+  regenerateDemandDossiers(id: string): Promise<DemandDossierList & { generated?: number; failed?: number }> {
+    return demandRequired(`/${encodeURIComponent(id)}/dossiers/regenerate`, { method: "POST", body: "{}" });
+  },
+
+  /** Versão pública da publicação; `null` se a demanda não é pública. */
+  publicDossierInfo(id: string): Promise<PublicDossierInfo | null> {
+    return demandRequest<PublicDossierInfo>(`/${encodeURIComponent(id)}/dossie-publico/info`);
+  },
+
+  /** Verificação pública por SHA-256; `null` quando nenhum dossiê tem o hash. */
+  verifyDossier(hash: string): Promise<DossierVerification | null> {
+    return demandRequest<DossierVerification>(`/dossiers/verify/${encodeURIComponent(hash)}`);
   },
 };

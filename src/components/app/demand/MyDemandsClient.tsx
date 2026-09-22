@@ -29,6 +29,7 @@ import { Button } from "../Button";
 import { Card, EmptyState } from "../ui";
 import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import { CategoryBadge, DemandStatusBadge, StatusTrack } from "./DemandParts";
+import { DossierPanel } from "./DossierPanel";
 import { FormAlert } from "./fields";
 
 function dateTime(iso: string | null | undefined): string {
@@ -42,6 +43,9 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
+  const [showDossier, setShowDossier] = useState(false);
+  // Dossiê existe a partir do primeiro envio para análise (T10).
+  const hasDossier = Boolean(demand.submittedAt);
   const actions = demand.availableActions.filter(isAgentTransition);
   const isPublic = DEMAND_PUBLIC_STATUSES.includes(demand.status);
   const title = demand.title || "Rascunho sem título";
@@ -115,6 +119,19 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
           )}
           {isPublic && <Button href={demandPublicPath(demand.id)} size="sm" variant="outline" icon="eye">Página pública</Button>}
           {isPublic && demand.postId && <Button href={`/post/${demand.postId}`} size="sm" variant="ghost" icon="bolt">No pulso</Button>}
+          {hasDossier && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              icon="document"
+              onClick={() => setShowDossier((v) => !v)}
+              aria-expanded={showDossier}
+              aria-controls={`dm-${demand.id}-dossie`}
+            >
+              Dossiê (PDF)
+            </Button>
+          )}
           {actions.map((action) => (
             <Button
               key={action}
@@ -130,6 +147,12 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
             </Button>
           ))}
         </div>
+
+        {showDossier && (
+          <div id={`dm-${demand.id}-dossie`} className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+            <DossierPanel demandId={demand.id} compact />
+          </div>
+        )}
 
         {confirming && (
           <div id={`dm-${demand.id}-confirm`} className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)" }}>

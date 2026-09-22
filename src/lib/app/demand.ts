@@ -828,6 +828,10 @@ export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "to
     case "devolvida_para_ajustes": return "Devolvida para ajustes";
     case "publicada": return "Demanda publicada";
     case "arquivada": return "Arquivada";
+    case "dossie_gerado": {
+      const version = typeof event.payload?.version === "number" ? ` (versão ${event.payload.version})` : "";
+      return `Dossiê da Demanda gerado${version}`;
+    }
     case "status_alterado":
       return event.toStatus && DEMAND_STATUS_LABELS[event.toStatus] ? DEMAND_STATUS_LABELS[event.toStatus] : "Andamento atualizado";
     default: return "Atualização";

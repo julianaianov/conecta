@@ -325,6 +325,19 @@ function createUploadStorage({ bucket, region, client, presign } = {}) {
       return bytes.slice(0, length);
     },
 
+    /** Objeto inteiro (arquivos pequenos gerados ou lidos pelo servidor, ex.: dossiê). */
+    async get(key) {
+      const out = await s3.send(new sdk.GetObjectCommand({ Bucket: bucket, Key: key }));
+      return Buffer.from(await out.Body.transformToByteArray());
+    },
+
+    /** Grava um arquivo gerado pelo servidor (ex.: PDF do dossiê), com SHA-256 conferido pelo S3. */
+    put({ key, body, contentType, sha256 }) {
+      const input = { Bucket: bucket, Key: key, Body: body, ContentType: contentType };
+      if (sha256) input.ChecksumSHA256 = Buffer.from(sha256, 'hex').toString('base64');
+      return s3.send(new sdk.PutObjectCommand(input));
+    },
+
     copy(fromKey, toKey) {
       return s3.send(new sdk.CopyObjectCommand({
         Bucket: bucket,

@@ -9,6 +9,8 @@ import {
   type PublicDemand,
   type PublicDemandSummary,
   type DemandTimelineEvent,
+  type DossierVerification,
+  type PublicDossierInfo,
   type PublicInstitution,
   type RankCategory,
   type RankEntry,
@@ -251,4 +253,19 @@ export async function getPublicDemandSummaries(max = 500): Promise<PublicDemandS
     cursor = page.nextCursor ?? null;
   } while (cursor && out.length < max);
   return out.slice(0, max);
+}
+
+// ── Dossiê da Demanda (T10) ────────────────────────────────
+
+/** Versão pública do dossiê (só demanda publicada em diante). */
+export async function getPublicDossierInfo(id: string): Promise<PublicDossierInfo | null> {
+  const data = await fetchPublicJson<PublicDossierInfo>("posts", `/demands/${encodeURIComponent(id)}/dossie-publico/info`);
+  return data && typeof data.available === "boolean" ? data : null;
+}
+
+/** Verificação por SHA-256 do conteúdo ou do arquivo; `null` quando não há dossiê com o hash. */
+export async function verifyDossierHash(hash: string): Promise<DossierVerification | null> {
+  if (!/^[0-9a-f]{64}$/.test(hash)) return null;
+  const data = await fetchPublicJson<DossierVerification>("posts", `/demands/dossiers/verify/${hash}`);
+  return data && data.valid === true ? data : null;
 }

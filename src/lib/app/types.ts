@@ -1250,3 +1250,79 @@ export interface UploadTicket {
   expiresAt: string;
   maxBytes: number;
 }
+
+// ── DOSSIÊ DA DEMANDA (T10) ──────────────────────────────────
+// Documento Oficial da Demanda — Dossiê da Demanda, gerado pelo post-service
+// (services/post-service/src/dossier/) no envio, em cada reenvio e na publicação.
+
+export type DemandDossierVariant = "integral" | "publica";
+export type DemandDossierTrigger = "envio" | "reenvio" | "publicacao";
+export type DemandDossierStatus = "pendente" | "gerado" | "falhou" | "indisponivel";
+
+/** Versão do dossiê vista pelo autor (ou pela operação). */
+export interface DemandDossier {
+  id: string;
+  demandId: string;
+  number: string;
+  version: number;
+  variant: DemandDossierVariant;
+  trigger: DemandDossierTrigger;
+  status: DemandDossierStatus;
+  /** Por que ainda não foi gerado (falha, bucket ausente). */
+  statusReason: string | null;
+  attempts: number;
+  contentSha256: string | null;
+  fileSha256: string | null;
+  sizeBytes: number | null;
+  fileName: string;
+  generatedAt: string | null;
+  requestedAt: string | null;
+  verifyPath: string | null;
+}
+
+export interface DemandDossierList {
+  storageConfigured: boolean;
+  dossiers: DemandDossier[];
+}
+
+/** URL assinada curta (60 s) para baixar uma versão. */
+export interface DemandDossierDownload {
+  url: string;
+  expiresAt: string;
+  fileName: string;
+}
+
+/** Versão pública da publicação (GET /demands/:id/dossie-publico/info). */
+export interface PublicDossierInfo {
+  available: boolean;
+  status: DemandDossierStatus;
+  statusReason: string | null;
+  dossier: {
+    number: string;
+    version: number;
+    generatedAt: string;
+    contentSha256: string;
+    fileSha256: string;
+    sizeBytes: number;
+    verifyPath: string;
+  } | null;
+}
+
+/** Verificação pública por SHA-256 (conteúdo ou arquivo). */
+export interface DossierVerification {
+  valid: boolean;
+  matchedBy: "content" | "file";
+  dossier: {
+    number: string;
+    version: number;
+    variant: DemandDossierVariant;
+    trigger: DemandDossierTrigger;
+    generatedAt: string;
+    contentSha256: string;
+    fileSha256: string;
+    sizeBytes: number;
+    isLatest: boolean;
+  };
+  /** Só quando a demanda está publicada. */
+  demand: { id: string; title: string; category: DemandCategory; categoryLabel: string | null; status: DemandStatus } | null;
+}

@@ -8,7 +8,8 @@ export type IconName =
   | "globe" | "link" | "tag" | "message" | "scrap" | "star" | "trophy" | "users"
   | "building" | "megaphone" | "leaf" | "shield" | "bolt" | "payments" | "inventory"
   | "construction" | "volunteer" | "handyman" | "home_work" | "restaurant" | "shipping"
-  | "school" | "share" | "pix" | "card" | "copy" | "menu" | "sun" | "moon" | "info" | "clock";
+  | "school" | "share" | "pix" | "card" | "copy" | "menu" | "sun" | "moon" | "info" | "clock"
+  | "download" | "document";
 
 const P: Record<IconName, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9" />,
@@ -63,6 +64,8 @@ const P: Record<IconName, React.ReactNode> = {
   moon: <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 8h.01M11 12h1v4h1" /></>,
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  download: <><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></>,
+  document: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></>,
 };
 
 interface IconProps {

@@ -55,6 +55,7 @@ import { BudgetEditor } from "./BudgetEditor";
 import { categoryIcon, DemandStatusBadge } from "./DemandParts";
 import { DemandProgress } from "./DemandProgress";
 import { DemandSummary } from "./DemandSummary";
+import { DossierPanel } from "./DossierPanel";
 import { DocumentsEditor, GoalsEditor, ResourcesEditor } from "./ItemEditors";
 import { ScheduleEditor } from "./ScheduleEditor";
 import { FieldShell, FormAlert, SelectInput, TextArea, TextInput, demandFieldId } from "./fields";
@@ -361,6 +362,7 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
             {demand.publishedAt && demand.status !== "arquivada" && <Button href={demandPublicPath(demand.id)} variant="outline" size="sm" icon="eye">Página pública</Button>}
           </div>
         </Card>
+        <DossierPanel demandId={demand.id} />
         <DemandSummary demand={demand} />
       </div>
     );
@@ -677,11 +679,14 @@ function ReviewStep({
 
       <DemandSummary demand={demand} onEdit={onGo} />
 
+      {demand.submittedAt && <DossierPanel demandId={demand.id} />}
+
       <section aria-labelledby="send-title" className="rounded-2xl border p-4" style={{ borderColor: "var(--th-border)" }}>
         <h2 id="send-title" className="text-sm font-bold" style={{ color: "var(--th-text)" }}>Envio para análise</h2>
         <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>
-          A equipe do DM Conecta analisa e valida a demanda. Com a aprovação, a plataforma gera o Dossiê da Demanda e publica a
-          demanda para potenciais parceiros. Enquanto aguarda a análise, a demanda não pode ser alterada.
+          Ao enviar, a plataforma gera o Documento Oficial da Demanda — Dossiê da Demanda (PDF), que você baixa em Minhas demandas.
+          A equipe do DM Conecta analisa e valida a demanda; com a aprovação, a demanda é publicada para potenciais parceiros e o
+          dossiê ganha a versão da publicação. Enquanto aguarda a análise, a demanda não pode ser alterada.
         </p>
         {gated ? (
           <div className="mt-3"><InstitutionGateNotice action="enviar_demanda" status={accessStatus} kind="agente_transformacao" /></div>

@@ -3,7 +3,11 @@ import {
   DEMAND_PRIORITY_LABELS,
   type DemandTimelineEvent,
   type PublicDemand,
+  type PublicDossierInfo,
 } from "@/lib/app/types";
+import { DOSSIER_TITLE, formatBytesShort, publicDossierDownloadPath, shortHash } from "@/lib/app/dossier";
+import { resolveMediaUrl } from "@/lib/app/uploads";
+import { runtime } from "@/lib/app/runtime";
 import { formatIsoDate, timelineEventLabel } from "@/lib/app/demand";
 import { formatDate } from "@/lib/app/format";
 import { Avatar } from "../Avatar";
@@ -36,7 +40,48 @@ function schedulePeriod(items: PublicDemand["scheduleItems"]): string {
  * (sem CEP, logradouro, número, complemento, instituição interna, parecer,
  * responsável do cronograma nem link de documento).
  */
-export function PublicDemandView({ demand, timeline }: { demand: PublicDemand; timeline: DemandTimelineEvent[] }) {
+/**
+ * Versão pública do Dossiê da Demanda (T10): gerada na publicação, sem
+ * endereço completo, contatos nem responsáveis. O botão baixa pelo
+ * post-service, que redireciona para uma URL assinada curta.
+ */
+function PublicDossierSection({ demandId, dossier }: { demandId: string; dossier: PublicDossierInfo | null }) {
+  const href = resolveMediaUrl(publicDossierDownloadPath(demandId), runtime.apiBase);
+  const info = dossier?.available ? dossier.dossier : null;
+  return (
+    <ReadSection title="Documento oficial" icon="document">
+      <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>{DOSSIER_TITLE}</p>
+      {info ? (
+        <>
+          <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
+            {info.number} · versão {info.version} (pública) · gerado em {formatDate(info.generatedAt)}
+            {info.sizeBytes ? ` · ${formatBytesShort(info.sizeBytes)}` : ""}
+          </p>
+          <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
+            Reúne identificação do Agente, demanda, orçamento, planejamento, recursos e documentação, sem endereço completo nem dados de contato.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a href={href} className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg,#0d2d42,#1b4f72)" }}>
+              <Icon name="download" size={17} /> Baixar dossiê (PDF)
+            </a>
+            <Link href={info.verifyPath} className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold" style={{ borderColor: "var(--th-border)", color: "var(--th-text)" }}>
+              <Icon name="shield" size={17} /> Verificar autenticidade
+            </Link>
+          </div>
+          <p className="mt-2 text-xs font-numeric" style={{ color: "var(--th-muted)" }}>SHA-256 do conteúdo: {shortHash(info.contentSha256)}</p>
+        </>
+      ) : (
+        <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>
+          {dossier?.status === "indisponivel"
+            ? "O documento desta demanda ainda não está disponível para download neste ambiente."
+            : "O documento desta demanda está sendo gerado. Volte em alguns minutos."}
+        </p>
+      )}
+    </ReadSection>
+  );
+}
+
+export function PublicDemandView({ demand, timeline, dossier = null }: { demand: PublicDemand; timeline: DemandTimelineEvent[]; dossier?: PublicDossierInfo | null }) {
   const place = [demand.territory, demand.district !== demand.territory ? demand.district : null, [demand.municipality, demand.uf].filter(Boolean).join("/")]
     .filter(Boolean).join(" · ");
   const profileHref = `/perfil/${encodeURIComponent(demand.authorId)}`;
@@ -134,6 +179,8 @@ export function PublicDemandView({ demand, timeline }: { demand: PublicDemand; t
           <DocumentsSummary documents={demand.documents} />
         </ReadSection>
       )}
+
+      <PublicDossierSection demandId={demand.id} dossier={dossier} />
 
       <ReadSection title="Linha do tempo" icon="clock">
         {timeline.length ? (

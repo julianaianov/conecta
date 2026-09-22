@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicDemandView } from "@/components/app/demand/PublicDemandView";
-import { getPublicDemand, getPublicDemandTimeline } from "@/lib/server/public-data";
+import { getPublicDemand, getPublicDemandTimeline, getPublicDossierInfo } from "@/lib/server/public-data";
 import { DEMAND_CATEGORY_LABELS } from "@/lib/app/types";
 import { absoluteUrl, metadataForPage } from "@/lib/seo/site";
 import { publicContentMetadata } from "@/lib/seo/content-route-contract";
@@ -32,12 +32,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PublicDemandPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [demand, timeline] = await Promise.all([getPublicDemand(id), getPublicDemandTimeline(id)]);
+  const [demand, timeline, dossier] = await Promise.all([getPublicDemand(id), getPublicDemandTimeline(id), getPublicDossierInfo(id)]);
   if (!demand) notFound();
   const url = absoluteUrl(`/demandas/${encodeURIComponent(demand.id)}`);
   return (
     <>
-      <PublicDemandView demand={demand} timeline={timeline} />
+      <PublicDemandView demand={demand} timeline={timeline} dossier={dossier} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(demandJsonLd(demand, url)).replace(/</g, "\\u003c") }} />
     </>
   );

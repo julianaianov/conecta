@@ -77,7 +77,8 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
       async remove(key) { objects.delete(key); },
     };
     const server = createApp({
-      pool, secret: SECRET, institutionStatus, operationUserIds: new Set(), uploadStorage,
+      // Dossiê (T10) tem e2e próprio (dossier-e2e.test.js); aqui a linha do tempo fica só com o estado.
+      pool, secret: SECRET, institutionStatus, operationUserIds: new Set(), uploadStorage, dossierService: null,
     }).listen(0);
     const base = `http://127.0.0.1:${server.address().port}`;
     const call = async (method, url, { as = AGENT, body, auth = true } = {}) => {
