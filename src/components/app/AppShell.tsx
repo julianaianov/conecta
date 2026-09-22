@@ -11,6 +11,7 @@ import { Avatar } from "./Avatar";
 import { NotificationBell } from "./NotificationBell";
 import { SearchButton } from "./SearchButton";
 import { ThemeToggle } from "../ThemeToggle";
+import { InstitutionBanner } from "./institution/InstitutionBanner";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/feed", label: "O pulso", icon: "bolt" },
@@ -118,7 +119,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* ── Conteúdo ─────────────────────────────────────── */}
-      <main className="mx-auto max-w-6xl px-3 pb-28 pt-5 sm:px-4 lg:pb-10">{children}</main>
+      <main className="mx-auto max-w-6xl px-3 pb-28 pt-5 sm:px-4 lg:pb-10">
+        {/* Requisito institucional (decisões 2 e 3); a própria ficha e o /criar têm aviso próprio. */}
+        {!pathname.startsWith("/cadastro-institucional") && pathname !== "/criar" && <InstitutionBanner className="mb-4" />}
+        {children}
+      </main>
 
       {/* ── Bottom nav (mobile) ──────────────────────────── */}
       <nav

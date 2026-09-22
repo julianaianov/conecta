@@ -13,6 +13,7 @@ import { buildRanking, type RankingMetrics, type RankingUser } from "./ranking";
 import { runtime } from "./runtime";
 import { normalizeCoordinates } from "./location";
 import { buildPostQuery, type PostListFilter } from "./post-query";
+import { mapPublicInstitutionRecord, normalizeCep } from "./institution";
 import type {
   CnaeEntry, Institution, InstitutionAccess, InstitutionFieldErrors, InstitutionInput,
   InstitutionKind, InstitutionValidationEvent, InstitutionValidationStatus, GovernmentSphere,
@@ -53,6 +54,21 @@ export function clearSession() {
 // ── fetch com timeout ──────────────────────────────────────
 class NetworkError extends Error {}
 
+/**
+ * Erro HTTP da API com status e código (ex.: 403 `institution_not_validated`
+ * do Poder Público sem cadastro validado; ver lib/app/institution.ts).
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null = null,
+    readonly validationStatus: string | null = null,
+  ) {
+    super(message);
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -68,8 +84,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       },
     });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error((body as { error?: string }).error ?? `Erro ${res.status}`);
+      const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string; validationStatus?: string };
+      throw new ApiError(body.error ?? `Erro ${res.status}`, res.status, body.code ?? null, body.validationStatus ?? null);
     }
     return (await res.json()) as T;
   } catch (err) {
@@ -333,11 +349,17 @@ export function mapInstitution(r: RawPost): Institution {
 }
 
 export function mapPublicInstitution(r: RawPost): PublicInstitution {
-  return {
-    ...mapInstitutionData(r),
-    kind: r.institution_kind as InstitutionKind,
-    validatedAt: str(r.validation_reviewed_at),
-  };
+  return mapPublicInstitutionRecord(r);
+}
+
+/** Endereço devolvido pela consulta de CEP (preenche a ficha; o titular confere). */
+export interface CepAddress {
+  cep: string;
+  street: string | null;
+  district: string | null;
+  municipality: string | null;
+  uf: string | null;
+  municipalityIbgeCode: string | null;
 }
 
 export interface InstitutionReference {
@@ -689,6 +711,35 @@ export const api = {
   async getPublicInstitution(userId: string): Promise<PublicInstitution | null> {
     const raw = await institutionRequest<RawPost>(`/api/users/${encodeURIComponent(userId)}/institution`);
     return raw ? mapPublicInstitution(raw) : null;
+  },
+
+  /**
+   * Consulta pública de CEP (ViaCEP) para agilizar o endereço da ficha. Envia
+   * só o CEP; se o serviço falhar, o titular preenche o endereço à mão.
+   */
+  async lookupCep(value: string): Promise<CepAddress | null> {
+    const cep = normalizeCep(value);
+    if (cep.length !== 8) return null;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: ctrl.signal });
+      if (!res.ok) return null;
+      const r = (await res.json()) as Record<string, unknown>;
+      if (r.erro) return null;
+      return {
+        cep,
+        street: str(r.logradouro),
+        district: str(r.bairro),
+        municipality: str(r.localidade),
+        uf: str(r.uf),
+        municipalityIbgeCode: str(r.ibge),
+      };
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   },
 
   async institutionReference(): Promise<InstitutionReference> {

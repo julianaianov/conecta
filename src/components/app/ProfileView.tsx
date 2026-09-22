@@ -8,7 +8,12 @@ import { useAuth } from "@/lib/app/auth";
 import { formatDate, timeAgo } from "@/lib/app/format";
 import {
   ROLE_LABELS, normalizeRole, PROFILE_LABELS, type Post, type Profile, type Scrap, type Testimonial, type Community, type Profile as P, type ProfileType,
+  type PublicInstitution,
 } from "@/lib/app/types";
+import { INSTITUTION_HUB_PATH } from "@/lib/app/institution";
+import { InstitutionSeal, PublicInstitutionCard } from "./institution/PublicInstitutionCard";
+import { InstitutionStatusBadge } from "./institution/InstitutionStatus";
+import { useInstitutionAccess } from "./institution/useInstitutionAccess";
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { Button } from "./Button";
@@ -28,6 +33,9 @@ export function ProfileView({ userId }: { userId: string }) {
   const [scrapDraft, setScrapDraft] = useState("");
   const [testimonialDraft, setTestimonialDraft] = useState("");
   const [showTestimonialBox, setShowTestimonialBox] = useState(false);
+  /** Instituição validada vinculada ao perfil (selo público). */
+  const [institution, setInstitution] = useState<PublicInstitution | null>(null);
+  const { access: ownAccess, applicable: ownApplicable, loading: ownAccessLoading } = useInstitutionAccess();
   /** já existe pedido em aberto entre as duas contas? */
   const [pendente, setPendente] = useState(false);
 
@@ -45,6 +53,14 @@ export function ProfileView({ userId }: { userId: string }) {
       if (!alive) return;
       setLoading(false);
     });
+    return () => { alive = false; };
+  }, [userId]);
+
+  useEffect(() => {
+    let alive = true;
+    api.getPublicInstitution(userId)
+      .then((value) => { if (alive) setInstitution(value); })
+      .catch(() => { if (alive) setInstitution(null); });
     return () => { alive = false; };
   }, [userId]);
 
@@ -95,7 +111,15 @@ export function ProfileView({ userId }: { userId: string }) {
           .filter(Boolean)
           .join(" · ")}
       </p>
+      {institution && <div className="mt-1.5"><InstitutionSeal institution={institution} /></div>}
       {profile.status && <p className="mt-1 text-sm italic" style={{ color: "var(--th-muted)" }}>“{profile.status}”</p>}
+
+      {isOwn && ownApplicable && !ownAccessLoading && (
+        <Link href={INSTITUTION_HUB_PATH} className="mt-3 flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm transition-colors hover:bg-[var(--th-card-alt)]" style={{ borderColor: "var(--th-border)" }}>
+          <span className="font-semibold" style={{ color: "var(--th-text)" }}>Cadastro institucional</span>
+          {ownAccess.status ? <InstitutionStatusBadge status={ownAccess.status} /> : <span className="text-xs font-bold" style={{ color: "#f4841a" }}>Não iniciado</span>}
+        </Link>
+      )}
 
       <div className="mt-3 space-y-1.5 text-sm" style={{ color: "var(--th-muted)" }}>
         {profile.bio && <p>{profile.bio}</p>}
@@ -229,7 +253,7 @@ export function ProfileView({ userId }: { userId: string }) {
         <Icon name="arrowLeft" size={18} /> Voltar
       </button>
       <div className="mx-auto grid max-w-2xl grid-cols-1 gap-4 lg:mx-0 lg:max-w-none lg:grid-cols-[300px_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-4">{infoCard}{communitiesPanel}{partnersPanel}</div>
+        <div className="min-w-0 space-y-4">{infoCard}{institution && <PublicInstitutionCard institution={institution} />}{communitiesPanel}{partnersPanel}</div>
         <div className="min-w-0 space-y-4">{postsPanel}{updatesPanel}{testimonialsPanel}</div>
       </div>
     </div>

@@ -79,6 +79,31 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   que consulta `DM_INTERNAL_USER_API_URL` com o token do usuário, cache curto e
   falha fechada) e ao solicitar conexão (user-service).
 
+## Cadastro institucional na interface (T05)
+
+- Telas: `/cadastro-institucional` (usa o tipo da conta),
+  `/cadastro-institucional/agente` e `/cadastro-institucional/poder-publico`
+  (`src/components/app/institution/`), privadas e fora do índice. Ficha com
+  máscaras e validação espelhadas do user-service em `src/lib/app/institution.ts`
+  (há teste que compara as chaves de erro com `services/user-service/src/institution.js`);
+  o servidor é quem decide e os erros de `fields` aparecem no campo e no resumo.
+- Fluxo: salvar rascunho (PUT, fica `pendente`), enviar para validação (PUT +
+  submit), status com parecer e trilha; em `em_analise` e `validada` a ficha
+  fica só leitura. Comprovação por link até existir upload (T08).
+- O CEP pode ser consultado no ViaCEP (`api.lookupCep`, só o CEP sai do
+  navegador); sem resposta, o titular preenche o endereço.
+- Onboarding: depois do cadastro de conta, Agente e Poder Público vão para a
+  ficha (`postRegisterDestination`). `InstitutionBanner` (no `AppShell`)
+  explica o requisito; para Líder Comunitário e Representante de Bairro, o
+  texto da decisão 3.
+- O 403 `institution_not_validated` chega como `ApiError.code` (`request` em
+  `api.ts`) e vira `InstitutionGateNotice` em publicar, editar ponto, comentar,
+  apoiar e solicitar conexão. O `/criar` do Poder Público sem validação mostra
+  o aviso no lugar do formulário.
+- Perfil público: selo e dados da projeção pública (`getPublicInstitution` no
+  SSR e `api.getPublicInstitution` logado); o próprio perfil mostra o estado do
+  cadastro.
+
 ## Segurança dos serviços
 
 - `JWT_SECRET` é obrigatório e forte (32+ caracteres, sem valores de exemplo)

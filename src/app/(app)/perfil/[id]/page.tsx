@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProfileClient } from "@/components/app/public/ProfileClient";
-import { getPublicPostsByAuthor, getPublicProfile } from "@/lib/server/public-data";
+import { getPublicInstitution, getPublicPostsByAuthor, getPublicProfile } from "@/lib/server/public-data";
 import { absoluteUrl } from "@/lib/seo/site";
 import { profileJsonLd } from "@/lib/seo/structured-data";
 import { publicContentMetadata } from "@/lib/seo/content-route-contract";
@@ -16,15 +16,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [profile, posts] = await Promise.all([
+  const [profile, posts, institution] = await Promise.all([
     getPublicProfile(id),
     getPublicPostsByAuthor(id),
+    getPublicInstitution(id),
   ]);
   if (!profile) notFound();
   const url = absoluteUrl(`/perfil/${encodeURIComponent(profile.userId)}`);
   return (
     <>
-      <ProfileClient initialProfile={profile} initialPosts={posts} />
+      <ProfileClient initialProfile={profile} initialPosts={posts} initialInstitution={institution} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(profileJsonLd(profile, url)) }} />
     </>
   );

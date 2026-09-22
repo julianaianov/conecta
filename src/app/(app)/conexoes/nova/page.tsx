@@ -21,6 +21,9 @@ import { Icon, type IconName } from "@/components/app/Icon";
 import { Card } from "@/components/app/ui";
 import { partyLabel } from "@/components/app/ConnectionCard";
 import { AuthPrompt } from "@/components/app/AuthPrompt";
+import { InstitutionGateNotice } from "@/components/app/institution/InstitutionStatus";
+import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
+import type { InstitutionValidationStatus } from "@/lib/app/types";
 
 export default function NewConnectionPage() {
   return (
@@ -44,6 +47,9 @@ function NewConnectionFlow() {
   const [postId, setPostId] = useState<string | null>(search.get("post"));
   const [query, setQuery] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  /** 403 `institution_not_validated` (Poder Público sem cadastro validado). */
+  const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -86,9 +92,16 @@ function NewConnectionFlow() {
   async function send() {
     if (!user || !to || !type) return;
     setSending(true);
+    setSendError(null);
+    setGate(null);
     try {
       const created = await api.createConnection({ from: user, toUserId: to.userId, type, message: message.trim(), postId });
       router.push(`/conexoes/${created.id}`);
+    } catch (err) {
+      if (isInstitutionNotValidated(err)) setGate({ status: gateStatusFrom(err) });
+      else setSendError(err instanceof Error && err.message !== "network" && err.message !== "timeout"
+        ? err.message
+        : "Não foi possível enviar o pedido agora. Tente de novo.");
     } finally { setSending(false); }
   }
 
@@ -237,6 +250,8 @@ function NewConnectionFlow() {
               Enviar pedido
             </Button>
           </div>
+          {gate && <div className="mt-4"><InstitutionGateNotice action="conectar" status={gate.status} /></div>}
+          {sendError && <p role="alert" className="mt-4 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(229,57,53,0.10)", color: "#e53935" }}>{sendError}</p>}
         </Card>
       )}
     </div>

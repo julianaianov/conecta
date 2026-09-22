@@ -6,12 +6,14 @@ import {
   type Post,
   type Profile,
   type ProfileType,
+  type PublicInstitution,
   type RankCategory,
   type RankEntry,
   type SupportSummaryItem,
 } from "../app/types.ts";
 import { buildRanking, type RankingMetrics, type RankingUser } from "../app/ranking.ts";
 import { normalizeCoordinates } from "../app/location.ts";
+import { mapPublicInstitutionRecord } from "../app/institution.ts";
 import { boundedPublicLimit, fetchPublicJson, MAX_PUBLIC_LIST_LIMIT } from "./public-api.ts";
 
 type RawRecord = Record<string, unknown>;
@@ -151,6 +153,16 @@ export async function getPublicSupports(postId: string): Promise<{ summary: Supp
 export async function getPublicProfile(userId: string): Promise<Profile | null> {
   const data = await fetchPublicJson<RawRecord>("users", `/${encodeURIComponent(userId)}`);
   return data ? mapProfile(data, userId) : null;
+}
+
+/**
+ * Instituição validada vinculada ao perfil (selo público). O user-service só
+ * responde cadastro `validada`, sem contatos nem representante.
+ */
+export async function getPublicInstitution(userId: string): Promise<PublicInstitution | null> {
+  const data = await fetchPublicJson<RawRecord>("users", `/${encodeURIComponent(userId)}/institution`);
+  if (!data || data.validation_status !== "validada") return null;
+  return mapPublicInstitutionRecord(data);
 }
 
 export function getPublicPostsByAuthor(userId: string): Promise<Post[]> {

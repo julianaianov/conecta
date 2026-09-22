@@ -14,6 +14,11 @@ import { Icon, type IconName } from "@/components/app/Icon";
 import { AuthPrompt } from "@/components/app/AuthPrompt";
 import { Button } from "@/components/app/Button";
 import { Card } from "@/components/app/ui";
+import { InstitutionBanner } from "@/components/app/institution/InstitutionBanner";
+import { InstitutionGateNotice } from "@/components/app/institution/InstitutionStatus";
+import { useInstitutionAccess } from "@/components/app/institution/useInstitutionAccess";
+import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
+import type { InstitutionValidationStatus } from "@/lib/app/types";
 
 const LocationPicker = dynamic(
   () => import("@/components/app/LocationPicker").then((mod) => mod.LocationPicker),
@@ -47,7 +52,14 @@ function CreatePostContent() {
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  /** 403 `institution_not_validated` devolvido pelo post-service. */
+  const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
+  const { access, loading: accessLoading } = useInstitutionAccess();
   const canPublish = postTypes.length > 0;
+  const isGovernment = normalizeRole(user?.role, user?.profileType) === "government";
+  // O Poder Público só publica com o cadastro validado (Fluxo 3, etapa 02).
+  const blockedByInstitution = Boolean(user && isGovernment && !accessLoading && !access.canActInstitutionally);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,6 +69,8 @@ function CreatePostContent() {
       return;
     }
     setSubmitting(true);
+    setSubmitError(null);
+    setGate(null);
     try {
       const post = await api.createPost(
         {
@@ -70,6 +84,11 @@ function CreatePostContent() {
         user,
       );
       router.push(`/post/${post.id}`);
+    } catch (err) {
+      if (isInstitutionNotValidated(err)) setGate({ status: gateStatusFrom(err) ?? access.status });
+      else setSubmitError(err instanceof Error && err.message !== "network" && err.message !== "timeout"
+        ? err.message
+        : "Não foi possível publicar agora. Verifique a conexão e tente de novo.");
     } finally { setSubmitting(false); }
   }
 
@@ -95,6 +114,27 @@ function CreatePostContent() {
     );
   }
 
+  if (user && isGovernment && accessLoading) {
+    return <div className="flex justify-center py-24"><span className="app-spinner" aria-label="Carregando" /></div>;
+  }
+
+  if (user && blockedByInstitution) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <button onClick={() => router.back()} className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--th-muted)" }}>
+          <Icon name="arrowLeft" size={18} /> Voltar
+        </button>
+        <Card>
+          <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Publicação institucional</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>
+            Respostas institucionais, programas e serviços são publicados em nome do órgão, por isso dependem do cadastro institucional validado.
+          </p>
+          <div className="mt-4"><InstitutionGateNotice action="publicar" status={access.status} /></div>
+        </Card>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="mx-auto max-w-xl">
@@ -113,6 +153,7 @@ function CreatePostContent() {
         <Icon name="arrowLeft" size={18} /> Voltar
       </button>
 
+      <InstitutionBanner dismissible={false} className="mb-4" />
       <Card>
         <h1 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>Novo sinal</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>
@@ -179,6 +220,8 @@ function CreatePostContent() {
             <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="infraestrutura, urgente, vias" className="app-input" />
           </label>
 
+          {gate && <InstitutionGateNotice action="publicar" status={gate.status} />}
+          {submitError && <p role="alert" className="rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(229,57,53,0.10)", color: "#e53935" }}>{submitError}</p>}
           <Button type="submit" block size="lg" loading={submitting} icon="send" disabled={!title.trim() || !description.trim() || !coordinates}>Registrar sinal</Button>
         </form>
       </Card>

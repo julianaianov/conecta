@@ -14,6 +14,9 @@ import { Icon, type IconName } from "@/components/app/Icon";
 import { Button } from "@/components/app/Button";
 import { Card } from "@/components/app/ui";
 import { AuthPrompt } from "@/components/app/AuthPrompt";
+import { InstitutionGateNotice } from "@/components/app/institution/InstitutionStatus";
+import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
+import type { InstitutionValidationStatus } from "@/lib/app/types";
 
 /** Campos específicos por tipo de apoio (espelha support_flow_page.dart) */
 const FIELDS: Partial<Record<SupportType, { key: string; label: string; placeholder: string }[]>> = {
@@ -78,6 +81,9 @@ export default function SupportFlowPage() {
   const [details, setDetails] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  /** 403 `institution_not_validated` (Poder Público sem cadastro validado). */
+  const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
 
   const allowed = allowedSupportTypes(user?.role, user?.profileType);
   const options = SUPPORT_TYPES.filter((s) => allowed.includes(s.type));
@@ -109,6 +115,8 @@ export default function SupportFlowPage() {
   async function confirm() {
     if (!type || !user) return;
     setSubmitting(true);
+    setSubmitError(null);
+    setGate(null);
     try {
       await api.addSupport(id, user, {
         type,
@@ -119,6 +127,11 @@ export default function SupportFlowPage() {
         status: "confirmed",
       });
       setDone(true);
+    } catch (err) {
+      if (isInstitutionNotValidated(err)) setGate({ status: gateStatusFrom(err) });
+      else setSubmitError(err instanceof Error && err.message !== "network" && err.message !== "timeout"
+        ? err.message
+        : "Não foi possível registrar o apoio agora. Tente de novo.");
     } finally { setSubmitting(false); }
   }
 
@@ -253,6 +266,9 @@ export default function SupportFlowPage() {
           </div>
         </Card>
       )}
+
+      {gate && <div className="mt-4"><InstitutionGateNotice action="apoiar" status={gate.status} /></div>}
+      {submitError && <p role="alert" className="mt-4 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(229,57,53,0.10)", color: "#e53935" }}>{submitError}</p>}
     </div>
   );
 }

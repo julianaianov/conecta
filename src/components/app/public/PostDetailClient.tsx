@@ -20,6 +20,9 @@ import { Avatar } from "../Avatar";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
 import { Card, StatusBadge, SupportPill, TypeBadge } from "../ui";
+import { InstitutionGateNotice } from "../institution/InstitutionStatus";
+import { gateStatusFrom, isInstitutionNotValidated, type GatedAction } from "@/lib/app/institution";
+import type { InstitutionValidationStatus } from "@/lib/app/types";
 
 const LocationPicker = dynamic(
   () => import("../LocationPicker").then((module) => module.LocationPicker),
@@ -48,6 +51,9 @@ export function PostDetailClient({
   const [coordinates, setCoordinates] = useState<Coordinates | null>(() => normalizeCoordinates(initialPost.latitude, initialPost.longitude));
   const [savingLocation, setSavingLocation] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  /** 403 `institution_not_validated` (Poder Público sem cadastro validado). */
+  const [gate, setGate] = useState<{ action: GatedAction; status: InstitutionValidationStatus | null } | null>(null);
 
   const postHref = `/post/${encodeURIComponent(post.id)}`;
   const profileHref = `/perfil/${encodeURIComponent(post.authorId)}`;
@@ -59,10 +65,15 @@ export function PostDetailClient({
   async function sendComment() {
     if (!user || !draft.trim()) return;
     setSending(true);
+    setCommentError(null);
+    setGate(null);
     try {
       const comment = await api.addComment(post.id, user, draft.trim());
       setComments((current) => [...current, comment]);
       setDraft("");
+    } catch (err) {
+      if (isInstitutionNotValidated(err)) setGate({ action: "comentar", status: gateStatusFrom(err) });
+      else setCommentError("Não foi possível registrar a atualização agora. Tente de novo.");
     } finally {
       setSending(false);
     }
@@ -93,8 +104,9 @@ export function PostDetailClient({
         setCoordinates(normalizeCoordinates(updated.latitude, updated.longitude));
         setEditingLocation(false);
       }
-    } catch {
-      setActionError("Não foi possível atualizar o ponto no mapa agora.");
+    } catch (err) {
+      if (isInstitutionNotValidated(err)) setGate({ action: "editar", status: gateStatusFrom(err) });
+      else setActionError("Não foi possível atualizar o ponto no mapa agora.");
     } finally {
       setSavingLocation(false);
     }
@@ -148,13 +160,14 @@ export function PostDetailClient({
             ) : <Link href="/mapa" className="mt-2 inline-flex text-sm font-bold" style={{ color: "#f4841a" }}>Explorar o mapa →</Link>}
           </div>
           {actionError && <p className="mt-3 text-sm font-semibold" style={{ color: "#d64545" }}>{actionError}</p>}
+          {gate?.action === "editar" && <div className="mt-3"><InstitutionGateNotice action="editar" status={gate.status} /></div>}
           {user && supportTypes.length > 0 ? <Link href={onlyShares ? `${postHref}/apoiar?type=sharing` : `${postHref}/apoiar`} className="mt-5 flex h-12 items-center justify-center gap-2 rounded-xl font-bold text-white" style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}><Icon name={onlyShares ? "share" : "volunteer"} size={18} /> {onlyShares ? "Divulgar sinal" : "Registrar apoio"}</Link> : user ? <p className="mt-5 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)" }}>Seu perfil pode acompanhar este registro, mas não possui uma forma de apoio disponível.</p> : <div className="mt-5"><AuthPrompt action="registrar apoio" returnTo={`${postHref}/apoiar`} /></div>}
         </div>
       </Card>
 
       <Card>
         <h2 className="text-sm font-bold" style={{ color: "var(--th-text)" }}>Atualizações do acompanhamento</h2>
-        <div className="mt-3">{user ? <div className="flex items-start gap-2.5"><Avatar name={user.name} src={user.avatarUrl} id={user.id} size={36} /><div className="flex-1"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Registre uma atualização ou informação útil..." className="app-textarea" /><div className="mt-2 flex justify-end"><button type="button" onClick={sendComment} disabled={!draft.trim() || sending} className="rounded-lg px-3 py-2 text-sm font-bold text-white" style={{ background: "#f4841a" }}>{sending ? "Enviando…" : "Registrar atualização"}</button></div></div></div> : <AuthPrompt action="registrar uma atualização" returnTo={returnTo} />}</div>
+        <div className="mt-3">{user ? <div className="flex items-start gap-2.5"><Avatar name={user.name} src={user.avatarUrl} id={user.id} size={36} /><div className="flex-1"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Registre uma atualização ou informação útil..." className="app-textarea" /><div className="mt-2 flex justify-end"><button type="button" onClick={sendComment} disabled={!draft.trim() || sending} className="rounded-lg px-3 py-2 text-sm font-bold text-white" style={{ background: "#f4841a" }}>{sending ? "Enviando…" : "Registrar atualização"}</button></div>{gate?.action === "comentar" && <div className="mt-2"><InstitutionGateNotice action="comentar" status={gate.status} /></div>}{commentError && <p role="alert" className="mt-2 text-sm font-semibold" style={{ color: "#e53935" }}>{commentError}</p>}</div></div> : <AuthPrompt action="registrar uma atualização" returnTo={returnTo} />}</div>
         <div className="mt-5 space-y-4">{comments.length === 0 ? <p className="py-3 text-center text-sm" style={{ color: "var(--th-muted)" }}>Ainda não há atualizações neste acompanhamento.</p> : comments.map((comment) => <div key={comment.id} className="flex gap-2.5 border-l-2 pl-3" style={{ borderColor: "#2e7ba8" }}><Avatar name={comment.authorName} id={comment.authorId} size={36} /><div><div className="flex items-baseline gap-2"><span className="text-sm font-bold" style={{ color: "var(--th-text)" }}>{comment.authorName}</span><span className="text-xs" style={{ color: "var(--th-muted)" }}>{timeAgo(comment.createdAt)}</span></div><p className="mt-0.5 text-sm" style={{ color: "var(--th-text)" }}>{comment.content}</p></div></div>)}</div>
       </Card>
     </div>

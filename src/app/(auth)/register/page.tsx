@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/app/auth";
+import { postRegisterDestination } from "@/lib/app/institution";
 import { Button } from "@/components/app/Button";
 import { Icon } from "@/components/app/Icon";
 import { AuthShowcase } from "@/components/app/AuthShowcase";
@@ -27,6 +28,8 @@ export default function RegisterPage() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Evita que o redirecionamento de sessão ativa passe por cima do onboarding. */
+  const registering = useRef(false);
 
   /** Trocar de categoria zera o subperfil — os subperfis não se repetem entre categorias. */
   function selectRole(next: UserRole) {
@@ -35,7 +38,7 @@ export default function RegisterPage() {
   }
 
   useEffect(() => {
-    if (status === "authenticated") router.replace("/feed");
+    if (status === "authenticated" && !registering.current) router.replace("/feed");
   }, [status, router]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -50,11 +53,14 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
+    registering.current = true;
     try {
       const fullName = [name.trim(), surname.trim()].filter(Boolean).join(" ");
       await register({ name: fullName, email, password, role, profileType });
-      router.replace("/feed");
+      // Agente de Transformação e Poder Público seguem para a ficha institucional.
+      router.replace(postRegisterDestination(role, profileType));
     } catch (err) {
+      registering.current = false;
       setError(err instanceof Error ? err.message : "Não foi possível cadastrar.");
       setLoading(false);
     }
