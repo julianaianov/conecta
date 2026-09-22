@@ -13,6 +13,7 @@ import { resolveMediaUrl } from "@/lib/app/uploads";
 import { runtime } from "@/lib/app/runtime";
 import { formatIsoDate, timelineEventLabel } from "@/lib/app/demand";
 import { formatDate } from "@/lib/app/format";
+import { ShareButton } from "../ShareButton";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { DemandMap } from "./DemandMap";
@@ -142,6 +143,17 @@ export function PublicDemandView({
               <Icon name="location" size={15} /> {place}
             </p>
           )}
+          {/* Amplificação (T21): compartilhar a demanda e registrar o compartilhamento. */}
+          <div className="mt-3">
+            <ShareButton
+              targetKind="demand"
+              targetId={demand.id}
+              path={`/demandas/${encodeURIComponent(demand.id)}`}
+              title={demand.title}
+              text={`${demand.title} — DM Conecta`}
+              sharesCount={demand.sharesCount ?? 0}
+            />
+          </div>
           <div className="mt-4"><StatusTrack status={demand.status} /></div>
           <div className="mt-5 space-y-4">
             <TextBlock label="Descrição">{demand.description}</TextBlock>

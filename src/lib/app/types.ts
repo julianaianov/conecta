@@ -335,6 +335,8 @@ export interface Post {
   reactionsCount: number;
   commentsCount: number;
   viewsCount: number;
+  /** Compartilhamentos registrados (T21), mantidos pelo trigger do post_db. */
+  sharesCount: number;
   createdAt: string;
   /** Post-vitrine de uma demanda publicada (T07): linka `/demandas/<id>`. */
   demandId?: string | null;
@@ -1114,6 +1116,8 @@ export interface PublicDemand {
   publishedAt: string | null;
   updatedAt: string;
   postId: string | null;
+  /** Compartilhamentos registrados (T21). */
+  sharesCount: number;
   budgetItems: DemandBudgetItem[];
   scheduleItems: Omit<DemandScheduleItem, "responsible">[];
   goals: DemandGoal[];

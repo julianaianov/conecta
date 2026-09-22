@@ -21,7 +21,12 @@ import {
   type RankEntry,
   type SupportSummaryItem,
 } from "../app/types.ts";
-import { buildRanking, type RankingMetrics, type RankingUser } from "../app/ranking.ts";
+import {
+  buildRanking, normalizeRankingPeriod,
+  RANKING_CONSENT_NOTICE, RANKING_DEFAULT_PERIOD, RANKING_GOVERNMENT_NOTICE,
+  RANKING_PERIOD_LABELS, RANKING_PERIODS,
+  type ProfileImpact, type RankingMetrics, type RankingPeriod, type RankingsResponse, type RankingUser,
+} from "../app/ranking.ts";
 import { normalizeCoordinates } from "../app/location.ts";
 import { mapPublicInstitutionRecord } from "../app/institution.ts";
 import { resolveMediaUrl } from "../app/uploads.ts";
@@ -63,6 +68,7 @@ function mapPost(record: RawRecord): Post {
     reactionsCount: numberValue(record.reactions_count ?? record.reactionsCount),
     commentsCount: numberValue(record.comments_count ?? record.commentsCount),
     viewsCount: numberValue(record.views_count ?? record.viewsCount),
+    sharesCount: numberValue(record.shares_count ?? record.sharesCount),
     createdAt: String(record.created_at ?? record.createdAt ?? ""),
     demandId: typeof record.demand_id === "string" ? record.demand_id : null,
   };
@@ -360,4 +366,32 @@ export async function getPublicMapTerritories(filter?: MapFilterState): Promise<
   const query = filter ? `?${buildMapQuery(filter)}` : "";
   const data = await fetchPublicJson<{ territories?: MapTerritory[] }>("posts", `/demands/map/territories${query}`);
   return Array.isArray(data?.territories) ? data.territories : [];
+}
+
+// ── Engajamento, rankings e selos (T21) ────────────────────
+// A agregação já vem pronta do post-service (materializada): o SSR só lê.
+
+const EMPTY_RANKINGS = (period: RankingPeriod): RankingsResponse => ({
+  period,
+  periods: RANKING_PERIODS.map((id) => ({ id, label: RANKING_PERIOD_LABELS[id] })),
+  computedAt: null,
+  notices: { government: RANKING_GOVERNMENT_NOTICE, consent: RANKING_CONSENT_NOTICE },
+  boards: [],
+});
+
+export async function getPublicRankings(
+  period: RankingPeriod = RANKING_DEFAULT_PERIOD,
+  limit = 10,
+): Promise<RankingsResponse> {
+  const query = new URLSearchParams({ period: normalizeRankingPeriod(period), limit: String(limit) });
+  const data = await fetchPublicJson<RankingsResponse>("posts", `/rankings?${query.toString()}`);
+  if (!data || !Array.isArray(data.boards)) return EMPTY_RANKINGS(normalizeRankingPeriod(period));
+  return data;
+}
+
+export async function getPublicProfileImpact(userId: string): Promise<ProfileImpact | null> {
+  const data = await fetchPublicJson<ProfileImpact>(
+    "posts", `/profiles/${encodeURIComponent(userId)}/impact`,
+  );
+  return data && Array.isArray(data.badges) ? data : null;
 }

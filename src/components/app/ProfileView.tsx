@@ -14,6 +14,7 @@ import { INSTITUTION_HUB_PATH } from "@/lib/app/institution";
 import { InstitutionSeal, PublicInstitutionCard } from "./institution/PublicInstitutionCard";
 import { InstitutionStatusBadge } from "./institution/InstitutionStatus";
 import { useInstitutionAccess } from "./institution/useInstitutionAccess";
+import { ImpactBadges } from "./ImpactBadges";
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { Button } from "./Button";
@@ -253,7 +254,7 @@ export function ProfileView({ userId }: { userId: string }) {
         <Icon name="arrowLeft" size={18} /> Voltar
       </button>
       <div className="mx-auto grid max-w-2xl grid-cols-1 gap-4 lg:mx-0 lg:max-w-none lg:grid-cols-[300px_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-4">{infoCard}{institution && <PublicInstitutionCard institution={institution} />}{communitiesPanel}{partnersPanel}</div>
+        <div className="min-w-0 space-y-4">{infoCard}{institution && <PublicInstitutionCard institution={institution} />}<ImpactBadges userId={userId} own={isOwn} />{communitiesPanel}{partnersPanel}</div>
         <div className="min-w-0 space-y-4">{postsPanel}{updatesPanel}{testimonialsPanel}</div>
       </div>
     </div>

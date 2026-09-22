@@ -121,7 +121,7 @@ const PUBLIC_DEMAND_SQL = `
   d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution,
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
   d.platform_fee_cents, d.total_amount_cents, d.status, d.published_at, d.updated_at,
-  d.record_waiver_reason,
+  d.record_waiver_reason, d.shares_count,
   (SELECT p.id FROM posts p WHERE p.demand_id = d.id AND p.visibility = 'visible') AS post_id`;
 
 const PUBLIC_SUMMARY_SQL = `
@@ -287,6 +287,8 @@ function serializePublicDemand(row, items = null) {
     publishedAt: toIso(row.published_at),
     updatedAt: toIso(row.updated_at),
     postId: row.post_id ?? null,
+    // Compartilhamentos registrados (T21): contador mantido pelo trigger.
+    sharesCount: toNumber(row.shares_count) ?? 0,
   };
   if (items) Object.assign(demand, serializeItems(items, { isPublic: true }));
   return demand;

@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 011, post-service 017. Registre a migração em
+  auth-service 004, user-service 011, post-service 018. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -770,6 +770,81 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   a paleta do mapa é a da legenda.
 - Testes: `services/post-service/test/map-routes.test.js`,
   `test/map-e2e.test.js` (no `test:e2e`) e `src/lib/app/map.test.mjs`.
+
+## Engajamento, rankings e selos de impacto social (T21)
+
+- Fonte: Apresentação Institucional, slide 22 ("Engajamento e rankings":
+  curtidas e comentários, compartilhamentos, gamificação, selos de impacto
+  social; os sete rankings — usuários mais ativos, maiores apoiadores, empresas
+  em destaque, voluntários mais participativos, maiores patrocinadores, bairros
+  mais engajados e projetos mais apoiados) e slide 13 ("Restrições e
+  governança": o ranking prioriza o reconhecimento de apoio e impacto; **não
+  incluir políticos nem órgãos públicos** em ranking competitivo; para o Poder
+  Público valem **indicadores de atuação**, respostas, encaminhamentos e
+  resultados).
+- Migração post 017 (`017-engagement-rankings.sql`): `content_shares`
+  (compartilhamento de post ou demanda, append-only, um por conteúdo × conta ×
+  dia — índice único por `target_id, user_id, shared_on` —, sempre de conta
+  autenticada, com retrato do nome/avatar/papel/subperfil, porque o `post_db`
+  não conhece `profiles`), `posts.shares_count`/`demands.shares_count`
+  (contador mantido pelo trigger `content_shares_count`), `ranking_consents`
+  (consentimento de exibir o nome, revogável, nunca excluído),
+  `ranking_snapshots` + `ranking_runs` (agregação materializada) e
+  `profile_badges` + `profile_engagement` (selos e números do perfil). Triggers
+  `content_shares_guard` (só inserção, só conteúdo público, `gestao_app` não
+  escreve) e `ranking_consents_guard`. Grant dm-infra
+  `016-gestao-app-post-engagement.sql` (só SELECT).
+- Domínio em `services/post-service/src/ranking/`: `constants.js` (os sete
+  rankings na ordem da fonte, com o **critério em texto**, períodos, categorias,
+  selos, indicadores de atuação e os avisos de governança e de consentimento),
+  `scoring.js` (período corrente, fórmula por ranking, empate dividindo a mesma
+  posição com `tied`), `store.js` (agregação, montagem, gravação e leitura) e
+  `service.js` (laço `DM_RANKING_INTERVAL_MS`, padrão 5 min; 0 desliga).
+- **Nenhuma requisição pública roda agregação**: o laço recalcula os 7 rankings
+  × 3 períodos e os selos numa transação (teto de 100 linhas por ranking ×
+  período) e as rotas leem `ranking_snapshots`/`profile_badges` por índice. Os
+  índices da agregação estão na própria migração 017.
+- Neutralidade: a conta só entra num ranking de pessoas se a categoria dela for
+  **conhecida e diferente de `poder_publico`** (falha fechada; a categoria vem
+  dos retratos já gravados em `supports`, `demand_interests`, `demands` e
+  `content_shares`). Apoio do Poder Público não pontua em nenhum ranking, nem
+  no da demanda nem no do bairro. `GET /profiles/:userId/impact` devolve
+  `ranked: false`, sem selo, com os cinco indicadores de atuação e o aviso.
+- LGPD: só aparece com nome quem consentiu. Nos rankings de apoio vale o
+  `display_consent` do próprio apoio (T16); nos demais, `ranking_consents`
+  (opção no perfil). Sem consentimento a linha **continua contando** — os
+  números ficam honestos — mas vai para a tabela sem nome e sem avatar (CHECK
+  `ranking_snapshots_identity`). "Maiores patrocinadores" só conta apoio com
+  nome **e** valor autorizados.
+- Rotas (`src/routes/rankings.js`, montada em `/` antes das rotas de posts):
+  públicas `GET /rankings` (`period` mes|ano|sempre, `board` com vírgula,
+  `limit` ≤ 100), `GET /rankings/criteria` (rótulos, critérios, selos,
+  indicadores e avisos) e `GET /profiles/:userId/impact`; com token
+  `GET|PUT /rankings/consent` e `POST /shares`
+  (`{ targetKind, targetId, channel }` → 201 quando contou, 200 quando o dia já
+  tinha registro, 409 `share_unavailable` em conteúdo não público).
+- Selos (regra objetiva sobre dado real, com a regra visível e a data do
+  registro que a cumpriu): `apoiador_confirmado` (≥1 apoio confirmado),
+  `apoiador_recorrente` (≥5), `patrocinador` (apoio confirmado nas modalidades
+  de patrocínio/financiamento), `voluntario_participante` (interesse de
+  voluntariado/participação com conexão aceita), `agente_com_demanda_concluida`,
+  `prestacao_de_contas_publicada`, `registro_antes_e_depois` (par de evidências
+  da T17) e `divulgador` (≥10 compartilhamentos).
+- Frontend: bloco "ENGAJAMENTO, RANKINGS E SELOS DE IMPACTO SOCIAL (T21)" em
+  `src/lib/app/ranking.ts` (espelho comparado em `ranking.test.mjs`), bloco em
+  `api.ts`, `getPublicRankings`/`getPublicProfileImpact` em
+  `src/lib/server/public-data.ts`; `/ranking` (SSR, `?periodo=`) com
+  `RankingClient` (as sete listas, seletor de período, "Como é calculado" por
+  ranking, empate marcado e o aviso do slide 13); `ImpactBadges` no perfil
+  público e no próprio perfil (com a opção de consentimento); `ShareButton`
+  (Web Share API → área de transferência → link visível) na página pública da
+  demanda e no detalhe do post. `Post.sharesCount` e `PublicDemand.sharesCount`
+  entram nas projeções.
+- O `GET /ranking` antigo (post-service e user-service) continua servindo
+  **apenas** à vitrine de perfis da página inicial (`Hero`); os rankings da
+  fonte são os da T21.
+- Testes: `test/ranking-domain.test.js`, `test/rankings-routes.test.js`,
+  `test/engagement-e2e.test.js` (no `test:e2e`) e `src/lib/app/ranking.test.mjs`.
 
 ## Segurança dos serviços
 

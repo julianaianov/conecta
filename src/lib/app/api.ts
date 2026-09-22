@@ -28,6 +28,11 @@ import type {
 import type { UploadedFile, UploadPurpose, UploadService, UploadTicket } from "./types";
 import type { MapTerritory, MapView } from "./types";
 import { buildMapQuery, type MapFilterState, type MapQueryOptions } from "./map";
+import {
+  normalizeRankingPeriod,
+  type ProfileImpact, type RankingPeriod, type RankingsResponse,
+  type ShareChannel, type ShareTargetKind,
+} from "./ranking";
 import type { DemandDossierDownload, DemandDossierList, DossierVerification, PublicDossierInfo } from "./types";
 import type {
   InstitutionalContext, InstitutionalDemandFilter, InstitutionalDemandPage, InstitutionalDemandView,
@@ -157,6 +162,7 @@ function mapPost(r: RawPost): Post {
     reactionsCount: Number(r.reactions_count ?? r.reactionsCount ?? 0),
     commentsCount: Number(r.comments_count ?? r.commentsCount ?? 0),
     viewsCount: Number(r.views_count ?? r.viewsCount ?? 0),
+    sharesCount: Number(r.shares_count ?? r.sharesCount ?? 0),
     createdAt: String(r.created_at ?? r.createdAt ?? ""),
     demandId: (r.demand_id ?? r.demandId ?? null) as string | null,
   };
@@ -1405,5 +1411,36 @@ export const api = {
     const query = filter ? `?${buildMapQuery(filter)}` : "";
     const body = await demandRequest<{ territories: MapTerritory[] }>(`/map/territories${query}`);
     return body?.territories ?? [];
+  },
+
+  // ── ENGAJAMENTO, RANKINGS E SELOS (T21) ──────────────────
+  /**
+   * Os sete rankings da fonte (slide 22), já calculados e materializados pelo
+   * post-service. O Poder Público e os políticos não entram (slide 13).
+   */
+  rankings(period?: RankingPeriod, options: { limit?: number; board?: string } = {}): Promise<RankingsResponse> {
+    const query = new URLSearchParams({ period: normalizeRankingPeriod(period) });
+    if (options.limit) query.set("limit", String(options.limit));
+    if (options.board) query.set("board", options.board);
+    return request<RankingsResponse>(`/api/posts/rankings?${query.toString()}`);
+  },
+
+  /** Selos de impacto do perfil ou, para o Poder Público, indicadores de atuação. */
+  profileImpact(userId: string): Promise<ProfileImpact> {
+    return request<ProfileImpact>(`/api/posts/profiles/${encodeURIComponent(userId)}/impact`);
+  },
+
+  /** Consentimento de aparecer com o nome nos rankings públicos (LGPD). */
+  rankingConsent(): Promise<{ consent: boolean; updatedAt: string | null; notice: string }> {
+    return request("/api/posts/rankings/consent");
+  },
+
+  setRankingConsent(consent: boolean): Promise<{ consent: boolean; updatedAt: string | null; notice: string }> {
+    return request("/api/posts/rankings/consent", { method: "PUT", ...json({ consent }) });
+  },
+
+  /** Registra o compartilhamento (um por conteúdo e por dia, append-only). */
+  registerShare(targetKind: ShareTargetKind, targetId: string, channel: ShareChannel): Promise<{ counted: boolean; sharesCount: number }> {
+    return request("/api/posts/shares", { method: "POST", ...json({ targetKind, targetId, channel }) });
   },
 };

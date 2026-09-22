@@ -16,6 +16,7 @@ import {
   type SupportSummaryItem,
 } from "@/lib/app/types";
 import { AuthPrompt } from "../AuthPrompt";
+import { ShareButton } from "../ShareButton";
 import { Avatar } from "../Avatar";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
@@ -149,6 +150,15 @@ export function PostDetailClient({
             )}
             <span className="inline-flex items-center gap-1.5"><Icon name="comment" size={16} /> {comments.length} atualizações</span>
             <span className="inline-flex items-center gap-1.5"><Icon name="eye" size={16} /> {post.viewsCount} visualizações</span>
+            {/* Amplificação (T21): Web Share API com cópia do link como alternativa. */}
+            <ShareButton
+              targetKind="post"
+              targetId={post.id}
+              path={`/post/${encodeURIComponent(post.id)}`}
+              title={post.title}
+              text={`${post.title} — DM Conecta`}
+              sharesCount={post.sharesCount ?? 0}
+            />
           </div>
           {supports.summary.length > 0 && <div className="mt-4"><p className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Formas de apoio já registradas</p><div className="flex flex-wrap gap-2">{supports.summary.map((item) => <SupportPill key={item.type} type={item.type} count={item.count} />)}</div></div>}
           <div className="mt-5 rounded-xl border p-4" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)" }}>

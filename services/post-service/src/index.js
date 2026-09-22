@@ -23,6 +23,8 @@ const supportsRoutes = require('./routes/supports');
 const executionRoutes = require('./routes/execution');
 const accountabilityRoutes = require('./routes/accountability');
 const mapRoutes = require('./routes/map');
+const rankingsRoutes = require('./routes/rankings');
+const { createRankingService } = require('./ranking/service');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
 /** Endereço público do portal (URL de verificação impressa no dossiê). */
@@ -46,6 +48,9 @@ const createApp = ({
   // Perfil de apoio e conexões do user-service (T15), com o token do usuário.
   partnerProfile = createPartnerProfileClient(),
   connections = createConnectionsClient(),
+  // Recálculo dos rankings e selos (T21). `null` desliga (as tabelas
+  // materializadas ficam como estão).
+  rankings,
 } = {}) => {
   const dossiers = dossierService === undefined
     ? createDossierService({
@@ -86,10 +91,14 @@ const createApp = ({
   app.use('/demands', accountabilityRoutes({ pool, auth, validatedAgent, dossiers }));
   // Mapa inteligente (T20): /demands/map, /demands/map/territories e /demands/map/legend.
   app.use('/demands', mapRoutes({ pool }));
+  // Engajamento, rankings e selos de impacto social (T21): /rankings, /shares
+  // e /profiles/:userId/impact. Antes das rotas de posts, cujo `/:id` é UUID.
+  app.use('/', rankingsRoutes({ pool, auth }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 
   app.locals.dossiers = dossiers;
+  app.locals.rankings = rankings === undefined ? createRankingService({ pool }) : rankings;
   return app;
 };
 
@@ -99,6 +108,9 @@ if (require.main === module) {
   // Laço de geração e retentativa do dossiê (DM_DOSSIER_INTERVAL_MS; 0 desliga).
   const interval = Number(process.env.DM_DOSSIER_INTERVAL_MS ?? 60_000);
   app.locals.dossiers?.start(Number.isFinite(interval) ? interval : 60_000);
+  // Laço de recálculo dos rankings e selos (DM_RANKING_INTERVAL_MS; 0 desliga).
+  const rankingInterval = Number(process.env.DM_RANKING_INTERVAL_MS ?? 300_000);
+  app.locals.rankings?.start(Number.isFinite(rankingInterval) ? rankingInterval : 300_000);
   app.listen(port, () => console.log(`[post-service] listening on ${port}`));
 }
 

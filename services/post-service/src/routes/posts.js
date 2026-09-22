@@ -9,7 +9,7 @@ const { POST_IMAGES_SQL } = require('../upload-policy');
 const POST_PUBLIC_COLUMNS = [
   'id', 'author_id', 'author_name', 'author_avatar', 'type', 'title', 'description',
   'status', 'latitude', 'longitude', 'neighborhood', 'city', 'images', 'videos', 'tags',
-  'reactions_count', 'comments_count', 'views_count', 'created_at', 'updated_at',
+  'reactions_count', 'comments_count', 'views_count', 'shares_count', 'created_at', 'updated_at',
   // Post-vitrine de demanda publicada (T06/T07): o frontend linka a demanda.
   'demand_id',
 ];
