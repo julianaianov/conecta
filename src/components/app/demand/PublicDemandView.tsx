@@ -3,6 +3,7 @@ import {
   DEMAND_PRIORITY_LABELS,
   type DemandTimelineEvent,
   type PublicDemand,
+  type PublicDemandInstitutional,
   type PublicDossierInfo,
 } from "@/lib/app/types";
 import { DOSSIER_TITLE, formatBytesShort, publicDossierDownloadPath, shortHash } from "@/lib/app/dossier";
@@ -13,6 +14,8 @@ import { formatDate } from "@/lib/app/format";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { DemandMap } from "./DemandMap";
+import { PublicInstitutionalSection } from "../institutional/InstitutionalParts";
+import { institutionalTimelineDetail } from "@/lib/app/institutional";
 import {
   BudgetTable,
   CategoryBadge,
@@ -81,7 +84,13 @@ function PublicDossierSection({ demandId, dossier }: { demandId: string; dossier
   );
 }
 
-export function PublicDemandView({ demand, timeline, dossier = null }: { demand: PublicDemand; timeline: DemandTimelineEvent[]; dossier?: PublicDossierInfo | null }) {
+export function PublicDemandView({ demand, timeline, dossier = null, institutional = null }: {
+  demand: PublicDemand;
+  timeline: DemandTimelineEvent[];
+  dossier?: PublicDossierInfo | null;
+  /** Respostas institucionais e status por órgão (T13). */
+  institutional?: PublicDemandInstitutional | null;
+}) {
   const place = [demand.territory, demand.district !== demand.territory ? demand.district : null, [demand.municipality, demand.uf].filter(Boolean).join("/")]
     .filter(Boolean).join(" · ");
   const profileHref = `/perfil/${encodeURIComponent(demand.authorId)}`;
@@ -182,6 +191,8 @@ export function PublicDemandView({ demand, timeline, dossier = null }: { demand:
 
       <PublicDossierSection demandId={demand.id} dossier={dossier} />
 
+      <PublicInstitutionalSection data={institutional} />
+
       <ReadSection title="Linha do tempo" icon="clock">
         {timeline.length ? (
           <ol className="space-y-3 border-l-2 pl-4" style={{ borderColor: "var(--th-border)" }}>
@@ -189,6 +200,9 @@ export function PublicDemandView({ demand, timeline, dossier = null }: { demand:
               <li key={event.id} className="relative">
                 <span aria-hidden className="absolute -left-[1.4rem] top-1 h-3 w-3 rounded-full border-2" style={{ borderColor: "#f4841a", background: "var(--th-card)" }} />
                 <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>{timelineEventLabel(event)}</p>
+                {institutionalTimelineDetail(event) && (
+                  <p className="mt-0.5 line-clamp-2 text-xs" style={{ color: "var(--th-text)" }}>{institutionalTimelineDetail(event)}</p>
+                )}
                 <p className="text-xs font-numeric" style={{ color: "var(--th-muted)" }}>{formatDate(event.createdAt)}</p>
               </li>
             ))}

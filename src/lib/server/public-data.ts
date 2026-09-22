@@ -9,6 +9,7 @@ import {
   type PublicDemand,
   type PublicDemandSummary,
   type DemandTimelineEvent,
+  type PublicDemandInstitutional,
   type DossierVerification,
   type PublicDossierInfo,
   type PublicInstitution,
@@ -237,6 +238,12 @@ export async function getPublicDemand(id: string): Promise<PublicDemand | null> 
 export async function getPublicDemandTimeline(id: string): Promise<DemandTimelineEvent[]> {
   const data = await fetchPublicJson<{ events?: DemandTimelineEvent[] }>("posts", `/demands/${encodeURIComponent(id)}/timeline`);
   return Array.isArray(data?.events) ? data.events : [];
+}
+
+/** Respostas institucionais e status por órgão (T13); `null` se a demanda não é pública. */
+export async function getPublicDemandInstitutional(id: string): Promise<PublicDemandInstitutional | null> {
+  const data = await fetchPublicJson<PublicDemandInstitutional>("posts", `/demands/${encodeURIComponent(id)}/institutional`);
+  return data && Array.isArray(data.organizations) ? data : null;
 }
 
 /** Demandas publicadas em diante, percorrendo o cursor até `max`. */

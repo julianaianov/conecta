@@ -14,6 +14,9 @@ const { createPostUploadPolicy } = require('./upload-policy');
 const dossierRoutes = require('./routes/dossiers');
 const { createDossierService } = require('./dossier/service');
 const { createPublicInstitutionClient } = require('./dossier/institution');
+const institutionalRoutes = require('./routes/institutional');
+const { requireGovernmentActor } = require('./institutional/gate');
+const { createGovernmentProfileClient } = require('./institutional/store');
 
 /** Endereço público do portal (URL de verificação impressa no dossiê). */
 const siteUrl = (env) => (typeof env.DM_PUBLIC_SITE_URL === 'string' && env.DM_PUBLIC_SITE_URL.trim()
@@ -29,6 +32,8 @@ const createApp = ({
   uploadStorage = createUploadStorage(uploadsConfig(process.env) ?? {}),
   // Dossiê da Demanda (T10). `null` desliga (rotas ausentes, envio sem dossiê).
   dossierService,
+  // Identificação pública do órgão do Poder Público (T13), pelo user-service.
+  governmentProfile = createGovernmentProfileClient({ fetchInstitution: createPublicInstitutionClient() }),
 } = {}) => {
   const dossiers = dossierService === undefined
     ? createDossierService({
@@ -43,6 +48,7 @@ const createApp = ({
   const operation = requireOperation(operationUserIds);
   const institutional = requireValidatedGovernment(institutionStatus);
   const validatedAgent = requireValidatedAgent(institutionStatus);
+  const governmentActor = requireGovernmentActor(institutionStatus);
 
   app.use(helmet());
   app.use(cors());
@@ -52,6 +58,8 @@ const createApp = ({
   app.use('/uploads', createUploadRoutes({
     pool, auth, storage: uploadStorage, policy: createPostUploadPolicy(), operationUserIds,
   }));
+  // Atuação institucional do Poder Público (T13): /institutional/* e /demands/:id/institutional.
+  app.use('/', institutionalRoutes({ pool, auth, governmentActor, governmentProfile }));
   if (dossiers) app.use('/demands', dossierRoutes({ pool, auth, dossiers, operationUserIds }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));

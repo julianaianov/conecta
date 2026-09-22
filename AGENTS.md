@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 010, post-service 010. Registre a migração em
+  auth-service 004, user-service 010, post-service 011. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -315,6 +315,64 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   foto) e `test/dossier-e2e.test.js` (S3 fora no envio, regeneração, reenvio,
   publicação, versão pública, verificação, imutabilidade, sem bucket),
   `src/lib/app/dossier.test.mjs`.
+
+## Atuação institucional do Poder Público (T13)
+
+- Fluxo 3 da fonte, etapas 03 a 08; decisão 4 (status institucional por órgão
+  e por demanda). Migração post 010 (`010-institutional-tracks.sql`):
+  `demand_institutional_tracks` (um acompanhamento por demanda × órgão
+  `poder_publico` validado, com retrato do nome/esfera/secretaria/município do
+  órgão, status institucional, nota da última mudança, responsável privado e
+  datas; `UNIQUE (id, demand_id, organization_id)` para as FKs compostas da
+  T14), `demand_institutional_responses` (8 tipos da fonte, texto, setor
+  responsável, programa/serviço com URL https, data prevista, status no
+  momento; só inserção) e `demand_institutional_offers` (11 formas de apoio da
+  fonte, descrição, `connection_id` da conexão pedida ao Agente; só inserção).
+  Também os índices da leitura da gestão (`idx_demands_submitted`,
+  `idx_demands_place`, `idx_demands_territory`, `idx_demand_events_type_created`,
+  `idx_supports_post_confirmed`).
+- Status: `recebida` → `em_analise` → `encaminhada` → `em_articulacao` →
+  `acao_programada` → `em_execucao` → `concluida` (final), mais
+  `nao_e_de_competencia` e `encaminhada_ao_orgao_responsavel` (exigem
+  justificativa; voltam a `em_analise`). Regra no banco
+  (`institutional_status_transition_allowed`, trigger
+  `institutional_tracks_guard`) e espelho em
+  `services/post-service/src/institutional/state-machine.js` e
+  `src/lib/app/institutional.ts` (testes comparam). Atuação só em demanda
+  publicada em diante, fora `arquivada`; nada é excluído; `gestao_app` só lê
+  (trigger + grant SELECT do dm-infra `009-gestao-app-post-institutional.sql`).
+- Linha do tempo: os triggers gravam em `demand_events` (actor_type
+  `poder_publico`, `clock_timestamp()`) `acompanhamento_institucional_aberto`,
+  `status_institucional_alterado`, `resposta_institucional` e
+  `apoio_institucional_oferecido` (públicos) e `responsavel_institucional_definido`
+  (privado). A rota pública da timeline expõe só `payload->'public'` desses
+  eventos, como `details` (órgão, tipo, status, trecho, programa, formas de
+  apoio, justificativa).
+- Rotas (`src/routes/institutional.js`, montada antes das da demanda; gate
+  `src/institutional/gate.js`: 403 `not_government` / `institution_not_validated`,
+  503 sem confirmação): `GET /institutional/me`, `GET /institutional/demands`
+  (filtros da lista pública + `institutionalStatus` com `sem_acompanhamento` e
+  `scope=jurisdicao|todas`: municipal → município/UF, estadual → UF, federal →
+  tudo), `GET /institutional/tracks`, `GET /institutional/demands/:id`,
+  `POST|PUT /institutional/demands/:id/track`, `POST .../status`,
+  `POST .../responses` (pode mudar o status junto) e `POST .../offers`;
+  público `GET /demands/:id/institutional`. A identificação do órgão vem da
+  projeção pública do user-service (`createGovernmentProfileClient`, cache
+  60 s). Respostas, status e ofertas abrem o acompanhamento se preciso.
+- Neutralidade: ordem cronológica, sem pontuação, ranking ou comparação entre
+  órgãos. O público vê o órgão, nunca o representante nem o responsável.
+- Frontend: `/governo` (painel com fila "Recebidas", filtros, lista e mapa;
+  `noindex`, bloqueado no `robots.ts`, menu da conta do Poder Público) e
+  `/governo/demandas/[id]` (análise, registro de recebimento, mudança de
+  status, responsável, resposta, oferta de apoio com pedido de conexão pelas
+  rotas de conexões do user-service); seção "Respostas institucionais" e
+  eventos institucionais na linha do tempo de `/demandas/[id]`
+  (`src/components/app/institutional/`).
+- Testes: `test/institutional-domain.test.js`, `test/institutional-routes.test.js`,
+  `test/institutional-e2e.test.js` (no `test:e2e`) e
+  `src/lib/app/institutional.test.mjs`.
+- Encaminhamentos (órgão e setor de destino, datas, providências) são a T14,
+  na migração 011, com FK composta para o acompanhamento.
 
 ## Segurança dos serviços
 

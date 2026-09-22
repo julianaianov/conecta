@@ -8,6 +8,7 @@ test("robots allows public crawlers and points to the canonical sitemap", () => 
   assert.equal(result.sitemap, "https://dmconecta.org/sitemap.xml");
   assert.ok(JSON.stringify(result.rules).includes("OAI-SearchBot"));
   assert.ok(JSON.stringify(result.rules).includes("/admin"));
+  assert.ok(JSON.stringify(result.rules).includes("/governo"), "área institucional do Poder Público é privada");
   const disallowed = result.rules.flatMap((rule) => Array.isArray(rule.disallow) ? rule.disallow : [rule.disallow]).filter(Boolean);
   assert.ok(!disallowed.includes("/perfil"), "public profile URLs must not be blocked by a prefix rule");
 });

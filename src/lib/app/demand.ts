@@ -32,6 +32,7 @@ import {
   type DemandStatus,
   type DemandTimelineEvent,
 } from "./types.ts";
+import { institutionalTimelineLabel } from "./institutional.ts";
 
 // ── Rotas ──────────────────────────────────────────────────
 
@@ -821,7 +822,14 @@ export function demandGuidance(demand: { status: DemandStatus; reviewState?: Dem
 }
 
 /** Evento da linha do tempo → texto (nunca o código cru). */
-export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "toStatus"> & { payload?: Record<string, unknown> }): string {
+export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "toStatus" | "details"> & { payload?: Record<string, unknown> }): string {
+  // Atuação institucional do Poder Público (T13): órgão, resposta, status e apoio.
+  // Na visão do autor, o mesmo conteúdo público vem em payload.public.
+  const institutional = institutionalTimelineLabel({
+    type: event.type,
+    details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
+  });
+  if (institutional) return institutional;
   switch (event.type) {
     case "criada": return "Rascunho criado";
     case "enviada_para_analise": return event.payload?.reenvio === true ? "Reenviada para análise" : "Enviada para análise";

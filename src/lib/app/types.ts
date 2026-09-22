@@ -1178,12 +1178,27 @@ export interface DemandTimelineEvent {
   fromStatus: DemandStatus | null;
   toStatus: DemandStatus | null;
   createdAt: string;
+  /** Eventos da atuação institucional (T13): órgão, tipo da resposta e status institucional. */
+  details?: DemandTimelineDetails;
+}
+
+/** payload->'public' dos eventos institucionais (triggers da migração post 010). */
+export interface DemandTimelineDetails {
+  organizationName?: string | null;
+  governmentSphere?: string | null;
+  institutionalStatus?: string | null;
+  fromInstitutionalStatus?: string | null;
+  responseType?: string | null;
+  programName?: string | null;
+  excerpt?: string | null;
+  note?: string | null;
+  supportTypes?: string[] | null;
 }
 
 /** Evento da linha do tempo completa, visto pelo autor. */
 export interface DemandEvent extends DemandTimelineEvent {
   reviewState: DemandReviewState | null;
-  actorType: "agente" | "gestao" | "sistema";
+  actorType: "agente" | "gestao" | "sistema" | "poder_publico";
   note: string | null;
   payload: Record<string, unknown>;
   isPublic: boolean;
@@ -1325,4 +1340,160 @@ export interface DossierVerification {
   };
   /** Só quando a demanda está publicada. */
   demand: { id: string; title: string; category: DemandCategory; categoryLabel: string | null; status: DemandStatus } | null;
+}
+
+// ── ATUAÇÃO INSTITUCIONAL DO PODER PÚBLICO (T13) ───────────
+// Espelha services/post-service/src/institutional/constants.js (o teste
+// src/lib/app/institutional.test.mjs compara as listas).
+
+export type InstitutionalStatus =
+  | "recebida" | "em_analise" | "encaminhada" | "em_articulacao" | "acao_programada"
+  | "em_execucao" | "concluida" | "nao_e_de_competencia" | "encaminhada_ao_orgao_responsavel";
+
+export type InstitutionalResponseType =
+  | "recebimento" | "analise_em_andamento" | "orgao_ou_setor_responsavel" | "encaminhamento_realizado"
+  | "programa_publico_relacionado" | "acao_prevista" | "informacoes_adicionais"
+  | "impossibilidade_com_encaminhamento";
+
+export type InstitutionalSupportType =
+  | "recursos_publicos" | "servicos_publicos" | "programas_e_politicas_publicas" | "infraestrutura"
+  | "equipamentos" | "espacos_publicos" | "equipes" | "conhecimento_tecnico"
+  | "encaminhamentos_administrativos" | "articulacao_institucional" | "parcerias";
+
+/** Acompanhamento de uma demanda pelo próprio órgão (visão do órgão). */
+export interface InstitutionalTrack {
+  id: string;
+  demandId: string;
+  organizationId: string;
+  organizationName: string;
+  governmentSphere: GovernmentSphere | null;
+  department: string | null;
+  municipality: string | null;
+  uf: string | null;
+  openedBy: string;
+  openedByName: string | null;
+  status: InstitutionalStatus;
+  statusNote: string | null;
+  statusChangedBy: string | null;
+  responsibleName: string | null;
+  responsibleRole: string | null;
+  receivedAt: string;
+  statusChangedAt: string;
+  concludedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  availableStatuses: InstitutionalStatus[];
+}
+
+/** Acompanhamento na projeção pública (órgão, status e datas). */
+export interface PublicInstitutionalTrack {
+  id: string;
+  organizationName: string;
+  governmentSphere: GovernmentSphere | null;
+  department: string | null;
+  municipality: string | null;
+  uf: string | null;
+  status: InstitutionalStatus;
+  statusNote: string | null;
+  receivedAt: string;
+  statusChangedAt: string;
+  concludedAt: string | null;
+}
+
+export interface InstitutionalResponse {
+  id: string;
+  trackId: string;
+  organizationName: string;
+  type: InstitutionalResponseType;
+  body: string;
+  responsibleSector: string | null;
+  programName: string | null;
+  programUrl: string | null;
+  plannedFor: string | null;
+  institutionalStatus: InstitutionalStatus;
+  createdAt: string;
+  /** Só na visão do próprio órgão. */
+  authorId?: string;
+  authorName?: string | null;
+}
+
+export interface InstitutionalOffer {
+  id: string;
+  trackId: string;
+  organizationName: string;
+  supportTypes: InstitutionalSupportType[];
+  description: string;
+  createdAt: string;
+  /** Só na visão do próprio órgão. */
+  connectionId?: string | null;
+  authorId?: string;
+  authorName?: string | null;
+}
+
+/** GET /api/posts/demands/:id/institutional (público). */
+export interface PublicDemandInstitutional {
+  organizations: PublicInstitutionalTrack[];
+  responses: InstitutionalResponse[];
+  offers: InstitutionalOffer[];
+}
+
+/** GET /api/posts/institutional/me. */
+export interface InstitutionalContext {
+  organizationId: string;
+  organization: {
+    name: string;
+    legalName: string | null;
+    governmentSphere: GovernmentSphere | null;
+    department: string | null;
+    competenceAreas: string[];
+    territory: string | null;
+    municipality: string | null;
+    uf: string | null;
+  };
+  jurisdiction: { governmentSphere: GovernmentSphere | null; municipality: string | null; uf: string | null };
+  counts: Record<InstitutionalStatus, number>;
+}
+
+export type InstitutionalScope = "jurisdicao" | "todas";
+
+export interface InstitutionalDemandFilter extends DemandListFilter {
+  scope?: InstitutionalScope;
+  /** Inclui `sem_acompanhamento`. */
+  institutionalStatus?: (InstitutionalStatus | "sem_acompanhamento")[];
+}
+
+export interface InstitutionalDemandSummary extends PublicDemandSummary {
+  institutional: { trackId: string; status: InstitutionalStatus; statusChangedAt: string } | null;
+}
+
+export interface InstitutionalDemandPage {
+  scope: InstitutionalScope;
+  demands: InstitutionalDemandSummary[];
+  nextCursor: string | null;
+}
+
+/** GET /api/posts/institutional/demands/:id e respostas das escritas. */
+export interface InstitutionalDemandView {
+  demand: PublicDemand;
+  track: InstitutionalTrack | null;
+  responses: InstitutionalResponse[];
+  offers: InstitutionalOffer[];
+  otherOrganizations: PublicInstitutionalTrack[];
+}
+
+export interface InstitutionalResponseInput {
+  type: InstitutionalResponseType;
+  body: string;
+  responsibleSector?: string | null;
+  programName?: string | null;
+  programUrl?: string | null;
+  plannedFor?: string | null;
+  status?: InstitutionalStatus | null;
+  statusNote?: string | null;
+}
+
+export interface InstitutionalOfferInput {
+  supportTypes: InstitutionalSupportType[];
+  description: string;
+  connectionId?: string | null;
 }

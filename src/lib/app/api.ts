@@ -27,6 +27,12 @@ import type {
 } from "./types";
 import type { UploadedFile, UploadPurpose, UploadService, UploadTicket } from "./types";
 import type { DemandDossierDownload, DemandDossierList, DossierVerification, PublicDossierInfo } from "./types";
+import type {
+  InstitutionalContext, InstitutionalDemandFilter, InstitutionalDemandPage, InstitutionalDemandView,
+  InstitutionalOfferInput, InstitutionalResponseInput, InstitutionalStatus, InstitutionalTrack,
+  PublicDemandInstitutional, PublicDemandSummary,
+} from "./types";
+import { buildInstitutionalQuery } from "./institutional";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -399,13 +405,13 @@ export class DemandRequestError extends Error {
 
 const DEMANDS = "/api/posts/demands";
 
-/** Requisição da API de demanda; 404 vira `null`. */
-async function demandRequest<T>(path: string, init: RequestInit = {}): Promise<T | null> {
+/** Requisição da API de demanda; 404 vira `null`. `prefix`: outra base do post-service (T13). */
+async function demandRequest<T>(path: string, init: RequestInit = {}, prefix: string = DEMANDS): Promise<T | null> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   const token = getToken();
   try {
-    const res = await fetch(`${BASE}${DEMANDS}${path}`, {
+    const res = await fetch(`${BASE}${prefix}${path}`, {
       ...init,
       signal: ctrl.signal,
       headers: {
@@ -435,11 +441,14 @@ async function demandRequest<T>(path: string, init: RequestInit = {}): Promise<T
   }
 }
 
-async function demandRequired<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const body = await demandRequest<T>(path, init);
+async function demandRequired<T>(path: string, init: RequestInit = {}, prefix: string = DEMANDS): Promise<T> {
+  const body = await demandRequest<T>(path, init, prefix);
   if (body === null) throw new DemandRequestError("Demanda não encontrada", 404);
   return body;
 }
+
+/** Área institucional do Poder Público (T13): mesmos erros da demanda (`DemandRequestError`). */
+const INSTITUTIONAL = "/api/posts/institutional";
 
 export function buildDemandQuery(filter: DemandListFilter = {}): string {
   const q = new URLSearchParams();
@@ -1016,6 +1025,55 @@ export const api = {
 
   transitionDemand(id: string, action: DemandAgentAction): Promise<Demand> {
     return demandRequired<Demand>(`/${encodeURIComponent(id)}/transitions`, { method: "POST", ...json({ action }) });
+  },
+
+  // ── ATUAÇÃO INSTITUCIONAL DO PODER PÚBLICO (T13) ─────────
+  /** Órgão, recorte territorial e contagem dos acompanhamentos por status. */
+  institutionalContext(): Promise<InstitutionalContext> {
+    return demandRequired<InstitutionalContext>("/me", {}, INSTITUTIONAL);
+  },
+
+  /** Demandas publicadas com o acompanhamento do órgão (paginação por `nextCursor`). */
+  async institutionalDemands(filter?: InstitutionalDemandFilter): Promise<InstitutionalDemandPage> {
+    const page = await demandRequired<InstitutionalDemandPage>(`/demands?${buildInstitutionalQuery(filter)}`, {}, INSTITUTIONAL);
+    return { ...page, demands: page.demands.map((d) => ({ ...d, photoUrl: d.photoUrl ? resolveMediaUrl(d.photoUrl, BASE) : null })) };
+  },
+
+  /** Acompanhamentos do órgão (fila), do mais recente para o mais antigo. */
+  async institutionalTracks(status?: InstitutionalStatus[]): Promise<{ track: InstitutionalTrack; demand: PublicDemandSummary }[]> {
+    const query = status?.length ? `?status=${encodeURIComponent(status.join(","))}` : "";
+    return (await demandRequired<{ tracks: { track: InstitutionalTrack; demand: PublicDemandSummary }[] }>(`/tracks${query}`, {}, INSTITUTIONAL)).tracks;
+  },
+
+  getInstitutionalDemand(id: string): Promise<InstitutionalDemandView | null> {
+    return demandRequest<InstitutionalDemandView>(`/demands/${encodeURIComponent(id)}`, {}, INSTITUTIONAL);
+  },
+
+  /** Abre o acompanhamento (Recebida); repetir devolve o existente. */
+  openInstitutionalTrack(id: string): Promise<InstitutionalDemandView> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/track`, { method: "POST", body: "{}" }, INSTITUTIONAL);
+  },
+
+  setInstitutionalResponsible(id: string, input: { responsibleName: string | null; responsibleRole: string | null }): Promise<InstitutionalDemandView> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/track`, { method: "PUT", ...json(input) }, INSTITUTIONAL);
+  },
+
+  /** Muda o status institucional; 409 `invalid_transition`, 422 com `fields.note`. */
+  changeInstitutionalStatus(id: string, status: InstitutionalStatus, note: string | null): Promise<InstitutionalDemandView> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/status`, { method: "POST", ...json({ status, note }) }, INSTITUTIONAL);
+  },
+
+  addInstitutionalResponse(id: string, input: InstitutionalResponseInput): Promise<InstitutionalDemandView> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/responses`, { method: "POST", ...json(input) }, INSTITUTIONAL);
+  },
+
+  addInstitutionalOffer(id: string, input: InstitutionalOfferInput): Promise<InstitutionalDemandView> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/offers`, { method: "POST", ...json(input) }, INSTITUTIONAL);
+  },
+
+  /** Respostas institucionais e status por órgão (público); `null` se a demanda não é pública. */
+  publicDemandInstitutional(id: string): Promise<PublicDemandInstitutional | null> {
+    return demandRequest<PublicDemandInstitutional>(`/${encodeURIComponent(id)}/institutional`);
   },
 
   // ── DOSSIÊ DA DEMANDA (T10) ──────────────────────────────

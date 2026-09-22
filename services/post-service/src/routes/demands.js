@@ -7,7 +7,8 @@
 //   GET  /                         lista (filtros e paginação keyset)
 //   GET  /:id                      detalhe público (sem endereço fino, sem
 //                                  dados da análise, documentos sem link)
-//   GET  /:id/timeline             linha do tempo pública (demand_events.is_public)
+//   GET  /:id/timeline             linha do tempo pública (demand_events.is_public;
+//                                  eventos institucionais com `details`, T13)
 //
 // Agente de Transformação autor (token; 404 para quem não é o autor):
 //   GET  /mine                     as próprias demandas, em qualquer estado
@@ -51,6 +52,7 @@ const {
   compositionFromItems, computeComposition, lineTotalCents, MAX_BUDGET_CENTS,
 } = require('../demand/finance');
 const store = require('../demand/store');
+const { INSTITUTIONAL_EVENT_TYPES } = require('../institutional/constants');
 const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
 const { parseUploadRef, describeUploads } = require('../uploads');
 
@@ -633,11 +635,15 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
       [req.params.id, PUBLIC_STATUSES],
     );
     if (!found.length) return notFound(res);
-    // Projeção pública: sem ator (nome da equipe ou id do autor), sem nota e sem payload.
+    // Projeção pública: sem ator (nome da equipe ou id do autor), sem nota e sem
+    // payload. Nos eventos da atuação institucional (T13), só payload->'public'
+    // (órgão, tipo da resposta, status institucional), gravado para isso pelos
+    // triggers da migração 010.
     const { rows } = await pool.query(
-      `SELECT id, event_type, from_status, to_status, created_at
+      `SELECT id, event_type, from_status, to_status, created_at,
+              CASE WHEN event_type = ANY($2::text[]) THEN payload->'public' END AS details
          FROM demand_events WHERE demand_id = $1 AND is_public ORDER BY created_at, id`,
-      [req.params.id],
+      [req.params.id, INSTITUTIONAL_EVENT_TYPES],
     );
     res.json({
       events: rows.map((e) => ({
@@ -646,6 +652,7 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
         fromStatus: e.from_status ?? null,
         toStatus: e.to_status ?? null,
         createdAt: e.created_at instanceof Date ? e.created_at.toISOString() : e.created_at,
+        ...(e.details && typeof e.details === 'object' ? { details: e.details } : {}),
       })),
     });
   }));
@@ -654,3 +661,7 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
 };
 
 module.exports.ITEM_KINDS = ITEM_KINDS;
+// Filtros e cursor da lista pública, reusados pela lista do Poder Público (T13).
+module.exports.listHelpers = {
+  parseList, likePattern, encodeCursor, decodeCursor, validationError, PAGE_DEFAULT, PAGE_MAX,
+};

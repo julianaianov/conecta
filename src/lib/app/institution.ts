@@ -435,7 +435,7 @@ export function isInstitutionNotValidated(err: unknown): boolean {
 
 export type GatedAction =
   | "publicar" | "editar" | "comentar" | "apoiar" | "conectar"
-  | "enviar_demanda" | "mover_demanda";
+  | "enviar_demanda" | "mover_demanda" | "atuar";
 
 const GATED_ACTION_TEXT: Record<GatedAction, string> = {
   publicar: "publicar",
@@ -445,6 +445,7 @@ const GATED_ACTION_TEXT: Record<GatedAction, string> = {
   conectar: "solicitar conexões",
   enviar_demanda: "enviar a demanda para análise",
   mover_demanda: "atualizar o andamento da demanda",
+  atuar: "responder, acompanhar e apoiar as demandas do território",
 };
 
 /**

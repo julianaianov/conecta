@@ -16,6 +16,7 @@ const PRIVATE_PATHS = [
   "/demandas/*/editar",
   "/minhas-demandas",
   "/dossie/verificar",
+  "/governo",
 ];
 
 export default function robots(): MetadataRoute.Robots {
