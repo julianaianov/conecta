@@ -59,10 +59,13 @@ const store = require('../demand/store');
 const { INSTITUTIONAL_EVENT_TYPES } = require('../institutional/constants');
 const { FORWARDING_EVENT_TYPES } = require('../institutional/forwardings');
 const { INTEREST_EVENT_TYPES } = require('../interest/constants');
+const { SUPPORT_EVENT_TYPES } = require('../support/constants');
 
 // Eventos com payload->'public' exposto como `details` (T13, encaminhamentos da
 // T14 e interesse/conexão da T15).
-const DETAILED_EVENT_TYPES = [...INSTITUTIONAL_EVENT_TYPES, ...FORWARDING_EVENT_TYPES, ...INTEREST_EVENT_TYPES];
+const DETAILED_EVENT_TYPES = [
+  ...INSTITUTIONAL_EVENT_TYPES, ...FORWARDING_EVENT_TYPES, ...INTEREST_EVENT_TYPES, ...SUPPORT_EVENT_TYPES,
+];
 const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
 const { parseUploadRef, describeUploads } = require('../uploads');
 

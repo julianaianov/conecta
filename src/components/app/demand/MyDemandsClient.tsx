@@ -31,6 +31,7 @@ import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import { CategoryBadge, DemandStatusBadge, StatusTrack } from "./DemandParts";
 import { DossierPanel } from "./DossierPanel";
 import { DemandInterestsInbox } from "../interest/DemandInterestsInbox";
+import { DemandSupportsInbox } from "../support/DemandSupportsInbox";
 import { FormAlert } from "./fields";
 
 function dateTime(iso: string | null | undefined): string {
@@ -46,6 +47,7 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
   const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
   const [showDossier, setShowDossier] = useState(false);
   const [showInterests, setShowInterests] = useState(false);
+  const [showSupports, setShowSupports] = useState(false);
   // Dossiê existe a partir do primeiro envio para análise (T10).
   const hasDossier = Boolean(demand.submittedAt);
   const actions = demand.availableActions.filter(isAgentTransition);
@@ -134,6 +136,19 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
               Interessados e conexões
             </Button>
           )}
+          {isPublic && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              icon="volunteer"
+              onClick={() => setShowSupports((v) => !v)}
+              aria-expanded={showSupports}
+              aria-controls={`dm-${demand.id}-apoios`}
+            >
+              Apoios recebidos
+            </Button>
+          )}
           {hasDossier && (
             <Button
               type="button"
@@ -175,6 +190,11 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
                 }).catch(() => onUpdated({ ...demand, status }));
               }}
             />
+          </div>
+        )}
+        {showSupports && (
+          <div id={`dm-${demand.id}-apoios`} className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+            <DemandSupportsInbox demandId={demand.id} />
           </div>
         )}
         {showDossier && (

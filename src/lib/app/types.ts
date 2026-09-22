@@ -1207,6 +1207,13 @@ export interface DemandTimelineDetails {
   interestKind?: string | null;
   userCategory?: string | null;
   offerTypes?: string[] | null;
+  /** Apoio (T16, migração post 013): modalidade, o que foi oferecido e, com
+      consentimento, o nome público e o valor declarado. */
+  modality?: string | null;
+  supportType?: string | null;
+  supporterCategory?: string | null;
+  supporterName?: string | null;
+  amount?: string | number | null;
 }
 
 /** Evento da linha do tempo completa, visto pelo autor. */
@@ -1752,3 +1759,142 @@ export interface PartnerProfile {
 }
 
 export type PartnerProfileInput = Omit<PartnerProfile, "exists" | "editable" | "updatedAt">;
+
+// ── Apoio à demanda: modalidades, registro e transparência (T16) ──
+// Espelho de services/post-service/src/routes/supports.js e
+// src/support/ (JSON em camelCase). A plataforma não processa pagamento:
+// o apoio financeiro é valor declarado (decisão 5).
+
+/** As 6 modalidades do sistema de apoio (Apresentação, slide 20). */
+export type SupportModality =
+  | "patrocinar_projeto"
+  | "doar_recursos"
+  | "financiar_evento"
+  | "adotar_espaco_publico"
+  | "apoiar_acao_ambiental"
+  | "contratar_servicos_locais";
+
+/** Dupla confirmação: o apoiador declara, o Agente confirma ou contesta. */
+export type SupportReceiptStatus = "declarado" | "confirmado" | "contestado";
+
+/** Estado que o dm-gestao confirma ou rejeita. */
+export type SupportGestaoStatus = "pending" | "confirmed" | "rejected";
+
+export type SupporterCategory = "parceiro" | "poder_publico";
+
+export interface SupportEvidence {
+  reference: string;
+  url: string | null;
+}
+
+/** Apoio visto por quem o registrou. */
+export interface DemandSupport {
+  id: string;
+  demandId: string;
+  postId: string | null;
+  modality: SupportModality;
+  supportType: SupportType;
+  description: string;
+  amountCents: number | null;
+  amountPublic: boolean;
+  occurredOn: string | null;
+  message: string | null;
+  receiptStatus: SupportReceiptStatus;
+  receiptNote: string | null;
+  receiptAnsweredAt: string | null;
+  evidence: SupportEvidence[];
+  displayConsent: boolean;
+  publicName: string | null;
+  status: SupportGestaoStatus;
+  canceledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Apoio visto pelo Agente autor da demanda. */
+export interface AgentDemandSupport extends DemandSupport {
+  supporter: {
+    userId: string;
+    name: string | null;
+    category: SupporterCategory;
+    profileType: ProfileType | null;
+    organizationId: string | null;
+  };
+}
+
+/** "Meus apoios": andamento da demanda apoiada. */
+export interface MySupportItem extends DemandSupport {
+  demand: {
+    id: string;
+    title: string;
+    status: DemandStatus;
+    category: DemandCategory;
+    municipality: string | null;
+    uf: string | null;
+    territory: string | null;
+  };
+}
+
+/** Linha do histórico público de apoio (slide 21). */
+export interface PublicDemandSupport {
+  id: string;
+  modality: SupportModality;
+  supportType: SupportType;
+  description: string;
+  supporterName: string | null;
+  supporterCategory: SupporterCategory;
+  amountCents: number | null;
+  amountPublic: boolean;
+  receiptStatus: SupportReceiptStatus;
+  confirmedAt: string | null;
+  hasEvidence: boolean;
+  occurredOn: string | null;
+  createdAt: string;
+}
+
+export interface SupportTotals {
+  total: number;
+  confirmed: number;
+  declared: number;
+  contested: number;
+  government: number;
+  publicAmountCents: number;
+  confirmedPublicAmountCents: number;
+  byModality: { modality: SupportModality; count: number }[];
+}
+
+export interface DemandSupportHistory {
+  supports: PublicDemandSupport[];
+  totals: SupportTotals;
+}
+
+export interface DemandSupportContext {
+  supports: DemandSupport[];
+  allowedModalities: SupportModality[];
+  allowedSupportTypes: SupportType[];
+  isAuthor: boolean;
+  open: boolean;
+}
+
+export interface SupportInput {
+  modality: SupportModality;
+  supportType: SupportType;
+  description: string;
+  amountCents?: number | null;
+  amountPublic?: boolean;
+  occurredOn?: string | null;
+  message?: string | null;
+  displayConsent?: boolean;
+  publicName?: string | null;
+}
+
+export interface SupportConsentInput {
+  displayConsent: boolean;
+  publicName?: string | null;
+  amountPublic?: boolean;
+}
+
+export interface SupportReceiptInput {
+  note?: string | null;
+  evidence?: string[];
+}

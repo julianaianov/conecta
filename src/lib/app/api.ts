@@ -40,6 +40,10 @@ import type {
   OpportunityFilter, OpportunityPage, PartnerProfile, PartnerProfileInput,
 } from "./types";
 import { buildOpportunityQuery } from "./interest";
+import type {
+  AgentDemandSupport, DemandSupport, DemandSupportContext, DemandSupportHistory, MySupportItem,
+  SupportConsentInput, SupportInput, SupportReceiptInput,
+} from "./types";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -1219,5 +1223,56 @@ export const api = {
 
   savePartnerProfile(input: PartnerProfileInput): Promise<PartnerProfile> {
     return demandRequired<PartnerProfile>("/me/partner-profile", { method: "PUT", ...json(input) }, "/api/users");
+  },
+  // ── APOIO À DEMANDA: MODALIDADES E TRANSPARÊNCIA (T16) ───
+  /** Histórico público de apoio e totais; `null` se a demanda não é pública. */
+  demandSupportHistory(id: string): Promise<DemandSupportHistory | null> {
+    return demandRequest<DemandSupportHistory>(`/${encodeURIComponent(id)}/supports`);
+  },
+
+  /** Meus apoios nesta demanda, modalidades permitidas e se ela está aberta. */
+  demandSupportContext(id: string): Promise<DemandSupportContext | null> {
+    return demandRequest<DemandSupportContext>(`/${encodeURIComponent(id)}/supports/mine`);
+  },
+
+  /** Registra o apoio realizado (Parceiro e Poder Público validado). */
+  async registerSupport(id: string, input: SupportInput): Promise<DemandSupport> {
+    return (await demandRequired<{ support: DemandSupport }>(`/${encodeURIComponent(id)}/supports`, { method: "POST", ...json(input) })).support;
+  },
+
+  /** Consentimento de exibição no histórico público (revogável). */
+  async updateSupportConsent(id: string, supportId: string, input: SupportConsentInput): Promise<DemandSupport> {
+    return (await demandRequired<{ support: DemandSupport }>(
+      `/${encodeURIComponent(id)}/supports/${encodeURIComponent(supportId)}/consent`, { method: "PUT", ...json(input) },
+    )).support;
+  },
+
+  async cancelSupport(id: string, supportId: string): Promise<DemandSupport> {
+    return (await demandRequired<{ support: DemandSupport }>(
+      `/${encodeURIComponent(id)}/supports/${encodeURIComponent(supportId)}/cancel`, { method: "POST", body: "{}" },
+    )).support;
+  },
+
+  /** "Meus apoios": andamento das demandas apoiadas. */
+  async mySupportedDemands(): Promise<MySupportItem[]> {
+    return (await demandRequired<{ supports: MySupportItem[] }>("/supports/mine")).supports;
+  },
+
+  /** Agente autor: apoios declarados na demanda. */
+  agentDemandSupports(id: string): Promise<{ supports: AgentDemandSupport[]; totals: DemandSupportHistory["totals"] }> {
+    return demandRequired(`/mine/${encodeURIComponent(id)}/supports`);
+  },
+
+  /** Dupla confirmação: o Agente confirma o recebimento, com evidência opcional. */
+  async confirmSupportReceipt(id: string, supportId: string, input: SupportReceiptInput = {}): Promise<AgentDemandSupport> {
+    return (await demandRequired<{ support: AgentDemandSupport }>(
+      `/mine/${encodeURIComponent(id)}/supports/${encodeURIComponent(supportId)}/confirm`, { method: "POST", ...json(input) },
+    )).support;
+  },
+
+  async contestSupportReceipt(id: string, supportId: string, input: SupportReceiptInput): Promise<AgentDemandSupport> {
+    return (await demandRequired<{ support: AgentDemandSupport }>(
+      `/mine/${encodeURIComponent(id)}/supports/${encodeURIComponent(supportId)}/contest`, { method: "POST", ...json(input) },
+    )).support;
   },
 };

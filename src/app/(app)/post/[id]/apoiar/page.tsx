@@ -86,11 +86,14 @@ export default function SupportFlowPage() {
   const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
 
   const allowed = allowedSupportTypes(user?.role, user?.profileType);
-  const options = SUPPORT_TYPES.filter((s) => allowed.includes(s.type));
+  // T16: o apoio financeiro não é processado na plataforma (decisão 5). No
+  // feed ele sai da escolha; na demanda, o valor é declarado e confirmado pelo
+  // Agente (página da demanda → "Registrar apoio").
+  const options = SUPPORT_TYPES.filter((s) => allowed.includes(s.type) && s.type !== "financial");
 
   // Um tipo pedido pela URL que o perfil não pode oferecer volta para a escolha.
   useEffect(() => {
-    if (type && user && !allowed.includes(type)) setType(null);
+    if (type && user && (!allowed.includes(type) || type === "financial")) setType(null);
   }, [type, user, allowed]);
 
   useEffect(() => { api.getPost(id).then(setPost); }, [id]);
@@ -182,8 +185,22 @@ export default function SupportFlowPage() {
         </div>
       )}
 
+      {/* Post-vitrine de demanda (T16): o apoio é registrado na demanda, com
+          modalidade, valor declarado e confirmação do Agente. */}
+      {post?.demandId && (
+        <Card className="mb-4">
+          <h2 className="text-base font-bold" style={{ color: "var(--th-text)" }}>Esta publicação é a vitrine de uma demanda</h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>
+            O apoio a uma demanda é registrado na página dela, com uma das seis modalidades (patrocinar, doar recursos,
+            financiar eventos, adotar espaços públicos, apoiar ações ambientais ou contratar serviços locais) e
+            confirmação do Agente de Transformação.
+          </p>
+          <div className="mt-4"><Button href={`/demandas/${encodeURIComponent(post.demandId)}`} icon="volunteer" block>Registrar apoio na demanda</Button></div>
+        </Card>
+      )}
+
       {/* ── Escolha do tipo ─────────────────────────────── */}
-      {!type && (
+      {!post?.demandId && !type && (
         <div className="space-y-2">
           {options.map((s) => (
             <button key={s.type} onClick={() => { setType(s.type); setFinancialStep(0); }} className="app-card flex w-full items-center gap-3 rounded-xl p-3.5 text-left transition-all hover:border-[#f4841a]">
@@ -200,14 +217,14 @@ export default function SupportFlowPage() {
         </div>
       )}
 
-      {type && (
+      {!post?.demandId && type && (
         <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--th-card-alt)" }}>
           <div className="h-full rounded-full transition-all" style={{ width: `${progress * 100}%`, background: "linear-gradient(90deg,#f4841a,#f89b45)" }} />
         </div>
       )}
 
       {/* Apoio financeiro registra a intenção e a forma escolhida; não realiza cobrança automática. */}
-      {isFinancial && (
+      {!post?.demandId && isFinancial && (
         <Card>
           {financialStep === 0 ? (
             <div className="space-y-4">
@@ -243,7 +260,7 @@ export default function SupportFlowPage() {
       )}
 
       {/* ── Demais tipos ────────────────────────────────── */}
-      {type && !isFinancial && meta && (
+      {!post?.demandId && type && !isFinancial && meta && (
         <Card>
           <div className="mb-4 flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: "rgba(244,132,26,0.12)", color: "#f4841a" }}><Icon name={meta.icon as IconName} size={20} /></span>

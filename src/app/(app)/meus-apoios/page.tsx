@@ -9,6 +9,7 @@ import { PAYMENT_METHODS, SUPPORT_TYPE_META, type SupportRecord, type SupportTyp
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Card, EmptyState } from "@/components/app/ui";
 import { AuthPrompt } from "@/components/app/AuthPrompt";
+import { MyDemandSupports } from "@/components/app/support/MyDemandSupports";
 
 const FILTERS: { value: SupportType | "all"; label: string }[] = [
   { value: "all", label: "Todos" },
@@ -61,6 +62,10 @@ export default function MySupportsPage() {
         </div>
       </div>
 
+      {/* Apoios registrados em demandas (T16): modalidades da fonte, dupla
+          confirmação e andamento da demanda apoiada. */}
+      <MyDemandSupports />
+
       {/* filtros */}
       <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-1">
         {FILTERS.map((f) => (
@@ -68,7 +73,7 @@ export default function MySupportsPage() {
         ))}
       </div>
 
-      {/* lista */}
+      {/* lista dos apoios do feed */}
       <div className="mt-4 space-y-3">
         {loading ? (
           <div className="flex justify-center py-16"><span className="app-spinner" style={{ width: 28, height: 28 }} /></div>

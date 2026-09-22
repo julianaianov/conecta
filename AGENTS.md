@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 011, post-service 013. Registre a migração em
+  auth-service 004, user-service 011, post-service 014. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -502,6 +502,66 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `test/interest-e2e.test.js` (no `test:e2e`),
   `services/user-service/test/partner-profile.test.js` e
   `src/lib/app/interest.test.mjs`.
+
+## Apoio à demanda: modalidades, registro e transparência (T16)
+
+- Fonte: Apresentação, slide 20 (as 6 modalidades do "Sistema de apoio"),
+  slide 21 (transparência: histórico de apoio) e slides 10–11 (Parceiros
+  "apoiam projetos", "registram apoio realizado", "acompanham resultados" e
+  entram no ranking; o Poder Público apoia **sem** ranking). Decisão 5: a
+  plataforma não processa pagamento — o apoio financeiro é **valor declarado**.
+- Migração post 013 (`013-support-modalities.sql`), **na tabela `supports` que
+  já existe** (o dm-gestao lê e escreve `status` ali): enums `support_modality`
+  (`patrocinar_projeto`, `doar_recursos`, `financiar_evento`,
+  `adotar_espaco_publico`, `apoiar_acao_ambiental`, `contratar_servicos_locais`)
+  e `support_receipt_status` (`declarado` → `confirmado` | `contestado`;
+  `contestado` → `confirmado`), mais `modality`, `demand_id` (o `post_id`
+  continua sendo o post-vitrine, para a gestão enxergar pelo feed),
+  `supporter_category`, `profile_type`, `organization_id`, `description`,
+  `occurred_on`, `receipt_*`, `display_consent`/`public_name`/`amount_public`
+  e `canceled_at`. `type` passa a ser **o que é oferecido**.
+- Mapeamento dos tipos antigos (migração + trigger do apoio do feed):
+  `financial` → `patrocinar_projeto` (em post `event`, `financiar_evento`);
+  `materials`, `equipment`, `food`, `space`, `volunteering` → `doar_recursos`;
+  `labor`, `transport`, `knowledge` → `contratar_servicos_locais`; `sharing`
+  fica sem modalidade (divulgação é amplificação).
+- Trigger `supports_guard`: apoio de demanda nasce `declarado`/`pending`, sem
+  `payment_method`, só em demanda publicada em diante (fora `arquivada`),
+  nunca do autor; identidade, modalidade, oferta, descrição, valor e data são
+  imutáveis; nada é excluído (o apoiador usa `canceled_at`, só antes da
+  confirmação); a confirmação do Agente leva `status` de `pending` a
+  `confirmed`; a sessão `gestao_app` só muda `status`/`updated_at`.
+  `supports_record_event` (`SECURITY DEFINER`) grava `apoio_declarado`,
+  `apoio_confirmado` e `apoio_contestado` (públicos, `payload->'public'` com
+  nome e valor só quando há consentimento) e `apoio_cancelado`,
+  `apoio_revisado_gestao` (privados).
+- Domínio em `services/post-service/src/support/` (constantes, validação) e
+  `store.js` (projeções própria, do Agente e pública, totais); rotas em
+  `src/routes/supports.js`, montada em `/demands` antes das da demanda:
+  público `GET /:id/supports` (histórico + totais); Parceiro e Poder Público
+  validado `GET /supports/mine`, `GET /:id/supports/mine`, `POST /:id/supports`,
+  `PUT /:id/supports/:sid/consent` (revogável, LGPD),
+  `POST /:id/supports/:sid/cancel`; Agente autor `GET /mine/:id/supports`,
+  `POST /mine/:id/supports/:sid/confirm` (evidência opcional: `upload:<id>`
+  confirmado, dele, desta demanda, finalidade de evidência/documento) e
+  `.../contest` (justificativa obrigatória).
+- Feed: `POST /:id/supports` responde 409 `demand_support_flow` no post-vitrine
+  (o apoio à demanda vai pela demanda); `GET /my/supports` traz só o apoio do
+  feed; `/ranking` ignora apoio cancelado, rejeitado e do Poder Público.
+- Frontend: `src/lib/app/support.ts` (espelho de `support/constants.js`,
+  comparado em `support.test.mjs`), bloco "APOIO À DEMANDA" em `api.ts` e
+  tipos em `types.ts`; `src/components/app/support/` com `DemandSupportPanel`
+  (registro, consentimento, cancelamento), `DemandSupportHistorySection` +
+  `DemandSupportBlock` (histórico público na página da demanda),
+  `DemandSupportsInbox` ("Apoios recebidos" em Minhas demandas) e
+  `MyDemandSupports` ("Meus apoios", com o andamento da demanda apoiada).
+  `/post/[id]/apoiar` não oferece mais PIX nem cartão e manda o post-vitrine
+  para a demanda.
+- Grant dm-infra `013-gestao-app-post-supports.sql` (`SELECT` + `UPDATE
+  (status, updated_at)`). Contrato e o ajuste pendente do dm-gestao em
+  `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.11.
+- Testes: `test/support-domain.test.js`, `test/supports-routes.test.js`,
+  `test/support-e2e.test.js` (no `test:e2e`) e `src/lib/app/support.test.mjs`.
 
 ## Segurança dos serviços
 

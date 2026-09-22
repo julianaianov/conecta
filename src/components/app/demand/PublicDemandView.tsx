@@ -17,7 +17,9 @@ import { DemandMap } from "./DemandMap";
 import { PublicInstitutionalSection } from "../institutional/InstitutionalParts";
 import { institutionalTimelineDetail } from "@/lib/app/institutional";
 import { interestTimelineDetail } from "@/lib/app/interest";
+import { supportTimelineDetail } from "@/lib/app/support";
 import { DemandInterestPanel } from "../interest/DemandInterestPanel";
+import { DemandSupportBlock } from "../support/DemandSupportPanel";
 import {
   BudgetTable,
   CategoryBadge,
@@ -149,6 +151,9 @@ export function PublicDemandView({ demand, timeline, dossier = null, institution
 
       <DemandInterestPanel demandId={demand.id} authorId={demand.authorId} postId={demand.postId} />
 
+      {/* Registro de apoio realizado e histórico de apoio (T16, slides 20 e 21). */}
+      <DemandSupportBlock demandId={demand.id} authorId={demand.authorId} />
+
       <ReadSection title="Público beneficiado" icon="groups">
         <div className="grid gap-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
           <div>
@@ -204,8 +209,10 @@ export function PublicDemandView({ demand, timeline, dossier = null, institution
               <li key={event.id} className="relative">
                 <span aria-hidden className="absolute -left-[1.4rem] top-1 h-3 w-3 rounded-full border-2" style={{ borderColor: "#f4841a", background: "var(--th-card)" }} />
                 <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>{timelineEventLabel(event)}</p>
-                {(institutionalTimelineDetail(event) ?? interestTimelineDetail(event)) && (
-                  <p className="mt-0.5 line-clamp-2 text-xs" style={{ color: "var(--th-text)" }}>{institutionalTimelineDetail(event) ?? interestTimelineDetail(event)}</p>
+                {(institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event)) && (
+                  <p className="mt-0.5 line-clamp-2 text-xs" style={{ color: "var(--th-text)" }}>
+                    {institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event)}
+                  </p>
                 )}
                 <p className="text-xs font-numeric" style={{ color: "var(--th-muted)" }}>{formatDate(event.createdAt)}</p>
               </li>

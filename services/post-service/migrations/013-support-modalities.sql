@@ -299,8 +299,11 @@ $$;
 -- Linha do tempo da demanda. payload->'public' é o que a rota pública mostra:
 -- modalidade, o que foi oferecido, categoria do apoiador e, quando houver
 -- consentimento, o nome público; valor só quando o apoiador o torna público.
+-- SECURITY DEFINER: o gestao_app não tem INSERT em demand_events; o registro do
+-- apoio revisado é consequência da decisão gravada em supports (como em
+-- demands_record_event, migração 007).
 CREATE OR REPLACE FUNCTION supports_record_event() RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   actor_kind TEXT;
   public_part JSONB;
