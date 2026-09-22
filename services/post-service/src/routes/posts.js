@@ -22,7 +22,7 @@ const SUPPORT_OPERATION_SQL = 'id, post_id, user_id, user_name, type, amount, pa
 const VISIBLE = "visibility = 'visible'";
 const VISIBLE_POST = `SELECT 1 FROM posts WHERE id=$1 AND ${VISIBLE}`;
 
-module.exports = (pool, auth, operation) => {
+module.exports = (pool, auth, operation, institutional = (_req, _res, next) => next()) => {
   if (typeof operation !== 'function') throw new Error('posts routes exigem o middleware de operação');
   const router = express.Router();
 
@@ -210,7 +210,7 @@ module.exports = (pool, auth, operation) => {
   });
 
   // POST /
-  router.post('/', auth, async (req, res) => {
+  router.post('/', auth, institutional, async (req, res) => {
     const { type, title, description, latitude, longitude, neighborhood, city, images, videos, tags } = req.body;
     if (!type || !title || !description)
       return res.status(400).json({ error: 'type, title e description são obrigatórios' });
@@ -235,7 +235,7 @@ module.exports = (pool, auth, operation) => {
   });
 
   // PUT /:id
-  router.put('/:id', auth, async (req, res) => {
+  router.put('/:id', auth, institutional, async (req, res) => {
     const { title, description, images, videos, tags, latitude, longitude } = req.body ?? {};
     if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'status'))
       return res.status(400).json({ error: 'O status da publicação não é editável' });
@@ -314,7 +314,7 @@ module.exports = (pool, auth, operation) => {
   });
 
   // POST /:id/comments
-  router.post('/:id/comments', auth, async (req, res) => {
+  router.post('/:id/comments', auth, institutional, async (req, res) => {
     const { content } = req.body;
     if (!content) return res.status(400).json({ error: 'Conteúdo obrigatório' });
     try {
@@ -367,7 +367,7 @@ module.exports = (pool, auth, operation) => {
   });
 
   // POST /:id/supports — criar ou atualizar apoio com detalhes
-  router.post('/:id/supports', auth, async (req, res) => {
+  router.post('/:id/supports', auth, institutional, async (req, res) => {
     const { type, message, amount, payment_method, details } = req.body;
     if (!type || !SUPPORT_TYPES.includes(type))
       return res.status(400).json({ error: 'Tipo de apoio inválido' });

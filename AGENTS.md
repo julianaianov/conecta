@@ -46,13 +46,38 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 008, post-service 007. Registre a migração em
+  auth-service 004, user-service 009, post-service 007. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
   alterna `visibility` (`visible`/`hidden`, migração post 006), e post oculto
   não aparece em rota pública nem aceita comentário, reação ou apoio. Status
   desconhecido não ganha rótulo na interface (`normalizePostStatus`).
+
+## Cadastro institucional (T04)
+
+- `user_db.organizations` (migração user 008) guarda o cadastro institucional:
+  `institution_kind` `agente_transformacao` (CNPJ + CNAE, endereço com CEP,
+  contatos, responsável) ou `poder_publico` (órgão, CNPJ, esfera, município/UF,
+  território, secretaria, competências, representante). Um cadastro por perfil;
+  Líder Comunitário e Representante de Bairro vinculam o perfil a uma
+  instituição com CNPJ (decisão 3). Representante em
+  `organization_representatives` (contatos privados).
+- Rotas do user-service (`routes/institutions.js`): `GET/PUT /me/institution`,
+  `POST /me/institution/submit`, `GET /me/institution/status`,
+  `GET /institutions/reference` e `GET /:userId/institution` (público, só
+  validada, sem contatos). Validação de CNPJ (inclusive alfanumérico) e CNAE em
+  `src/institution.js`.
+- Estado `validation_status`: `pendente` → (titular envia) `em_analise` →
+  (dm-gestao) `validada` | `devolvida` (parecer); `validada` → `revogada`
+  (parecer). O titular edita e reenvia em `pendente`, `devolvida` e `revogada`.
+  O trigger da migração 008 impõe as transições (a gestão é reconhecida pela
+  sessão `gestao_app`), deriva `verified*` e grava a trilha em
+  `organization_validation_events`. O dm-api nunca valida.
+- Poder Público sem cadastro validado recebe 403 `institution_not_validated` ao
+  publicar, editar, comentar ou apoiar (post-service, `src/institution-gate.js`,
+  que consulta `DM_INTERNAL_USER_API_URL` com o token do usuário, cache curto e
+  falha fechada) e ao solicitar conexão (user-service).
 
 ## Segurança dos serviços
 

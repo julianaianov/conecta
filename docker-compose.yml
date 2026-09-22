@@ -83,6 +83,8 @@ services:
       DATABASE_URL: postgresql://postgres:password@post-db:5432/post_db
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env (openssl rand -hex 32)}
       DM_OPERATION_USER_IDS: ${DM_OPERATION_USER_IDS:-}
+      # Gate institucional do Poder Público: consulta /me/institution/status.
+      DM_INTERNAL_USER_API_URL: http://user-service:3002
       PORT: 3003
     depends_on:
       post-db:

@@ -6,6 +6,8 @@ const usersRoutes = require('./routes/users');
 const communitiesRoutes = require('./routes/communities');
 const connectionsRoutes = require('./routes/connections');
 const socialRoutes = require('./routes/social');
+const institutionsRoutes = require('./routes/institutions');
+const { requireInstitutionalAccess } = institutionsRoutes;
 const {
   resolveJwtSecret, createAuth, parseOperationUserIds, requireOperation,
 } = require('./security');
@@ -24,7 +26,8 @@ const createApp = ({
   app.use(express.json());
   app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'user-service' }));
   app.use('/communities', communitiesRoutes(pool));
-  app.use('/connections', connectionsRoutes(pool, auth));
+  app.use('/connections', connectionsRoutes(pool, auth, requireInstitutionalAccess(pool)));
+  app.use('/', institutionsRoutes(pool, auth));
   app.use('/', socialRoutes(pool, auth, operation));
   app.use('/', usersRoutes(pool, auth));
 

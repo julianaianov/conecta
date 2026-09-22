@@ -13,6 +13,11 @@ import { buildRanking, type RankingMetrics, type RankingUser } from "./ranking";
 import { runtime } from "./runtime";
 import { normalizeCoordinates } from "./location";
 import { buildPostQuery, type PostListFilter } from "./post-query";
+import type {
+  CnaeEntry, Institution, InstitutionAccess, InstitutionFieldErrors, InstitutionInput,
+  InstitutionKind, InstitutionValidationEvent, InstitutionValidationStatus, GovernmentSphere,
+  PublicInstitution,
+} from "./types";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -210,6 +215,138 @@ function mapTestimonial(r: RawPost): Testimonial {
 // ════════════════════════════════════════════════════════════
 //  AUTH
 // ════════════════════════════════════════════════════════════
+// ── Cadastro institucional (T04) ───────────────────────────
+/** Erro do cadastro institucional com status HTTP, código e erros por campo. */
+export class InstitutionRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null = null,
+    readonly fields: InstitutionFieldErrors = {},
+    readonly validationStatus: InstitutionValidationStatus | null = null,
+  ) {
+    super(message);
+  }
+}
+
+async function institutionRequest<T>(path: string, init: RequestInit = {}): Promise<T | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const token = getToken();
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: ctrl.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init.headers ?? {}),
+      },
+    });
+    if (res.status === 404) return null;
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      throw new InstitutionRequestError(
+        String(body.error ?? `Erro ${res.status}`),
+        res.status,
+        (body.code as string) ?? null,
+        (body.fields as InstitutionFieldErrors) ?? {},
+        (body.validationStatus as InstitutionValidationStatus) ?? null,
+      );
+    }
+    return body as T;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw new NetworkError("timeout");
+    if (err instanceof TypeError) throw new NetworkError("network");
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const str = (v: unknown): string | null => (v == null || v === "" ? null : String(v));
+
+function mapCnaeList(v: unknown): CnaeEntry[] {
+  return Array.isArray(v)
+    ? v.map((item) => ({ code: String((item as RawPost).code ?? ""), description: str((item as RawPost).description) }))
+    : [];
+}
+
+function mapInstitutionData(r: RawPost) {
+  return {
+    cnpj: String(r.cnpj ?? ""),
+    legalName: String(r.legal_name ?? ""),
+    tradeName: str(r.trade_name),
+    cnaePrimary: str(r.cnae_primary),
+    cnaePrimaryDescription: str(r.cnae_primary_description),
+    cnaeSecondary: mapCnaeList(r.cnae_secondary),
+    governmentSphere: (str(r.government_sphere) as GovernmentSphere | null),
+    department: str(r.department),
+    competenceAreas: Array.isArray(r.competence_areas) ? (r.competence_areas as string[]) : [],
+    territory: str(r.territory),
+    municipality: str(r.municipality),
+    uf: str(r.uf),
+    website: str(r.website),
+  };
+}
+
+export function mapInstitution(r: RawPost): Institution {
+  const rep = r.representative as RawPost | null | undefined;
+  return {
+    ...mapInstitutionData(r),
+    id: String(r.id),
+    kind: r.institution_kind as InstitutionKind,
+    cep: str(r.cep),
+    street: str(r.street),
+    addressNumber: str(r.address_number),
+    addressComplement: str(r.address_complement),
+    district: str(r.district),
+    municipalityIbgeCode: str(r.municipality_ibge_code),
+    institutionalEmail: str(r.institutional_email),
+    institutionalPhone: str(r.institutional_phone),
+    status: r.validation_status as InstitutionValidationStatus,
+    validationNote: str(r.validation_note),
+    reviewedAt: str(r.validation_reviewed_at),
+    submittedAt: str(r.submitted_at),
+    createdAt: String(r.created_at ?? ""),
+    updatedAt: str(r.updated_at),
+    representative: rep
+      ? {
+        fullName: String(rep.full_name ?? ""),
+        position: String(rep.position ?? ""),
+        institutionalEmail: String(rep.institutional_email ?? ""),
+        institutionalPhone: String(rep.institutional_phone ?? ""),
+        proofDocumentRef: str(rep.proof_document_ref),
+        proofDescription: str(rep.proof_description),
+      }
+      : null,
+    events: Array.isArray(r.events)
+      ? (r.events as RawPost[]).map((e): InstitutionValidationEvent => ({
+        fromStatus: (str(e.from_status) as InstitutionValidationStatus | null),
+        toStatus: e.to_status as InstitutionValidationStatus,
+        note: str(e.note),
+        actorType: e.actor_type === "gestao" ? "gestao" : "titular",
+        createdAt: String(e.created_at ?? ""),
+      }))
+      : [],
+  };
+}
+
+export function mapPublicInstitution(r: RawPost): PublicInstitution {
+  return {
+    ...mapInstitutionData(r),
+    kind: r.institution_kind as InstitutionKind,
+    validatedAt: str(r.validation_reviewed_at),
+  };
+}
+
+export interface InstitutionReference {
+  cnaeReference: { code: string; description: string }[];
+  competenceAreaSuggestions: string[];
+  ufs: string[];
+  governmentSpheres: GovernmentSphere[];
+}
+
 export const api = {
   hasApi: HAS_API,
 
@@ -517,5 +654,46 @@ export const api = {
       supports: postData.supports.map(mapSupport),
       comments: postData.comments.map(mapComment),
     };
+  },
+
+  // ── CADASTRO INSTITUCIONAL (T04) ─────────────────────────
+  /** Cadastro do próprio titular, com parecer e trilha; `null` se ainda não existe. */
+  async getMyInstitution(): Promise<Institution | null> {
+    const raw = await institutionRequest<RawPost>("/api/users/me/institution");
+    return raw ? mapInstitution(raw) : null;
+  },
+
+  /** Cria ou atualiza (pendente, devolvida ou revogada). 422 traz `fields`. */
+  async saveMyInstitution(input: InstitutionInput): Promise<Institution> {
+    const raw = await institutionRequest<RawPost>("/api/users/me/institution", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+    if (!raw) throw new InstitutionRequestError("Cadastro institucional não encontrado", 404);
+    return mapInstitution(raw);
+  },
+
+  /** Envia para validação da equipe (→ em_analise). */
+  async submitMyInstitution(): Promise<Institution> {
+    const raw = await institutionRequest<RawPost>("/api/users/me/institution/submit", { method: "POST", body: "{}" });
+    if (!raw) throw new InstitutionRequestError("Cadastro institucional não encontrado", 404);
+    return mapInstitution(raw);
+  },
+
+  async myInstitutionAccess(): Promise<InstitutionAccess> {
+    const raw = await institutionRequest<InstitutionAccess>("/api/users/me/institution/status");
+    return raw ?? { kind: null, status: null, requiredKind: null, canActInstitutionally: false };
+  },
+
+  /** Instituição validada vinculada a um perfil; `null` se não houver. */
+  async getPublicInstitution(userId: string): Promise<PublicInstitution | null> {
+    const raw = await institutionRequest<RawPost>(`/api/users/${encodeURIComponent(userId)}/institution`);
+    return raw ? mapPublicInstitution(raw) : null;
+  },
+
+  async institutionReference(): Promise<InstitutionReference> {
+    const raw = await institutionRequest<InstitutionReference>("/api/users/institutions/reference");
+    if (!raw) throw new InstitutionRequestError("Referência indisponível", 404);
+    return raw;
   },
 };

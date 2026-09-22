@@ -654,3 +654,167 @@ export interface AdminSnapshot {
 // ── Map presentation ──────────────────────────────────────
 // This is only the initial viewport; it is never persisted as post data.
 export const MAP_CENTER: [number, number] = [-23.0247, -43.4567];
+
+// ── Cadastro institucional (T04) ──────────────────────────
+// Fonte da verdade: Fluxo 2 (CNPJ + CNAE do Agente de Transformação) e Fluxo 3
+// (órgão, esfera, território e representante do Poder Público). A validação é
+// feita pela equipe no dm-gestao (decisão 2); o app só cria, edita, envia e lê.
+
+export type InstitutionKind = "agente_transformacao" | "poder_publico";
+export type InstitutionValidationStatus = "pendente" | "em_analise" | "validada" | "devolvida" | "revogada";
+export type GovernmentSphere = "municipal" | "estadual" | "federal";
+
+export const INSTITUTION_KIND_LABELS: Record<InstitutionKind, string> = {
+  agente_transformacao: "Agente de Transformação",
+  poder_publico: "Poder Público",
+};
+
+export const INSTITUTION_STATUS_LABELS: Record<InstitutionValidationStatus, string> = {
+  pendente: "Cadastro não enviado",
+  em_analise: "Aguardando validação",
+  validada: "Instituição validada",
+  devolvida: "Devolvido para ajustes",
+  revogada: "Validação revogada",
+};
+
+export const GOVERNMENT_SPHERE_LABELS: Record<GovernmentSphere, string> = {
+  municipal: "Municipal",
+  estadual: "Estadual",
+  federal: "Federal",
+};
+
+/** Estados em que o titular edita e (re)envia o cadastro. */
+export const INSTITUTION_EDITABLE_STATUSES: InstitutionValidationStatus[] = ["pendente", "devolvida", "revogada"];
+
+/** Subperfis de Agente que se vinculam a uma instituição com CNPJ (decisão 3). */
+export const LINKED_AGENT_PROFILES: ProfileType[] = ["lider_comunitario", "representante_bairro"];
+
+export interface CnaeEntry {
+  code: string;          // 7 dígitos, sem máscara ("9430800")
+  description: string | null;
+}
+
+export interface InstitutionRepresentative {
+  fullName: string;
+  position: string;
+  institutionalEmail: string;
+  institutionalPhone: string;
+  /** Referência ao documento de comprovação (o upload real vem na T08). */
+  proofDocumentRef: string | null;
+  proofDescription: string | null;
+}
+
+export interface InstitutionValidationEvent {
+  fromStatus: InstitutionValidationStatus | null;
+  toStatus: InstitutionValidationStatus;
+  /** Parecer da equipe (devolução/revogação). */
+  note: string | null;
+  actorType: "titular" | "gestao";
+  createdAt: string;
+}
+
+/** Dados que o titular envia em PUT /api/users/me/institution. */
+export interface InstitutionInput {
+  cnpj: string;
+  legalName: string;
+  tradeName?: string | null;
+  cnaePrimary?: string | null;
+  cnaePrimaryDescription?: string | null;
+  cnaeSecondary?: CnaeEntry[];
+  governmentSphere?: GovernmentSphere | null;
+  department?: string | null;
+  competenceAreas?: string[];
+  territory?: string | null;
+  cep?: string | null;
+  street?: string | null;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  district?: string | null;
+  municipality?: string | null;
+  municipalityIbgeCode?: string | null;
+  uf?: string | null;
+  institutionalEmail?: string | null;
+  institutionalPhone?: string | null;
+  website?: string | null;
+  representative: Omit<InstitutionRepresentative, "proofDocumentRef" | "proofDescription">
+    & Partial<Pick<InstitutionRepresentative, "proofDocumentRef" | "proofDescription">>;
+}
+
+/** Cadastro do próprio titular (GET /api/users/me/institution). */
+export interface Institution extends Omit<InstitutionInput, "representative" | "cnaeSecondary" | "competenceAreas"> {
+  id: string;
+  kind: InstitutionKind;
+  cnaeSecondary: CnaeEntry[];
+  competenceAreas: string[];
+  status: InstitutionValidationStatus;
+  /** Parecer da última devolução/revogação, enquanto não houver reenvio. */
+  validationNote: string | null;
+  reviewedAt: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  representative: InstitutionRepresentative | null;
+  events: InstitutionValidationEvent[];
+}
+
+/** Instituição validada exibida publicamente (sem contatos nem representante). */
+export interface PublicInstitution {
+  kind: InstitutionKind;
+  cnpj: string;
+  legalName: string;
+  tradeName: string | null;
+  cnaePrimary: string | null;
+  cnaePrimaryDescription: string | null;
+  cnaeSecondary: CnaeEntry[];
+  governmentSphere: GovernmentSphere | null;
+  department: string | null;
+  competenceAreas: string[];
+  territory: string | null;
+  municipality: string | null;
+  uf: string | null;
+  website: string | null;
+  validatedAt: string | null;
+}
+
+export interface InstitutionAccess {
+  kind: InstitutionKind | null;
+  status: InstitutionValidationStatus | null;
+  /** Tipo de cadastro que a categoria do perfil exige (null: não se aplica). */
+  requiredKind: InstitutionKind | null;
+  canActInstitutionally: boolean;
+}
+
+export interface InstitutionFieldErrors {
+  [field: string]: string;
+}
+
+/** Tipo de cadastro institucional exigido pela categoria do perfil. */
+export function institutionKindFor(role: string | null | undefined, profileType?: string | null): InstitutionKind | null {
+  const normalized = normalizeRole(role, profileType);
+  if (normalized === "agent") return "agente_transformacao";
+  if (normalized === "government") return "poder_publico";
+  return null;
+}
+
+/**
+ * O Poder Público só entra no ambiente institucional (publicar mensagem,
+ * comentar, apoiar, solicitar conexão) com o cadastro validado; os serviços
+ * aplicam a mesma regra (403 `institution_not_validated`).
+ */
+export function requiresInstitutionalValidation(role: string | null | undefined, profileType?: string | null): boolean {
+  return normalizeRole(role, profileType) === "government";
+}
+
+/** "11222333000181" → "11.222.333/0001-81" (aceita o CNPJ alfanumérico). */
+export function formatCnpj(value: string): string {
+  const c = value.toUpperCase().replace(/[.\-/\s]/g, "");
+  if (c.length !== 14) return value;
+  return `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}`;
+}
+
+/** "9430800" → "9430-8/00". */
+export function formatCnae(value: string): string {
+  const c = value.replace(/[.\-/\s]/g, "");
+  if (c.length !== 7) return value;
+  return `${c.slice(0, 4)}-${c.slice(4, 5)}/${c.slice(5)}`;
+}

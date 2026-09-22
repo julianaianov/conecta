@@ -9,8 +9,11 @@ const SECRET = 'post-service-test-secret-0123456789abcdef';
 const USER_ID = '11111111-1111-1111-1111-111111111111';
 const POST_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 
+// Poder Público com cadastro validado (o gate institucional tem teste próprio).
+const VALIDATED = async () => ({ kind: 'poder_publico', status: 'validada', canActInstitutionally: true });
+
 async function withServer(pool, callback) {
-  const server = createApp({ pool, secret: SECRET }).listen(0);
+  const server = createApp({ pool, secret: SECRET, institutionStatus: VALIDATED }).listen(0);
   try {
     await callback(`http://127.0.0.1:${server.address().port}`);
   } finally {
@@ -111,7 +114,7 @@ test('a operação vê a visibilidade no snapshot administrativo', async () => {
 
 // ── D2: o Poder Público publica `message` ─────────────────────
 
-test('Poder Público publica mensagem (D2)', async () => {
+test('Poder Público validado publica mensagem (D2)', async () => {
   const calls = [];
   const pool = {
     async query(text, params = []) {

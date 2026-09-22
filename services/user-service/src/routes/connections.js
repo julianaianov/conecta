@@ -59,7 +59,7 @@ function transitionAllowed(current, next, { isFrom, isTo }) {
   return false;
 }
 
-module.exports = (pool, auth) => {
+module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) => {
   const router = express.Router();
 
   // GET /targets — contas disponíveis para conectar
@@ -127,7 +127,7 @@ module.exports = (pool, auth) => {
   });
 
   // POST / — criar solicitação de conexão
-  router.post('/', auth, async (req, res) => {
+  router.post('/', auth, institutionalGate, async (req, res) => {
     const { toUserId, type, postId, postTitle } = req.body ?? {};
     const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
     if (!toUserId || !type || !message) {
