@@ -1214,6 +1214,19 @@ export interface DemandTimelineDetails {
   supporterCategory?: string | null;
   supporterName?: string | null;
   amount?: string | number | null;
+  /** Execução e evidências (T17, migração post 014). */
+  milestone?: string | null;
+  mediaKind?: string | null;
+  caption?: string | null;
+  recordedOn?: string | null;
+  stage?: string | null;
+  stageProgress?: string | null;
+  onSchedule?: boolean | null;
+  newEndsOn?: string | null;
+  deadlineReason?: string | null;
+  partialResults?: string | null;
+  executedAmountCents?: number | null;
+  reason?: string | null;
 }
 
 /** Evento da linha do tempo completa, visto pelo autor. */
@@ -1292,7 +1305,7 @@ export interface UploadTicket {
 // (services/post-service/src/dossier/) no envio, em cada reenvio e na publicação.
 
 export type DemandDossierVariant = "integral" | "publica";
-export type DemandDossierTrigger = "envio" | "reenvio" | "publicacao";
+export type DemandDossierTrigger = "envio" | "reenvio" | "publicacao" | "conclusao";
 export type DemandDossierStatus = "pendente" | "gerado" | "falhou" | "indisponivel";
 
 /** Versão do dossiê vista pelo autor (ou pela operação). */
@@ -1897,4 +1910,171 @@ export interface SupportConsentInput {
 export interface SupportReceiptInput {
   note?: string | null;
   evidence?: string[];
+}
+
+// ── EXECUÇÃO, EVIDÊNCIAS E ACOMPANHAMENTO (T17) ─────────────────────────────
+// Fluxo 2, slides 11, 12, 14, 23 e 24. Espelha
+// services/post-service/src/execution/ (constantes em execution.ts).
+
+export type DemandEvidenceMediaKind = "foto" | "video";
+
+export type DemandStageProgress = "nao_iniciada" | "em_andamento" | "concluida";
+
+/** Evidência no histórico visual público (sem autor nem id do arquivo). */
+export interface PublicDemandEvidence {
+  id: string;
+  scheduleItemId: string | null;
+  stage: string | null;
+  milestone: DemandRecordMilestone;
+  mediaKind: DemandEvidenceMediaKind;
+  url: string | null;
+  caption: string | null;
+  recordedOn: string | null;
+  pairEvidenceId: string | null;
+  createdAt: string | null;
+}
+
+/** Evidência vista pelo Agente autor. */
+export interface DemandEvidence extends PublicDemandEvidence {
+  demandId: string;
+  progressUpdateId: string | null;
+  reference: string;
+  author: { userId: string; name: string | null };
+  position: number;
+  updatedAt: string | null;
+}
+
+/** Par antes↔depois do histórico visual (slide 24). */
+export interface DemandEvidencePair<T = PublicDemandEvidence> {
+  mediaKind: DemandEvidenceMediaKind;
+  stage: string | null;
+  before: T;
+  after: T;
+}
+
+/** Execução orçamentária de uma atualização: valor executado por item e/ou etapa. */
+export interface DemandProgressExpense {
+  id: string;
+  progressUpdateId: string;
+  budgetItemId: string | null;
+  budgetDescription: string | null;
+  scheduleItemId: string | null;
+  stage: string | null;
+  description: string | null;
+  executedAmountCents: number;
+  createdAt: string | null;
+}
+
+/** Atualização de andamento no acompanhamento público (sem nota interna). */
+export interface PublicDemandProgressUpdate {
+  id: string;
+  stage: string | null;
+  stageProgress: DemandStageProgress | null;
+  onSchedule: boolean | null;
+  newEndsOn: string | null;
+  deadlineReason: string | null;
+  partialResults: string | null;
+  executedAmountCents: number;
+  createdAt: string | null;
+}
+
+/** Atualização vista pelo Agente autor. */
+export interface DemandProgressUpdate extends PublicDemandProgressUpdate {
+  demandId: string;
+  scheduleItemId: string | null;
+  note: string | null;
+  author: { userId: string; name: string | null };
+  expenses: DemandProgressExpense[];
+}
+
+export interface DemandBudgetExecution {
+  items: {
+    budgetItemId: string;
+    description: string;
+    isAudiovisualRecord: boolean;
+    plannedCents: number;
+    executedCents: number;
+  }[];
+  stages: { scheduleItemId: string; stage: string; executedCents: number }[];
+  plannedCents: number;
+  executedCents: number;
+}
+
+/** Situação corrente de cada etapa do cronograma (última atualização que a citou). */
+export interface DemandScheduleStatus {
+  scheduleItemId: string;
+  stage: string;
+  startsOn: string | null;
+  endsOn: string | null;
+  currentEndsOn: string | null;
+  rescheduledTo: string | null;
+  recordMilestones: DemandRecordMilestone[];
+  stageProgress: DemandStageProgress | null;
+  updatedAt: string | null;
+}
+
+export interface DemandMilestoneCounts {
+  antes: number;
+  acompanhamento: number;
+  depois: number;
+}
+
+/** `GET /api/posts/demands/:id/execution` (público). */
+export interface PublicDemandExecution {
+  evidences: PublicDemandEvidence[];
+  pairs: DemandEvidencePair[];
+  milestones: DemandMilestoneCounts;
+  progress: PublicDemandProgressUpdate[];
+  budgetExecution: DemandBudgetExecution;
+  schedule: DemandScheduleStatus[];
+  status: DemandStatus;
+  hasPhysicalExecution: boolean;
+  recordWaiverReason: string | null;
+}
+
+/** `GET /api/posts/demands/mine/:id/execution` (Agente autor). */
+export interface DemandExecution {
+  evidences: DemandEvidence[];
+  pairs: DemandEvidencePair<DemandEvidence>[];
+  milestones: DemandMilestoneCounts;
+  progress: DemandProgressUpdate[];
+  budgetExecution: DemandBudgetExecution;
+  schedule: DemandScheduleStatus[];
+  status: DemandStatus;
+  hasPhysicalExecution: boolean;
+  recordWaiverReason: string | null;
+  recordWaiverAt: string | null;
+  canRegisterEvidence: boolean;
+  canRegisterProgress: boolean;
+  canWaiveRecord: boolean;
+  /** Marcos que faltam para as transições `iniciar_execucao` e `concluir`. */
+  pending: { antes: boolean; depois: boolean };
+}
+
+export interface DemandEvidenceInput {
+  reference: string;
+  milestone: DemandRecordMilestone;
+  mediaKind: DemandEvidenceMediaKind;
+  recordedOn: string;
+  caption?: string | null;
+  scheduleItemId?: string | null;
+  pairEvidenceId?: string | null;
+}
+
+export interface DemandProgressExpenseInput {
+  budgetItemId?: string | null;
+  scheduleItemId?: string | null;
+  description?: string | null;
+  executedAmountCents: number;
+}
+
+export interface DemandProgressInput {
+  scheduleItemId?: string | null;
+  stageProgress?: DemandStageProgress | null;
+  onSchedule?: boolean | null;
+  newEndsOn?: string | null;
+  deadlineReason?: string | null;
+  partialResults?: string | null;
+  note?: string | null;
+  expenses?: DemandProgressExpenseInput[];
 }

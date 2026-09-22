@@ -56,6 +56,7 @@ const TRIGGER_LABELS = {
   envio: 'Envio para análise',
   reenvio: 'Reenvio para análise',
   publicacao: 'Publicação',
+  conclusao: 'Conclusão da execução',
 };
 
 const VARIANT_LABELS = {

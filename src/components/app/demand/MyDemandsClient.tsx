@@ -32,7 +32,9 @@ import { CategoryBadge, DemandStatusBadge, StatusTrack } from "./DemandParts";
 import { DossierPanel } from "./DossierPanel";
 import { DemandInterestsInbox } from "../interest/DemandInterestsInbox";
 import { DemandSupportsInbox } from "../support/DemandSupportsInbox";
+import { DemandExecutionPanel } from "../execution/DemandExecutionPanel";
 import { FormAlert } from "./fields";
+import type { IconName } from "../Icon";
 
 function dateTime(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -40,14 +42,24 @@ function dateTime(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+type DemandPanel = "interessados" | "apoios" | "execucao" | "dossie";
+
+/** Abas do detalhe da demanda em "Minhas demandas". */
+const PANELS: [DemandPanel, string, IconName][] = [
+  ["interessados", "Interessados e conexões", "groups"],
+  ["apoios", "Apoios recebidos", "volunteer"],
+  ["execucao", "Execução", "clock"],
+  ["dossie", "Dossiê (PDF)", "document"],
+];
+
 function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: Demand) => void }) {
   const [confirming, setConfirming] = useState<DemandAgentAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
-  const [showDossier, setShowDossier] = useState(false);
-  const [showInterests, setShowInterests] = useState(false);
-  const [showSupports, setShowSupports] = useState(false);
+  // Abas do detalhe da demanda: interessados (T15), apoios (T16), execução
+  // (T17) e dossiê (T10). Uma de cada vez, `null` fechado.
+  const [panel, setPanel] = useState<DemandPanel | null>(null);
   // Dossiê existe a partir do primeiro envio para análise (T10).
   const hasDossier = Boolean(demand.submittedAt);
   const actions = demand.availableActions.filter(isAgentTransition);
@@ -123,45 +135,24 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
           )}
           {isPublic && <Button href={demandPublicPath(demand.id)} size="sm" variant="outline" icon="eye">Página pública</Button>}
           {isPublic && demand.postId && <Button href={`/post/${demand.postId}`} size="sm" variant="ghost" icon="bolt">No pulso</Button>}
-          {isPublic && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              icon="groups"
-              onClick={() => setShowInterests((v) => !v)}
-              aria-expanded={showInterests}
-              aria-controls={`dm-${demand.id}-interessados`}
-            >
-              Interessados e conexões
-            </Button>
-          )}
-          {isPublic && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              icon="volunteer"
-              onClick={() => setShowSupports((v) => !v)}
-              aria-expanded={showSupports}
-              aria-controls={`dm-${demand.id}-apoios`}
-            >
-              Apoios recebidos
-            </Button>
-          )}
-          {hasDossier && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              icon="document"
-              onClick={() => setShowDossier((v) => !v)}
-              aria-expanded={showDossier}
-              aria-controls={`dm-${demand.id}-dossie`}
-            >
-              Dossiê (PDF)
-            </Button>
-          )}
+          <div role="tablist" aria-label={`Detalhes de ${title}`} className="flex flex-wrap items-center gap-2">
+            {PANELS.filter(([key]) => (key === "dossie" ? hasDossier : isPublic)).map(([key, label, icon]) => (
+              <Button
+                key={key}
+                type="button"
+                role="tab"
+                size="sm"
+                variant={panel === key ? "secondary" : "outline"}
+                icon={icon}
+                onClick={() => setPanel(panel === key ? null : key)}
+                aria-selected={panel === key}
+                aria-expanded={panel === key}
+                aria-controls={`dm-${demand.id}-${key}`}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
           {actions.map((action) => (
             <Button
               key={action}
@@ -178,8 +169,8 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
           ))}
         </div>
 
-        {showInterests && (
-          <div id={`dm-${demand.id}-interessados`} className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+        {panel === "interessados" && (
+          <div id={`dm-${demand.id}-interessados`} role="tabpanel" className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
             <DemandInterestsInbox
               demandId={demand.id}
               onStatus={(status) => {
@@ -192,13 +183,26 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
             />
           </div>
         )}
-        {showSupports && (
-          <div id={`dm-${demand.id}-apoios`} className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+        {panel === "apoios" && (
+          <div id={`dm-${demand.id}-apoios`} role="tabpanel" className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
             <DemandSupportsInbox demandId={demand.id} />
           </div>
         )}
-        {showDossier && (
-          <div id={`dm-${demand.id}-dossie`} className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+        {panel === "execucao" && (
+          <div id={`dm-${demand.id}-execucao`} role="tabpanel" className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+            <DemandExecutionPanel
+              demandId={demand.id}
+              onChanged={() => {
+                // Evidência nova libera "Iniciar execução" e "Concluir" (T17).
+                void api.getMyDemand(demand.id).then((next) => {
+                  if (next) onUpdated({ ...next, photoUrl: next.photoUrl ?? demand.photoUrl });
+                }).catch(() => undefined);
+              }}
+            />
+          </div>
+        )}
+        {panel === "dossie" && (
+          <div id={`dm-${demand.id}-dossie`} role="tabpanel" className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
             <DossierPanel demandId={demand.id} compact />
           </div>
         )}

@@ -117,6 +117,11 @@ function createDossierService({
       if (row.published_at && PUBLIC_STATUSES.includes(row.status)) {
         origins.push({ key: 'publicacao', trigger: 'publicacao', variants: ['integral', 'publica'] });
       }
+      // Conclusão da execução (T17): versão nova, integral e pública, com o
+      // retrato da demanda no fim da execução.
+      if (['concluida', 'prestacao_de_contas'].includes(row.status)) {
+        origins.push({ key: 'conclusao', trigger: 'conclusao', variants: ['integral', 'publica'] });
+      }
       if (!origins.length) return 0;
 
       const { rows: existing } = await client.query(
@@ -280,6 +285,8 @@ function createDossierService({
                AND NOT EXISTS (SELECT 1 FROM demand_dossiers x WHERE x.demand_id = d.id AND x.origin_key = ${SUBMISSION_KEY_SQL}))
            OR (d.published_at IS NOT NULL AND d.status = ANY($1::demand_status[])
                AND (SELECT count(*) FROM demand_dossiers x WHERE x.demand_id = d.id AND x.origin_key = 'publicacao') < 2)
+           OR (d.status IN ('concluida', 'prestacao_de_contas')
+               AND (SELECT count(*) FROM demand_dossiers x WHERE x.demand_id = d.id AND x.origin_key = 'conclusao') < 2)
         ORDER BY d.updated_at
         LIMIT $2`,
       [PUBLIC_STATUSES, limit],

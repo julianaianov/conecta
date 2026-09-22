@@ -56,15 +56,20 @@ const {
   compositionFromItems, computeComposition, lineTotalCents, MAX_BUDGET_CENTS,
 } = require('../demand/finance');
 const store = require('../demand/store');
+const { availableActions } = require('../demand/state-machine');
 const { INSTITUTIONAL_EVENT_TYPES } = require('../institutional/constants');
 const { FORWARDING_EVENT_TYPES } = require('../institutional/forwardings');
 const { INTEREST_EVENT_TYPES } = require('../interest/constants');
 const { SUPPORT_EVENT_TYPES } = require('../support/constants');
+const {
+  EXECUTION_EVENT_TYPES, TRANSITION_REQUIRED_MILESTONE, RECORD_MILESTONE_LABELS,
+} = require('../execution/constants');
 
 // Eventos com payload->'public' exposto como `details` (T13, encaminhamentos da
-// T14 e interesse/conexão da T15).
+// T14, interesse/conexão da T15, apoio da T16 e execução da T17).
 const DETAILED_EVENT_TYPES = [
-  ...INSTITUTIONAL_EVENT_TYPES, ...FORWARDING_EVENT_TYPES, ...INTEREST_EVENT_TYPES, ...SUPPORT_EVENT_TYPES,
+  ...INSTITUTIONAL_EVENT_TYPES, ...FORWARDING_EVENT_TYPES, ...INTEREST_EVENT_TYPES,
+  ...SUPPORT_EVENT_TYPES, ...EXECUTION_EVENT_TYPES,
 ];
 const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
 const { parseUploadRef, describeUploads } = require('../uploads');
@@ -187,6 +192,35 @@ function requireAgent(req, res, next) {
     });
   }
   return next();
+}
+
+/**
+ * Registro obrigatório do antes e do depois (T17, Fluxo 2 slides 11, 12 e 24):
+ * `iniciar_execucao` exige evidência `antes` e `concluir` exige `depois`, salvo
+ * a justificativa de ausência de execução física (`record_waiver_reason`). O
+ * trigger `demand_execution_guard` repete a regra no banco; aqui o erro sai
+ * legível, com a ação e o marco que falta.
+ */
+async function assertExecutionRecord(db, row, action) {
+  const milestone = TRANSITION_REQUIRED_MILESTONE[action];
+  if (!milestone || row.record_waiver_reason) return;
+  // Transição fora da ordem é erro da máquina de estados, não de evidência.
+  if (!availableActions({ status: row.status, reviewState: row.review_state }, 'agente').includes(action)) return;
+  const { rowCount } = await db.query(
+    `SELECT 1 FROM demand_evidences
+      WHERE demand_id = $1 AND milestone = $2::demand_record_milestone LIMIT 1`,
+    [row.id, milestone],
+  );
+  if (rowCount) return;
+  throw new HttpError(409, {
+    error: milestone === 'antes'
+      ? 'Registre a situação inicial ("antes") antes de iniciar a execução, ou justifique a ausência de execução física'
+      : 'Registre o resultado ("depois") antes de concluir, ou justifique a ausência de execução física',
+    code: 'evidence_required',
+    action,
+    milestone,
+    milestoneLabel: RECORD_MILESTONE_LABELS[milestone],
+  });
 }
 
 /** Lista separada por vírgula, cada valor dentro de `allowed`. */
@@ -614,10 +648,14 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
     if (!action) throw validationError({ action: 'Informe a ação' });
     const updated = await withTransaction(pool, async (client) => {
       const row = await store.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
+      await assertExecutionRecord(client, row, action);
       await store.transitionDemand(client, row, action, { actor: 'agente' });
       return ownerView(client, req.params.id, req.user.userId);
     });
     res.json(updated);
+    // Dossiê da Demanda (T10): a conclusão gera uma versão nova (integral e
+    // pública), fora do caminho crítico; falha não desfaz a transição.
+    if (dossiers && action === 'concluir') void dossiers.request(req.params.id);
   }));
 
   // ── Público ───────────────────────────────────────────────────────────────

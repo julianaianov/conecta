@@ -44,6 +44,10 @@ import type {
   AgentDemandSupport, DemandSupport, DemandSupportContext, DemandSupportHistory, MySupportItem,
   SupportConsentInput, SupportInput, SupportReceiptInput,
 } from "./types";
+import type {
+  DemandEvidence, DemandEvidenceInput, DemandExecution, DemandProgressInput,
+  DemandProgressUpdate, PublicDemandExecution,
+} from "./types";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -1274,5 +1278,46 @@ export const api = {
     return (await demandRequired<{ support: AgentDemandSupport }>(
       `/mine/${encodeURIComponent(id)}/supports/${encodeURIComponent(supportId)}/contest`, { method: "POST", ...json(input) },
     )).support;
+  },
+
+  // ── EXECUÇÃO, EVIDÊNCIAS E ACOMPANHAMENTO (T17) ──────────────────────────
+  /** Histórico visual e acompanhamento públicos da execução. */
+  publicDemandExecution(id: string): Promise<PublicDemandExecution | null> {
+    return demandRequest<PublicDemandExecution>(`/${encodeURIComponent(id)}/execution`);
+  },
+
+  /** Agente autor: evidências, andamento, execução orçamentária e pendências. */
+  myDemandExecution(id: string): Promise<DemandExecution> {
+    return demandRequired<DemandExecution>(`/mine/${encodeURIComponent(id)}/execution`);
+  },
+
+  /** Registra uma foto ou um vídeo do antes, do acompanhamento ou do depois. */
+  async registerDemandEvidence(id: string, input: DemandEvidenceInput): Promise<DemandEvidence> {
+    return (await demandRequired<{ evidence: DemandEvidence }>(
+      `/mine/${encodeURIComponent(id)}/evidences`, { method: "POST", ...json(input) },
+    )).evidence;
+  },
+
+  /** Legenda e pareamento antes↔depois (o par registrado não é desfeito). */
+  async updateDemandEvidence(
+    id: string,
+    evidenceId: string,
+    input: { caption?: string | null; pairEvidenceId?: string | null },
+  ): Promise<DemandEvidence> {
+    return (await demandRequired<{ evidence: DemandEvidence }>(
+      `/mine/${encodeURIComponent(id)}/evidences/${encodeURIComponent(evidenceId)}`, { method: "PUT", ...json(input) },
+    )).evidence;
+  },
+
+  /** Atualização de andamento e execução orçamentária (só inserção). */
+  async registerDemandProgress(id: string, input: DemandProgressInput): Promise<DemandProgressUpdate> {
+    return (await demandRequired<{ progress: DemandProgressUpdate }>(
+      `/mine/${encodeURIComponent(id)}/progress`, { method: "POST", ...json(input) },
+    )).progress;
+  },
+
+  /** Justifica que não há execução física a registrar (slide 12). */
+  waiveDemandRecord(id: string, reason: string): Promise<{ recordWaiverReason: string; recordWaiverAt: string | null }> {
+    return demandRequired(`/mine/${encodeURIComponent(id)}/record-waiver`, { method: "POST", ...json({ reason }) });
   },
 };

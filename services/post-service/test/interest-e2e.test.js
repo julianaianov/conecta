@@ -401,6 +401,11 @@ test('interesse, conexão com o Agente, demanda conectada e oportunidades com co
       ), /permission denied|só lê/);
 
       // ── Estados fechados ──────────────────────────────────────────────────
+      // T17: sem execução física a registrar, a justificativa libera as
+      // transições que exigiriam o "antes" e o "depois".
+      assert.equal((await call('POST', `/demands/mine/${near}/record-waiver`, {
+        as: AGENT, body: { reason: 'Articulação institucional, sem intervenção física a fotografar.' },
+      })).status, 200);
       assert.equal((await call('POST', `/demands/${near}/transitions`, { as: AGENT, body: { action: 'iniciar_execucao' } })).status, 200);
       assert.equal((await call('POST', `/demands/${near}/transitions`, { as: AGENT, body: { action: 'concluir' } })).status, 200);
       const closed = await interest({ kind: 'apoio', offerTypes: ['recursos'] }, PARTNER_FAR);

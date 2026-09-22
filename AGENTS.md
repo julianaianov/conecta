@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 011, post-service 014. Registre a migração em
+  auth-service 004, user-service 011, post-service 015. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -562,6 +562,75 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.11.
 - Testes: `test/support-domain.test.js`, `test/supports-routes.test.js`,
   `test/support-e2e.test.js` (no `test:e2e`) e `src/lib/app/support.test.mjs`.
+
+## Execução, evidências antes/depois e acompanhamento (T17)
+
+- Fonte: Fluxo 2, slide 11 (o registro documenta a situação inicial e os
+  resultados, como evidência de acompanhamento, transparência e comprovação),
+  slide 12 (o que o registro deve contemplar: foto do antes, foto do depois,
+  filmagem do processo, registro audiovisual do resultado final e outros
+  registros; item obrigatório do orçamento **sempre que houver execução
+  física**), slide 14 (o cronograma prevê os momentos de registro: situação
+  inicial, acompanhamento e resultado final), slide 23 (execução e
+  acompanhamento: etapas concluídas e em andamento, cumprimento do cronograma,
+  alterações de prazo, execução orçamentária, resultados parciais e evidências)
+  e slide 24 (os registros de antes e depois ficam vinculados à demanda e
+  compõem o histórico visual).
+- Migração post 014 (`014-execution.sql`): `demand_evidences` (demanda, etapa
+  do cronograma opcional, `milestone` do enum `demand_record_milestone` da 007,
+  `media_kind` `foto`/`video`, `upload_ref`/`upload_id` de upload confirmado da
+  T08, legenda, `recorded_on`, autor, `pair_evidence_id` — gravado na evidência
+  `depois`, apontando para a `antes` — e `position`);
+  `demand_progress_updates` (etapa + `stage_progress`, `on_schedule`,
+  `new_ends_on` + `deadline_reason`, `partial_results` público e `note`
+  interna); `demand_progress_expenses` (valor executado por item do orçamento
+  e/ou por etapa); e `demands.record_waiver_reason`/`record_waiver_at`.
+- Imutabilidade: andamento e execução orçamentária são **só inserção** (nada é
+  editado nem excluído: registre outra atualização); a evidência não é excluída
+  e só aceita mudança de legenda, pareamento e ordem; o par antes↔depois é
+  único (índice parcial) e exige o mesmo tipo de registro; `gestao_app` só lê
+  (triggers `demand_progress_guard`, `demand_expenses_guard`,
+  `demand_evidences_guard`, os `*_block_truncate` e o grant dm-infra
+  `014-gestao-app-post-execution.sql`).
+- Reflexo na demanda: `demand_execution_guard` exige evidência `antes` para
+  `em_execucao` e `depois` para `concluida`, salvo `record_waiver_reason` (a
+  justificativa é dada uma vez, pelo Agente, antes da conclusão, e não muda).
+  `POST /demands/:id/transitions` devolve 409 `evidence_required` com `action`,
+  `milestone` e `milestoneLabel` antes de tocar o trigger; a regra está
+  espelhada em `src/execution/constants.js` (`TRANSITION_REQUIRED_MILESTONE`).
+- Linha do tempo: os triggers gravam `evidencia_registrada`, `registro_pareado`,
+  `andamento_registrado`, `prazo_alterado` e `registro_dispensado`, todos
+  públicos, com `payload->'public'` exposto como `details` na rota pública
+  (marco, tipo, legenda, data, etapa, situação, cumprimento do cronograma,
+  valor executado, resultados parciais, nova data e justificativa; nunca o id
+  do arquivo nem a nota interna).
+- Domínio em `services/post-service/src/execution/` (constantes, validação) e
+  `store.js` (projeções do autor e pública, pares antes↔depois, execução
+  orçamentária planejado × executado, situação corrente do cronograma); rotas
+  em `src/routes/execution.js`, montada em `/demands` antes das da demanda:
+  público `GET /:id/execution`; Agente autor `GET /mine/:id/execution` (com
+  `canRegisterEvidence`, `canRegisterProgress`, `canWaiveRecord` e `pending`),
+  `POST /mine/:id/evidences`, `PUT /mine/:id/evidences/:evidenceId` (legenda e
+  pareamento; o par registrado não é desfeito), `POST /mine/:id/progress` e
+  `POST /mine/:id/record-waiver`. Evidência e andamento exigem instituição
+  validada (`requireValidatedAgent`).
+- Dossiê (T10): a conclusão gera uma versão nova, `trigger_kind` `conclusao`
+  (integral + pública), pedida fora do caminho crítico pelo mesmo
+  `dossiers.request`; `ensureRequests` e `reconcile` reconhecem a origem
+  `conclusao`.
+- Frontend: `src/lib/app/execution.ts` (espelho de `execution/constants.js`,
+  comparado em `execution.test.mjs`), bloco "EXECUÇÃO, EVIDÊNCIAS E
+  ACOMPANHAMENTO (T17)" em `api.ts` e tipos em `types.ts`;
+  `src/components/app/execution/` com `DemandExecutionPanel` (aba "Execução"
+  em Minhas demandas: upload de evidência por marco e etapa, pareamento,
+  andamento, execução orçamentária e justificativa de ausência de registro) e
+  `DemandExecutionSection` (galeria antes/depois lado a lado e acompanhamento
+  público, SSR por `getPublicDemandExecution`). "Minhas demandas" passou a ter
+  abas (`role="tablist"`): interessados, apoios, execução e dossiê.
+- Testes: `test/execution-domain.test.js`, `test/execution-routes.test.js`,
+  `test/execution-e2e.test.js` (no `test:e2e`) e `src/lib/app/execution.test.mjs`.
+- Contrato e pendências do dm-gestao em
+  `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.12.
 
 ## Segurança dos serviços
 

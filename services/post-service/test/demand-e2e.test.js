@@ -354,6 +354,17 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
         await store.transitionDemand(client, row, 'iniciar_execucao', { actor: 'sistema' });
       }), (err) => err.status === 403);
 
+      // Registro obrigatório do antes e do depois (T17): sem evidência, a
+      // execução não começa; esta demanda não tem intervenção física, então a
+      // justificativa libera as transições.
+      const semRegistro = await call('POST', `/demands/${id}/transitions`, { body: { action: 'iniciar_execucao' } });
+      assert.equal(semRegistro.status, 409, JSON.stringify(semRegistro.body));
+      assert.equal(semRegistro.body.code, 'evidence_required');
+      assert.equal(semRegistro.body.milestone, 'antes');
+      assert.equal((await call('POST', `/demands/mine/${id}/record-waiver`, {
+        body: { reason: 'Ação de articulação institucional, sem intervenção física a fotografar.' },
+      })).status, 200);
+
       for (const [action, status] of [['iniciar_execucao', 'em_execucao'], ['concluir', 'concluida'], ['prestar_contas', 'prestacao_de_contas']]) {
         const moved = await call('POST', `/demands/${id}/transitions`, { body: { action } });
         assert.equal(moved.status, 200, JSON.stringify(moved.body));
@@ -363,11 +374,14 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
       // ── Linhas do tempo ─────────────────────────────────────────────────
       const timeline = await call('GET', `/demands/${id}/timeline`, { auth: false });
       assert.equal(timeline.status, 200);
-      assert.deepEqual(timeline.body.events.map((e) => e.toStatus), [
+      assert.deepEqual(timeline.body.events.filter((e) => e.toStatus).map((e) => e.toStatus), [
         'publicada', 'em_busca_de_parceiro', 'conectada', 'em_execucao', 'concluida', 'prestacao_de_contas',
       ]);
+      // A dispensa do registro (T17) também é pública, com `details`.
+      assert.ok(timeline.body.events.some((e) => e.type === 'registro_dispensado'));
+      const TIMELINE_KEYS = ['createdAt', 'details', 'fromStatus', 'id', 'toStatus', 'type'];
       for (const e of timeline.body.events) {
-        assert.deepEqual(Object.keys(e).sort(), ['createdAt', 'fromStatus', 'id', 'toStatus', 'type']);
+        assert.ok(Object.keys(e).every((k) => TIMELINE_KEYS.includes(k)), Object.keys(e).join(','));
       }
       const events = await call('GET', `/demands/mine/${id}/events`);
       assert.deepEqual(events.body.events.slice(0, 5).map((e) => e.type), [

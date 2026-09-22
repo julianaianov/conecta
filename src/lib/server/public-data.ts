@@ -10,6 +10,7 @@ import {
   type PublicDemandSummary,
   type DemandTimelineEvent,
   type PublicDemandInstitutional,
+  type PublicDemandExecution,
   type DossierVerification,
   type PublicDossierInfo,
   type PublicInstitution,
@@ -245,6 +246,28 @@ export async function getPublicDemandInstitutional(id: string): Promise<PublicDe
   const data = await fetchPublicJson<PublicDemandInstitutional>("posts", `/demands/${encodeURIComponent(id)}/institutional`);
   if (!data || !Array.isArray(data.organizations)) return null;
   return { ...data, forwardings: Array.isArray(data.forwardings) ? data.forwardings : [] };
+}
+
+/**
+ * Histórico visual (antes/depois) e acompanhamento da execução (T17); `null`
+ * quando a demanda não é pública. As URLs dos registros são resolvidas para a
+ * base pública da API, como a foto da demanda.
+ */
+export async function getPublicDemandExecution(id: string): Promise<PublicDemandExecution | null> {
+  const data = await fetchPublicJson<PublicDemandExecution>("posts", `/demands/${encodeURIComponent(id)}/execution`);
+  if (!data || !Array.isArray(data.evidences)) return null;
+  const withUrl = <T extends { url: string | null }>(e: T): T => (
+    { ...e, url: e.url ? resolveMediaUrl(e.url, runtime.apiBase) : null }
+  );
+  return {
+    ...data,
+    evidences: data.evidences.map(withUrl),
+    pairs: (Array.isArray(data.pairs) ? data.pairs : []).map((pair) => ({
+      ...pair, before: withUrl(pair.before), after: withUrl(pair.after),
+    })),
+    progress: Array.isArray(data.progress) ? data.progress : [],
+    schedule: Array.isArray(data.schedule) ? data.schedule : [],
+  };
 }
 
 /** Demandas publicadas em diante, percorrendo o cursor até `max`. */

@@ -35,6 +35,7 @@ import {
 import { institutionalTimelineLabel } from "./institutional.ts";
 import { interestTimelineLabel } from "./interest.ts";
 import { supportTimelineLabel } from "./support.ts";
+import { executionTimelineLabel } from "./execution.ts";
 
 // ── Rotas ──────────────────────────────────────────────────
 
@@ -844,6 +845,12 @@ export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "to
     details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
   });
   if (support) return support;
+  // Execução, evidências antes/depois e acompanhamento (T17).
+  const execution = executionTimelineLabel({
+    type: event.type,
+    details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
+  });
+  if (execution) return execution;
   switch (event.type) {
     case "criada": return "Rascunho criado";
     case "enviada_para_analise": return event.payload?.reenvio === true ? "Reenviada para análise" : "Enviada para análise";

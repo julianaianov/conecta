@@ -109,7 +109,7 @@ const OWNER_DEMAND_SQL = `
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
   d.platform_fee_cents, d.total_amount_cents, d.status, d.review_state, d.review_note,
   d.reviewed_at, d.submitted_at, d.published_at, d.archive_reason, d.archived_at,
-  d.created_at, d.updated_at,
+  d.record_waiver_reason, d.record_waiver_at, d.created_at, d.updated_at,
   (SELECT p.id FROM posts p WHERE p.demand_id = d.id AND p.visibility = 'visible') AS post_id`;
 
 // Projeção pública: sem endereço fino (CEP, rua, número, complemento), sem
@@ -121,6 +121,7 @@ const PUBLIC_DEMAND_SQL = `
   d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution,
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
   d.platform_fee_cents, d.total_amount_cents, d.status, d.published_at, d.updated_at,
+  d.record_waiver_reason,
   (SELECT p.id FROM posts p WHERE p.demand_id = d.id AND p.visibility = 'visible') AS post_id`;
 
 const PUBLIC_SUMMARY_SQL = `
@@ -234,6 +235,9 @@ function serializeScalars(row) {
     longitude: toNumber(row.longitude),
     territory: row.territory ?? null,
     hasPhysicalExecution: row.has_physical_execution,
+    // Justificativa de que não há execução física a registrar (T17); pública,
+    // porque explica a ausência do antes e do depois no histórico visual.
+    recordWaiverReason: row.record_waiver_reason ?? null,
   };
 }
 
@@ -259,6 +263,7 @@ function serializeOwnerDemand(row, items = null) {
     publishedAt: toIso(row.published_at),
     archiveReason: row.archive_reason ?? null,
     archivedAt: toIso(row.archived_at),
+    recordWaiverAt: toIso(row.record_waiver_at),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
     postId: row.post_id ?? null,

@@ -3,6 +3,7 @@ import {
   DEMAND_PRIORITY_LABELS,
   type DemandTimelineEvent,
   type PublicDemand,
+  type PublicDemandExecution,
   type PublicDemandInstitutional,
   type PublicDossierInfo,
 } from "@/lib/app/types";
@@ -18,6 +19,8 @@ import { PublicInstitutionalSection } from "../institutional/InstitutionalParts"
 import { institutionalTimelineDetail } from "@/lib/app/institutional";
 import { interestTimelineDetail } from "@/lib/app/interest";
 import { supportTimelineDetail } from "@/lib/app/support";
+import { executionTimelineDetail } from "@/lib/app/execution";
+import { DemandExecutionSection } from "../execution/DemandExecutionSection";
 import { DemandInterestPanel } from "../interest/DemandInterestPanel";
 import { DemandSupportBlock } from "../support/DemandSupportPanel";
 import {
@@ -88,12 +91,14 @@ function PublicDossierSection({ demandId, dossier }: { demandId: string; dossier
   );
 }
 
-export function PublicDemandView({ demand, timeline, dossier = null, institutional = null }: {
+export function PublicDemandView({ demand, timeline, dossier = null, institutional = null, execution = null }: {
   demand: PublicDemand;
   timeline: DemandTimelineEvent[];
   dossier?: PublicDossierInfo | null;
   /** Respostas institucionais e status por órgão (T13). */
   institutional?: PublicDemandInstitutional | null;
+  /** Histórico visual antes/depois e acompanhamento da execução (T17). */
+  execution?: PublicDemandExecution | null;
 }) {
   const place = [demand.territory, demand.district !== demand.territory ? demand.district : null, [demand.municipality, demand.uf].filter(Boolean).join("/")]
     .filter(Boolean).join(" · ");
@@ -202,6 +207,9 @@ export function PublicDemandView({ demand, timeline, dossier = null, institution
 
       <PublicInstitutionalSection data={institutional} />
 
+      {/* Histórico visual antes/depois e acompanhamento da execução (T17). */}
+      <DemandExecutionSection execution={execution} />
+
       <ReadSection title="Linha do tempo" icon="clock">
         {timeline.length ? (
           <ol className="space-y-3 border-l-2 pl-4" style={{ borderColor: "var(--th-border)" }}>
@@ -209,9 +217,9 @@ export function PublicDemandView({ demand, timeline, dossier = null, institution
               <li key={event.id} className="relative">
                 <span aria-hidden className="absolute -left-[1.4rem] top-1 h-3 w-3 rounded-full border-2" style={{ borderColor: "#f4841a", background: "var(--th-card)" }} />
                 <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>{timelineEventLabel(event)}</p>
-                {(institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event)) && (
+                {(institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event)) && (
                   <p className="mt-0.5 line-clamp-2 text-xs" style={{ color: "var(--th-text)" }}>
-                    {institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event)}
+                    {institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event)}
                   </p>
                 )}
                 <p className="text-xs font-numeric" style={{ color: "var(--th-muted)" }}>{formatDate(event.createdAt)}</p>
