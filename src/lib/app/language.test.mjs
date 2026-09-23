@@ -70,3 +70,39 @@ test("a navegação usa o vocabulário territorial do produto", () => {
     assert.match(source, new RegExp(`label: "${label}"`));
   }
 });
+
+test("o perfil é de atuação territorial, sem estrutura de rede social", () => {
+  const profileFiles = [
+    "src/components/app/ProfileView.tsx",
+    "src/components/app/MyProfileClient.tsx",
+    "src/components/app/public/ProfileClient.tsx",
+    "src/app/(app)/perfil/page.tsx",
+    "src/app/(app)/perfil/[id]/page.tsx",
+  ];
+  const findings = [];
+  for (const relativePath of profileFiles) {
+    const source = fs.readFileSync(path.join(root, relativePath), "utf8");
+    // Mural de terceiros e depoimentos não voltam ao perfil.
+    for (const pattern of [/scrap/i, /testimonial/i, /\brecados?\b/i, /depoimentos?/i, /Adicionar referência/, /Referências de atuação/, /Atualizações do perfil/]) {
+      if (pattern.test(source)) findings.push(`${relativePath}: ${pattern}`);
+    }
+    // Nada de grade de avatares de contatos ou de comunidades, nem contador disfarçado.
+    for (const pattern of [/friendsOf/, /friendCount/, /\.communities\(\)/, /colaborações registradas/, /Pessoas e organizações \(/, /Frentes de atuação \(/, /grid-cols-4/, /coverUrl/]) {
+      if (pattern.test(source)) findings.push(`${relativePath}: ${pattern}`);
+    }
+  }
+  assert.deepEqual(findings, []);
+
+  const view = fs.readFileSync(path.join(root, "src/components/app/ProfileView.tsx"), "utf8");
+  // A frase de status não aparece em destaque entre aspas.
+  assert.doesNotMatch(view, /profile\.status/);
+  // O perfil é montado com a atuação real: demandas, sinais, apoios, selos e ações.
+  assert.match(view, /api\.profileActivity\(userId\)/);
+  assert.match(view, /<ImpactBadges/);
+  assert.match(view, /Solicitar conexão/);
+  assert.match(view, /<ReportButton targetKind="perfil"/);
+
+  // O cliente não mantém métodos de mural nem de depoimento.
+  const api = fs.readFileSync(path.join(root, "src/lib/app/api.ts"), "utf8");
+  assert.doesNotMatch(api, /scrapsFor|addScrap|testimonialsFor|addTestimonial|friendsOf/);
+});

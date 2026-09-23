@@ -256,7 +256,8 @@ test("publicar, comentar, apoiar e conectar tratam o 403 institucional", () => {
 
 test("perfil público mostra o selo da instituição validada", () => {
   assert.match(read("src/app/(app)/perfil/[id]/page.tsx"), /getPublicInstitution\(id\)/);
-  assert.match(read("src/components/app/public/ProfileClient.tsx"), /PublicInstitutionCard/);
+  assert.match(read("src/components/app/public/ProfileClient.tsx"), /institution: initialInstitution/);
+  assert.match(read("src/components/app/ProfileView.tsx"), /<PublicInstitutionCard institution=\{institution\}/);
   assert.match(read("src/components/app/ProfileView.tsx"), /api\.getPublicInstitution\(userId\)/);
 });
 

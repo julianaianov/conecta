@@ -37,6 +37,7 @@ import type {
   EventAgendaFilter, EventSignupSummary, EventTerritory, PublicEvent,
 } from "../app/event.ts";
 import { buildEventAgendaQuery } from "../app/event.ts";
+import { normalizeProfileActivity, type ProfileActivity } from "../app/profile.ts";
 
 type RawRecord = Record<string, unknown>;
 
@@ -398,6 +399,12 @@ export async function getPublicProfileImpact(userId: string): Promise<ProfileImp
     "posts", `/profiles/${encodeURIComponent(userId)}/impact`,
   );
   return data && Array.isArray(data.badges) ? data : null;
+}
+
+/** Atuação territorial pública do perfil: demandas, apoios recebidos e realizados. */
+export async function getPublicProfileActivity(userId: string): Promise<ProfileActivity | null> {
+  const data = await fetchPublicJson<unknown>("posts", `/profiles/${encodeURIComponent(userId)}/activity`);
+  return normalizeProfileActivity(data);
 }
 
 // ── Eventos do território (T25) ────────────────────────────

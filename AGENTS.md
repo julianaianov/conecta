@@ -846,6 +846,34 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Testes: `test/ranking-domain.test.js`, `test/rankings-routes.test.js`,
   `test/engagement-e2e.test.js` (no `test:e2e`) e `src/lib/app/ranking.test.mjs`.
 
+## Perfil de atuação territorial ("Meu sinal")
+
+- Identidade visual "Sinal do bairro", "O que muda na experiência", item 4: o
+  perfil mostra histórico de participação, conexões e resultados, não métricas
+  sociais. `ProfileView` serve ao perfil público (SSR, `ProfileClient` passa os
+  dados iniciais) e ao `/perfil` (logado): identificação (nome, categoria e
+  subperfil, selo institucional, bairro/cidade, territórios de atuação,
+  "participante desde"), resumo da atuação, demandas com status e bairro
+  (resultado e prestação de contas marcados), sinais registrados (posts que não
+  são vitrine de demanda), apoios recebidos e realizados, `ImpactBadges` e, só
+  para o titular, vínculos de colaboração (conexões aceitas/concluídas, lista
+  textual) e atalhos para Minhas demandas, Meus apoios, inscrições e
+  privacidade. "Solicitar conexão" e a denúncia continuam no perfil de outra
+  conta.
+- Saíram da interface: recados, depoimentos, grade de avatares de contatos e
+  de comunidades, capa, frase de status e o contador `friendCount`. As tabelas
+  e rotas `scraps`/`testimonials` do user-service continuam (a LGPD as usa); o
+  cliente não as chama mais (`language.test.mjs` impede a volta).
+- Rota pública somente leitura `GET /profiles/:userId/activity` no
+  post-service (`src/routes/profiles.js`, montada em `/` antes das rotas de
+  posts): demandas do autor da publicação em diante (fora `arquivada`, sem
+  endereço fino), totais de apoio recebido nessas demandas e apoios realizados
+  **só** com `display_consent` (valor só com `amount_public`). Três leituras
+  por índice, limite de 50 por lista (`demandsTruncated`,
+  `supportsGivenTruncated`). Espelho e funções puras em `src/lib/app/profile.ts`
+  (`profile.test.mjs`), `api.profileActivity` e `getPublicProfileActivity`.
+  Teste: `services/post-service/test/profiles-routes.test.js`.
+
 ## Denúncia de conteúdo e de perfil (T6.3)
 
 - Fonte: Apresentação Institucional, slide 26 (Governança: LGPD, neutralidade
