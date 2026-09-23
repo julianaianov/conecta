@@ -11,8 +11,8 @@ serviços Node.js.
 | Homologação | `https://homologacao.dmconecta.org` (AWS) | somente dados persistidos reais |
 | Produção | `https://dmconecta.org` | somente dados persistidos reais |
 
-Homologação e produção rodam na AWS: `develop` alimenta a homologação e `stable` a
-produção. Mapa completo em `DmConnecta/dm-docs` →
+Homologação e produção rodam na AWS: `develop` alimenta a homologação e `master` a
+produção. Não há outras branches. Mapa completo em `DmConnecta/dm-docs` →
 `docs/arquitetura.md`.
 O build de produção recebe
 `NEXT_PUBLIC_RUNTIME_ENV=production` e usa a API no mesmo domínio por meio do

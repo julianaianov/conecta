@@ -9,7 +9,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 | --- | --- | --- | --- | --- |
 | Local | Docker Compose | `localhost` | qualquer | **proibidos** |
 | Homologação | AWS, mesma EC2 da produção | `https://homologacao.dmconecta.org` | `develop` | **proibidos** |
-| Produção | AWS EC2 + Cloudflare | `https://dmconecta.org` | `stable` | **proibidos** |
+| Produção | AWS EC2 + Cloudflare | `https://dmconecta.org` | `master` | **proibidos** |
 
 - **Não existe mais Vercel.** Produção e homologação são AWS; menções a Vercel
   são dívida a remover.
@@ -32,7 +32,10 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   persistidos criados pelo uso real da aplicação. Fixtures são permitidas
   exclusivamente dentro dos testes isolados.
 - Cloudflare: zona `dmconecta.org` manual, fora do Terraform.
-- Trabalhe em `develop` (ou branch criada dela); produção é `stable`.
+- Branches: `develop` (homologação, onde todo o trabalho é commitado) e
+  `master` (produção, sempre igual a `develop` ou atrás dele). Não existem
+  outras branches; `stable`, `main`, `release`, `codex/*` e `wip/*` foram
+  consolidadas em `develop` em 23/09/2026.
 
 ## Ambiente da aplicação
 
@@ -1326,9 +1329,9 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 
 ## Branch e identidade visual
 
-- Código pode ser alterado normalmente, mas o trabalho deve ficar em
-  `develop` ou em uma branch criada a partir de `develop`; não desenvolver
-  diretamente em `main`/`master`.
+- Todo trabalho é commitado direto em `develop` (homologação). Produção é
+  `master`, atualizado a partir de `develop` (`git push origin develop:master`).
+  Não criar outras branches nem worktrees.
 - Artes, animações, ícones, screenshots e exports finais ficam nos diretórios
   centrais `design/`, `screenshots/` e `store_assets/` do workspace. Este
   cliente mantém apenas recursos derivados indispensáveis à execução.
