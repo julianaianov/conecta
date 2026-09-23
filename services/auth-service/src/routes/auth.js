@@ -4,6 +4,7 @@ const jwt     = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 
 const { isAccessPayload } = require('../security');
+const { CONSENT_DOCUMENTS, CONSENT_KEYS, normalizeConsentKeys } = require('../consents');
 
 // As 5 categorias de perfil e seus subperfis (espelha src/lib/app/types.ts e
 // docs/perfis-e-permissoes.md).
@@ -51,14 +52,40 @@ module.exports = (pool, { secret } = {}) => {
     if (!ROLE_PROFILES[role].includes(profileType)) {
       return res.status(400).json({ error: `Subperfil "${profileType}" não pertence à categoria "${role}"` });
     }
+    // Consentimento versionado (T24, LGPD art. 8º): o cadastro só existe com o
+    // aceite dos documentos vigentes, gravado com versão, data e origem na
+    // mesma transação da conta.
+    const consents = normalizeConsentKeys(req.body?.consents);
+    if (!consents || CONSENT_KEYS.some((key) => !consents.includes(key))) {
+      return res.status(422).json({
+        error: 'É preciso aceitar os Termos de Uso e a Política de Privacidade',
+        code: 'consent_required',
+        fields: { consents: 'Aceite os documentos vigentes para criar a conta' },
+        documents: CONSENT_DOCUMENTS,
+      });
+    }
     try {
       const dup = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
       if (dup.rows.length) return res.status(409).json({ error: 'Email já cadastrado' });
 
       const hash = await bcrypt.hash(password, 10);
       const { rows } = await pool.query(
-        `INSERT INTO users (email,password_hash,name,role,profile_type) VALUES ($1,$2,$3,$4,$5) RETURNING ${USER_COLUMNS}`,
-        [email, hash, name, role, profileType]
+        `WITH nova_conta AS (
+           INSERT INTO users (email,password_hash,name,role,profile_type) VALUES ($1,$2,$3,$4,$5)
+           RETURNING ${USER_COLUMNS}
+         ), aceites AS (
+           INSERT INTO user_consents (user_id, document, version, document_date, origin)
+           SELECT nova_conta.id, d.document, d.version, d.document_date, 'cadastro'
+             FROM nova_conta, unnest($6::text[], $7::text[], $8::date[])
+                    AS d(document, version, document_date)
+         )
+         SELECT ${USER_COLUMNS} FROM nova_conta`,
+        [
+          email, hash, name, role, profileType,
+          CONSENT_DOCUMENTS.map((d) => d.key),
+          CONSENT_DOCUMENTS.map((d) => d.version),
+          CONSENT_DOCUMENTS.map((d) => d.date),
+        ]
       );
       const user = rows[0];
       res.status(201).json({
@@ -107,8 +134,10 @@ module.exports = (pool, { secret } = {}) => {
     try {
       const decoded = verify(refreshToken);
       if (!isRefreshPayload(decoded)) return res.status(401).json({ error: 'Token inválido' });
-      const { rows } = await pool.query('SELECT id,email,name,role,profile_type,avatar_url FROM users WHERE id=$1', [decoded.userId]);
+      const { rows } = await pool.query('SELECT id,email,name,role,profile_type,avatar_url,anonymized_at FROM users WHERE id=$1', [decoded.userId]);
       if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
+      // Conta anonimizada a pedido do titular (T24) não renova sessão.
+      if (rows[0].anonymized_at) return res.status(401).json({ error: 'Conta encerrada', code: 'account_anonymized' });
       res.json({ token: signAccess(rows[0]) });
     } catch {
       res.status(401).json({ error: 'Token inválido' });
@@ -122,9 +151,12 @@ module.exports = (pool, { secret } = {}) => {
     try {
       const decoded = verify(header.slice(7));
       if (!isAccessPayload(decoded)) return res.status(401).json({ error: 'Token inválido' });
-      const { rows } = await pool.query('SELECT id,email,name,role,profile_type,avatar_url FROM users WHERE id=$1', [decoded.userId]);
+      const { rows } = await pool.query('SELECT id,email,name,role,profile_type,avatar_url,anonymized_at FROM users WHERE id=$1', [decoded.userId]);
       if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
-      res.json({ user: rows[0] });
+      if (rows[0].anonymized_at) return res.status(401).json({ error: 'Conta encerrada', code: 'account_anonymized' });
+      const user = { ...rows[0] };
+      delete user.anonymized_at;
+      res.json({ user });
     } catch {
       res.status(401).json({ error: 'Token inválido' });
     }

@@ -60,6 +60,10 @@ import type {
   DemandAccountabilityDocumentInput, DemandAccountabilityInput, DemandAccountabilityResultInput,
   DemandAccountabilityView, PublicDemandAccountabilityView,
 } from "./types";
+import type {
+  AccountErasureResult, DataExportDownload, DataSubjectRequest, MyConsents, PrivacyPanel,
+} from "./types";
+import type { ConsentDocumentKey, DataSubjectRequestType } from "./privacy";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
@@ -597,7 +601,7 @@ export const api = {
     }
   },
 
-  async register(input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }): Promise<User> {
+  async register(input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType; consents: ConsentDocumentKey[] }): Promise<User> {
     if (!HAS_API) throw new Error("O cadastro está indisponível neste momento.");
     try {
       const data = await request<{ user: RawPost; token: string }>("/api/auth/register", {
@@ -605,6 +609,9 @@ export const api = {
         body: JSON.stringify({
           name: input.name, email: input.email, password: input.password,
           role: input.role, profile_type: input.profileType,
+          // Consentimento versionado (T24): sem o aceite dos documentos
+          // vigentes o auth-service recusa o cadastro (422 consent_required).
+          consents: input.consents,
         }),
       });
       const user = mapUser(data.user);
@@ -1465,5 +1472,39 @@ export const api = {
   /** Registra o compartilhamento (um por conteúdo e por dia, append-only). */
   registerShare(targetKind: ShareTargetKind, targetId: string, channel: ShareChannel): Promise<{ counted: boolean; sharesCount: number }> {
     return request("/api/posts/shares", { method: "POST", ...json({ targetKind, targetId, channel }) });
+  },
+
+  // ── PRIVACIDADE E DIREITOS DO TITULAR (T24) ──────────────
+  /** Documentos vigentes e o que esta conta já aceitou (auth-service). */
+  myConsents(): Promise<MyConsents> {
+    return request<MyConsents>("/api/auth/me/consents");
+  },
+
+  /** Aceita as versões vigentes; a trilha do consentimento é append-only. */
+  acceptConsents(documents: ConsentDocumentKey[], origin: "nova_versao" | "reaceite" = "reaceite"): Promise<MyConsents> {
+    return request<MyConsents>("/api/auth/me/consents", { method: "POST", ...json({ documents, origin }) });
+  },
+
+  /** Painel de privacidade: solicitações abertas e estado da conta. */
+  privacyPanel(): Promise<PrivacyPanel> {
+    return request<PrivacyPanel>("/api/users/me/privacy");
+  },
+
+  /**
+   * Abre uma solicitação do art. 18 (protocolo + prazo de 15 dias). Acesso e
+   * portabilidade já voltam com o arquivo pronto (`download`).
+   */
+  createPrivacyRequest(type: DataSubjectRequestType, description?: string): Promise<{ request: DataSubjectRequest; download: DataExportDownload | null }> {
+    return request("/api/users/me/privacy/requests", { method: "POST", ...json({ type, description }) });
+  },
+
+  /** Gera de novo o arquivo da exportação e devolve um link novo. */
+  refreshPrivacyExport(id: string): Promise<{ request: DataSubjectRequest; download: DataExportDownload }> {
+    return request(`/api/users/me/privacy/requests/${encodeURIComponent(id)}/export`, { method: "POST" });
+  },
+
+  /** Eliminação/anonimização da conta, com senha e confirmação escrita. */
+  requestAccountErasure(input: { password: string; confirmation: string; description?: string }): Promise<AccountErasureResult> {
+    return request<AccountErasureResult>("/api/users/me/privacy/erasure", { method: "POST", ...json(input) });
   },
 };

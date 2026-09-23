@@ -14,6 +14,7 @@ import {
   ROLE_PERMISSION_LABELS, ROLE_RESTRICTIONS, ROLE_FUNCTIONS, ROLE_DESCRIPTIONS, ROLE_FUTURE_PROFILES,
   type UserRole, type ProfileType,
 } from "@/lib/app/types";
+import { CONSENT_DOCUMENTS, CONSENT_KEYS } from "@/lib/app/privacy";
 import type { IconName } from "@/components/app/Icon";
 
 export default function RegisterPage() {
@@ -26,6 +27,8 @@ export default function RegisterPage() {
   const [role, setRole] = useState<UserRole>("member");
   const [profileType, setProfileType] = useState<ProfileType | null>(null);
   const [show, setShow] = useState(false);
+  /** Aceite versionado dos Termos e da Política (T24, LGPD art. 8º). */
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Evita que o redirecionamento de sessão ativa passe por cima do onboarding. */
@@ -52,11 +55,15 @@ export default function RegisterPage() {
       setError(`Escolha um perfil dentro de "${ROLE_LABELS[role]}".`);
       return;
     }
+    if (!acceptedTerms) {
+      setError("É preciso aceitar os Termos de Uso e a Política de Privacidade para criar a conta.");
+      return;
+    }
     setLoading(true);
     registering.current = true;
     try {
       const fullName = [name.trim(), surname.trim()].filter(Boolean).join(" ");
-      await register({ name: fullName, email, password, role, profileType });
+      await register({ name: fullName, email, password, role, profileType, consents: CONSENT_KEYS });
       // Agente de Transformação e Poder Público seguem para a ficha institucional.
       router.replace(postRegisterDestination(role, profileType));
     } catch (err) {
@@ -176,6 +183,33 @@ export default function RegisterPage() {
                 )}
               </div>
             </div>
+
+            {/* Consentimento versionado (T24): a versão aceita fica registrada. */}
+            <label className="flex items-start gap-2 text-xs" style={{ color: "var(--th-muted)" }}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0"
+                aria-describedby="aceite-versoes"
+              />
+              <span>
+                Li e aceito os{" "}
+                {CONSENT_DOCUMENTS.map((doc, i) => (
+                  <span key={doc.key}>
+                    {i > 0 && " e a "}
+                    <Link href={doc.path} target="_blank" className="font-semibold underline" style={{ color: "#f4841a" }}>
+                      {doc.label}
+                    </Link>
+                  </span>
+                ))}
+                .{" "}
+                <span id="aceite-versoes">
+                  O aceite é registrado com a versão e a data ({CONSENT_DOCUMENTS.map((d) => `${d.label} v${d.version}`).join(", ")}).
+                  Você pode ver, revogar consentimentos opcionais e pedir seus dados em Privacidade, no seu perfil.
+                </span>
+              </span>
+            </label>
 
             {error && <p className="rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(229,57,53,0.10)", color: "#e53935" }}>{error}</p>}
 

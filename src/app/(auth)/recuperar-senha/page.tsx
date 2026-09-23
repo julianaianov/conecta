@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { DMLogo } from "@/components/app/DMLogo";
 import { AuthShowcase } from "@/components/app/AuthShowcase";
+import { InDevelopment } from "@/components/app/InDevelopment";
 
 export default function RecoverPasswordPage() {
   const [email, setEmail] = useState("");
@@ -30,6 +31,13 @@ export default function RecoverPasswordPage() {
           <p className="mt-1.5 text-[15px]" style={{ color: "var(--th-muted)" }}>
             A recuperação será habilitada quando o envio de e-mail estiver conectado ao serviço de autenticação.
           </p>
+
+          {/* Marcador padrão da fonte (slide 25): funcionalidade em desenvolvimento é identificada como tal. */}
+          <InDevelopment className="mt-4">
+            A recuperação de senha por e-mail ainda não está disponível. Enquanto isso, fale com a equipe pelo
+            contato da{" "}
+            <Link href="/politica-de-privacidade" className="font-semibold underline">Política de Privacidade</Link>.
+          </InDevelopment>
 
           <form onSubmit={handleSubmit} className="mt-7 space-y-3">
             <input

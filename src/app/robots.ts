@@ -18,6 +18,7 @@ const PRIVATE_PATHS = [
   "/dossie/verificar",
   "/governo",
   "/oportunidades",
+  "/perfil/privacidade",
 ];
 
 export default function robots(): MetadataRoute.Robots {

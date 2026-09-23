@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 004, user-service 011, post-service 020. Registre a migração em
+  auth-service 005, user-service 012, post-service 021. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -991,6 +991,102 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Testes: `test/government-domain.test.js`, `test/government-routes.test.js`,
   `test/government-e2e.test.js` (no `test:e2e`, suíte `government`) e
   `src/lib/app/government.test.mjs`.
+
+## Privacidade, consentimento e direitos do titular (T24)
+
+- Fonte: Apresentação Institucional, slide 25 ("Conformidade com a LGPD em toda
+  a coleta, uso e compartilhamento de dados territoriais"; "apenas dados
+  verificáveis são publicados; funcionalidades ainda em desenvolvimento são
+  identificadas como tal"). Contrato com a gestão e a regra de retenção por
+  tipo de dado: `dm-docs/docs/gestao/05-lgpd.md` §2.1 e §7.
+- **Consentimento versionado** (auth migração 004, `004-consentimentos.sql`):
+  `user_consents` é append-only (trigger `user_consents_guard` recusa UPDATE,
+  DELETE e TRUNCATE) com documento, versão, data da versão, origem
+  (`cadastro` | `nova_versao` | `reaceite`) e data do aceite; único por
+  (titular, documento, versão). **Não guarda IP nem user agent** (minimização).
+  As versões vigentes moram no código (`services/auth-service/src/consents.js`,
+  espelhado em `src/lib/app/privacy.ts`), porque o texto mora no repositório:
+  subir a versão cria aceite pendente para todo titular. A migração também cria
+  `users.anonymized_at`; a conta **nunca é excluída** (é a chave estrangeira de
+  toda a trilha, e a FK `RESTRICT` de `user_consents` reforça isso).
+- `POST /register` exige `consents` com as duas chaves vigentes (422
+  `consent_required`) e grava conta + aceites **numa única instrução** (CTE).
+  `verify` e `refresh` respondem 401 `account_anonymized` em conta anonimizada.
+  Rotas em `services/auth-service/src/routes/consents.js`: `GET /consents`
+  (público), `GET|POST /me/consents`, `POST /me/password-check`,
+  `GET /me/account-data` e `POST /me/anonymize`.
+- **Solicitações do art. 18** (user migração 011, `011-lgpd-titular.sql`):
+  `data_subject_requests` no `user_db` — protocolo `LGPD-AAAA-NNNNNN` com a
+  **faixa 900000+ reservada ao portal** (sequência `data_subject_request_number`
+  começa em 900001, para não colidir com a numeração do `gestao_db`), prazo de
+  **15 dias corridos** (art. 19, II, o mesmo da gestão), canal `portal`, titular
+  só pelo id (sem nome, e-mail ou telefone) e os seis tipos do art. 18. O
+  trigger `data_subject_requests_guard` recusa DELETE/TRUNCATE, INSERT da
+  sessão `gestao_app`, mudança de protocolo/titular/tipo/pedido/recebimento/
+  prazo e escrita em solicitação encerrada; separa o que o portal escreve
+  (atendimento automático, `recebida`/`em_andamento`) do que a gestão escreve
+  (desfecho). `account_anonymizations` é a trilha append-only da execução (em
+  contagens, sem dado pessoal) e `profiles.anonymized_at` tira o perfil das
+  projeções públicas.
+- **Anonimização no post_db** (post migração 020, `020-lgpd-anonimizacao.sql`):
+  `anonymized_users`, append-only e só leitura para a gestão. A anonimização
+  troca `posts.author_name`/`author_avatar` e `comments.author_name` pelo
+  rótulo `Conta removida` e revoga os consentimentos de exibição
+  (`ranking_consents.consent`, `supports.display_consent`) — escritas já
+  previstas. **Nada da trilha imutável é apagado nem reescrito**: demandas,
+  dossiês, evidências, prestação de contas, interesses, compartilhamentos,
+  denúncias e `demand_events` ficam como estão (há teste que confere quais
+  tabelas a anonimização pode tocar).
+- Orquestração no **user-service** (`src/routes/privacy.js`, montada em `/`
+  antes do `/:id` do perfil; domínio em `src/privacy/`): `GET /me/privacy`
+  (vocabulário, regra de retenção e solicitações), `GET|POST
+  /me/privacy/requests`, `GET /me/privacy/requests/:id`, `POST
+  /me/privacy/requests/:id/export` e `POST /me/privacy/erasure`. Ele chama o
+  auth-service (`DM_INTERNAL_AUTH_API_URL`) e o post-service
+  (`DM_INTERNAL_POST_API_URL`) **com o token do próprio titular**; sem resposta
+  confiável, 503 `privacy_service_unavailable` (falha fechada, nunca entrega
+  pela metade em silêncio). Variáveis novas no Compose local e de produção.
+- **Acesso e portabilidade** são atendidos na hora: o JSON com o que os três
+  bancos guardam daquela conta vai para `privacy/exports/<userId>/<requestId>.json`
+  no bucket de uploads (`storage.put`, fora da tabela `uploads`) e volta como
+  **URL assinada de 5 min**; a regra de ciclo de vida `privacy-exports` do
+  dm-infra apaga o objeto em 7 dias. Sem `DM_UPLOADS_BUCKET`, 503 — não há
+  armazenamento falso. O arquivo não leva dado de terceiro: de uma conexão sai
+  só o que o titular escreveu; comentário de outra conta não entra.
+- **Eliminação**: `POST /me/privacy/erasure` exige senha (conferida no
+  auth-service) e a palavra `ELIMINAR`; abre a solicitação `eliminacao` e
+  executa post_db → user_db → auth_db, cada etapa idempotente, gravando a
+  trilha por escopo (`conteudo`, `perfil`, `conta`). No `user_db`: perfil
+  anonimizado, `partner_profiles`, recados e depoimentos escritos removidos,
+  mensagem própria das conexões apagada e representante institucional
+  anonimizado **só** com o cadastro `pendente` e nunca enviado.
+- Rotas do post-service em `src/routes/privacy.js` (antes das de posts):
+  `GET /me/privacy/data` e `POST /me/privacy/anonymize`, sempre do `req.user` —
+  nenhuma aceita id de outra conta.
+- Frontend: `src/lib/app/privacy.ts` (espelho puro comparado em
+  `privacy.test.mjs`, que também confere o rótulo anônimo nos três serviços) e
+  bloco "PRIVACIDADE E DIREITOS DO TITULAR (T24)" em `api.ts` e `types.ts`.
+  Telas: `/perfil/privacidade` (`PrivacyClient`, privada, `noindex`, bloqueada
+  no `robots.ts`, no menu da conta) com consentimentos, consentimentos
+  opcionais, direitos, solicitações e a tabela de retenção; `ConsentBanner` no
+  `AppShell` para versão nova; caixa de aceite no `/register` (o cadastro não
+  segue sem ela). Páginas públicas: `/privacidade` (lista real do que é
+  coletado, **derivada do schema**, com a tabela de origem de cada bloco),
+  `/termos-de-uso` (v1.0) e `/politica-de-privacidade` (v1.1), as três no
+  `sitemap.ts`.
+- `src/components/app/InDevelopment.tsx` é o aviso padrão de funcionalidade em
+  desenvolvimento (slide 25). Hoje identifica: pagamento na plataforma
+  (o apoio financeiro é valor declarado), recuperação de senha por e-mail e os
+  recursos de IA previstos.
+- Grants dm-infra: `019-gestao-app-user-lgpd.sql` (SELECT em
+  `data_subject_requests` e `account_anonymizations`; UPDATE só das colunas do
+  desfecho) e `020-gestao-app-post-lgpd.sql` (SELECT em `anonymized_users`),
+  condicionais e cobertos por `scripts/gestao-pipeline.test.sh`.
+- Testes: `services/auth-service/test/consents.test.js`,
+  `services/user-service/test/privacy.test.js`,
+  `services/post-service/test/privacy-routes.test.js`,
+  `services/post-service/test/privacy-e2e.test.js` (suíte `privacy` do
+  `test:e2e`) e `src/lib/app/privacy.test.mjs`.
 
 ## Segurança dos serviços
 

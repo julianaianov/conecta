@@ -59,6 +59,10 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      # Direitos do titular (T24): a exportação e a eliminação consultam o
+      # auth-service e o post-service com o token do próprio titular.
+      DM_INTERNAL_AUTH_API_URL: http://auth-service:3001
+      DM_INTERNAL_POST_API_URL: http://post-service:3003
       PORT: 3002
     depends_on:
       user-db:

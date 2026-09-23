@@ -3,7 +3,8 @@ const cors    = require('cors');
 const helmet  = require('helmet');
 const { Pool } = require('pg');
 const authRoutes = require('./routes/auth');
-const { resolveJwtSecret } = require('./security');
+const consentsRoutes = require('./routes/consents');
+const { resolveJwtSecret, createAuth } = require('./security');
 
 const createApp = ({
   pool = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -16,6 +17,10 @@ const createApp = ({
   app.use(express.json());
 
   app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'auth-service' }));
+  // Consentimento versionado e direitos do titular sobre a conta (T24):
+  // /consents, /me/consents, /me/account-data, /me/anonymize. Antes das rotas
+  // de sessão, que não têm `/:id`.
+  app.use('/', consentsRoutes(pool, { auth: createAuth(secret) }));
   app.use('/', authRoutes(pool, { secret }));
 
   return app;

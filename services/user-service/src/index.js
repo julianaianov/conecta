@@ -8,6 +8,7 @@ const connectionsRoutes = require('./routes/connections');
 const socialRoutes = require('./routes/social');
 const institutionsRoutes = require('./routes/institutions');
 const partnerProfileRoutes = require('./routes/partner-profile');
+const privacyRoutes = require('./routes/privacy');
 const { requireInstitutionalAccess } = institutionsRoutes;
 const {
   resolveJwtSecret, createAuth, parseOperationUserIds, requireOperation,
@@ -39,6 +40,9 @@ const createApp = ({
   app.use('/', institutionsRoutes(pool, auth, uploadStorage));
   // Perfil de apoio (T15), antes das rotas com `/:id` do perfil.
   app.use('/', partnerProfileRoutes(pool, auth));
+  // Direitos do titular (T24): /me/privacy e as solicitações do art. 18.
+  // Antes das rotas com `/:id` do perfil.
+  app.use('/', privacyRoutes({ pool, auth, storage: uploadStorage }));
   app.use('/', socialRoutes(pool, auth, operation));
   app.use('/', usersRoutes(pool, auth));
 

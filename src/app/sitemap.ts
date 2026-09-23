@@ -12,6 +12,8 @@ const STABLE_PUBLIC_PATHS = [
   "/ranking",
   "/conexoes",
   "/politica-de-privacidade",
+  "/termos-de-uso",
+  "/privacidade",
   "/seguranca-infantil",
 ] as const;
 

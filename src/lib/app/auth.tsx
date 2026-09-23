@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, getStoredUser } from "./api";
 import type { User, UserRole, ProfileType } from "./types";
+import type { ConsentDocumentKey } from "./privacy";
 
 type AuthStatus = "unknown" | "authenticated" | "unauthenticated";
 
@@ -11,7 +12,7 @@ interface AuthContextValue {
   user: User | null;
   status: AuthStatus;
   login: (email: string, password: string) => Promise<void>;
-  register: (input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }) => Promise<void>;
+  register: (input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType; consents: ConsentDocumentKey[] }) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("authenticated");
   }, []);
 
-  const register = useCallback(async (input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }) => {
+  const register = useCallback(async (input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType; consents: ConsentDocumentKey[] }) => {
     const u = await api.register(input);
     await provisionProfile();
     setUser(u);

@@ -8,6 +8,7 @@ import { isPlatformAdmin } from "@/lib/app/admin-access";
 import { MY_DEMANDS_PATH } from "@/lib/app/demand";
 import { INSTITUTIONAL_AREA_PATH } from "@/lib/app/institutional";
 import { OPPORTUNITIES_PATH, canFilterOpportunities } from "@/lib/app/interest";
+import { PRIVACY_PATH } from "@/lib/app/privacy";
 import { normalizeRole } from "@/lib/app/types";
 import { DMLogo } from "./DMLogo";
 import { Icon, type IconName } from "./Icon";
@@ -16,6 +17,7 @@ import { NotificationBell } from "./NotificationBell";
 import { SearchButton } from "./SearchButton";
 import { ThemeToggle } from "../ThemeToggle";
 import { InstitutionBanner } from "./institution/InstitutionBanner";
+import { ConsentBanner } from "./privacy/ConsentBanner";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/feed", label: "O pulso", icon: "bolt" },
@@ -116,6 +118,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>{user?.email}</p>
                     </div>
                     <MenuItem icon="person" label="Meu perfil" onClick={() => { setMenuOpen(false); router.push("/perfil"); }} />
+                    <MenuItem icon="shield" label="Privacidade" onClick={() => { setMenuOpen(false); router.push(PRIVACY_PATH); }} />
                     <MenuItem icon="trophy" label="Impacto" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
                     <MenuItem icon="volunteer" label="Ações apoiadas" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
                     {isAgent && <MenuItem icon="inventory" label="Minhas demandas" onClick={() => { setMenuOpen(false); router.push(MY_DEMANDS_PATH); }} />}
@@ -135,6 +138,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto max-w-6xl px-3 pb-28 pt-5 sm:px-4 lg:pb-10">
         {/* Requisito institucional (decisões 2 e 3); a própria ficha e o /criar têm aviso próprio. */}
         {!pathname.startsWith("/cadastro-institucional") && pathname !== "/criar" && <InstitutionBanner className="mb-4" />}
+        {/* Aceite de versão nova dos Termos e da Política (T24). */}
+        <ConsentBanner className="mb-4" />
         {children}
       </main>
 

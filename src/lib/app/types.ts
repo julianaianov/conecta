@@ -2313,3 +2313,58 @@ export interface MapTerritory {
   lastPublishedAt: string | null;
   category: Record<DemandCategory, number>;
 }
+
+// ── PRIVACIDADE E DIREITOS DO TITULAR (T24) ─────────────────────────────────
+// Vocabulário e regras em `src/lib/app/privacy.ts` (espelho dos serviços).
+
+/** Solicitação do art. 18 feita pelo titular no portal. */
+export interface DataSubjectRequest {
+  id: string;
+  /** `LGPD-AAAA-NNNNNN`, o mesmo formato da fila da gestão. */
+  protocol: string;
+  type: import("./privacy").DataSubjectRequestType;
+  status: import("./privacy").DataSubjectRequestStatus;
+  description: string | null;
+  receivedAt: string;
+  /** Recebimento + 15 dias corridos (art. 19, II). */
+  dueAt: string;
+  /** Quando o portal atendeu sozinho (arquivo gerado, conta anonimizada). */
+  fulfilledAt: string | null;
+  response: string | null;
+  respondedAt: string | null;
+  closedAt: string | null;
+  /** A equipe já levou a solicitação para a fila da gestão. */
+  inGestaoQueue: boolean;
+  export: {
+    sha256: string | null;
+    bytes: number | null;
+    expiresAt: string | null;
+    expired: boolean;
+  } | null;
+}
+
+/** Link temporário do arquivo de exportação. */
+export interface DataExportDownload {
+  url: string;
+  expiresAt: string;
+  fileName: string;
+  sha256: string;
+  bytes: number;
+}
+
+export interface PrivacyPanel {
+  requests: DataSubjectRequest[];
+  anonymized: boolean;
+}
+
+export interface MyConsents {
+  documents: import("./privacy").ConsentDocument[];
+  accepted: import("./privacy").ConsentRecord[];
+  pending: import("./privacy").ConsentDocument[];
+}
+
+export interface AccountErasureResult {
+  request: DataSubjectRequest;
+  anonymized: { conteudo: Record<string, unknown>; perfil: Record<string, unknown>; conta: boolean };
+  notice: string;
+}

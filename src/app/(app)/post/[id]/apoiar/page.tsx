@@ -12,6 +12,7 @@ import {
 import { Avatar } from "@/components/app/Avatar";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Button } from "@/components/app/Button";
+import { InDevelopment } from "@/components/app/InDevelopment";
 import { Card } from "@/components/app/ui";
 import { AuthPrompt } from "@/components/app/AuthPrompt";
 import { InstitutionGateNotice } from "@/components/app/institution/InstitutionStatus";
@@ -229,6 +230,11 @@ export default function SupportFlowPage() {
           {financialStep === 0 ? (
             <div className="space-y-4">
               <h2 className="text-lg font-bold" style={{ color: "var(--th-text)" }}>Qual valor você quer registrar?</h2>
+              {/* Slide 25: funcionalidade não disponível é identificada como tal. */}
+              <InDevelopment title="Pagamento em desenvolvimento">
+                A plataforma ainda não processa pagamento. O valor aqui é <strong>declarado</strong> e combinado
+                diretamente com quem publicou.
+              </InDevelopment>
               <div className="flex items-center gap-2 rounded-xl border px-4 py-3" style={{ borderColor: "var(--th-border)" }}>
                 <span className="text-xl font-bold" style={{ color: "var(--th-muted)" }}>R$</span>
                 <input type="number" min={1} value={amount} onChange={(event) => setAmount(Math.max(0, Number(event.target.value)))} className="w-full bg-transparent text-2xl font-bold outline-none font-numeric" style={{ color: "var(--th-text)" }} />
