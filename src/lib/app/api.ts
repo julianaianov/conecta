@@ -36,6 +36,10 @@ import {
 import type { DemandDossierDownload, DemandDossierList, DossierVerification, PublicDossierInfo } from "./types";
 import type { MyReport, ReportContext, ReportInput, ReportTargetKind } from "./report";
 import type {
+  AiEditalMatch, AiGovernmentReportData, AiPartnerMatch, AiResult, AiStatus, AiSuggestion,
+  GovernmentReportSuggestion, OrganizationSuggestion, UrgencySuggestion,
+} from "./ai";
+import type {
   EventAgendaFilter, EventAttendee, EventInput, EventSignupContext, EventSignupSummary,
   EventTerritory, MyEventSignup, OrganizerEvent, PublicEvent,
 } from "./event";
@@ -444,6 +448,8 @@ export class DemandRequestError extends Error {
 const DEMANDS = "/api/posts/demands";
 /** Eventos e inscrições (T25): outra base do post-service. */
 const EVENTS = "/api/posts/events";
+/** Inteligência artificial (T23): rotas na raiz do post-service. */
+const POSTS_ROOT = "/api/posts";
 
 /** Requisição da API de demanda; 404 vira `null`. `prefix`: outra base do post-service (T13). */
 async function demandRequest<T>(path: string, init: RequestInit = {}, prefix: string = DEMANDS): Promise<T | null> {
@@ -1602,5 +1608,72 @@ export const api = {
       { method: "PUT", ...json({ attended }) },
       EVENTS,
     );
+  },
+  // ── INTELIGÊNCIA ARTIFICIAL (T23) ────────────────────────
+  // Fonte: slide 23 (organização automática de demandas, detecção de urgência,
+  // sugestão de editais, conexão com patrocinadores ideais e relatórios para
+  // governo). Decisão 6: flag desligada por padrão; a IA nunca bloqueia o
+  // fluxo. Todas as respostas trazem `available`: quando é `false`, a tela
+  // mostra `message` e segue sem sugestão — nunca um resultado inventado.
+  // Tudo que volta daqui é sugestão marcada como IA, para uma pessoa revisar;
+  // aceitar registra a decisão e **não** altera a demanda.
+
+  /** Estado do recurso: ligado, disponível, modelo e o que está em desenvolvimento. */
+  aiStatus(): Promise<AiStatus | null> {
+    return demandRequest<AiStatus>("/ai/status", {}, POSTS_ROOT);
+  },
+
+  /** Sugere categoria e território da demanda (Agente autor). */
+  aiOrganizeDemand(id: string): Promise<AiResult<OrganizationSuggestion>> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/ai/organization`, { method: "POST" }, POSTS_ROOT);
+  },
+
+  /** Sugere o nível de prioridade, com justificativa (Agente autor). */
+  aiDetectUrgency(id: string): Promise<AiResult<UrgencySuggestion>> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/ai/urgency`, { method: "POST" }, POSTS_ROOT);
+  },
+
+  /** Editais divulgados com aderência à demanda (em desenvolvimento: depende de cadastro). */
+  aiSuggestEditais(id: string): Promise<AiResult & { editais: AiEditalMatch[] }> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/ai/editais`, { method: "POST" }, POSTS_ROOT);
+  },
+
+  /** Ordena os interessados já registrados; a compatibilidade da T15 vem junto. */
+  aiSuggestPartners(id: string): Promise<AiResult & { partners: AiPartnerMatch[] }> {
+    return demandRequired(`/demands/${encodeURIComponent(id)}/ai/partners`, { method: "POST" }, POSTS_ROOT);
+  },
+
+  /** Sugestões já geradas para a demanda (Agente autor). */
+  async aiDemandSuggestions(id: string): Promise<AiSuggestion[]> {
+    const body = await demandRequest<{ suggestions: AiSuggestion[] }>(
+      `/demands/${encodeURIComponent(id)}/ai/suggestions`, {}, POSTS_ROOT,
+    );
+    return body?.suggestions ?? [];
+  },
+
+  /** Desfecho humano: aceitar ou ignorar. `applied` é sempre `false`. */
+  aiReviewSuggestion(
+    id: string, suggestionId: string, status: "aceita" | "ignorada", note?: string,
+  ): Promise<{ suggestion: AiSuggestion; applied: boolean; message: string }> {
+    return demandRequired(
+      `/demands/${encodeURIComponent(id)}/ai/suggestions/${encodeURIComponent(suggestionId)}/review`,
+      { method: "POST", ...json({ status, note }) },
+      POSTS_ROOT,
+    );
+  },
+
+  /** Rascunho de relatório do órgão a partir dos indicadores da T22. */
+  aiGovernmentReport(filter: Record<string, string> = {}): Promise<
+    AiResult<GovernmentReportSuggestion> & { report: AiGovernmentReportData }
+  > {
+    return demandRequired("/government/ai/report", { method: "POST", ...json(filter) }, POSTS_ROOT);
+  },
+
+  /** Rascunhos já gerados pelo próprio órgão. */
+  async aiGovernmentSuggestions(): Promise<AiSuggestion<GovernmentReportSuggestion>[]> {
+    const body = await demandRequest<{ suggestions: AiSuggestion<GovernmentReportSuggestion>[] }>(
+      "/government/ai/suggestions", {}, POSTS_ROOT,
+    );
+    return body?.suggestions ?? [];
   },
 };

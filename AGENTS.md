@@ -992,6 +992,81 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `test/government-e2e.test.js` (no `test:e2e`, suíte `government`) e
   `src/lib/app/government.test.mjs`.
 
+## Inteligência artificial (T23)
+
+- Fonte: Apresentação Institucional, slide 23 ("Inteligência artificial":
+  organização automática de demandas, detecção de urgência, sugestão de
+  editais, conexão com patrocinadores ideais e geração de relatórios para
+  governo). Decisão 6 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`:
+  **API do Claude**, flag desligada por padrão, e a IA **nunca bloqueia o
+  fluxo** se falhar. GPT/OpenAI não é usado para isso (regra global do
+  workspace: só imagem e tradução).
+- **A IA só sugere.** Nada que o modelo devolve altera demanda, post, apoio,
+  dossiê (T10) ou prestação de contas (T18). A sugestão vira uma linha em
+  `ai_suggestions`, marcada como sugestão de IA no banco e na interface, com a
+  justificativa e os **números verificáveis** ao lado; uma pessoa aceita ou
+  ignora. Aceitar registra só o desfecho (`applied: false`): aplicar o valor
+  continua sendo ação do Agente, pela rota da demanda.
+- Ambiente (`src/ai/config.js`): `DM_AI_ENABLED` (`true` liga; **padrão
+  desligado**), `ANTHROPIC_API_KEY`, `DM_AI_MODEL` (padrão `claude-opus-5`),
+  `DM_AI_TIMEOUT_MS` (15 s), `DM_AI_MAX_RETRIES` (1),
+  `DM_AI_MAX_CALLS_PER_HOUR` (60) e `DM_AI_MAX_CALLS_PER_USER_PER_HOUR` (10).
+  Sem flag → `desligado`; com flag e sem chave → `sem_chave`. Os dois casos
+  respondem **200** com `{ available: false, reason, message }`: a interface
+  diz que está indisponível e **não inventa resultado**. Na infra:
+  `dmconecta-infra` SSM `ai_enabled` e `anthropic_api_key`, `sync-parameters.sh`,
+  `validate-config.sh`, `docker-compose.prod.yml`, `.env.example` e
+  `scripts/ai.test.sh`.
+- Contenção de custo e falha (`src/ai/budget.js`, no processo): teto por
+  serviço e por conta numa janela deslizante, mais a contagem em
+  `ai_usage_log` (que atravessa réplicas), e disjuntor de 3 falhas seguidas
+  com 5 min de espera. Timeout curto e **uma** retentativa, só para erro
+  transitório (timeout, 429, 5xx); 401/403 e 4xx não são repetidos.
+- Migração post 022 (`022-ai-suggestions.sql`): `ai_suggestions` (tipo ∈ os 5
+  do slide 23, demanda **ou** órgão, quem pediu, modelo, `prompt_fields` com
+  os campos enviados ao modelo, `payload`, `rationale`, `evidence`, e o
+  desfecho `sugerida` → `aceita` | `ignorada`) e `ai_usage_log`
+  (**append-only**: uma linha por chamada tentada, inclusive as recusadas por
+  flag, chave, limite ou disjuntor, com latência e tokens). Guardas
+  `ai_suggestions_guard` (conteúdo imutável, nada excluído, revisão uma vez só,
+  `gestao_app` só lê) e `ai_usage_log_guard` (sem UPDATE, sem DELETE). Grant da
+  gestão: dm-infra `db/migrations/gestao/022-gestao-app-post-ai.sql`, **só
+  SELECT**.
+- **O que vai para o modelo** (`src/ai/redaction.js`, documentado lá e gravado
+  em `prompt_fields`): título, descrição, objetivo, justificativa, perfil do
+  público, beneficiários estimados, bairro/município/UF/território, execução
+  física, orçamento total, recursos necessários, categoria e prioridade atuais;
+  editais divulgados (dado já público) e interessados **por número de
+  referência**, com categoria da conta, ofertas e a compatibilidade da T15;
+  indicadores agregados do órgão. Nunca: nome, e-mail, telefone, documento,
+  id de conta, endereço fino, CEP, coordenada nem URL de arquivo. Todo texto
+  livre passa por `scrubText`, que apaga contato, documento e link escritos no
+  meio da descrição.
+- Rotas (`src/routes/ai.js`, montada na raiz antes das rotas de demanda e de
+  posts): `GET /ai/status`; Agente autor — `POST /demands/:id/ai/organization`,
+  `.../ai/urgency`, `.../ai/editais`, `.../ai/partners`,
+  `GET /demands/:id/ai/suggestions` e
+  `POST /demands/:id/ai/suggestions/:sid/review` (`aceita`|`ignorada`);
+  Poder Público validado (mesmo gate da T13/T22) — `POST /government/ai/report`
+  e `GET /government/ai/suggestions`. 404 para quem não é o autor da demanda.
+- Editais e patrocinadores só trabalham sobre **dado real já cadastrado**:
+  editais são `government_actions.kind = 'edital'` (T22) do município/UF da
+  demanda, e patrocinadores são os interesses em aberto da T15. Sem base, a
+  rota responde `reason: 'sem_base'` **sem chamar o modelo**. A sugestão de
+  editais é identificada como **em desenvolvimento** (slide 25: funcionalidade
+  em desenvolvimento aparece identificada como tal), porque a base depende de
+  os órgãos cadastrarem editais.
+- Frontend: espelho puro em `src/lib/app/ai.ts` (comparado em `ai.test.mjs`),
+  bloco próprio em `api.ts`, aba "Sugestões de IA" no detalhe da demanda em
+  Minhas demandas (`src/components/app/ai/AiSuggestionPanel.tsx`, com aceitar/
+  ignorar) e "Relatório sugerido por IA" em `/governo/indicadores`
+  (`GovernmentAiReport.tsx`). Todo cartão abre com o selo **"Sugestão de IA"**.
+- Contrato com a gestão: `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.18.
+- Testes: `test/ai-domain.test.js`, `test/ai-routes.test.js` e
+  `test/ai-e2e.test.js` (no `test:e2e`, suíte `ai`), mais
+  `src/lib/app/ai.test.mjs`. O cliente do modelo é sempre um duplo:
+  **nenhum teste chama a API do Claude**.
+
 ## Privacidade, consentimento e direitos do titular (T24)
 
 - Fonte: Apresentação Institucional, slide 25 ("Conformidade com a LGPD em toda

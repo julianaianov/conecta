@@ -9,6 +9,7 @@
     "test:e2e": "bash scripts/e2e-postgres.sh"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@aws-sdk/client-s3": "^3.1137.0",
     "@aws-sdk/s3-request-presigner": "^3.1137.0",
     "cors": "^2.8.5",

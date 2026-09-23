@@ -29,6 +29,8 @@ const rankingsRoutes = require('./routes/rankings');
 const reportsRoutes = require('./routes/reports');
 const privacyRoutes = require('./routes/privacy');
 const eventsRoutes = require('./routes/events');
+const aiRoutes = require('./routes/ai');
+const { createAiService } = require('./ai/service');
 const { createRankingService } = require('./ranking/service');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
@@ -66,6 +68,11 @@ const createApp = ({
   // Cache curto do painel do Poder Público (T22). `DM_GOVERNMENT_CACHE_TTL_MS`
   // ajusta o TTL (padrão 60 s); 0 desliga o cache (usado no e2e).
   governmentCache = createIndicatorCache(governmentCacheOptions(process.env)),
+  // Inteligência artificial (T23). Flag `DM_AI_ENABLED` desligada por padrão e
+  // `ANTHROPIC_API_KEY` ausente deixam o recurso indisponível (a rota diz o
+  // motivo); nenhuma falha de IA interrompe o fluxo. Nos testes entra um
+  // cliente de modelo duplo: nada chama a API de verdade.
+  ai = createAiService({ pool }),
 } = {}) => {
   const dossiers = dossierService === undefined
     ? createDossierService({
@@ -121,9 +128,13 @@ const createApp = ({
   app.use('/', privacyRoutes({ pool, auth }));
   // Eventos do território e inscrição da comunidade (T25): /events.
   app.use('/events', eventsRoutes({ pool, auth, institutionStatus, governmentGate: institutional }));
+  // Sugestões de inteligência artificial (T23): /ai/status, /demands/:id/ai/*
+  // e /government/ai/*. Sempre sugestão revisável; nunca altera dado sozinha.
+  app.use('/', aiRoutes({ pool, auth, ai, governmentActor, governmentProfile }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 
+  app.locals.ai = ai;
   app.locals.dossiers = dossiers;
   app.locals.rankings = rankings === undefined ? createRankingService({ pool }) : rankings;
   return app;

@@ -34,6 +34,7 @@ import { DemandInterestsInbox } from "../interest/DemandInterestsInbox";
 import { DemandSupportsInbox } from "../support/DemandSupportsInbox";
 import { DemandExecutionPanel } from "../execution/DemandExecutionPanel";
 import { DemandAccountabilityPanel } from "../accountability/DemandAccountabilityPanel";
+import { AiSuggestionPanel } from "../ai/AiSuggestionPanel";
 import { FormAlert } from "./fields";
 import type { IconName } from "../Icon";
 
@@ -43,7 +44,7 @@ function dateTime(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-type DemandPanel = "interessados" | "apoios" | "execucao" | "prestacao" | "dossie";
+type DemandPanel = "interessados" | "apoios" | "execucao" | "prestacao" | "dossie" | "ia";
 
 /** Abas do detalhe da demanda em "Minhas demandas". */
 const PANELS: [DemandPanel, string, IconName][] = [
@@ -52,6 +53,9 @@ const PANELS: [DemandPanel, string, IconName][] = [
   ["execucao", "Execução", "clock"],
   ["prestacao", "Prestação de contas", "trophy"],
   ["dossie", "Dossiê (PDF)", "document"],
+  // Sugestões de IA (T23): sempre disponível, inclusive no rascunho. Sem IA
+  // ligada, o painel diz o motivo e o trabalho segue sem sugestão.
+  ["ia", "Sugestões de IA", "bolt"],
 ];
 
 function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: Demand) => void }) {
@@ -142,6 +146,8 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
               if (key === "dossie") return hasDossier;
               // A prestação de contas só faz sentido no último status (T18).
               if (key === "prestacao") return demand.status === "prestacao_de_contas";
+              // A IA sugere desde o rascunho: é ajuda de preenchimento.
+              if (key === "ia") return true;
               return isPublic;
             }).map(([key, label, icon]) => (
               <Button
@@ -188,6 +194,11 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
                 }).catch(() => onUpdated({ ...demand, status }));
               }}
             />
+          </div>
+        )}
+        {panel === "ia" && (
+          <div id={`dm-${demand.id}-ia`} role="tabpanel" className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+            <AiSuggestionPanel demandId={demand.id} />
           </div>
         )}
         {panel === "apoios" && (
