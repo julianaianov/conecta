@@ -8,17 +8,23 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 | Ambiente | Onde roda | Endereço | Branch | Dados sintéticos |
 | --- | --- | --- | --- | --- |
 | Local | Docker Compose | `localhost` | qualquer | **proibidos** |
-| Homologação | AWS | `https://homologacao.dmconecta.org` | `develop` | **proibidos** |
+| Homologação | AWS, mesma EC2 da produção | `https://homologacao.dmconecta.org` | `develop` | **proibidos** |
 | Produção | AWS EC2 + Cloudflare | `https://dmconecta.org` | `stable` | **proibidos** |
 
 - **Não existe mais Vercel.** Produção e homologação são AWS; menções a Vercel
-  são dívida a remover. A homologação na AWS roda sob `https://homologacao.dmconecta.org`.
-- Repositórios (org `DmConnecta`): aplicação em `dm-api` (checkout local
-  `dm-api/`, que também tem o remoto `web` → `dm-web`, de onde o deploy lê),
-  infraestrutura em `dm-infra` (`dmconecta-infra/`), documentação em `dm-docs`,
-  Android em `dm-app-android` (`dmconecta-app-client-android/`), iOS em
-  `dm-app-ios` (vazio).
-- AWS `us-east-2`: EC2s dedicadas para produção e homologação com Docker Compose
+  são dívida a remover.
+- Produção e homologação rodam na mesma EC2 `dmconecta-production`
+  (decisão do usuário; conta AWS no plano Free), em projetos Docker Compose
+  separados, com parâmetros no SSM `/dmconecta/production/*` e
+  `/dmconecta/homologation/*`. A EC2 separada `dmconecta-homologation` está
+  sendo desativada (migração iniciada em 23/09/2026, branch
+  `infra/maquina-unica` do `dm-infra`).
+- Repositórios (org `DmConnecta`): aplicação em `dm-web` (checkout local
+  `dm-web/`, de onde o deploy lê; o antigo `dm-api` foi apagado em 23/09/2026),
+  gestão em `dm-gestao` (`dm-gestao/`), infraestrutura em `dm-infra`
+  (`dmconecta-infra/`), documentação em `dm-docs`, Android em `dm-app-android`
+  (`dmconecta-app-client-android/`), iOS em `dm-app-ios` (vazio).
+- AWS `us-east-2`, Docker Compose no host
   (Caddy → Next.js `web:3000` e `/api/auth|users|posts` → serviços Node 3001–3003 →
   PostgreSQL com `auth_db`, `user_db`, `post_db`), imagens no ECR compartilhado,
   parâmetros no SSM `/dmconecta/<ambiente>/*`, releases no S3. Sem SSH: tudo por SSM.
@@ -35,8 +41,8 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Em produção, `NEXT_PUBLIC_API_URL` vazio usa `/api` no mesmo domínio. Não
   adicione fallback silencioso para dados locais nem coloque segredos em
   `NEXT_PUBLIC_*`.
-- Deploy: mudanças que precisam chegar a um ambiente vão para os dois remotos,
-  `git push origin develop && git push web develop`.
+- Deploy: o único remoto da aplicação é `origin` → `DmConnecta/dm-web`;
+  `git push origin develop` basta.
 - Schema: fonte única em `services/migrations.manifest` (ordem de `init.sql`,
   `migrate_*.sql` e `services/*/migrations/`). A infra não guarda SQL da
   aplicação: `dmconecta-infra/db/init/10-load-application-schemas.sh` aplica o
@@ -74,7 +80,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   (parecer). O titular edita e reenvia em `pendente`, `devolvida` e `revogada`.
   O trigger da migração 008 impõe as transições (a gestão é reconhecida pela
   sessão `gestao_app`), deriva `verified*` e grava a trilha em
-  `organization_validation_events`. O dm-api nunca valida.
+  `organization_validation_events`. O dm-web nunca valida.
 - Poder Público sem cadastro validado recebe 403 `institution_not_validated` ao
   publicar, editar, comentar ou apoiar (post-service, `src/institution-gate.js`,
   que consulta `DM_INTERNAL_USER_API_URL` com o token do usuário, cache curto e
@@ -1271,7 +1277,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   são só leitura para a operação: exigem token de uma conta listada em
   `DM_OPERATION_USER_IDS` (UUIDs de `auth_db.users`, vírgula). Sem a variável,
   respondem 403 para todos. `NEXT_PUBLIC_ADMIN_EMAILS` só esconde a interface.
-  O dm-api não aprova nada: validação e aprovação ficam no dm-gestao.
+  O dm-web não aprova nada: validação e aprovação ficam no dm-gestao.
 - Respostas públicas usam projeção explícita de colunas (nada de `SELECT *`);
   telefone, estado e metadados internos do perfil nunca saem em rota pública.
   Coluna nova fica privada até ser incluída de propósito na projeção.
