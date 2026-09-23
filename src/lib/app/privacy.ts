@@ -172,7 +172,7 @@ export const RETENTION_RULES: RetentionRule[] = [
   },
   {
     key: "publicacoes",
-    data: "Publicações e comentários no feed",
+    data: "Publicações e comentários no pulso",
     action: "anonimiza",
     rule: 'O conteúdo permanece (é registro do território); o nome e a foto do autor são substituídos por "Conta removida".',
     basis: "LGPD art. 18, IV, e art. 7º, VI",
@@ -262,8 +262,8 @@ export const DATA_INVENTORY: DataInventoryEntry[] = [
   },
   {
     source: "post_db.posts, comments, reactions",
-    group: "Publicações no feed",
-    fields: ["título e descrição", "tipo e situação", "bairro, cidade, estado, CEP e coordenada", "fotos e vídeos", "etiquetas", "comentários", "curtidas"],
+    group: "Publicações no pulso",
+    fields: ["título e descrição", "tipo e situação", "bairro, cidade, estado, CEP e coordenada", "fotos e vídeos", "etiquetas", "comentários", "marcações de relevância (reações)"],
     purpose: "Mostrar o que acontece no território.",
     visibility: "público",
   },

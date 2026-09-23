@@ -126,7 +126,7 @@ const RETENTION_RULES = [
   },
   {
     key: 'publicacoes',
-    data: 'Publicações e comentários no feed',
+    data: 'Publicações e comentários no pulso',
     action: 'anonimiza',
     rule: 'O conteúdo permanece (é registro do território); o nome e a foto do autor são substituídos por "Conta removida".',
     basis: 'LGPD art. 18, IV, e art. 7º, VI',

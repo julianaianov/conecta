@@ -311,7 +311,7 @@ export function SmartMapClient({
         {!loading && !failed ? (
           <>
             {total.toLocaleString("pt-BR")} demanda{total === 1 ? "" : "s"} no recorte
-            {feedCount === null ? "" : ` · ${feedCount.toLocaleString("pt-BR")} publicações do feed`}
+            {feedCount === null ? "" : ` · ${feedCount.toLocaleString("pt-BR")} publicações do pulso`}
             {view.mode === "clusters" ? " · pontos agrupados por área; aproxime o mapa para ver cada demanda" : ""}
             {view.mode === "points" && view.truncated ? ` · mostrando as ${points.length.toLocaleString("pt-BR")} mais recentes` : ""}
           </>

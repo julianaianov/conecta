@@ -76,7 +76,7 @@ function ActionItem({ action }: { action: GovernmentAction }) {
       )}
       <div className="mt-2 flex flex-wrap gap-3 text-sm">
         <Link href={`/post/${encodeURIComponent(action.postId)}`} className="font-semibold" style={{ color: "#2e7ba8" }}>
-          Ver no feed
+          Ver no pulso
         </Link>
         {action.demandId && (
           <Link href={`/demandas/${encodeURIComponent(action.demandId)}`} className="font-semibold" style={{ color: "#2e7ba8" }}>
@@ -91,7 +91,7 @@ function ActionItem({ action }: { action: GovernmentAction }) {
 /**
  * Divulgação de ações do Poder Público (T22, slide 24): o órgão publica a ação,
  * o programa, a obra ou o serviço ligado a uma demanda ou ao território. A
- * publicação entra no feed como mensagem do órgão e, quando há demanda ligada,
+ * publicação entra no pulso como mensagem do órgão e, quando há demanda ligada,
  * também na linha do tempo pública dela, junto de uma resposta institucional.
  */
 export function GovernmentActions() {
@@ -139,7 +139,7 @@ export function GovernmentActions() {
       });
       setActions((list) => [action, ...(list ?? [])]);
       setForm(EMPTY_FORM);
-      setDone("Ação publicada. Ela já aparece no feed e, quando ligada a uma demanda, na linha do tempo dela.");
+      setDone("Ação publicada. Ela já aparece no pulso e, quando ligada a uma demanda, na linha do tempo dela.");
     } catch (err) {
       if (err instanceof GovernmentError && Object.keys(err.fields).length) {
         setFields(err.fields);
@@ -173,7 +173,7 @@ export function GovernmentActions() {
           <p className="mt-2 text-sm" style={{ color: "var(--th-muted)" }}>
             Esta área é do Poder Público: prefeituras, secretarias, órgãos públicos e seus representantes, com cadastro institucional validado.
           </p>
-          <Button className="mt-4" href="/feed">Ir para o feed</Button>
+          <Button className="mt-4" href="/feed">Ir para o pulso</Button>
         </Card>
       </div>
     );
@@ -199,7 +199,7 @@ export function GovernmentActions() {
         </nav>
         <h1 className="text-2xl font-bold" style={{ color: "var(--th-text)" }}>Divulgação de ações</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>
-          Publique a ação, o programa, a obra ou o serviço do órgão. A publicação entra no feed; ligada a uma demanda,
+          Publique a ação, o programa, a obra ou o serviço do órgão. A publicação entra no pulso; ligada a uma demanda,
           entra também na linha do tempo pública dela como resposta institucional.
         </p>
       </header>

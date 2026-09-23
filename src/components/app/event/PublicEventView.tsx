@@ -79,14 +79,14 @@ export function PublicEventView({ event, signups }: { event: PublicEvent; signup
         {event.postId ? (
           <Card>
             <p className="text-sm" style={{ color: "var(--th-muted)" }}>
-              Este evento também aparece no feed e no mapa do território.
+              Este evento também aparece no pulso e no mapa do território.
             </p>
             <Link
               href={`/post/${encodeURIComponent(event.postId)}`}
               className="mt-2 inline-block text-sm font-semibold hover:underline"
               style={{ color: "var(--th-primary, #1d4ed8)" }}
             >
-              Ver no feed
+              Ver no pulso
             </Link>
           </Card>
         ) : null}

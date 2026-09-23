@@ -243,7 +243,7 @@ export const RANKING_CONSENT_NOTICE = "O ranking mostra o nome apenas de quem co
 
 /** Rótulo da métrica que compõe os pontos, para o resumo de cada linha. */
 export const RANKING_METRIC_LABELS: Record<string, string> = {
-  reactions: "curtidas",
+  reactions: "marcações de relevância",
   comments: "comentários",
   shares: "compartilhamentos",
   interests: "interesses registrados",
