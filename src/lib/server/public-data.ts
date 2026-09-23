@@ -4,11 +4,8 @@
  */
 import {
   MAX_PUBLIC_LIST_LIMIT,
-  publicFallback,
-  readServerApiEnv,
   requestPublicJson,
 } from "./public-api.ts";
-import { demo } from "../app/demo.ts";
 import {
   normalizeRole,
   type Comment,
@@ -144,24 +141,10 @@ function mapProfile(userId: string, raw: RawRecord, fallback: Profile | null = n
   };
 }
 
-function demoEnabled() {
-  const env = readServerApiEnv();
-  return { production: env.production, demoAllowed: env.demoAllowed };
-}
-
-function demoList<T>(demoValue: T): T | [] {
-  return publicFallback({ ...demoEnabled(), demoValue });
-}
-
-function demoPostFilters(filters: PublicPostFilters) {
-  const posts = demo.listPosts(filters);
-  return filters.authorId ? posts.filter((post) => post.authorId === filters.authorId) : posts;
-}
-
 export async function getPublicPosts(filters: PublicPostFilters = {}): Promise<Post[]> {
   const data = await requestPublicJson<{ posts?: RawRecord[] }>("posts", listQuery(filters));
   if (data && Array.isArray(data.posts)) return data.posts.map(mapPost);
-  return demoList(demoPostFilters(filters)) as Post[];
+  return [];
 }
 
 export async function getPublicMapPosts(filters: PublicMapFilters = {}): Promise<Post[]> {
@@ -170,20 +153,19 @@ export async function getPublicMapPosts(filters: PublicMapFilters = {}): Promise
   if (filters.status) query.set("status", filters.status);
   const data = await requestPublicJson<RawRecord[]>("posts", `/map${query.toString() ? `?${query}` : ""}`);
   if (Array.isArray(data)) return data.map(mapPost);
-  return demoList(demo.mapPosts(filters.type)) as Post[];
+  return [];
 }
 
 export async function getPublicPost(id: string): Promise<Post | null> {
   const data = await requestPublicJson<RawRecord>("posts", `/${encodeURIComponent(id)}`);
   if (data) return mapPost(data);
-  const fallback = demoEnabled();
-  return !fallback.production && fallback.demoAllowed ? demo.getPost(id) : null;
+  return null;
 }
 
 export async function getPublicComments(postId: string): Promise<Comment[]> {
   const data = await requestPublicJson<RawRecord[]>("posts", `/${encodeURIComponent(postId)}/comments`);
   if (Array.isArray(data)) return data.map(mapComment);
-  return demoList(demo.listComments(postId)) as Comment[];
+  return [];
 }
 
 export async function getPublicSupports(
@@ -199,15 +181,13 @@ export async function getPublicSupports(
       supports: (data.supports ?? []).map(mapSupport),
     };
   }
-  return demoList(demo.postSupports(postId)) as { summary: SupportSummaryItem[]; supports: SupportRecord[] };
+  return { summary: [], supports: [] };
 }
 
 export async function getPublicProfile(userId: string): Promise<Profile | null> {
-  const fallback = demo.getProfile(userId);
   const data = await requestPublicJson<RawRecord>("users", `/${encodeURIComponent(userId)}`);
-  if (data) return mapProfile(userId, data, fallback);
-  const env = demoEnabled();
-  return !env.production && env.demoAllowed ? fallback : null;
+  if (data) return mapProfile(userId, data);
+  return null;
 }
 
 export async function getPublicPostsByAuthor(userId: string): Promise<Post[]> {
@@ -215,9 +195,9 @@ export async function getPublicPostsByAuthor(userId: string): Promise<Post[]> {
 }
 
 export async function getPublicRanking(): Promise<Record<RankCategory, RankEntry[]>> {
-  return demoList(demo.ranking()) as Record<RankCategory, RankEntry[]>;
+  return { partner: [], agent: [], volunteer: [] };
 }
 
 export async function getPublicCommunities(): Promise<Community[]> {
-  return demoList(demo.communities()) as Community[];
+  return [];
 }

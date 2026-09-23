@@ -12,12 +12,12 @@ test("mantém a produção real mesmo sem uma URL externa de API", () => {
   assert.equal(runtime.isProduction, true);
 });
 
-test("permite demonstração na homologação sem API configurada", () => {
+test("não permite dados sintéticos na homologação sem API configurada", () => {
   const runtime = resolveRuntime({ environment: "homologation", apiUrl: "" });
 
   assert.equal(runtime.environment, "homologation");
   assert.equal(runtime.hasApi, false);
-  assert.equal(runtime.demoAllowed, true);
+  assert.equal(runtime.demoAllowed, false);
   assert.equal(runtime.isProduction, false);
 });
 
@@ -26,7 +26,7 @@ test("normaliza a barra final de uma API local", () => {
 
   assert.equal(runtime.apiBase, "http://localhost:8080");
   assert.equal(runtime.hasApi, true);
-  assert.equal(runtime.demoAllowed, true);
+  assert.equal(runtime.demoAllowed, false);
 });
 
 test("não usa fallback demo quando a API de produção falha", () => {
@@ -36,9 +36,9 @@ test("não usa fallback demo quando a API de produção falha", () => {
   assert.equal(shouldUseDemoFallback(runtime, false), false);
 });
 
-test("usa fallback demo quando a homologação não tem API", () => {
+test("nunca usa fallback demo quando um ambiente não tem API", () => {
   const runtime = resolveRuntime({ environment: "homologation", apiUrl: "" });
 
-  assert.equal(shouldUseDemoFallback(runtime, false), true);
-  assert.equal(shouldUseDemoFallback(runtime, true), true);
+  assert.equal(shouldUseDemoFallback(runtime, false), false);
+  assert.equal(shouldUseDemoFallback(runtime, true), false);
 });

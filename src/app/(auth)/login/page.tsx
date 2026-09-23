@@ -8,15 +8,14 @@ import { DMLogo } from "@/components/app/DMLogo";
 import { Button } from "@/components/app/Button";
 import { Icon } from "@/components/app/Icon";
 import { AuthShowcase } from "@/components/app/AuthShowcase";
-import { DEMO_CREDENTIALS } from "@/lib/app/demo";
 
 export default function LoginPage() {
-  const { login, loginDemo, status, demoAllowed } = useAuth();
+  const { login, status } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const [loading, setLoading] = useState<"login" | "demo" | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,30 +25,14 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setLoading("login");
+    setLoading(true);
     try {
       await login(email, password);
       router.replace("/feed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível entrar.");
-      setLoading(null);
+      setLoading(false);
     }
-  }
-
-  async function handleDemo() {
-    setError(null);
-    setLoading("demo");
-    try {
-      await loginDemo();
-      router.replace("/feed");
-    } catch {
-      setLoading(null);
-    }
-  }
-
-  function fillDemo() {
-    setEmail(DEMO_CREDENTIALS.email);
-    setPassword(DEMO_CREDENTIALS.password);
   }
 
   return (
@@ -86,7 +69,7 @@ export default function LoginPage() {
             )}
 
             <button type="submit" disabled={loading === "login"} className="auth-btn-primary" style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)", boxShadow: "0 8px 22px rgba(244,132,26,0.32)" }}>
-              {loading === "login" ? <span className="app-spinner" style={{ borderTopColor: "#fff" }} /> : "Entrar"}
+              {loading ? <span className="app-spinner" style={{ borderTopColor: "#fff" }} /> : "Entrar"}
             </button>
           </form>
 
@@ -100,21 +83,6 @@ export default function LoginPage() {
             Criar nova conta
           </Link>
 
-          {demoAllowed && (
-            <div className="mt-6 rounded-xl border p-4" style={{ borderColor: "rgba(244,132,26,0.28)", background: "rgba(244,132,26,0.05)" }}>
-              <div className="flex items-center gap-2">
-                <Icon name="bolt" size={16} style={{ color: "#f4841a" }} />
-                <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>Modo demonstração</p>
-              </div>
-              <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
-                Explore sem backend, com dados de exemplo. Conta: <b>{DEMO_CREDENTIALS.email}</b> / <b>{DEMO_CREDENTIALS.password}</b>
-              </p>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <Button variant="secondary" size="sm" block onClick={handleDemo} loading={loading === "demo"} icon="bolt">Entrar sem conexão</Button>
-                <Button variant="outline" size="sm" block onClick={fillDemo} icon="edit">Preencher conta demo</Button>
-              </div>
-            </div>
-          )}
 
           <div className="mt-8 flex justify-center opacity-70">
             <DMLogo size={22} tone="petroleo" />

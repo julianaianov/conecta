@@ -60,3 +60,12 @@ export function metadataForPage({
     },
   };
 }
+
+export function privateMetadataForPage(title: string, path: string): Metadata {
+  return metadataForPage({
+    title,
+    description: "Área privada do DM Conecta.",
+    path,
+    indexable: false,
+  });
+}

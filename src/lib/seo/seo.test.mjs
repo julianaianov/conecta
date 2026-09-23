@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { absoluteUrl, metadataForPage } from "./site.ts";
+import { absoluteUrl, metadataForPage, privateMetadataForPage } from "./site.ts";
 import { postJsonLd, profileJsonLd } from "./structured-data.ts";
 
 test("canonical URL is absolute and strips a trailing slash", () => {
@@ -18,4 +18,11 @@ test("metadata and JSON-LD describe the same public resource", () => {
   assert.equal(metadata.alternates?.canonical, "https://dmconecta.org/post/post-1");
   assert.equal(post.url, "https://dmconecta.org/post/post-1");
   assert.equal(profileJsonLd({ userId: "u-1", name: "Maria", role: "member", profileType: null }, "https://dmconecta.org/perfil/u-1").url, "https://dmconecta.org/perfil/u-1");
+});
+
+test("private routes are noindex while remaining followable", () => {
+  assert.deepEqual(privateMetadataForPage("Criar publicação", "/criar").robots, {
+    index: false,
+    follow: true,
+  });
 });

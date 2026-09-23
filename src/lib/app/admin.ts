@@ -6,14 +6,36 @@
  * número aparece no painel, ele foi contado a partir de publicações, apoios,
  * comentários ou contas.
  */
-import type { AdminSnapshot, DirectoryUser } from "./demo";
 import {
   CONNECTION_TYPES,
   PAYMENT_METHODS, POST_STATUS_LABELS, POST_TYPE_LABELS, PROFILE_LABELS,
   ROLE_LABELS, ROLES, SUPPORT_TYPES, SUPPORT_TYPE_META,
   type PaymentMethod, type PostStatus, type PostType, type ProfileType,
-  type SupportType, type UserRole,
+  type SupportType, type UserRole, type Community, type Connection,
+  type Scrap, type Testimonial, type SupportRecord, type Comment, type Post,
 } from "./types";
+
+export interface DirectoryUser {
+  id: string;
+  name: string;
+  role: UserRole;
+  profileType: ProfileType;
+  neighborhood: string;
+  city: string;
+  memberSince: string;
+  avatarUrl?: string | null;
+}
+
+export interface AdminSnapshot {
+  posts: Post[];
+  supports: SupportRecord[];
+  comments: Comment[];
+  users: DirectoryUser[];
+  communities: Community[];
+  scraps: Scrap[];
+  testimonials: Testimonial[];
+  connections: Connection[];
+}
 
 // ── Período ────────────────────────────────────────────────
 export type PeriodKey = "7" | "30" | "90" | "all";

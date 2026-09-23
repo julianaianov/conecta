@@ -9,14 +9,11 @@
  *
  *     NEXT_PUBLIC_ADMIN_EMAILS="ana@dmconecta.com.br,dm@dmconecta.com.br"
  *
- * Sem a variável, vale só a conta demo `admin@dmconecta.com.br` (senha
- * `demo123`). Isto é um controle de **interface**: quando houver backend, a
- * mesma checagem precisa existir no servidor — o cliente nunca é a fronteira
- * de segurança.
+ * Sem a variável, nenhuma conta recebe acesso. Isto é um controle de
+ * **interface**: a mesma checagem precisa existir no servidor — o cliente
+ * nunca é a fronteira de segurança.
  */
 import type { User } from "./types";
-
-export const DEMO_ADMIN_EMAIL = "admin@dmconecta.com.br";
 
 const CONFIGURED = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
   .split(",")
@@ -26,5 +23,5 @@ const CONFIGURED = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
 export function isPlatformAdmin(user: User | null | undefined): boolean {
   if (!user?.email) return false;
   const email = user.email.toLowerCase().trim();
-  return email === DEMO_ADMIN_EMAIL || CONFIGURED.includes(email);
+  return CONFIGURED.includes(email);
 }

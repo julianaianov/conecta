@@ -31,7 +31,7 @@ const ADMIN_NAV: { href: string; label: string; icon: IconName } = { href: "/adm
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, demoMode, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = isPlatformAdmin(user);
 
@@ -83,14 +83,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            {demoMode && (
-              <span
-                className="hidden rounded-full px-2.5 py-1 text-[11px] font-bold xl:inline-block"
-                style={{ background: "rgba(244,132,26,0.14)", color: "#f4841a" }}
-              >
-                MODO DEMO
-              </span>
-            )}
             {user ? (
               <>
                 <Link

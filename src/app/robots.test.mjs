@@ -8,6 +8,9 @@ test("robots allows public crawlers and points to the canonical sitemap", () => 
   assert.equal(result.sitemap, "https://dmconecta.org/sitemap.xml");
   assert.ok(JSON.stringify(result.rules).includes("OAI-SearchBot"));
   assert.ok(JSON.stringify(result.rules).includes("/admin"));
+  assert.ok(JSON.stringify(result.rules).includes("/perfil$"));
+  assert.ok(!JSON.stringify(result.rules).includes('"/perfil"'));
+  assert.ok(JSON.stringify(result.rules).includes("/conexoes/"));
 });
 
 test("sitemap never includes private action paths", async () => {

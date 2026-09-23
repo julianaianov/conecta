@@ -26,7 +26,10 @@ export function publicFallback<T>({
   demoAllowed: boolean;
   demoValue: T;
 }): T | [] {
-  return !production && demoAllowed ? demoValue : [];
+  void production;
+  void demoAllowed;
+  void demoValue;
+  return [];
 }
 
 export function readServerApiEnv(): ServerApiEnv {
@@ -36,7 +39,7 @@ export function readServerApiEnv(): ServerApiEnv {
     internalUsers: process.env.DM_INTERNAL_USER_API_URL,
     publicApi: process.env.NEXT_PUBLIC_API_URL,
     production,
-    demoAllowed: !production,
+    demoAllowed: false,
   };
 }
 

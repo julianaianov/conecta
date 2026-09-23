@@ -29,13 +29,17 @@ export function resolveRuntime(input: RuntimeInput = {}): RuntimeConfig {
     apiBase,
     // In production an empty base means same-origin requests through Caddy.
     hasApi: isProduction || apiBase.length > 0,
-    demoAllowed: !isProduction,
+    // Nenhum ambiente pode servir dados sintéticos. Fixtures ficam restritas
+    // aos testes isolados.
+    demoAllowed: false,
     isProduction,
   };
 }
 
 export function shouldUseDemoFallback(config: RuntimeConfig, demoMode: boolean): boolean {
-  return config.demoAllowed && (!config.hasApi || demoMode);
+  void config;
+  void demoMode;
+  return false;
 }
 
 export const runtime = resolveRuntime({

@@ -7,12 +7,11 @@ import {
   type AppNotification, type RankCategory, type RankEntry,
   type Connection, type ConnectionParty, type ConnectionStatus, type ConnectionType,
 } from "./types";
-import { demo, DEMO_TOKEN, DEMO_USERS, type AdminSnapshot } from "./demo";
-import { runtime, shouldUseDemoFallback } from "./runtime";
+import type { AdminSnapshot } from "./admin";
+import { runtime } from "./runtime";
 
 const BASE = runtime.apiBase;
 const HAS_API = runtime.hasApi;
-const DEMO_ALLOWED = runtime.demoAllowed;
 const TIMEOUT_MS = 6000;
 
 // ── Estado de sessão (cliente) ─────────────────────────────
@@ -33,13 +32,12 @@ export function getStoredUser(): User | null {
   return { ...user, role: normalizeRole(user.role, user.profileType) };
 }
 export function isDemoMode(): boolean {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(DEMO_KEY) === "1";
+  return false;
 }
-function persist(user: User, token: string, isDemo: boolean) {
+function persist(user: User, token: string) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
-  localStorage.setItem(DEMO_KEY, isDemo ? "1" : "0");
+  localStorage.removeItem(DEMO_KEY);
   document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=604800; samesite=lax`;
 }
 export function clearSession() {
@@ -62,7 +60,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       signal: ctrl.signal,
       headers: {
         "Content-Type": "application/json",
-        ...(token && (!DEMO_ALLOWED || !isDemoMode()) ? { Authorization: `Bearer ${token}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init.headers ?? {}),
       },
     });
@@ -77,17 +75,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw err;
   } finally {
     clearTimeout(timer);
-  }
-}
-
-/** Executa via API real; somente local e homologação podem usar dados demo. */
-async function hybrid<T>(real: () => Promise<T>, fallback: () => T): Promise<T> {
-  if (shouldUseDemoFallback(runtime, isDemoMode())) return fallback();
-  try {
-    return await real();
-  } catch (err) {
-    if (DEMO_ALLOWED && err instanceof NetworkError) return fallback();
-    throw err;
   }
 }
 
@@ -163,79 +150,49 @@ function mapUser(r: RawPost): User {
 // ════════════════════════════════════════════════════════════
 export const api = {
   hasApi: HAS_API,
-  demoAllowed: DEMO_ALLOWED,
+  demoAllowed: false,
 
   async login(email: string, password: string): Promise<User> {
-    if (HAS_API && !(DEMO_ALLOWED && isDemoMode())) {
-      try {
-        const data = await request<{ user: RawPost; token: string }>("/api/auth/login", {
-          method: "POST",
-          body: JSON.stringify({ email, password }),
-        });
-        const user = mapUser(data.user);
-        persist(user, data.token, false);
-        return user;
-      } catch (err) {
-        if (!(err instanceof NetworkError)) throw err;
-        if (!DEMO_ALLOWED) throw new Error("Não foi possível conectar ao serviço. Tente novamente.");
-      }
+    if (!HAS_API) throw new Error("O serviço de autenticação está indisponível.");
+    try {
+      const data = await request<{ user: RawPost; token: string }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      const user = mapUser(data.user);
+      persist(user, data.token);
+      return user;
+    } catch (err) {
+      if (err instanceof NetworkError) throw new Error("Não foi possível conectar ao serviço. Tente novamente.");
+      throw err;
     }
-    if (DEMO_ALLOWED) return this.loginDemo(email, password);
-    throw new Error("O serviço de autenticação está indisponível.");
-  },
-
-  loginDemo(email?: string, password?: string): User {
-    if (!DEMO_ALLOWED) throw new Error("O modo demonstração não está disponível neste ambiente.");
-    const entry = email ? DEMO_USERS[email.toLowerCase().trim()] : undefined;
-    if (email && (!entry || (password && entry.password !== password))) {
-      throw new Error("Credenciais inválidas. Use uma conta demo (ex.: maria@bairro.conecta / demo123).");
-    }
-    const u = entry ?? DEMO_USERS["maria@bairro.conecta"];
-    const user: User = { id: u.id, email: u.email, name: u.name, role: u.role, avatarUrl: u.avatarUrl };
-    persist(user, DEMO_TOKEN, true);
-    return user;
   },
 
   async register(input: { name: string; email: string; password: string; role: UserRole; profileType: ProfileType }): Promise<User> {
-    if (HAS_API && !(DEMO_ALLOWED && isDemoMode())) {
-      try {
-        const data = await request<{ user: RawPost; token: string }>("/api/auth/register", {
-          method: "POST",
-          body: JSON.stringify({
-            name: input.name, email: input.email, password: input.password,
-            role: input.role, profile_type: input.profileType,
-          }),
-        });
-        const user = mapUser(data.user);
-        persist(user, data.token, false);
-        return user;
-      } catch (err) {
-        if (!(err instanceof NetworkError)) throw err;
-        if (!DEMO_ALLOWED) throw new Error("Não foi possível conectar ao serviço. Tente novamente.");
-      }
+    if (!HAS_API) throw new Error("O cadastro está indisponível neste momento.");
+    try {
+      const data = await request<{ user: RawPost; token: string }>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          name: input.name, email: input.email, password: input.password,
+          role: input.role, profile_type: input.profileType,
+        }),
+      });
+      const user = mapUser(data.user);
+      persist(user, data.token);
+      return user;
+    } catch (err) {
+      if (err instanceof NetworkError) throw new Error("Não foi possível conectar ao serviço. Tente novamente.");
+      throw err;
     }
-    if (!DEMO_ALLOWED) throw new Error("O cadastro está indisponível neste momento.");
-    // Local e homologação podem criar uma sessão de demonstração.
-    const user: User = {
-      id: `local-${Date.now()}`, email: input.email, name: input.name,
-      role: input.role, profileType: input.profileType, avatarUrl: null,
-    };
-    persist(user, DEMO_TOKEN, true);
-    return user;
   },
 
   async verify(): Promise<User | null> {
-    if (!DEMO_ALLOWED && isDemoMode()) {
-      clearSession();
-      return null;
-    }
-    if (DEMO_ALLOWED && isDemoMode()) return getStoredUser();
-    if (!HAS_API) return DEMO_ALLOWED ? getStoredUser() : null;
+    if (!HAS_API || !getToken()) return null;
     try {
       const data = await request<{ user: RawPost }>("/api/auth/verify");
       return mapUser(data.user);
-    } catch (err) {
-      if (DEMO_ALLOWED && err instanceof NetworkError) return getStoredUser();
+    } catch {
       return null; // token inválido
     }
   },
@@ -246,177 +203,118 @@ export const api = {
 
   // ── POSTS ────────────────────────────────────────────────
   listPosts(filter?: { type?: string; status?: string; neighborhood?: string; authorId?: string; limit?: number; offset?: number }): Promise<Post[]> {
-    return hybrid(
-      async () => {
-        const q = new URLSearchParams();
-        if (filter?.type) q.set("type", filter.type);
-        if (filter?.status) q.set("status", filter.status);
-        if (filter?.neighborhood) q.set("neighborhood", filter.neighborhood);
-        if (filter?.authorId) q.set("author_id", filter.authorId);
-        q.set("limit", String(filter?.limit ?? 20));
-        q.set("offset", String(filter?.offset ?? 0));
-        const data = await request<{ posts: RawPost[] }>(`/api/posts/?${q}`);
-        return data.posts.map(mapPost);
-      },
-      () => demo.listPosts(filter),
-    );
+    return (async () => {
+      const q = new URLSearchParams();
+      if (filter?.type) q.set("type", filter.type);
+      if (filter?.status) q.set("status", filter.status);
+      if (filter?.neighborhood) q.set("neighborhood", filter.neighborhood);
+      if (filter?.authorId) q.set("author_id", filter.authorId);
+      q.set("limit", String(filter?.limit ?? 20));
+      q.set("offset", String(filter?.offset ?? 0));
+      const data = await request<{ posts: RawPost[] }>(`/api/posts/?${q}`);
+      return data.posts.map(mapPost);
+    })();
   },
 
   mapPosts(type?: string): Promise<Post[]> {
-    return hybrid(
-      async () => {
-        const q = new URLSearchParams();
-        if (type) q.set("type", type);
-        const data = await request<RawPost[]>(`/api/posts/map?${q}`);
-        return data.map(mapPost);
-      },
-      () => demo.mapPosts(type),
-    );
+    return (async () => {
+      const q = new URLSearchParams();
+      if (type) q.set("type", type);
+      const data = await request<RawPost[]>(`/api/posts/map?${q}`);
+      return data.map(mapPost);
+    })();
   },
 
   getPost(id: string): Promise<Post | null> {
-    return hybrid(
-      async () => mapPost(await request<RawPost>(`/api/posts/${id}`)),
-      () => demo.getPost(id),
-    );
+    return request<RawPost>(`/api/posts/${id}`).then(mapPost);
   },
 
-  createPost(input: Partial<Post>, author: User): Promise<Post> {
-    return hybrid(
-      async () =>
-        mapPost(
-          await request<RawPost>("/api/posts/", {
-            method: "POST",
-            body: JSON.stringify({
-              type: input.type, title: input.title, description: input.description,
-              neighborhood: input.neighborhood, city: input.city,
-              latitude: input.latitude, longitude: input.longitude, tags: input.tags ?? [],
-              images: input.images ?? [],
-              videos: input.videos ?? [],
-            }),
-          }),
-        ),
-      () => demo.createPost(input, author),
-    );
+  createPost(input: Partial<Post>, _author: User): Promise<Post> {
+    return request<RawPost>("/api/posts/", {
+      method: "POST",
+      body: JSON.stringify({
+        type: input.type, title: input.title, description: input.description,
+        neighborhood: input.neighborhood, city: input.city,
+        latitude: input.latitude, longitude: input.longitude, tags: input.tags ?? [],
+        images: input.images ?? [],
+        videos: input.videos ?? [],
+      }),
+    }).then(mapPost);
   },
 
   updatePostStatus(id: string, status: PostStatus): Promise<Post | null> {
-    return hybrid(
-      async () => mapPost(await request<RawPost>(`/api/posts/${id}`, { method: "PUT", body: JSON.stringify({ status }) })),
-      () => demo.updatePostStatus(id, status),
-    );
+    return request<RawPost>(`/api/posts/${id}`, { method: "PUT", body: JSON.stringify({ status }) }).then(mapPost);
   },
 
   // ── COMMENTS ─────────────────────────────────────────────
   listComments(postId: string): Promise<Comment[]> {
-    return hybrid(
-      async () => (await request<RawPost[]>(`/api/posts/${postId}/comments`)).map(mapComment),
-      () => demo.listComments(postId),
-    );
+    return request<RawPost[]>(`/api/posts/${postId}/comments`).then((rows) => rows.map(mapComment));
   },
 
-  addComment(postId: string, author: User, content: string): Promise<Comment> {
-    return hybrid(
-      async () => mapComment(await request<RawPost>(`/api/posts/${postId}/comments`, { method: "POST", body: JSON.stringify({ content }) })),
-      () => demo.addComment(postId, author, content),
-    );
+  addComment(postId: string, _author: User, content: string): Promise<Comment> {
+    return request<RawPost>(`/api/posts/${postId}/comments`, { method: "POST", body: JSON.stringify({ content }) }).then(mapComment);
   },
 
   toggleReaction(postId: string): Promise<{ action: string; reactions_count: number }> {
-    return hybrid(
-      async () => request<{ action: string; reactions_count: number }>(`/api/posts/${postId}/reactions`, { method: "POST", body: "{}" }),
-      () => demo.toggleReaction(postId),
-    );
+    return request<{ action: string; reactions_count: number }>(`/api/posts/${postId}/reactions`, { method: "POST", body: "{}" });
   },
 
   // ── SUPPORTS ─────────────────────────────────────────────
   postSupports(postId: string): Promise<{ summary: SupportSummaryItem[]; supports: SupportRecord[] }> {
-    return hybrid(
-      async () => {
-        const data = await request<{ summary: { type: string; count: number }[]; supports: RawPost[] }>(`/api/posts/${postId}/supports`);
-        return {
-          summary: data.summary.map((s) => ({ type: s.type as SupportType, count: Number(s.count) })),
-          supports: data.supports.map(mapSupport),
-        };
-      },
-      () => {
-        const d = demo.postSupports(postId);
-        return { summary: d.summary.map((s) => ({ type: s.type as SupportType, count: s.count })), supports: d.supports };
-      },
-    );
+    return request<{ summary: { type: string; count: number }[]; supports: RawPost[] }>(`/api/posts/${postId}/supports`).then((data) => ({
+      summary: data.summary.map((s) => ({ type: s.type as SupportType, count: Number(s.count) })),
+      supports: data.supports.map(mapSupport),
+    }));
   },
 
-  mySupportsForPost(postId: string, userId: string): Promise<SupportRecord[]> {
-    return hybrid(
-      async () => (await request<RawPost[]>(`/api/posts/${postId}/supports/mine`)).map(mapSupport),
-      () => demo.mySupportsForPost(postId, userId),
-    );
+  mySupportsForPost(postId: string, _userId: string): Promise<SupportRecord[]> {
+    return request<RawPost[]>(`/api/posts/${postId}/supports/mine`).then((rows) => rows.map(mapSupport));
   },
 
-  addSupport(postId: string, user: User, input: Partial<SupportRecord>): Promise<{ support: SupportRecord; reactions_count: number }> {
-    return hybrid(
-      async () => {
-        const data = await request<{ support: RawPost; reactions_count: number }>(`/api/posts/${postId}/supports`, {
-          method: "POST",
-          body: JSON.stringify({
-            type: input.type, message: input.message ?? undefined,
-            amount: input.amount ?? undefined, payment_method: input.paymentMethod ?? undefined,
-            details: input.details ?? {}, status: input.status ?? "confirmed",
-          }),
-        });
-        return { support: mapSupport(data.support), reactions_count: Number(data.reactions_count ?? 0) };
-      },
-      () => {
-        const d = demo.addSupport(postId, user, input);
-        return { support: d.support, reactions_count: d.reactions_count };
-      },
-    );
+  addSupport(postId: string, _user: User, input: Partial<SupportRecord>): Promise<{ support: SupportRecord; reactions_count: number }> {
+    return request<{ support: RawPost; reactions_count: number }>(`/api/posts/${postId}/supports`, {
+      method: "POST",
+      body: JSON.stringify({
+        type: input.type, message: input.message ?? undefined,
+        amount: input.amount ?? undefined, payment_method: input.paymentMethod ?? undefined,
+        details: input.details ?? {}, status: input.status ?? "confirmed",
+      }),
+    }).then((data) => ({ support: mapSupport(data.support), reactions_count: Number(data.reactions_count ?? 0) }));
   },
 
-  removeSupport(postId: string, userId: string, type: SupportType): Promise<{ reactions_count: number }> {
-    return hybrid(
-      async () => request<{ reactions_count: number }>(`/api/posts/${postId}/supports/${type}`, { method: "DELETE" }),
-      () => demo.removeSupport(postId, userId, type),
-    );
+  removeSupport(postId: string, _userId: string, type: SupportType): Promise<{ reactions_count: number }> {
+    return request<{ reactions_count: number }>(`/api/posts/${postId}/supports/${type}`, { method: "DELETE" });
   },
 
-  mySupports(userId: string): Promise<SupportRecord[]> {
-    return hybrid(
-      async () => (await request<RawPost[]>(`/api/posts/my/supports`)).map(mapSupport),
-      () => demo.mySupports(userId),
-    );
+  mySupports(_userId: string): Promise<SupportRecord[]> {
+    return request<RawPost[]>(`/api/posts/my/supports`).then((rows) => rows.map(mapSupport));
   },
 
   // ── NOTIFICAÇÕES (derivadas — sem backend dedicado) ──────
-  async notifications(userId: string): Promise<AppNotification[]> {
-    return DEMO_ALLOWED ? demo.notifications(userId) : [];
+  async notifications(_userId: string): Promise<AppNotification[]> {
+    return [];
   },
 
   // ── PROFILE ──────────────────────────────────────────────
   async getProfile(userId: string): Promise<Profile | null> {
-    // user-service tem GET /:id, mas os campos sociais (bio/cover/status) do demo
-    // são mais ricos. Em produção, nenhum campo vem da base de demonstração.
-    const d = DEMO_ALLOWED ? demo.getProfile(userId) : null;
-    if (DEMO_ALLOWED && (!HAS_API || isDemoMode())) return d ?? this.profileFromSession(userId);
     try {
       const r = await request<RawPost>(`/api/users/${userId}`);
       return {
         userId,
-        name: String(r.name ?? d?.name ?? "Usuário"),
-        role: normalizeRole((r.role as string) ?? d?.role, (r.profile_type as string) ?? d?.profileType),
-        profileType: (r.profile_type ?? d?.profileType ?? null) as ProfileType | null,
-        bio: (r.bio as string) ?? d?.bio ?? null,
-        status: d?.status ?? null,
-        city: (r.city as string) ?? d?.city ?? null,
-        neighborhood: d?.neighborhood ?? null,
-        website: (r.website as string) ?? d?.website ?? null,
-        avatarUrl: (r.avatar_url as string) ?? d?.avatarUrl ?? null,
-        coverUrl: d?.coverUrl ?? null,
-        memberSince: d?.memberSince,
-        friendCount: d?.friendCount ?? 0,
+        name: String(r.name ?? "Usuário"),
+        role: normalizeRole(r.role as string, r.profile_type as string),
+        profileType: (r.profile_type ?? null) as ProfileType | null,
+        bio: (r.bio as string) ?? null,
+        status: (r.status as string) ?? null,
+        city: (r.city as string) ?? null,
+        neighborhood: (r.neighborhood as string) ?? null,
+        website: (r.website as string) ?? null,
+        avatarUrl: (r.avatar_url as string) ?? null,
+        coverUrl: (r.cover_url as string) ?? null,
+        memberSince: (r.member_since as string) ?? undefined,
+        friendCount: Number(r.friend_count ?? 0),
       };
     } catch (err) {
-      if (DEMO_ALLOWED) return d ?? this.profileFromSession(userId);
       if (err instanceof NetworkError) throw new Error("Não foi possível carregar o perfil. Tente novamente.");
       throw err;
     }
@@ -433,71 +331,57 @@ export const api = {
     };
   },
 
-  // ── SOCIAL (dados demonstrativos até existirem endpoints próprios) ──
+  // ── SOCIAL ──────────────────────────────────────────────
   postsByAuthor(userId: string): Promise<Post[]> {
-    return hybrid(
-      async () => {
-        const q = new URLSearchParams({ author_id: userId, limit: "5000", offset: "0" });
-        const data = await request<{ posts: RawPost[] }>(`/api/posts/?${q}`);
-        return data.posts.map(mapPost);
-      },
-      () => demo.postsByAuthor(userId),
-    );
+    const q = new URLSearchParams({ author_id: userId, limit: "5000", offset: "0" });
+    return request<{ posts: RawPost[] }>(`/api/posts/?${q}`).then((data) => data.posts.map(mapPost));
   },
-  scrapsFor(userId: string): Promise<Scrap[]> {
-    return Promise.resolve(DEMO_ALLOWED ? demo.scrapsFor(userId) : []);
+  scrapsFor(_userId: string): Promise<Scrap[]> {
+    return Promise.resolve([]);
   },
-  addScrap(target: string, author: User, content: string): Promise<Scrap> {
-    if (!DEMO_ALLOWED) return Promise.reject(new Error("Recados ainda não estão disponíveis em produção."));
-    return Promise.resolve(demo.addScrap(target, author, content));
+  addScrap(_target: string, _author: User, _content: string): Promise<Scrap> {
+    return Promise.reject(new Error("Recados ainda não estão disponíveis até a integração do serviço."));
   },
-  testimonialsFor(userId: string): Promise<Testimonial[]> {
-    return Promise.resolve(DEMO_ALLOWED ? demo.testimonialsFor(userId) : []);
+  testimonialsFor(_userId: string): Promise<Testimonial[]> {
+    return Promise.resolve([]);
   },
-  addTestimonial(target: string, author: User, content: string): Promise<Testimonial> {
-    if (!DEMO_ALLOWED) return Promise.reject(new Error("Depoimentos ainda não estão disponíveis em produção."));
-    return Promise.resolve(demo.addTestimonial(target, author, content));
+  addTestimonial(_target: string, _author: User, _content: string): Promise<Testimonial> {
+    return Promise.reject(new Error("Depoimentos ainda não estão disponíveis até a integração do serviço."));
   },
   communities(): Promise<Community[]> {
-    return Promise.resolve(DEMO_ALLOWED ? demo.communities() : []);
+    return Promise.resolve([]);
   },
-  friendsOf(userId: string): Promise<Profile[]> {
-    return Promise.resolve(DEMO_ALLOWED ? demo.friendsOf(userId) : []);
+  friendsOf(_userId: string): Promise<Profile[]> {
+    return Promise.resolve([]);
   },
 
-  /** Ranking — fica vazio em produção até existir endpoint persistente. */
+  /** Ranking sem endpoint persistente: não inventa resultados. */
   ranking(): Promise<Record<RankCategory, RankEntry[]>> {
-    return Promise.resolve(DEMO_ALLOWED ? demo.ranking() : { partner: [], agent: [], volunteer: [] });
+    return Promise.resolve({ partner: [], agent: [], volunteer: [] });
   },
 
-  // ── CONEXÕES (sempre demo — sem backend) ─────────────────
-  /**
-   * O fluxo "Solicitar Conexão". Não há tabela no backend ainda; quando
-   * houver, estes quatro métodos viram chamadas a `/api/connections`.
-   */
-  connectionsFor(userId: string): Promise<Connection[]> {
-    return Promise.resolve(demo.connectionsFor(userId));
+  // ── CONEXÕES ────────────────────────────────────────────
+  connectionsFor(_userId: string): Promise<Connection[]> {
+    return Promise.resolve([]);
   },
-  getConnection(id: string): Promise<Connection | null> {
-    return Promise.resolve(demo.getConnection(id));
+  getConnection(_id: string): Promise<Connection | null> {
+    return Promise.resolve(null);
   },
-  connectionTargets(userId: string): Promise<ConnectionParty[]> {
-    return Promise.resolve(demo.connectionTargets(userId));
+  connectionTargets(_userId: string): Promise<ConnectionParty[]> {
+    return Promise.resolve([]);
   },
-  createConnection(input: { from: User; toUserId: string; type: ConnectionType; message: string; postId?: string | null }): Promise<Connection> {
-    return Promise.resolve(demo.createConnection(input));
+  createConnection(_input: { from: User; toUserId: string; type: ConnectionType; message: string; postId?: string | null }): Promise<Connection> {
+    return Promise.reject(new Error("Conexões ainda não estão disponíveis até a integração do serviço."));
   },
-  updateConnection(id: string, status: ConnectionStatus, outcome?: string): Promise<Connection | null> {
-    return Promise.resolve(demo.updateConnection(id, status, outcome));
+  updateConnection(_id: string, _status: ConnectionStatus, _outcome?: string): Promise<Connection | null> {
+    return Promise.reject(new Error("Conexões ainda não estão disponíveis até a integração do serviço."));
   },
 
-  /**
-   * Base bruta do painel administrativo. Hoje sai do demo: o backend não tem
-   * endpoint agregador (`/api/admin/overview`), e users/posts/supports vivem em
-   * serviços separados. Quando existir, é só trocar por um `request()` aqui —
-   * o formato `AdminSnapshot` é o contrato.
-   */
+  /** Sem endpoint agregador: o painel permanece vazio até a integração real. */
   adminSnapshot(): Promise<AdminSnapshot> {
-    return Promise.resolve(demo.snapshot());
+    return Promise.resolve({
+      posts: [], supports: [], comments: [], users: [], communities: [],
+      scraps: [], testimonials: [], connections: [],
+    });
   },
 };

@@ -30,6 +30,9 @@ jobs:
       - name: Testar contrato de ambiente
         run: npm run test
 
+      - name: Testar serviços Node
+        run: npm run test:services
+
       - name: Verificar estilo
         run: npm run lint -- --max-warnings=0
 
@@ -41,3 +44,12 @@ jobs:
 
       - name: Construir homologação
         run: npm run build
+
+      - name: Auditar superfícies públicas de SEO
+        run: |
+          npm run start &
+          node -e 'async function w(){for(let i=0;i<30;i++){try{const r=await fetch("http://127.0.0.1:3000");if(r.ok||r.status===200)process.exit(0)}catch(e){}await new Promise(r=>setTimeout(r,1000));}process.exit(1)};w();'
+          npm run seo:audit
+        env:
+          SEO_AUDIT_BASE_URL: http://127.0.0.1:3000
+
