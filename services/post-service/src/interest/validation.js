@@ -2,6 +2,8 @@
 // Erros por campo, no formato das demais rotas da demanda.
 
 const { INTEREST_KINDS, OFFER_TYPES, KINDS_BY_ROLE } = require('./constants');
+const { EVENT_INTEREST_KINDS } = require('../event/constants');
+const { isUuid } = require('../security');
 
 const MAX_MESSAGE = 2000;
 // Espelha CONNECTION_TYPES do user-service (routes/connections.js).
@@ -42,7 +44,18 @@ function validateInterest(input, role) {
     else if (text(body.message).length > MAX_MESSAGE) errors.message = `Use no máximo ${MAX_MESSAGE} caracteres`;
     else message = text(body.message) || null;
   }
-  return { value: { kind, offerTypes, message }, errors };
+  // Evento da própria demanda a que a oferta se liga (T25). O banco confere
+  // que o evento é publicado e é desta demanda.
+  let eventId = null;
+  if (body.eventId !== undefined && body.eventId !== null && body.eventId !== '') {
+    if (!isUuid(body.eventId)) errors.eventId = 'Evento inválido';
+    else if (kind && !EVENT_INTEREST_KINDS.includes(kind)) {
+      errors.eventId = 'Só participação e voluntariado se vinculam a um evento';
+    } else {
+      eventId = body.eventId;
+    }
+  }
+  return { value: { kind, offerTypes, message, eventId }, errors };
 }
 
 /** Pedido de conexão com o Agente: `{ type?, message }`. */

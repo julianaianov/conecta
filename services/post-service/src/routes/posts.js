@@ -12,6 +12,9 @@ const POST_PUBLIC_COLUMNS = [
   'reactions_count', 'comments_count', 'views_count', 'shares_count', 'created_at', 'updated_at',
   // Post-vitrine de demanda publicada (T06/T07): o frontend linka a demanda.
   'demand_id',
+  // Post-vitrine de evento publicado (T25): o frontend linka o evento, e a
+  // camada de conteúdos do mapa (T20, slide 19) mostra o evento **com data**.
+  'event_id', 'event_starts_at',
 ];
 // `images` com `upload:<id>` (foto da demanda no post-vitrine, T08) sai como
 // endereço público estável /api/posts/uploads/<id>/content.

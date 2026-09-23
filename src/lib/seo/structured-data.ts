@@ -1,4 +1,5 @@
 import type { Post, Profile, PublicDemand } from "../app/types.ts";
+import type { PublicEvent } from "../app/event.ts";
 import { absoluteUrl } from "./site.ts";
 
 type JsonLd = Record<string, unknown>;
@@ -82,5 +83,58 @@ export function demandJsonLd(demand: PublicDemand, url: string): JsonLd {
     }),
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     ...(locationName ? { contentLocation: { "@type": "Place", name: locationName } } : {}),
+  });
+}
+
+/**
+ * Evento do território (T25) como schema.org/Event: data, local e inscrição.
+ * `offers` declara o valor **informado pelo organizador**; a plataforma não
+ * processa pagamento (decisão 5), então a URL da oferta é a própria página.
+ */
+export function eventJsonLd(event: PublicEvent, url: string): JsonLd {
+  const address = compact({
+    "@type": "PostalAddress",
+    streetAddress: [event.street, event.addressNumber].filter(Boolean).join(", "),
+    addressLocality: event.municipality ?? undefined,
+    addressRegion: event.uf ?? undefined,
+    postalCode: event.cep ?? undefined,
+    addressCountry: "BR",
+  });
+  return compact({
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "@id": `${url}#evento`,
+    url,
+    name: event.title,
+    description: event.description,
+    startDate: event.startsAt,
+    endDate: event.endsAt,
+    eventStatus: event.status === "cancelado"
+      ? "https://schema.org/EventCancelled"
+      : "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    image: event.photoUrl ? mediaUrl(event.photoUrl) : undefined,
+    location: compact({
+      "@type": "Place",
+      name: event.locationName,
+      address,
+      ...(event.latitude !== null && event.longitude !== null
+        ? { geo: { "@type": "GeoCoordinates", latitude: event.latitude, longitude: event.longitude } }
+        : {}),
+    }),
+    organizer: compact({
+      "@type": "Organization",
+      name: event.organizerName ?? undefined,
+      url: absoluteUrl(`/perfil/${event.organizerId}`),
+    }),
+    ...(event.capacity !== null ? { maximumAttendeeCapacity: event.capacity } : {}),
+    offers: compact({
+      "@type": "Offer",
+      url,
+      price: event.pricing === "gratuito" ? 0 : (event.priceCents ?? 0) / 100,
+      priceCurrency: "BRL",
+      availability: event.seatsLeft === 0 ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
+    }),
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
   });
 }

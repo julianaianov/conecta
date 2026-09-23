@@ -59,8 +59,13 @@ test('perfil de apoio no user_db usa os vocabulários da demanda', () => {
 
 test('validateInterest: tipo por papel, oferta obrigatória só no apoio, mensagem', () => {
   assert.deepEqual(I.validateInterest({ offerTypes: ['recursos', 'recursos', 'servicos'] }, 'partner'), {
-    value: { kind: 'apoio', offerTypes: ['recursos', 'servicos'], message: null }, errors: {},
+    value: { kind: 'apoio', offerTypes: ['recursos', 'servicos'], message: null, eventId: null }, errors: {},
   });
+  // Evento da demanda (T25): só participação e voluntariado se vinculam.
+  const EVENT_ID = '11111111-1111-4111-8111-111111111111';
+  assert.equal(I.validateInterest({ kind: 'voluntariado', eventId: EVENT_ID }, 'member').value.eventId, EVENT_ID);
+  assert.ok(I.validateInterest({ kind: 'apoio', offerTypes: ['recursos'], eventId: EVENT_ID }, 'partner').errors.eventId);
+  assert.ok(I.validateInterest({ kind: 'participacao', eventId: 'nao-e-uuid' }, 'member').errors.eventId);
   assert.ok(I.validateInterest({ kind: 'apoio' }, 'partner').errors.offerTypes);
   assert.ok(I.validateInterest({ kind: 'apoio', offerTypes: ['dinheiro'] }, 'partner').errors.offerTypes);
   assert.ok(I.validateInterest({ kind: 'voluntariado' }, 'partner').errors.kind);

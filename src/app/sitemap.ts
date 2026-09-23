@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getPublicDemandSummaries, getPublicMapTerritories, getPublicPosts } from "../lib/server/public-data.ts";
+import { getPublicDemandSummaries, getPublicEvents, getPublicMapTerritories, getPublicPosts } from "../lib/server/public-data.ts";
 import { absoluteUrl } from "../lib/seo/site.ts";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +9,7 @@ const STABLE_PUBLIC_PATHS = [
   "/",
   "/feed",
   "/mapa",
+  "/eventos",
   "/ranking",
   "/conexoes",
   "/politica-de-privacidade",
@@ -50,6 +51,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Página pública da demanda (T09): só publicada em diante.
     for (const demand of await getPublicDemandSummaries()) {
       if (demand.id) addUnique(entries, `/demandas/${encodeURIComponent(demand.id)}`, demand.publishedAt ?? undefined);
+    }
+  } catch {
+    // Idem: sem o serviço, o sitemap segue com as demais URLs.
+  }
+
+  try {
+    // Página pública do evento (T25); a agenda fica na URL estável /eventos.
+    for (const event of await getPublicEvents({ when: "todos", limit: 50 })) {
+      if (!event.id) continue;
+      addUnique(entries, `/eventos/${encodeURIComponent(event.id)}`, event.publishedAt ?? undefined);
     }
   } catch {
     // Idem: sem o serviço, o sitemap segue com as demais URLs.

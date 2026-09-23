@@ -36,6 +36,11 @@ import {
 import type { DemandDossierDownload, DemandDossierList, DossierVerification, PublicDossierInfo } from "./types";
 import type { MyReport, ReportContext, ReportInput, ReportTargetKind } from "./report";
 import type {
+  EventAgendaFilter, EventAttendee, EventInput, EventSignupContext, EventSignupSummary,
+  EventTerritory, MyEventSignup, OrganizerEvent, PublicEvent,
+} from "./event";
+import { buildEventAgendaQuery } from "./event";
+import type {
   InstitutionalContext, InstitutionalDemandFilter, InstitutionalDemandPage, InstitutionalDemandView,
   InstitutionalOfferInput, InstitutionalResponseInput, InstitutionalStatus, InstitutionalTrack,
   ForwardingDirection, ForwardingInboxItem, ForwardingInput, ForwardingStatus, ForwardingUpdateKind, ForwardingView,
@@ -437,6 +442,8 @@ export class DemandRequestError extends Error {
 }
 
 const DEMANDS = "/api/posts/demands";
+/** Eventos e inscrições (T25): outra base do post-service. */
+const EVENTS = "/api/posts/events";
 
 /** Requisição da API de demanda; 404 vira `null`. `prefix`: outra base do post-service (T13). */
 async function demandRequest<T>(path: string, init: RequestInit = {}, prefix: string = DEMANDS): Promise<T | null> {
@@ -1506,5 +1513,94 @@ export const api = {
   /** Eliminação/anonimização da conta, com senha e confirmação escrita. */
   requestAccountErasure(input: { password: string; confirmation: string; description?: string }): Promise<AccountErasureResult> {
     return request<AccountErasureResult>("/api/users/me/privacy/erasure", { method: "POST", ...json(input) });
+  },
+  // ── EVENTOS E INSCRIÇÕES (T25) ───────────────────────────
+  // Fonte: slide 9 (Membro da Comunidade inscreve-se em eventos e oferece
+  // voluntariado), slide 18 (conteúdos do território) e slide 20 ("Financiar
+  // eventos"). Decisão 5: evento pago declara o valor; a plataforma não cobra.
+  // Erros de campo chegam como `DemandRequestError.fields`.
+
+  /** Agenda pública (sem login): próximos eventos do território. */
+  async events(filter: EventAgendaFilter = {}): Promise<{ events: PublicEvent[]; nextCursor: string | null }> {
+    const query = buildEventAgendaQuery(filter);
+    const body = await demandRequest<{ events: PublicEvent[]; nextCursor: string | null }>(
+      query ? `/?${query}` : "/", {}, EVENTS,
+    );
+    return { events: body?.events ?? [], nextCursor: body?.nextCursor ?? null };
+  },
+
+  /** Territórios com evento próximo (agenda por território). */
+  async eventTerritories(): Promise<EventTerritory[]> {
+    const body = await demandRequest<{ territories: EventTerritory[] }>("/territories", {}, EVENTS);
+    return body?.territories ?? [];
+  },
+
+  /** O evento público; `null` quando não existe ou ainda é rascunho. */
+  event(id: string): Promise<{ event: PublicEvent; signups: EventSignupSummary } | null> {
+    return demandRequest(`/${encodeURIComponent(id)}`, {}, EVENTS);
+  },
+
+  /** O que esta conta pode fazer neste evento (inscrever-se, cancelar). */
+  eventSignupContext(id: string): Promise<EventSignupContext | null> {
+    return demandRequest<EventSignupContext>(`/${encodeURIComponent(id)}/signups/mine`, {}, EVENTS);
+  },
+
+  /** Inscreve-se (vaga ou lista de espera quando o organizador a habilitou). */
+  signUpForEvent(id: string, note?: string): Promise<{ signup: MyEventSignup; summary: EventSignupSummary }> {
+    return demandRequired(`/${encodeURIComponent(id)}/signups`, { method: "POST", ...json({ note }) }, EVENTS);
+  },
+
+  /** Cancela a própria inscrição (abre a vaga para a fila de espera). */
+  cancelEventSignup(id: string): Promise<{ signup: MyEventSignup; summary: EventSignupSummary }> {
+    return demandRequired(`/${encodeURIComponent(id)}/signups/cancel`, { method: "POST" }, EVENTS);
+  },
+
+  /** Minhas inscrições, com o evento de cada uma. */
+  async myEventSignups(): Promise<Array<MyEventSignup & { event: PublicEvent | null }>> {
+    const body = await demandRequest<{ signups: Array<MyEventSignup & { event: PublicEvent | null }> }>(
+      "/signups/mine", {}, EVENTS,
+    );
+    return body?.signups ?? [];
+  },
+
+  // Organizador (Agente de Transformação e Poder Público validado)
+  async myEvents(status?: string): Promise<OrganizerEvent[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    const body = await demandRequest<{ events: OrganizerEvent[] }>(`/mine${query}`, {}, EVENTS);
+    return body?.events ?? [];
+  },
+
+  myEvent(id: string): Promise<{ event: OrganizerEvent } | null> {
+    return demandRequest(`/mine/${encodeURIComponent(id)}`, {}, EVENTS);
+  },
+
+  createEvent(input: EventInput): Promise<{ event: OrganizerEvent }> {
+    return demandRequired("/", { method: "POST", ...json(input) }, EVENTS);
+  },
+
+  updateEvent(id: string, input: EventInput): Promise<{ event: OrganizerEvent }> {
+    return demandRequired(`/${encodeURIComponent(id)}`, { method: "PUT", ...json(input) }, EVENTS);
+  },
+
+  publishEvent(id: string): Promise<{ event: OrganizerEvent }> {
+    return demandRequired(`/${encodeURIComponent(id)}/publish`, { method: "POST" }, EVENTS);
+  },
+
+  cancelEvent(id: string, reason: string): Promise<{ event: OrganizerEvent }> {
+    return demandRequired(`/${encodeURIComponent(id)}/cancel`, { method: "POST", ...json({ reason }) }, EVENTS);
+  },
+
+  /** Lista de presença do organizador (LGPD: nome, categoria e estado). */
+  eventAttendees(id: string, status?: string): Promise<{ attendees: EventAttendee[]; summary: EventSignupSummary }> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    return demandRequired(`/mine/${encodeURIComponent(id)}/signups${query}`, {}, EVENTS);
+  },
+
+  markEventAttendance(id: string, signupId: string, attended: boolean): Promise<{ attendee: EventAttendee; summary: EventSignupSummary }> {
+    return demandRequired(
+      `/mine/${encodeURIComponent(id)}/signups/${encodeURIComponent(signupId)}/attendance`,
+      { method: "PUT", ...json({ attended }) },
+      EVENTS,
+    );
   },
 };

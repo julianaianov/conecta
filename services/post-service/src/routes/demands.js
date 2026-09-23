@@ -67,13 +67,16 @@ const {
   EXECUTION_EVENT_TYPES, TRANSITION_REQUIRED_MILESTONE, RECORD_MILESTONE_LABELS,
 } = require('../execution/constants');
 
+const { DEMAND_EVENT_TYPES: EVENT_EVENT_TYPES } = require('../event/constants');
+
 // Eventos com payload->'public' exposto como `details` (T13, encaminhamentos da
 // T14, interesse/conexão da T15, apoio da T16, execução da T17, prestação de
-// contas da T18 e divulgação de ações do Poder Público da T22).
+// contas da T18, divulgação de ações do Poder Público da T22 e eventos do
+// território da T25).
 const DETAILED_EVENT_TYPES = [
   ...INSTITUTIONAL_EVENT_TYPES, ...FORWARDING_EVENT_TYPES, ...INTEREST_EVENT_TYPES,
   ...SUPPORT_EVENT_TYPES, ...EXECUTION_EVENT_TYPES, ...ACCOUNTABILITY_EVENT_TYPES,
-  ...GOVERNMENT_EVENT_TYPES,
+  ...GOVERNMENT_EVENT_TYPES, ...EVENT_EVENT_TYPES,
 ];
 const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
 const { parseUploadRef, describeUploads } = require('../uploads');

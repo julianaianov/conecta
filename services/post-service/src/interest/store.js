@@ -10,7 +10,10 @@ const INTEREST_SQL = `
   i.id, i.demand_id, i.user_id, i.user_name, i.user_avatar, i.user_category, i.profile_type,
   i.kind::text AS kind, i.offer_types::text[] AS offer_types, i.message, i.connection_id,
   i.connection_status::text AS connection_status, i.connection_requested_at,
-  i.connection_answered_at, i.withdrawn_at, i.created_at, i.updated_at`;
+  i.connection_answered_at, i.withdrawn_at, i.created_at, i.updated_at,
+  -- Evento da mesma demanda a que o voluntariado/participação se liga (T25).
+  i.event_id, (SELECT ev.title FROM events ev WHERE ev.id = i.event_id) AS event_title,
+  (SELECT ev.starts_at FROM events ev WHERE ev.id = i.event_id) AS event_starts_at`;
 
 const toIso = (value) => (value instanceof Date ? value.toISOString() : value ?? null);
 
@@ -28,6 +31,10 @@ function serializeOwnInterest(row) {
     connectionAnsweredAt: toIso(row.connection_answered_at),
     withdrawnAt: toIso(row.withdrawn_at),
     createdAt: toIso(row.created_at),
+    // Evento da demanda a que esta oferta se liga (T25); null quando não há.
+    event: row.event_id
+      ? { id: row.event_id, title: row.event_title ?? null, startsAt: toIso(row.event_starts_at) }
+      : null,
   };
 }
 

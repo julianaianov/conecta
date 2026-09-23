@@ -28,6 +28,7 @@ const mapRoutes = require('./routes/map');
 const rankingsRoutes = require('./routes/rankings');
 const reportsRoutes = require('./routes/reports');
 const privacyRoutes = require('./routes/privacy');
+const eventsRoutes = require('./routes/events');
 const { createRankingService } = require('./ranking/service');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
@@ -118,6 +119,8 @@ const createApp = ({
   // Direitos do titular sobre o post_db (T24): /me/privacy/data e
   // /me/privacy/anonymize. Antes das rotas de posts, cujo `/:id` é UUID.
   app.use('/', privacyRoutes({ pool, auth }));
+  // Eventos do território e inscrição da comunidade (T25): /events.
+  app.use('/events', eventsRoutes({ pool, auth, institutionStatus, governmentGate: institutional }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 

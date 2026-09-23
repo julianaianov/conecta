@@ -46,7 +46,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 005, user-service 012, post-service 021. Registre a migração em
+  auth-service 005, user-service 012, post-service 022. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -1087,6 +1087,75 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `services/post-service/test/privacy-routes.test.js`,
   `services/post-service/test/privacy-e2e.test.js` (suíte `privacy` do
   `test:e2e`) e `src/lib/app/privacy.test.mjs`.
+
+## Eventos do território e inscrições (T25)
+
+- Fonte: Apresentação, slide 9 (Membros da Comunidade "Inscrever-se em
+  eventos", "Oferecer voluntariado"), slide 18 (conteúdos do território:
+  eventos, oficinas culturais, mutirões, ações ambientais, aulas esportivas),
+  slide 19 (o mapa mostra demandas **e** conteúdos) e slide 20 ("Financiar
+  eventos"). Decisão 5: **nada de pagamento na plataforma** — evento pago
+  declara o valor e cobra fora.
+- Migração post 021 (`021-events.sql`): `events` (organizador Agente ou Poder
+  Público, `demand_id` opcional e sempre do próprio organizador, tipo, título,
+  descrição, início e fim, local com **CEP** e coordenada, território, público,
+  vagas opcionais com fila de espera, gratuito/pago com valor declarado,
+  acessibilidade em 8 recursos, foto por link `https`, estado `rascunho` →
+  `publicado` → `cancelado` e contadores), `event_signups` (uma inscrição em
+  aberto por conta × evento, `inscrito`/`lista_de_espera`/`cancelado`, posição
+  na fila, observação e presença), `posts.event_id`/`posts.event_starts_at`
+  (post-vitrine `type = 'event'`, que leva **a data** para a camada de
+  conteúdos do mapa) e `demand_interests.event_id` (voluntariado e participação
+  da T15 ligados a um evento da mesma demanda).
+- Triggers: `events_guard` (gestão só lê; nada é excluído; organizador, demanda
+  e categoria imutáveis; `events_assert_publishable` exige o mínimo na
+  publicação e em toda edição de evento publicado; vagas nunca abaixo dos
+  inscritos), `events_sync_showcase` (`SECURITY DEFINER`: cria e mantém o
+  post-vitrine, oculta no cancelamento e grava `evento_publicado`,
+  `evento_atualizado` e `evento_cancelado` em `demand_events`, públicos, com
+  `payload.public`), `posts_event_showcase_guard`, `event_signups_guard` (só
+  evento publicado e não encerrado, nunca do organizador; vaga → `inscrito`,
+  sem vaga → fila quando habilitada, senão recusa; presença só do início em
+  diante) e `event_signups_after` (contadores e **promoção do primeiro da
+  fila** quando um inscrito cancela, com renumeração).
+- Domínio em `services/post-service/src/event/` (`constants.js` — vocabulário,
+  `ORGANIZER_ROLES = ['agent','government']`, `SIGNUP_ROLES = ['member']` e o
+  aviso `EMAIL_NOTIFICATIONS`; `validation.js` — rascunho x publicação;
+  `store.js` — projeções e tradução dos erros do banco).
+- Rotas (`src/routes/events.js`, montada em `/events`; público em
+  `/api/posts/events`): públicas `GET /` (agenda com `kind`, `territory`,
+  `municipality`, `district`, `uf`, `demandId`, `pricing`, `accessibility`,
+  `from`/`to`, `q`, `when=proximos|passados|todos`, `status`, `limit` ≤ 50 e
+  keyset por `starts_at, id`), `GET /territories`, `GET /reference`,
+  `GET /:id` e `GET /:id/signups/summary` (só contagens); com token
+  `GET /signups/mine`, `GET /:id/signups/mine`, `POST /:id/signups` e
+  `POST /:id/signups/cancel`; organizador `GET /mine`, `GET /mine/:id`,
+  `POST /`, `PUT /:id`, `POST /:id/publish`, `POST /:id/cancel`,
+  `GET /mine/:id/signups` e `PUT /mine/:id/signups/:sid/attendance`.
+  Poder Público passa pelo gate de instituição validada para criar, editar e
+  publicar.
+- LGPD: o público vê contagens, nunca a lista. A lista de presença do
+  organizador traz **só** nome público, categoria da conta, subperfil, estado,
+  posição na fila, observação e presença — sem avatar, sem contato e sem id de
+  conta (o id usado para marcar presença é o da inscrição).
+- **Confirmação por e-mail não existe**: não há serviço de envio. A API devolve
+  `emailNotifications` com `state: "em_desenvolvimento"` e a interface mostra
+  `InDevelopment` (governança, slide 26). Não invente provedor de e-mail.
+- Frontend: `src/lib/app/event.ts` (espelho comparado em `event.test.mjs`),
+  bloco "EVENTOS E INSCRIÇÕES (T25)" em `api.ts`, `getPublicEvent(s)` e
+  `getPublicEventTerritories` em `src/lib/server/public-data.ts`,
+  `eventJsonLd` (schema.org/Event) em `src/lib/seo/structured-data.ts`.
+  Páginas: `/eventos` (agenda SSR indexável, filtros por formulário GET e lista
+  por território) e `/eventos/[id]` (SSR indexável, no sitemap);
+  `/meus-eventos` e `/minhas-inscricoes` (`noindex`, no `robots.ts`).
+  Componentes em `src/components/app/event/` (`EventParts`, `PublicEventView`,
+  `EventSignupPanel`, `MyEventsClient`, `MyEventSignupsClient`).
+- Grant dm-infra `021-gestao-app-post-events.sql` (**só `SELECT`**); contrato e
+  pendências em `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.17 e
+  `dm-docs/docs/production-status.md`.
+- Testes: `test/event-domain.test.js`, `test/events-routes.test.js`,
+  `test/event-e2e.test.js` (suíte `event` do `test:e2e`) e
+  `src/lib/app/event.test.mjs`.
 
 ## Segurança dos serviços
 

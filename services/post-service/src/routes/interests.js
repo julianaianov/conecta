@@ -16,7 +16,10 @@
 //   GET  /interests/mine                as próprias manifestações
 //   GET  /:id/interests/mine            manifestações nesta demanda, tipos
 //                                       permitidos e compatibilidade
-//   POST /:id/interests                 { kind, offerTypes[], message? }
+//   POST /:id/interests                 { kind, offerTypes[], message?, eventId? }
+//                                       (`eventId`: evento publicado desta
+//                                       demanda ao qual o voluntariado ou a
+//                                       participação se liga, T25)
 //   POST /:id/interests/:iid/connection { type?, message } → conexão com o
 //                                       Agente no user-service, vinculada à demanda
 //   POST /:id/interests/:iid/withdraw   retira (e cancela o pedido pendente)
@@ -66,6 +69,9 @@ function mapInterestDbError(err) {
   }
   if (err?.code === '23514' && /interesse e conexão só|conexão não permitido|resposta de conexão|retirado não muda/.test(message)) {
     return new HttpError(409, { error: message, code: 'invalid_state' });
+  }
+  if (err?.code === '23514' && /evento publicado desta demanda|se vinculam a um evento|evento da manifestação/.test(message)) {
+    return new HttpError(422, { error: message, code: 'validation_failed', fields: { eventId: message } });
   }
   if (err?.code === '23514' && /autor não manifesta/.test(message)) {
     return new HttpError(403, { error: 'O autor não manifesta interesse na própria demanda', code: 'own_demand' });
@@ -328,12 +334,13 @@ module.exports = ({
     }
     const { rows } = await pool.query(
       `INSERT INTO demand_interests
-         (demand_id, user_id, user_name, user_avatar, user_category, profile_type, organization_id, kind, offer_types, message)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::demand_interest_offer[], $10)
+         (demand_id, user_id, user_name, user_avatar, user_category, profile_type, organization_id, kind, offer_types, message, event_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::demand_interest_offer[], $10, $11)
        RETURNING id`,
       [
         req.params.id, req.user.userId, req.user.name || req.user.email || null, req.user.avatarUrl || null,
         ROLE_CATEGORY[role], req.user.profileType || null, organizationId, value.kind, value.offerTypes, value.message,
+        value.eventId,
       ],
     );
     const interest = await store.loadOwnInterest(pool, req.params.id, rows[0].id, req.user.userId);

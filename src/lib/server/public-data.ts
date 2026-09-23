@@ -33,6 +33,10 @@ import { resolveMediaUrl } from "../app/uploads.ts";
 import { runtime } from "../app/runtime.ts";
 import { boundedPublicLimit, fetchPublicJson, MAX_PUBLIC_LIST_LIMIT } from "./public-api.ts";
 import { buildMapQuery, emptyMapFilter, type MapFilterState, type MapQueryOptions } from "../app/map.ts";
+import type {
+  EventAgendaFilter, EventSignupSummary, EventTerritory, PublicEvent,
+} from "../app/event.ts";
+import { buildEventAgendaQuery } from "../app/event.ts";
 
 type RawRecord = Record<string, unknown>;
 
@@ -394,4 +398,32 @@ export async function getPublicProfileImpact(userId: string): Promise<ProfileImp
     "posts", `/profiles/${encodeURIComponent(userId)}/impact`,
   );
   return data && Array.isArray(data.badges) ? data : null;
+}
+
+// ── Eventos do território (T25) ────────────────────────────
+// Agenda e página pública do evento no SSR: só GET público, sem token.
+
+export async function getPublicEvents(filter: EventAgendaFilter = {}): Promise<PublicEvent[]> {
+  const query = buildEventAgendaQuery(filter);
+  const data = await fetchPublicJson<{ events?: PublicEvent[] }>("posts", `/events${query ? `?${query}` : ""}`);
+  return Array.isArray(data?.events) ? data.events : [];
+}
+
+export async function getPublicEvent(id: string): Promise<{ event: PublicEvent; signups: EventSignupSummary } | null> {
+  const data = await fetchPublicJson<{ event?: PublicEvent; signups?: EventSignupSummary }>(
+    "posts", `/events/${encodeURIComponent(id)}`,
+  );
+  if (!data?.event?.id) return null;
+  return {
+    event: data.event,
+    signups: data.signups ?? {
+      capacity: data.event.capacity, signupsCount: data.event.signupsCount,
+      waitlistCount: data.event.waitlistCount, seatsLeft: data.event.seatsLeft, full: false,
+    },
+  };
+}
+
+export async function getPublicEventTerritories(): Promise<EventTerritory[]> {
+  const data = await fetchPublicJson<{ territories?: EventTerritory[] }>("posts", "/events/territories");
+  return Array.isArray(data?.territories) ? data.territories : [];
 }

@@ -27,6 +27,8 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   // A barra inferior do mobile usa NAV[0..3] por índice; itens a partir daqui
   // aparecem só no menu do topo (desktop) e no dropdown da conta (mobile).
   { href: "/ranking", label: "Impacto", icon: "trophy" },
+  // Agenda do território (T25): eventos, oficinas, mutirões, ações e aulas.
+  { href: "/eventos", label: "Agenda", icon: "calendar" },
 ];
 
 /** Só para contas da operação (ver lib/app/admin-access.ts). */
@@ -42,6 +44,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAgent = Boolean(user && normalizeRole(user.role, user.profileType) === "agent");
   // Poder Público atua nas demandas do território (T13).
   const isGovernment = Boolean(user && normalizeRole(user.role, user.profileType) === "government");
+  // Membro da Comunidade se inscreve em eventos (T25, slide 9).
+  const isMember = Boolean(user && normalizeRole(user.role, user.profileType) === "member");
+  // Agente e Poder Público publicam eventos do território (T25, slides 8 e 11).
+  const organizesEvents = isAgent || isGovernment;
   // Parceiros e Poder Público filtram oportunidades de apoio (T15).
   const seesOpportunities = Boolean(user && canFilterOpportunities(user.role, user.profileType));
 
@@ -123,6 +129,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <MenuItem icon="volunteer" label="Ações apoiadas" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
                     {isAgent && <MenuItem icon="inventory" label="Minhas demandas" onClick={() => { setMenuOpen(false); router.push(MY_DEMANDS_PATH); }} />}
                     {seesOpportunities && <MenuItem icon="filter" label="Oportunidades de apoio" onClick={() => { setMenuOpen(false); router.push(OPPORTUNITIES_PATH); }} />}
+                    {isMember && <MenuItem icon="calendar" label="Minhas inscrições" onClick={() => { setMenuOpen(false); router.push("/minhas-inscricoes"); }} />}
+                    {organizesEvents && <MenuItem icon="calendar" label="Meus eventos" onClick={() => { setMenuOpen(false); router.push("/meus-eventos"); }} />}
                     {isGovernment && <MenuItem icon="building" label="Atuação institucional" onClick={() => { setMenuOpen(false); router.push(INSTITUTIONAL_AREA_PATH); }} />}
                     {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => { setMenuOpen(false); router.push("/admin"); }} />}
                     <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />
