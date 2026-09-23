@@ -26,6 +26,7 @@ import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import { gateStatusFrom, isInstitutionNotValidated, type GatedAction } from "@/lib/app/institution";
 import type { InstitutionValidationStatus } from "@/lib/app/types";
 import { demandPublicPath } from "@/lib/app/demand";
+import { nextStepFor, relevanceLabel, territoryLabel, themeLabels, updatesLabel } from "@/lib/app/signal";
 
 const LocationPicker = dynamic(
   () => import("../LocationPicker").then((module) => module.LocationPicker),
@@ -64,6 +65,27 @@ export function PostDetailClient({
   const supportTypes = allowedSupportTypes(user?.role, user?.profileType);
   const onlyShares = supportTypes.length === 1 && supportTypes[0] === "sharing";
   const isAuthor = user?.id === post.authorId;
+  const territory = territoryLabel(post);
+  const themes = themeLabels(post.tags, 8);
+  // Visitante vê "Apoiar" e entra antes de registrar; o perfil logado vê o
+  // que pode fazer. A reação nunca é o próximo passo.
+  const nextStep = nextStepFor(post, { canSupport: !user || supportTypes.length > 0, onlyShares });
+  const nextStepAction = nextStep.href === postHref ? (
+    <a href="#atualizacoes" className="signal-action signal-focus mt-3 flex h-12 items-center justify-center gap-2 rounded-xl font-bold">
+      <Icon name={nextStep.icon} size={18} /> {nextStep.label}
+    </a>
+  ) : !user && nextStep.kind === "support" ? (
+    <div className="mt-3"><AuthPrompt action="registrar apoio" returnTo={`${postHref}/apoiar`} /></div>
+  ) : (
+    <>
+      <Link href={nextStep.href} className="signal-action signal-focus mt-3 flex h-12 items-center justify-center gap-2 rounded-xl font-bold">
+        <Icon name={nextStep.icon} size={18} /> {nextStep.label}
+      </Link>
+      {user && supportTypes.length === 0 && (
+        <p className="mt-2 text-xs" style={{ color: "var(--th-muted)" }}>Seu perfil pode acompanhar este sinal, mas não possui uma forma de apoio disponível.</p>
+      )}
+    </>
+  );
 
   async function sendComment() {
     if (!user || !draft.trim()) return;
@@ -123,16 +145,28 @@ export function PostDetailClient({
           <img src={post.images[0]} alt={post.title} className="max-h-80 w-full object-cover" />
         ) : null}
         <div className="p-5 sm:p-6">
+          {/* tipo, status e território na mesma leitura */}
           <div className="flex flex-wrap items-center gap-2">
             <TypeBadge type={post.type} />
             <StatusBadge status={post.status} />
+            {territory ? (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--th-text)" }}>
+                <Icon name="location" size={13} /> {territory}
+              </span>
+            ) : null}
           </div>
           <h1 className="mt-3 text-2xl font-bold leading-tight" style={{ color: "var(--th-text)" }}>{post.title}</h1>
-          <div className="mt-3 flex items-center gap-3"><Link href={profileHref}><Avatar name={post.authorName} src={post.authorAvatar} id={post.authorId} size={40} /></Link><div><Link href={profileHref} className="text-sm font-bold hover:underline" style={{ color: "var(--th-text)" }}>{post.authorName}</Link><p className="text-xs" style={{ color: "var(--th-muted)" }}>{formatDate(post.createdAt)}{post.neighborhood ? ` · ${post.neighborhood}` : ""}</p></div></div>
-          <p className="mt-4 whitespace-pre-line text-[15px] leading-relaxed" style={{ color: "var(--th-text)" }}>{post.description}</p>
+          <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed" style={{ color: "var(--th-text)" }}>{post.description}</p>
+          {themes.length > 0 && (
+            <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Temas do sinal">
+              {themes.map((theme) => (
+                <li key={theme} className="rounded-full border px-2.5 py-0.5 text-xs font-semibold" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)", color: "var(--th-text)" }}>{theme}</li>
+              ))}
+            </ul>
+          )}
           {post.demandId && (
-            <Link href={demandPublicPath(post.demandId)} className="mt-4 flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-[var(--th-card-alt)]" style={{ borderColor: "rgba(46,123,168,0.35)" }}>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: "rgba(46,123,168,0.12)", color: "#2e7ba8" }}><Icon name="inventory" size={18} /></span>
+            <Link href={demandPublicPath(post.demandId)} className="signal-focus mt-4 flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-[var(--th-card-alt)]" style={{ borderColor: "var(--th-border)" }}>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: "var(--th-card-alt)", color: "var(--th-link)" }}><Icon name="inventory" size={18} /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold" style={{ color: "var(--th-text)" }}>Ver a demanda estruturada</span>
                 <span className="block text-xs" style={{ color: "var(--th-muted)" }}>Orçamento, composição financeira, cronograma, metas, recursos e linha do tempo.</span>
@@ -140,17 +174,38 @@ export function PostDetailClient({
               <Icon name="chevronRight" size={18} style={{ color: "var(--th-muted)" }} />
             </Link>
           )}
-          {post.tags.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{post.tags.map((tag) => <span key={tag} className="rounded-md px-2 py-1 text-xs font-semibold" style={{ background: "var(--th-card-alt)", color: "var(--th-muted)" }}>#{tag}</span>)}</div>}
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-y py-2 text-sm" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)" }}>
+
+          {/* próximo passo: a ação que orienta a participação */}
+          <section aria-labelledby="proximo-passo" className="mt-5 rounded-xl border p-4" style={{ borderColor: "var(--th-border)" }}>
+            <h2 id="proximo-passo" className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--th-muted)" }}>Próximo passo</h2>
+            <p className="mt-1 text-sm" style={{ color: "var(--th-text)" }}>{nextStep.hint}</p>
+            {nextStepAction}
+          </section>
+
+          {/* responsável em papel secundário */}
+          <p className="mt-4 flex flex-wrap items-center gap-1.5 text-xs" style={{ color: "var(--th-muted)" }}>
+            <span>Responsável</span>
+            <Link href={profileHref} className="signal-focus inline-flex items-center gap-1.5 font-semibold hover:underline" style={{ color: "var(--th-text)" }}>
+              <Avatar name={post.authorName} src={post.authorAvatar} id={post.authorId} size={22} />
+              {post.authorName}
+            </Link>
+            <span aria-hidden="true">·</span>
+            <time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time>
+          </p>
+
+          {/* contexto do sinal: atualizações, relevância, alcance e amplificação */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-y py-2 text-xs" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)" }}>
+            <span className="inline-flex items-center gap-1.5"><Icon name="clock" size={14} /> {updatesLabel(comments.length)}</span>
             {user ? (
-              <button type="button" onClick={toggleReaction} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 font-semibold transition-colors hover:bg-[var(--th-card-alt)]" style={{ color: reacted ? "#f4841a" : "var(--th-muted)" }} aria-label={reacted ? "Remover sinal de apoio" : "Sinalizar apoio"}>
-                <Icon name="volunteer" size={16} strokeWidth={reacted ? 2.5 : 1.9} /> {reactions} sinais de apoio
+              <button type="button" onClick={toggleReaction} aria-pressed={reacted} aria-label={`${reacted ? "Desmarcar" : "Marcar"} este sinal como relevante para o bairro. ${relevanceLabel(reactions)}.`} title={relevanceLabel(reactions)} className="signal-focus inline-flex min-h-8 items-center gap-1.5 rounded-md border px-2 py-1 font-semibold transition-colors hover:bg-[var(--th-card-alt)]" style={{ borderColor: reacted ? "var(--th-text)" : "var(--th-border)", color: reacted ? "var(--th-text)" : "var(--th-muted)" }}>
+                {reacted ? <Icon name="check" size={13} /> : null}
+                <span>Relevante</span>
+                <span className="font-numeric" aria-hidden="true">· {reactions}</span>
               </button>
             ) : (
-              <Link href={loginHref(returnTo)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 font-semibold hover:bg-[var(--th-card-alt)]"><Icon name="volunteer" size={16} /> {reactions} sinais de apoio</Link>
+              <Link href={loginHref(returnTo)} className="signal-focus inline-flex items-center gap-1.5 font-semibold hover:underline">{relevanceLabel(reactions)}</Link>
             )}
-            <span className="inline-flex items-center gap-1.5"><Icon name="comment" size={16} /> {comments.length} atualizações</span>
-            <span className="inline-flex items-center gap-1.5"><Icon name="eye" size={16} /> {post.viewsCount} visualizações</span>
+            <span className="inline-flex items-center gap-1.5"><Icon name="eye" size={14} /> <span className="font-numeric">{post.viewsCount}</span> visualizações</span>
             {/* Amplificação (T21): Web Share API com cópia do link como alternativa. */}
             <ShareButton
               targetKind="post"
@@ -186,16 +241,15 @@ export function PostDetailClient({
                   <Button type="button" size="sm" icon="check" loading={savingLocation} onClick={saveLocation}>Salvar ponto</Button>
                 </div>
               </div>
-            ) : <Link href="/mapa" className="mt-2 inline-flex text-sm font-bold" style={{ color: "#f4841a" }}>Explorar o mapa →</Link>}
+            ) : <Link href="/mapa" className="mt-2 inline-flex text-sm font-bold" style={{ color: "var(--th-link)" }}>Explorar o mapa →</Link>}
           </div>
           {actionError && <p className="mt-3 text-sm font-semibold" style={{ color: "#d64545" }}>{actionError}</p>}
           {gate?.action === "editar" && <div className="mt-3"><InstitutionGateNotice action="editar" status={gate.status} /></div>}
-          {user && supportTypes.length > 0 ? <Link href={onlyShares ? `${postHref}/apoiar?type=sharing` : `${postHref}/apoiar`} className="mt-5 flex h-12 items-center justify-center gap-2 rounded-xl font-bold text-white" style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}><Icon name={onlyShares ? "share" : "volunteer"} size={18} /> {onlyShares ? "Divulgar sinal" : "Registrar apoio"}</Link> : user ? <p className="mt-5 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--th-border)", color: "var(--th-muted)" }}>Seu perfil pode acompanhar este registro, mas não possui uma forma de apoio disponível.</p> : <div className="mt-5"><AuthPrompt action="registrar apoio" returnTo={`${postHref}/apoiar`} /></div>}
         </div>
       </Card>
 
       <Card>
-        <h2 className="text-sm font-bold" style={{ color: "var(--th-text)" }}>Atualizações do acompanhamento</h2>
+        <h2 id="atualizacoes" className="scroll-mt-24 text-sm font-bold" style={{ color: "var(--th-text)" }}>Atualizações do acompanhamento</h2>
         <div className="mt-3">{user ? <div className="flex items-start gap-2.5"><Avatar name={user.name} src={user.avatarUrl} id={user.id} size={36} /><div className="flex-1"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Registre uma atualização ou informação útil..." className="app-textarea" /><div className="mt-2 flex justify-end"><button type="button" onClick={sendComment} disabled={!draft.trim() || sending} className="rounded-lg px-3 py-2 text-sm font-bold text-white" style={{ background: "#f4841a" }}>{sending ? "Enviando…" : "Registrar atualização"}</button></div>{gate?.action === "comentar" && <div className="mt-2"><InstitutionGateNotice action="comentar" status={gate.status} /></div>}{commentError && <p role="alert" className="mt-2 text-sm font-semibold" style={{ color: "#e53935" }}>{commentError}</p>}</div></div> : <AuthPrompt action="registrar uma atualização" returnTo={returnTo} />}</div>
         <div className="mt-5 space-y-4">{comments.length === 0 ? <p className="py-3 text-center text-sm" style={{ color: "var(--th-muted)" }}>Ainda não há atualizações neste acompanhamento.</p> : comments.map((comment) => <div key={comment.id} className="flex gap-2.5 border-l-2 pl-3" style={{ borderColor: "#2e7ba8" }}><Avatar name={comment.authorName} id={comment.authorId} size={36} /><div><div className="flex items-baseline gap-2"><span className="text-sm font-bold" style={{ color: "var(--th-text)" }}>{comment.authorName}</span><span className="text-xs" style={{ color: "var(--th-muted)" }}>{timeAgo(comment.createdAt)}</span></div><p className="mt-0.5 text-sm" style={{ color: "var(--th-text)" }}>{comment.content}</p><div className="mt-0.5"><ReportButton variant="icon" targetKind="comentario" targetId={comment.id} targetOwnerId={comment.authorId} targetLabel="este comentário" /></div></div></div>)}</div>
       </Card>

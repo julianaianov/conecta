@@ -513,3 +513,28 @@ body {
   background: linear-gradient(135deg, #f4841a, #f89b45);
   border-color: transparent; color: #fff;
 }
+
+/* ── Card de sinal (pulso e página do post) ──────────────────
+   Próximo passo em petróleo no claro e laranja cívico com texto escuro no
+   escuro: os dois pares passam de 4.5:1. `--th-link` substitui o #2e7ba8
+   fixo, que some sobre o card escuro. */
+:root {
+  --th-link:      #1f6a96;
+  --th-action-bg: #1b4f72;
+  --th-action-fg: #ffffff;
+}
+.dark {
+  --th-link:      #8ccbf0;
+  --th-action-bg: #f4841a;
+  --th-action-fg: #0d2d42;
+}
+.signal-focus:focus-visible {
+  outline: 2px solid #f4841a;
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+.signal-action {
+  background: var(--th-action-bg);
+  color: var(--th-action-fg);
+}
+.signal-action:hover { filter: brightness(1.08); }

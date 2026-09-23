@@ -333,7 +333,7 @@ export default function AdminPage() {
           <div className="px-4 pt-4 sm:px-5 sm:pt-5">
             <SectionTitle icon="star">Sinais com mais tração</SectionTitle>
             <p className="-mt-1 mb-3 text-xs" style={{ color: "var(--th-muted)" }}>
-              Relevância = sinais de apoio + 3× atualizações + 5× apoios.
+              Relevância = marcações de relevância + 3× atualizações + 5× apoios.
             </p>
           </div>
           <div className="overflow-x-auto">
