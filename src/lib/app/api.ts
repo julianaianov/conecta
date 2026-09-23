@@ -4,12 +4,13 @@ import {
   normalizeRole,
   type Post, type Comment, type SupportRecord, type SupportSummaryItem,
   type User, type Profile, type UserRole, type ProfileType, type PostType,
-  type SupportType, type PaymentMethod, type Community, type Scrap, type Testimonial,
+  type SupportType, type PaymentMethod, type Community,
   type AppNotification, type RankCategory, type RankEntry,
   type Connection, type ConnectionEvent, type ConnectionParty, type ConnectionStatus, type ConnectionType,
   type AdminSnapshot,
 } from "./types";
 import { buildRanking, type RankingMetrics, type RankingUser } from "./ranking";
+import { emptyProfileActivity, normalizeProfileActivity, type ProfileActivity } from "./profile";
 import { runtime } from "./runtime";
 import { normalizeCoordinates } from "./location";
 import { buildPostQuery, type PostListFilter } from "./post-query";
@@ -258,30 +259,6 @@ function mapConnection(r: RawPost): Connection {
     createdAt: String(r.createdAt ?? r.created_at ?? ""),
     updatedAt: String(r.updatedAt ?? r.updated_at ?? ""),
     events: Array.isArray(r.events) ? (r.events as ConnectionEvent[]) : [],
-  };
-}
-
-function mapScrap(r: RawPost): Scrap {
-  return {
-    id: String(r.id),
-    authorId: String(r.authorId ?? r.author_id ?? ""),
-    authorName: String(r.authorName ?? r.author_name ?? ""),
-    authorAvatar: (r.authorAvatar ?? r.author_avatar ?? null) as string | null,
-    targetUserId: String(r.targetUserId ?? r.target_user_id ?? ""),
-    content: String(r.content ?? ""),
-    createdAt: String(r.createdAt ?? r.created_at ?? ""),
-  };
-}
-
-function mapTestimonial(r: RawPost): Testimonial {
-  return {
-    id: String(r.id),
-    authorId: String(r.authorId ?? r.author_id ?? ""),
-    authorName: String(r.authorName ?? r.author_name ?? ""),
-    authorAvatar: (r.authorAvatar ?? r.author_avatar ?? null) as string | null,
-    targetUserId: String(r.targetUserId ?? r.target_user_id ?? ""),
-    content: String(r.content ?? ""),
-    createdAt: String(r.createdAt ?? r.created_at ?? ""),
   };
 }
 
@@ -802,39 +779,8 @@ export const api = {
     return request<{ posts: RawPost[] }>(`/api/posts/?${buildPostQuery({ authorId: userId, limit: 5000 })}`)
       .then((data) => data.posts.map(mapPost));
   },
-  scrapsFor(userId: string): Promise<Scrap[]> {
-    return request<RawPost[]>(`/api/users/scraps/${userId}`).then((rows) => rows.map(mapScrap));
-  },
-  addScrap(target: string, _author: User, content: string): Promise<Scrap> {
-    return request<RawPost>("/api/users/scraps", {
-      method: "POST",
-      body: JSON.stringify({ targetUserId: target, content }),
-    }).then(mapScrap);
-  },
-  testimonialsFor(userId: string): Promise<Testimonial[]> {
-    return request<RawPost[]>(`/api/users/testimonials/${userId}`).then((rows) => rows.map(mapTestimonial));
-  },
-  addTestimonial(target: string, _author: User, content: string): Promise<Testimonial> {
-    return request<RawPost>("/api/users/testimonials", {
-      method: "POST",
-      body: JSON.stringify({ targetUserId: target, content }),
-    }).then(mapTestimonial);
-  },
   communities(): Promise<Community[]> {
     return request<RawPost[]>("/api/users/communities").then((rows) => rows.map(mapCommunity));
-  },
-  friendsOf(userId: string): Promise<Profile[]> {
-    return this.connectionsFor(userId).then((connections) => connections
-      .filter((connection) => connection.status === "accepted")
-      .map((connection) => connection.from.userId === userId ? connection.to : connection.from)
-      .map((party) => ({
-        userId: party.userId,
-        name: party.name,
-        role: party.role ?? "",
-        profileType: party.profileType ?? null,
-        avatarUrl: party.avatarUrl ?? null,
-        friendCount: 0,
-      })));
   },
 
   /** Ranking calculado a partir dos perfis e da atividade persistida. */
@@ -1471,6 +1417,12 @@ export const api = {
   /** Selos de impacto do perfil ou, para o Poder Público, indicadores de atuação. */
   profileImpact(userId: string): Promise<ProfileImpact> {
     return request<ProfileImpact>(`/api/posts/profiles/${encodeURIComponent(userId)}/impact`);
+  },
+
+  /** Atuação territorial pública do perfil (demandas, apoios recebidos e realizados). */
+  async profileActivity(userId: string): Promise<ProfileActivity> {
+    const data = await request<unknown>(`/api/posts/profiles/${encodeURIComponent(userId)}/activity`);
+    return normalizeProfileActivity(data) ?? emptyProfileActivity(userId);
   },
 
   /** Consentimento de aparecer com o nome nos rankings públicos (LGPD). */

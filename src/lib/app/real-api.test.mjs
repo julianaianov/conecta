@@ -22,7 +22,9 @@ test("operações de conexão usam o serviço persistente", () => {
 
 test("operações sociais e administrativas usam endpoints persistentes", () => {
   assert.doesNotMatch(source, /demo\.(notifications|scrapsFor|addScrap|testimonialsFor|addTestimonial|friendsOf|ranking|snapshot)\(/);
-  for (const endpoint of ["/api/users/notifications", "/api/users/scraps", "/api/users/testimonials", "/api/users/ranking", "/api/posts/ranking", "/api/users/admin-snapshot", "/api/posts/admin-snapshot"]) {
+  // Recados e depoimentos saíram do perfil (perfil de atuação territorial): as
+  // rotas continuam no user-service para a LGPD, mas o cliente não as chama.
+  for (const endpoint of ["/api/users/notifications", "/api/users/ranking", "/api/posts/ranking", "/api/users/admin-snapshot", "/api/posts/admin-snapshot", "/api/posts/profiles/"]) {
     assert.match(source, new RegExp(endpoint.replaceAll("/", "\\/")));
   }
 });

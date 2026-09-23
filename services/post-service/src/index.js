@@ -28,6 +28,7 @@ const mapRoutes = require('./routes/map');
 const rankingsRoutes = require('./routes/rankings');
 const reportsRoutes = require('./routes/reports');
 const privacyRoutes = require('./routes/privacy');
+const profilesRoutes = require('./routes/profiles');
 const eventsRoutes = require('./routes/events');
 const aiRoutes = require('./routes/ai');
 const { createAiService } = require('./ai/service');
@@ -126,6 +127,9 @@ const createApp = ({
   // Direitos do titular sobre o post_db (T24): /me/privacy/data e
   // /me/privacy/anonymize. Antes das rotas de posts, cujo `/:id` é UUID.
   app.use('/', privacyRoutes({ pool, auth }));
+  // Atuação territorial pública do perfil: /profiles/:userId/activity
+  // (somente leitura). Antes das rotas de posts, cujo `/:id` é UUID.
+  app.use('/', profilesRoutes({ pool }));
   // Eventos do território e inscrição da comunidade (T25): /events.
   app.use('/events', eventsRoutes({ pool, auth, institutionStatus, governmentGate: institutional }));
   // Sugestões de inteligência artificial (T23): /ai/status, /demands/:id/ai/*
