@@ -17,6 +17,7 @@ import { Button } from "@/components/app/Button";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Card, EmptyState } from "@/components/app/ui";
 import { ConnectionStatusBadge, ConnectionTypePill, partyLabel } from "@/components/app/ConnectionCard";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 export default function ConnectionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,8 +28,8 @@ export default function ConnectionDetailPage() {
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState("");
   const [showOutcome, setShowOutcome] = useState(false);
-
   useEffect(() => {
+
     let alive = true;
     api.getConnection(id).then((conn) => { if (alive) { setC(conn); setLoading(false); } });
     return () => { alive = false; };
@@ -44,7 +45,21 @@ export default function ConnectionDetailPage() {
     } finally { setBusy(false); }
   }
 
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg pt-6">
+        <AuthPrompt
+          action="connection"
+          returnTo={`/conexoes/${id}`}
+          title="Conexão privada"
+          message="Entre na sua conta para visualizar os detalhes desta conexão."
+        />
+      </div>
+    );
+  }
+
   if (loading) return <div className="flex justify-center py-24"><span className="app-spinner" style={{ width: 30, height: 30 }} /></div>;
+
   if (!c) {
     return (
       <div className="mx-auto max-w-lg py-10">

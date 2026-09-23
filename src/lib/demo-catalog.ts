@@ -3,7 +3,7 @@
  * Cada imagem está ligada a uma publicação, perfil ou conexão do sistema.
  */
 
-import { BANNER_PHOTOS } from "./banner-photos";
+import { BANNER_PHOTOS } from "./banner-photos.ts";
 
 export const POST_IDS = {
   buracoAmericas: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",

@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from "@/lib/app/format";
 import { PAYMENT_METHODS, SUPPORT_TYPE_META, type SupportRecord, type SupportType } from "@/lib/app/types";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Card, EmptyState } from "@/components/app/ui";
+import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 const FILTERS: { value: SupportType | "all"; label: string }[] = [
   { value: "all", label: "Todos" },
@@ -30,6 +31,19 @@ export default function MySupportsPage() {
 
   const totalFinancial = useMemo(() => supports.filter((s) => s.type === "financial").reduce((sum, s) => sum + (s.amount ?? 0), 0), [supports]);
   const visible = useMemo(() => (filter === "all" ? supports : supports.filter((s) => s.type === filter)), [supports, filter]);
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-lg pt-6">
+        <AuthPrompt
+          action="support"
+          returnTo="/meus-apoios"
+          title="Seus apoios"
+          message="Entre na sua conta para visualizar o histórico de apoios realizados."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl">

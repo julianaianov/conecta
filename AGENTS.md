@@ -32,11 +32,14 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 
 - `NEXT_PUBLIC_RUNTIME_ENV`: `local`, `homologation` ou `production`
   (`src/lib/app/runtime.ts`).
-- Em produção, `NEXT_PUBLIC_API_URL` vazio usa `/api` no mesmo domínio. Não
-  adicione fallback silencioso para dados locais nem coloque segredos em
+- Em produção, `NEXT_PUBLIC_API_URL` vazio usa `/api` no mesmo domínio para chamadas do navegador.
+- No servidor Next.js (SSR / renderização inicial indexável), a resolução de dados usa
+  `DM_INTERNAL_POST_API_URL` (`http://post-service:3003`) e `DM_INTERNAL_USER_API_URL` (`http://user-service:3002`).
+  Não adicione fallback silencioso para dados demo em produção nem coloque segredos em
   `NEXT_PUBLIC_*`.
 - Deploy: mudanças que precisam chegar a um ambiente vão para os dois remotos,
   `git push origin develop && git push web develop`.
+
 - Migrações novas em `services/*/migrations/` devem ser registradas também em
   `dmconecta-infra/db/init/10-load-application-schemas.sh`; bancos existentes
   são migrados por SSM.

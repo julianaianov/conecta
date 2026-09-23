@@ -31,6 +31,7 @@ export function NotificationBell({ userId }: { userId: string }) {
   const [read, setRead] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!userId || userId === "guest") return;
     let alive = true;
     setRead(loadRead(userId));
     api.notifications(userId).then((list) => {
@@ -61,7 +62,10 @@ export function NotificationBell({ userId }: { userId: string }) {
     setOpen(false);
   }
 
+  if (!userId || userId === "guest") return null;
+
   return (
+
     <div className="relative">
       <button
         type="button"

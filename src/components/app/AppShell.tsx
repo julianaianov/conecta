@@ -12,15 +12,18 @@ import { NotificationBell } from "./NotificationBell";
 import { SearchButton } from "./SearchButton";
 import { ThemeToggle } from "../ThemeToggle";
 
-const NAV: { href: string; label: string; icon: IconName }[] = [
+const PUBLIC_NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/feed", label: "Início", icon: "home" },
   { href: "/mapa", label: "Mapa", icon: "map" },
   { href: "/conexoes", label: "Conexões", icon: "groups" },
-  { href: "/perfil", label: "Perfil", icon: "person" },
-  // A barra inferior do mobile usa NAV[0..3] por índice; itens a partir daqui
-  // aparecem só no menu do topo (desktop) e no dropdown da conta (mobile).
   { href: "/ranking", label: "Ranking", icon: "trophy" },
 ];
+
+const AUTH_NAV_EXTRA: { href: string; label: string; icon: IconName } = {
+  href: "/perfil",
+  label: "Perfil",
+  icon: "person",
+};
 
 /** Só para contas da operação (ver lib/app/admin-access.ts). */
 const ADMIN_NAV: { href: string; label: string; icon: IconName } = { href: "/admin", label: "Painel", icon: "shield" };
@@ -33,12 +36,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAdmin = isPlatformAdmin(user);
 
   const isActive = (href: string) =>
-    href === "/perfil" ? pathname === "/perfil" : pathname === href || pathname.startsWith(href + "/");
+    href === "/perfil" || href === "/login"
+      ? pathname === href
+      : pathname === href || pathname.startsWith(href + "/");
 
   function handleLogout() {
     logout();
     router.push("/login");
   }
+
+  const navItems = user
+    ? isAdmin
+      ? [...PUBLIC_NAV, AUTH_NAV_EXTRA, ADMIN_NAV]
+      : [...PUBLIC_NAV, AUTH_NAV_EXTRA]
+    : PUBLIC_NAV;
 
   return (
     <div className="app-mesh min-h-dvh">
@@ -52,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* O menu só cabe ao lado dos botões a partir de lg — abaixo disso
               quem navega é a barra inferior. */}
           <nav className="ml-2 hidden min-w-0 items-center gap-0.5 lg:flex">
-            {(isAdmin ? [...NAV, ADMIN_NAV] : NAV).map((item) => {
+            {navItems.map((item) => {
               const active = isActive(item.href);
               return (
                 <Link
@@ -80,42 +91,65 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 MODO DEMO
               </span>
             )}
-            <Link
-              href="/criar"
-              className="hidden h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white lg:inline-flex"
-              style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}
-            >
-              <Icon name="plus" size={18} /> Publicar
-            </Link>
-            <SearchButton />
-            <ThemeToggle />
-            <NotificationBell userId={user?.id ?? "guest"} />
+            {user ? (
+              <>
+                <Link
+                  href="/criar"
+                  className="hidden h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white lg:inline-flex"
+                  style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}
+                >
+                  <Icon name="plus" size={18} /> Publicar
+                </Link>
+                <SearchButton />
+                <ThemeToggle />
+                <NotificationBell userId={user.id} />
 
-            {/* avatar + menu */}
-            <div className="relative">
-              <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Conta">
-                <Avatar name={user?.name ?? "Visitante"} src={user?.avatarUrl} id={user?.id} size={36} />
-              </button>
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div
-                    className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-xl border shadow-xl"
-                    style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}
-                  >
-                    <div className="border-b px-4 py-3" style={{ borderColor: "var(--th-border)" }}>
-                      <p className="truncate text-sm font-semibold" style={{ color: "var(--th-text)" }}>{user?.name}</p>
-                      <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>{user?.email}</p>
-                    </div>
-                    <MenuItem icon="person" label="Meu perfil" onClick={() => { setMenuOpen(false); router.push("/perfil"); }} />
-                    <MenuItem icon="trophy" label="Ranking" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
-                    <MenuItem icon="heart" label="Meus apoios" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
-                    {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => { setMenuOpen(false); router.push("/admin"); }} />}
-                    <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />
-                  </div>
-                </>
-              )}
-            </div>
+                {/* avatar + menu */}
+                <div className="relative">
+                  <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Conta">
+                    <Avatar name={user.name} src={user.avatarUrl} id={user.id} size={36} />
+                  </button>
+                  {menuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                      <div
+                        className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-xl border shadow-xl"
+                        style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}
+                      >
+                        <div className="border-b px-4 py-3" style={{ borderColor: "var(--th-border)" }}>
+                          <p className="truncate text-sm font-semibold" style={{ color: "var(--th-text)" }}>{user.name}</p>
+                          <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>{user.email}</p>
+                        </div>
+                        <MenuItem icon="person" label="Meu perfil" onClick={() => { setMenuOpen(false); router.push("/perfil"); }} />
+                        <MenuItem icon="trophy" label="Ranking" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
+                        <MenuItem icon="heart" label="Meus apoios" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
+                        {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => { setMenuOpen(false); router.push("/admin"); }} />}
+                        <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <SearchButton />
+                <ThemeToggle />
+                <Link
+                  href="/login"
+                  className="flex h-9 items-center px-3 text-sm font-semibold transition-colors hover:text-orange"
+                  style={{ color: "var(--th-text)" }}
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/register"
+                  className="hidden h-9 items-center rounded-xl px-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 sm:inline-flex"
+                  style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}
+                >
+                  Cadastrar
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -129,8 +163,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="relative mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
-          <BottomItem item={NAV[0]} active={isActive(NAV[0].href)} />
-          <BottomItem item={NAV[1]} active={isActive(NAV[1].href)} />
+          <BottomItem item={PUBLIC_NAV[0]} active={isActive(PUBLIC_NAV[0].href)} />
+          <BottomItem item={PUBLIC_NAV[1]} active={isActive(PUBLIC_NAV[1].href)} />
           {/* FAB de publicar — visível para todos os perfis; /criar é quem
               explica a restrição a quem não pode publicar */}
           <div className="flex justify-center">
@@ -143,8 +177,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Icon name="plus" size={26} />
             </Link>
           </div>
-          <BottomItem item={NAV[2]} active={isActive(NAV[2].href)} />
-          <BottomItem item={NAV[3]} active={isActive(NAV[3].href)} />
+          <BottomItem item={PUBLIC_NAV[2]} active={isActive(PUBLIC_NAV[2].href)} />
+          {user ? (
+            <BottomItem item={AUTH_NAV_EXTRA} active={isActive(AUTH_NAV_EXTRA.href)} />
+          ) : (
+            <BottomItem item={{ href: "/login", label: "Entrar", icon: "person" }} active={isActive("/login")} />
+          )}
         </div>
       </nav>
     </div>

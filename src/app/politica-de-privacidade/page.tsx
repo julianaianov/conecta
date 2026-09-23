@@ -3,10 +3,16 @@ import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 
-export const metadata = {
-  title: "Política de Privacidade — DM Conecta",
-  description: "Política de privacidade e proteção de dados do aplicativo DM Conecta.",
-};
+import type { Metadata } from "next";
+import { metadataForPage } from "@/lib/seo/site";
+
+export const metadata: Metadata = metadataForPage({
+  title: "Política de Privacidade",
+  description:
+    "Política de privacidade e proteção de dados do aplicativo e plataforma DM Conecta.",
+  path: "/politica-de-privacidade",
+});
+
 
 export default function PoliticaPrivacidadePage() {
   return (

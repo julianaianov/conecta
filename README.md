@@ -37,6 +37,10 @@ Copie `.env.example` para `.env.local`:
 ```dotenv
 NEXT_PUBLIC_RUNTIME_ENV=local
 NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# Endpoints internos opcionais do servidor Next.js para SSR (apenas server-side, nunca expostos publicamente)
+# DM_INTERNAL_POST_API_URL=http://localhost:3003
+# DM_INTERNAL_USER_API_URL=http://localhost:3002
 ```
 
 Valores públicos `NEXT_PUBLIC_*` não são segredos. Senhas, tokens e URLs de
@@ -57,22 +61,26 @@ imagens no ECR e executa a atualização na AWS por SSM.
 
 ## Rotas do portal
 
-| Rota | Conteúdo |
-| --- | --- |
-| `/` | apresentação |
-| `/login`, `/register` | autenticação |
-| `/feed` | publicações |
-| `/mapa` | mapa de demandas |
-| `/conexoes` | conexões recebidas, enviadas, ativas e histórico |
-| `/conexoes/nova` | solicitar uma conexão |
-| `/conexoes/[id]` | linha do tempo, aceite e resultado |
-| `/perfil`, `/perfil/[id]` | perfis |
-| `/post/[id]` | publicação, comentários e apoios |
-| `/post/[id]/apoiar` | fluxo de apoio |
-| `/criar` | nova publicação |
-| `/ranking` | ranking |
-| `/meus-apoios` | apoios do usuário |
-| `/admin` | painel da operação |
+| Rota | Acesso | Conteúdo |
+| --- | --- | --- |
+| `/` | Público | apresentação |
+| `/feed` | Público (SSR) | publicações e feed do bairro |
+| `/mapa` | Público (SSR) | mapa interativo de demandas |
+| `/ranking` | Público (SSR) | ranking de impacto comunitário |
+| `/conexoes` | Público (SSR) / Privado | comunidades (público) e conexões do usuário |
+| `/post/[id]` | Público (SSR) | publicação, comentários e apoios |
+| `/perfil/[id]` | Público (SSR) | perfil do morador/organização e suas causas |
+| `/politica-de-privacidade` | Público | termos e política de privacidade |
+| `/seguranca-infantil` | Público | padrões de proteção infantil (CSAE/CSAM) |
+| `/robots.txt`, `/sitemap.xml` | Público | indexação para buscadores e IAs |
+| `/login`, `/register` | Público (Auth) | autenticação |
+| `/conexoes/nova`, `/conexoes/[id]` | Protegido | solicitar e gerenciar conexões privadas |
+| `/post/[id]/apoiar` | Protegido | fluxo de registro de apoio |
+| `/criar` | Protegido | nova publicação |
+| `/perfil` | Protegido | gestão do perfil próprio |
+| `/meus-apoios` | Protegido | histórico de apoios do usuário |
+| `/admin` | Protegido | painel restrito da operação |
+
 
 ## Fluxo de conexões (`/conexoes`)
 

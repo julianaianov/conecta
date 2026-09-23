@@ -3,8 +3,8 @@
  * Espelha core/demo/{demo_data,demo_social,demo_auth}.dart do app Flutter.
  * Bairros do Brasil. Mutação em memória (sem persistência).
  */
-import { BANNER_PHOTOS } from "../banner-photos";
-import { POST_IDS, USER_IDS, COMMUNITY_IDS } from "../demo-catalog";
+import { BANNER_PHOTOS } from "../banner-photos.ts";
+import { POST_IDS, USER_IDS, COMMUNITY_IDS } from "../demo-catalog.ts";
 import {
   type Post,
   type Comment,
