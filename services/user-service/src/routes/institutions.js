@@ -1,7 +1,7 @@
 // Cadastro institucional (T04): o titular cria, edita, envia para validação e
 // lê o próprio estado. Validar, devolver e revogar é do dm-gestao (decisão 2),
 // que grava direto em user_db.organizations; ver o contrato em
-// dm-docs/docs/gestao/04-modelagem-de-dados.md e a migração 008.
+// dm-docs/gestao/04-modelagem-de-dados.md e a migração 008.
 //
 // Privacidade: contatos da organização, dados do representante, parecer e
 // trilha só saem para o próprio titular. A rota pública devolve apenas o

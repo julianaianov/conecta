@@ -1,5 +1,5 @@
 // Cadastro institucional (fonte da verdade: Fluxo 2, etapas 01–02, e Fluxo 3,
-// etapas 01–02; decisões 2 e 3 de dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md).
+// etapas 01–02; decisões 2 e 3 de dm-docs/fonte-da-verdade/decisoes-de-implementacao.md).
 //
 // Módulo puro: validação de CNPJ (dígitos verificadores, inclusive o formato
 // alfanumérico da Receita Federal), CNAE, CEP, UF, contatos e normalização do
@@ -258,6 +258,7 @@ function validateInstitution(kind, input = {}) {
     label: 'Território de atuação',
   });
 
+  // TODO(fonte-da-verdade): Modelo de Conexão §02 — faltam o tipo de organização da instituição e a documentação institucional (estatuto etc.); colunas em migrations/008-institutional-registration.sql.
   if (kind === 'agente_transformacao') {
     if (!org.municipality) errors.municipality = 'Município é obrigatório';
     if (!org.uf && !errors.uf) errors.uf = 'UF é obrigatória';

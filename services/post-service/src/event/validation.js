@@ -188,7 +188,7 @@ function validateEvent(input, { forPublication = false, current = null } = {}) {
   value.accessibilityNotes = text(errors, 'accessibilityNotes', raw.accessibilityNotes, LIMITS.accessibilityNotes, { multiline: true });
   // Foto do evento: por enquanto só link https (o upload assinado da T08 tem
   // finalidades ligadas à demanda; a finalidade do evento é pendência da T25,
-  // registrada em dm-docs/docs/production-status.md).
+  // registrada em dm-docs/production-status.md).
   value.photoRef = text(errors, 'photoRef', raw.photoRef, LIMITS.photoRef);
   if (value.photoRef && !errors.photoRef) {
     let url;

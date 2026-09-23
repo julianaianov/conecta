@@ -25,6 +25,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 /** O papel da categoria no ecossistema, em uma palavra. */
 export const ROLE_FUNCTIONS: Record<UserRole, string> = {
+// TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 — a função do Agente de Transformação na fonte é "Publicadores", não "Iniciadores".
   agent: "Iniciadores",
   member: "Participantes",
   partner: "Apoiadores",
@@ -36,6 +37,7 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   agent: "Identificam necessidades no território e transformam demandas em projetos e ações.",
   member: "Participam, acompanham, apoiam e fortalecem iniciativas do território.",
   partner: "Oferecem recursos, produtos, serviços, conhecimento, estrutura ou investimento para demandas e projetos.",
+// TODO(fonte-da-verdade): Arquitetura de Perfis §3.4 — descrição do Poder Público sem "podendo disponibilizar recursos, serviços, infraestrutura, programas, conhecimento técnico e parcerias".
   government: "Acompanham demandas, respondem institucionalmente e encaminham ou viabilizam soluções dentro de sua competência.",
   media: "Amplificam demandas, projetos e resultados, aumentando a visibilidade e o potencial de conexão.",
 };
@@ -170,6 +172,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   // Sem "ranking": o Poder Público é medido por indicadores de atuação,
   // não por um ranking competitivo de apoiadores (neutralidade institucional).
   government: ["institutional_response", "interact", "share", "connect", "express_interest", "support"],
+// TODO(fonte-da-verdade): Arquitetura de Perfis §3.5 — "Identificar pautas" não tem funcionalidade própria (Fase 2).
   media: ["interact", "share", "connect"],
 };
 
@@ -197,6 +200,8 @@ export function allowedPostTypes(role: string | null | undefined, profileType?: 
 
 /** Texto exibido no cadastro — espelha a especificação de perfis. */
 export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
+// TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 — a fonte usa os verbos "Publicar demandas/projetos/eventos e ações" (aqui "Registrar …").
+// TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 / Modelo de Conexão §12 — "Conversar com parceiros": não há mensagens dentro da conexão, só a mensagem inicial.
   agent: [
     "Criar e gerenciar perfil", "Registrar demandas", "Registrar projetos",
     "Registrar eventos e ações", "Adicionar fotos, documentos e informações",
@@ -204,6 +209,7 @@ export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
     "Atualizar o andamento dos projetos", "Registrar resultados e impactos",
     "Informar necessidades de apoio", "Participar de indicadores de impacto",
   ],
+// TODO(fonte-da-verdade): Arquitetura de Perfis §3.2 — a fonte lista "Curtir/apoiar", "Comentar" e "Compartilhar"; language.test.mjs proíbe "curtir" (decisão de produto).
   member: [
     "Criar perfil", "Visualizar demandas e projetos", "Apoiar iniciativas",
     "Registrar atualizações", "Divulgar iniciativas", "Solicitar conexão",
@@ -217,6 +223,7 @@ export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
     "Registrar apoio realizado", "Acompanhar resultados",
     "Participar do ranking de apoiadores",
   ],
+// TODO(fonte-da-verdade): Arquitetura de Perfis §3.4 — faltam os rótulos "Publicar respostas institucionais" e "Compartilhar iniciativas".
   government: [
     "Criar perfil institucional", "Visualizar mapa de demandas e projetos",
     "Acompanhar iniciativas do território", "Solicitar conexão",
@@ -830,6 +837,7 @@ export function formatCnae(value: string): string {
 // Espelho do contrato de services/post-service/src/routes/demands.js
 // (JSON em camelCase). Valores e rótulos iguais a src/demand/constants.js.
 
+// TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda; ver TODO em services/post-service/migrations/007-demands.sql.
 export type DemandCategory =
   | "projeto_social" | "projeto_ambiental" | "necessidade_de_patrocinio"
   | "problema_urbano" | "problema_urgente";

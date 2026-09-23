@@ -8,7 +8,7 @@
 -- ── Como a gestão recebe a solicitação ─────────────────────────────────────
 -- O dm-gestao já tem a fila de solicitações de titulares em
 -- `gestao_db.data_subject_requests` (migration 2026_09_22_000010, documentada
--- em dm-docs/docs/gestao/05-lgpd.md §2), com protocolo `LGPD-AAAA-NNNNNN` e
+-- em dm-docs/gestao/05-lgpd.md §2), com protocolo `LGPD-AAAA-NNNNNN` e
 -- prazo de 15 dias corridos. O portal **não escreve no gestao_db** e a gestão
 -- **não escreve no post_db além do permitido**: o pedido feito pelo titular
 -- nasce aqui, em `user_db.data_subject_requests`, e a gestão **lê** esta
@@ -30,7 +30,7 @@
 -- ── Eliminação / anonimização ──────────────────────────────────────────────
 -- `account_anonymizations` é a trilha de execução (append-only): o que foi
 -- anonimizado em cada banco e quantos registros foram tocados — contagens, sem
--- dado pessoal. A regra por tipo de dado está em dm-docs/docs/gestao/05-lgpd.md
+-- dado pessoal. A regra por tipo de dado está em dm-docs/gestao/05-lgpd.md
 -- §7 e no AGENTS.md do dm-api: o que a lei e o interesse público mandam reter
 -- (demanda publicada, dossiê, prestação de contas, apoios, trilha de auditoria)
 -- permanece, com a identificação suprimida onde ela é do titular pessoa

@@ -1,5 +1,5 @@
 // Vocabulário da inteligência artificial (T23). Fonte:
-// dm-docs/docs/fonte-da-verdade/01-apresentacao-institucional.html, slide 23
+// dm-docs/fonte-da-verdade/01-apresentacao-institucional.html, slide 23
 // ("Inteligência artificial": organização automática de demandas, detecção de
 // urgência, sugestão de editais, conexão com patrocinadores ideais e geração
 // de relatórios para governo). Decisão 6 de decisoes-de-implementacao.md.

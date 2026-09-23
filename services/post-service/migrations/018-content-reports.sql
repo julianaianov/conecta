@@ -1,10 +1,10 @@
 -- Migração 018: denúncia de conteúdo e de perfil pelo portal (T6.3).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/01-apresentacao-institucional.html,
+-- Fonte: dm-docs/fonte-da-verdade/01-apresentacao-institucional.html,
 -- slide 26 (Governança: LGPD, neutralidade político-partidária e publicação
 -- apenas de dados verificáveis) — a moderação da plataforma precisa de uma
 -- entrada de denúncia feita por quem usa o portal. Contrato com o dm-gestao:
--- dm-docs/docs/gestao/04-modelagem-de-dados.md §3.14.
+-- dm-docs/gestao/04-modelagem-de-dados.md §3.14.
 --
 -- Até aqui a fila de moderação do dm-gestao lia `reports` do `gestao_db`, uma
 -- tabela que nenhum serviço do portal escrevia: a fila ficava sempre vazia.
@@ -35,7 +35,7 @@
 --   "analisada"), para não virar canal de retaliação.
 -- - LGPD: `reporter_id` é a conta que denunciou; na gestão ela aparece
 --   pseudonimizada (moderator) e a revelação é auditada e restrita a admin+
---   (dm-docs/docs/gestao/05-lgpd.md).
+--   (dm-docs/gestao/05-lgpd.md).
 --
 -- Idempotente: pode rodar de novo (o deploy reaplica o manifesto inteiro).
 

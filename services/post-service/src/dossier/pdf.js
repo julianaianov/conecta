@@ -430,6 +430,7 @@ function renderBody(doc, content) {
     formatCents(i.totalCents),
   ]));
 
+  // TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql.
   subTitle(doc, 'Composição financeira');
   const c = budget.composition;
   table(doc, [

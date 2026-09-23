@@ -126,6 +126,7 @@ async function listEvidences(db, demandId) {
   return rows;
 }
 
+// TODO(fonte-da-verdade): Modelo de Conexão §19 — sem percentual de execução nem ocorrências; ver TODO em src/components/app/execution/DemandExecutionPanel.tsx.
 async function listProgress(db, demandId) {
   const { rows } = await db.query(
     `SELECT ${PROGRESS_SQL} FROM demand_progress_updates u

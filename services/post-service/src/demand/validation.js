@@ -57,6 +57,7 @@ const LIMITS = {
 const MAX_ITEMS = 200;
 const MAX_BENEFICIARIES = 100_000_000;
 
+// TODO(fonte-da-verdade): Modelo de Conexão §04 — faltam "Problema identificado" e "Área de abrangência" distintos de descrição e território; ver TODO em migrations/007-demands.sql.
 const REQUIRED_ON_SUBMIT = [
   ['category', 'Selecione a categoria da demanda'],
   ['title', 'Informe o título da demanda'],

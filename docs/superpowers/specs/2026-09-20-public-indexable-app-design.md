@@ -126,7 +126,7 @@ Filtros e estados puramente client-side não gerarão URLs duplicadas no sitemap
 
 ### 5. Produção e documentação
 
-O Compose de produção passará `DM_INTERNAL_POST_API_URL=http://post-service:3003` e `DM_INTERNAL_USER_API_URL=http://user-service:3002` ao container `web`. Não são segredos e não serão expostos em `NEXT_PUBLIC_*`. O README do app, `AGENTS.md` do app/infra e `dm-docs/docs/arquitetura.md` registrarão o contrato.
+O Compose de produção passará `DM_INTERNAL_POST_API_URL=http://post-service:3003` e `DM_INTERNAL_USER_API_URL=http://user-service:3002` ao container `web`. Não são segredos e não serão expostos em `NEXT_PUBLIC_*`. O README do app, `AGENTS.md` do app/infra e `dm-docs/arquitetura.md` registrarão o contrato.
 
 ## Contratos e invariantes
 

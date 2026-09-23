@@ -10,7 +10,7 @@
 -- Estende `organizations` (a tabela que o dm-gestao já lê) em vez de criar outra.
 -- Linhas antigas, sem `institution_kind`, não são tocadas.
 --
--- Contrato com o dm-gestao (dm-docs/docs/gestao/04-modelagem-de-dados.md):
+-- Contrato com o dm-gestao (dm-docs/gestao/04-modelagem-de-dados.md):
 --   - o gestao_app atualiza só organizations.validation_status,
 --     validation_note, validation_reviewed_by (e updated_at), conforme
 --     dmconecta-infra/db/migrations/gestao/006-gestao-app-user-db-institutions.sql;
@@ -23,6 +23,7 @@
 --
 -- Idempotente: o deploy reaplica o manifesto inteiro.
 
+-- TODO(fonte-da-verdade): Modelo de Conexão §02 — organizations sem tipo de organização e sem documentação institucional (estatuto etc.); ver TODO em src/institution.js.
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS institution_kind VARCHAR(30);
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS cnpj VARCHAR(14);
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS legal_name VARCHAR(255);
@@ -84,6 +85,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- Um cadastro institucional por perfil (o vínculo perfil ↔ instituição).
 -- O CNPJ não é único: vários órgãos de uma prefeitura, ou dois representantes
 -- da mesma associação, compartilham o CNPJ; o dm-gestao confere na validação.
+-- TODO(fonte-da-verdade): Modelo de Conexão §32 — um perfil por instituição; faltam vários usuários por instituição e permissões por processo.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_organizations_institution_profile
   ON organizations(profile_id) WHERE institution_kind IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_organizations_cnpj ON organizations(cnpj);

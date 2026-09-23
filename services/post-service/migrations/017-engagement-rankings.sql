@@ -1,6 +1,6 @@
 -- Migração 017: engajamento, rankings e selos de impacto social (T21).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/01-apresentacao-institucional.html —
+-- Fonte: dm-docs/fonte-da-verdade/01-apresentacao-institucional.html —
 -- slide 22 ("Engajamento e rankings": curtidas e comentários, compartilhamentos,
 -- gamificação, selos de impacto social; rankings de usuários mais ativos,
 -- maiores apoiadores, empresas em destaque, voluntários mais participativos,

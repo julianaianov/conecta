@@ -52,7 +52,7 @@
 - Create `src/app/robots.test.mjs`: testes das rotas de metadata do App Router.
 - Create `scripts/audit-public-seo.mjs`: auditoria HTTP sem dependência externa.
 - Modify `src/app/(app)/layout.tsx`, `src/app/(auth)/layout.tsx`, `src/components/app/AppShell.tsx`, páginas públicas, `src/lib/app/api.ts`, `services/post-service/src/routes/posts.js`, `package.json`, `README.md`.
-- Modify `dmconecta-infra/docker-compose.prod.yml`, `dmconecta-infra/AGENTS.md`, `dmconecta-infra/.env.example`, `dm-docs/docs/arquitetura.md` e os `AGENTS.md`/README necessários para documentar as bases internas.
+- Modify `dmconecta-infra/docker-compose.prod.yml`, `dmconecta-infra/AGENTS.md`, `dmconecta-infra/.env.example`, `dm-docs/arquitetura.md` e os `AGENTS.md`/README necessários para documentar as bases internas.
 
 ### Task 1: Fixar contratos de acesso, URLs e JSON-LD
 
@@ -600,7 +600,7 @@ git commit -m "feat: publish crawlable metadata and sitemap"
 - Modify: `/Users/sierra/Dev/Projetos/DmConnecta/dmconecta-infra/docker-compose.prod.yml`
 - Modify: `/Users/sierra/Dev/Projetos/DmConnecta/dmconecta-infra/.env.example`
 - Modify: `/Users/sierra/Dev/Projetos/DmConnecta/dmconecta-infra/AGENTS.md`
-- Modify: `/Users/sierra/Dev/Projetos/DmConnecta/dm-docs/docs/arquitetura.md`
+- Modify: `/Users/sierra/Dev/Projetos/DmConnecta/dm-docs/arquitetura.md`
 - Modify: `AGENTS.md`
 - Modify: `README.md`
 - Modify: `.env.example`
@@ -617,7 +617,7 @@ Add the literal Docker DNS URLs to the `environment` block of `web`, next to `NO
 
 - [ ] **Step 2: Document the contract in all affected operations documents**
 
-Update the app README route table and environment section, the app/infra `AGENTS.md`, root `AGENTS.md`, and `dm-docs/docs/arquitetura.md` to state that public SSR reads use the two internal URLs, while browser mutations still use Caddy `/api` same-origin routing.
+Update the app README route table and environment section, the app/infra `AGENTS.md`, root `AGENTS.md`, and `dm-docs/arquitetura.md` to state that public SSR reads use the two internal URLs, while browser mutations still use Caddy `/api` same-origin routing.
 
 - [ ] **Step 3: Validate infrastructure syntax and code contracts**
 

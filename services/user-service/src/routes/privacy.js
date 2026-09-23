@@ -15,7 +15,7 @@
 // com o que os três bancos guardam da conta, grava no bucket de uploads e
 // devolve uma URL assinada curta. A solicitação continua existindo e vai para a
 // fila da equipe na gestão, que lê `user_db.data_subject_requests`
-// (dm-docs/docs/gestao/05-lgpd.md §2 e §7).
+// (dm-docs/gestao/05-lgpd.md §2 e §7).
 
 const express = require('express');
 const crypto = require('node:crypto');

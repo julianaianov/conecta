@@ -5,7 +5,7 @@
 // Fonte: Apresentação Institucional, slide 26 (Governança: LGPD, neutralidade
 // e publicação apenas de dados verificáveis). A fila de moderação do dm-gestao
 // passa a ler estas denúncias (contrato em
-// dm-docs/docs/gestao/04-modelagem-de-dados.md §3.14).
+// dm-docs/gestao/04-modelagem-de-dados.md §3.14).
 //
 // Conta autenticada:
 //   POST /reports            registra a denúncia (motivo + descrição opcional)

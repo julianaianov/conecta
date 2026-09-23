@@ -26,9 +26,9 @@
 -- `demand_interests`, `content_shares`, `content_reports`, evidências,
 -- andamento e prestação de contas. As identidades gravadas nessas trilhas não
 -- são exibidas com nome em rota pública (o `payload->'public'` já omite) e a
--- gestão as vê pseudonimizadas (dm-docs/docs/gestao/05-lgpd.md §5).
+-- gestão as vê pseudonimizadas (dm-docs/gestao/05-lgpd.md §5).
 --
--- A regra completa por tipo de dado está em dm-docs/docs/gestao/05-lgpd.md §7.
+-- A regra completa por tipo de dado está em dm-docs/gestao/05-lgpd.md §7.
 --
 -- A gestão (`gestao_app`) só lê (grant no dm-infra,
 -- db/migrations/gestao/018-gestao-app-user-lgpd.sql).

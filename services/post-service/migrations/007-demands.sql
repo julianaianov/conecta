@@ -1,8 +1,8 @@
 -- Migração 007: demanda como entidade própria (T06).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/02-fluxo-cadastro-agente-de-transformacao.html
+-- Fonte: dm-docs/fonte-da-verdade/02-fluxo-cadastro-agente-de-transformacao.html
 -- e decisões 1, 3, 4, 5 e 7 de decisoes-de-implementacao.md. Contrato com o
--- dm-gestao: dm-docs/docs/gestao/04-modelagem-de-dados.md §3.
+-- dm-gestao: dm-docs/gestao/04-modelagem-de-dados.md §3.
 --
 -- - `demands` é o dado canônico; o post do feed é só a vitrine (posts.demand_id),
 --   criado por trigger quando a gestão publica.
@@ -23,6 +23,11 @@
 --
 -- Idempotente: pode rodar de novo (o deploy reaplica o manifesto inteiro).
 
+-- TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda: obra/infraestrutura,
+-- revitalização de espaço, recuperação ambiental, apoio técnico, apoio com serviços, apoio com
+-- materiais e outras. Espelhos: src/demand/constants.js, src/map/constants.js (legenda do mapa é
+-- 1 classe por categoria), user-service/src/partner-profile.js e, no portal, src/lib/app/types.ts,
+-- demand.ts e map.ts.
 DO $$ BEGIN
   CREATE TYPE demand_category AS ENUM (
     'projeto_social', 'projeto_ambiental', 'necessidade_de_patrocinio',
@@ -88,6 +93,8 @@ CREATE TABLE IF NOT EXISTS demands (
   -- rascunho é parcial; o envio exige o conjunto completo (demands_guard).
   category                demand_category,
   title                   VARCHAR(200),
+  -- TODO(fonte-da-verdade): Modelo de Conexão §04 — faltam "Problema identificado" e "Área de
+  -- abrangência" como campos distintos de description e territory (ver src/demand/validation.js).
   description             TEXT,
   objective               TEXT,
   justification           TEXT,
@@ -133,6 +140,10 @@ CREATE TABLE IF NOT EXISTS demands (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   -- 4% e 6% são da fonte; mudar o percentual exige nova decisão e migração.
   CONSTRAINT demands_fee_rates CHECK (agent_fee_bps = 400 AND platform_fee_bps = 600),
+  -- TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% só se aplica a conexões com
+  -- Parceiros/Investidores/Empresas, não ao Poder Público; hoje a composição é por demanda.
+  -- Espelhos: src/demand/finance.js, src/demand/store.js, src/routes/interests.js, src/dossier/ e,
+  -- no portal, DemandParts.tsx, InstitutionalDemandClient.tsx e OpportunitiesClient.tsx.
   CONSTRAINT demands_financial_composition CHECK (
     agent_fee_cents = round(budget_amount_cents::numeric * agent_fee_bps / 10000)
     AND platform_fee_cents = round(budget_amount_cents::numeric * platform_fee_bps / 10000)
@@ -156,6 +167,8 @@ CREATE INDEX IF NOT EXISTS idx_demands_review_queue
 
 -- Cronograma de execução (slides 13 e 14): etapa, atividades, início, término,
 -- responsável e os momentos de registro fotográfico/audiovisual.
+-- TODO(fonte-da-verdade): Modelo de Conexão §05 — etapa sem recursos necessários, sem valor
+-- associado explícito e sem status (ver src/components/app/demand/ScheduleEditor.tsx).
 CREATE TABLE IF NOT EXISTS demand_schedule_items (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   demand_id         UUID NOT NULL REFERENCES demands(id) ON DELETE CASCADE,
@@ -177,6 +190,8 @@ CREATE INDEX IF NOT EXISTS idx_demand_schedule_items_demand ON demand_schedule_i
 -- Orçamento detalhado (slides 9–12). O vínculo com a etapa do cronograma forma
 -- o cronograma físico-financeiro; a FK composta garante que a etapa é da mesma
 -- demanda. total_cents = round(quantidade × valor unitário), meio para cima.
+-- TODO(fonte-da-verdade): Modelo de Conexão §04 — faltam coluna Item separada da descrição,
+-- Fornecedor/referência e importação de planilha (ver src/components/app/demand/BudgetEditor.tsx).
 CREATE TABLE IF NOT EXISTS demand_budget_items (
   id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   demand_id              UUID NOT NULL REFERENCES demands(id) ON DELETE CASCADE,
@@ -240,6 +255,8 @@ CREATE INDEX IF NOT EXISTS idx_demand_resources_demand ON demand_resources(deman
 
 -- Documentação comprobatória, quando aplicável (slide 17). `reference`: URL
 -- https até o upload da T08.
+-- TODO(fonte-da-verdade): Modelo de Conexão §17 — documento sem versão, status, instituição e
+-- permissão de acesso, e vinculado à demanda em vez do processo de conexão.
 CREATE TABLE IF NOT EXISTS demand_documents (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   demand_id      UUID NOT NULL REFERENCES demands(id) ON DELETE CASCADE,
@@ -652,6 +669,9 @@ CREATE TRIGGER demands_guard
   BEFORE INSERT OR UPDATE OR DELETE ON demands
   FOR EACH ROW EXECUTE FUNCTION demands_guard();
 
+-- TODO(fonte-da-verdade): Modelo de Conexão §07 — na publicação (kind publicada) não se identificam
+-- potenciais conexões (território, competência institucional, valor, público, programas, interesse
+-- cadastrado) para mostrar ao Agente e aos apoiadores; ver TODO em src/interest/compatibility.js.
 DROP TRIGGER IF EXISTS demands_record_event ON demands;
 CREATE TRIGGER demands_record_event
   AFTER INSERT OR UPDATE ON demands

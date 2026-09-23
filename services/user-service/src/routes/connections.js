@@ -43,6 +43,7 @@ const DETAIL_SQL = `SELECT
          WHERE c.id = $1`;
 
 // Espelha ConnectionType em src/lib/app/types.ts.
+// TODO(fonte-da-verdade): Modelo de Conexão §11/§28/§35 — conexão não vira Processo de Conexão com protocolo DM-AAAA-NNNNNN ao formalizar; faltam vários processos por demanda com a contribuição de cada conectado e comunicação, encaminhamentos, documentos, prazos, execução, resultados e linha do tempo vinculados ao processo.
 const CONNECTION_TYPES = ['support', 'sponsorship', 'partnership', 'meeting', 'resources', 'outreach'];
 const MAX_MESSAGE_LENGTH = 2000;
 
@@ -173,6 +174,7 @@ module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) 
   });
 
   // PUT /:id — atualizar status e desfecho
+  // TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 / Modelo de Conexão §12 — não há mensagens dentro da conexão: só a mensagem inicial; este PUT muda status/desfecho.
   router.put('/:id', auth, async (req, res) => {
     const { status, outcome } = req.body ?? {};
     if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Conexão não encontrada' });

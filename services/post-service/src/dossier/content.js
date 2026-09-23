@@ -138,6 +138,7 @@ function demandSnapshot(row, items, { accountability = null } = {}) {
     },
     budget: {
       items: budgetItems,
+      // TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql.
       composition: {
         budgetAmountCents: toNumber(row.budget_amount_cents),
         agentFeeBps: toNumber(row.agent_fee_bps),
@@ -280,6 +281,7 @@ function deadlines(schedule) {
  * `meta`: { number, version, variant, trigger, issuedAt }; `photo`: { sha256,
  * contentType, embedded } ou null.
  */
+// TODO(fonte-da-verdade): Modelo de Conexão §06 — o dossiê não inclui o Histórico da demanda.
 function buildDossierContent({ snapshot, institution, meta, photo = null }) {
   const base = meta.variant === 'publica' ? redactSnapshot(snapshot) : snapshot;
   const audiovisualCents = base.budget.items

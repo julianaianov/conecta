@@ -1,6 +1,6 @@
 -- Migração 015: prestação de contas e prestação de resultados (T18).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/02-fluxo-cadastro-agente-de-transformacao.html
+-- Fonte: dm-docs/fonte-da-verdade/02-fluxo-cadastro-agente-de-transformacao.html
 -- — slide 24 ("Etapa 10 · Prestação de resultados": ao longo e ao final da
 -- execução deverão ser registrados documentos e evidências, incluindo,
 -- obrigatoriamente quando aplicável: fotos do antes e depois, filmagem do
@@ -13,7 +13,7 @@
 -- cada um deles com o valor medido), slide 23 (acompanhamento e execução
 -- orçamentária, que a T17 já registra) e slide 25, passo 18 ("Resultados +
 -- prestação de contas"). Contrato com o dm-gestao:
--- dm-docs/docs/gestao/04-modelagem-de-dados.md §3.13.
+-- dm-docs/gestao/04-modelagem-de-dados.md §3.13.
 --
 -- - `demand_accountability`: um registro final por demanda, criado com a
 --   demanda no status `prestacao_de_contas`. Enquanto `rascunho` o Agente
@@ -47,6 +47,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Tipos de anexo da prestação (slide 24).
+-- TODO(fonte-da-verdade): Modelo de Conexão §20/§24 — faltam laudos, certificados e registros técnicos.
 DO $$ BEGIN
   CREATE TYPE demand_accountability_document_kind AS ENUM (
     'comprovante_financeiro', 'relatorio_execucao', 'registro_acao', 'outro');

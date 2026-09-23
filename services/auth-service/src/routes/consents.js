@@ -14,7 +14,7 @@
 // A conta **não é excluída**: ela é a chave estrangeira de toda a trilha
 // imutável do portal (demandas, apoios, prestação de contas, denúncias). A
 // eliminação substitui a identificação e invalida o acesso; a regra por tipo de
-// dado está em dm-docs/docs/gestao/05-lgpd.md §7.
+// dado está em dm-docs/gestao/05-lgpd.md §7.
 //
 // A orquestração da eliminação e da exportação é do user-service
 // (`routes/privacy.js`), que chama estas rotas com o token do próprio titular.

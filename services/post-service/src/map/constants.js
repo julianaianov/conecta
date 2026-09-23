@@ -17,6 +17,7 @@ const {
 } = require('../demand/constants');
 
 /** Classes da legenda, na ordem do slide 19. */
+// TODO(fonte-da-verdade): Modelo de Conexão §03 — a legenda é 1 classe por categoria e faltam 7 tipos de demanda; ver TODO em migrations/007-demands.sql.
 const LEGEND = [
   {
     id: 'problemas_urgentes',

@@ -537,6 +537,7 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
       </ReadSection>
       <ReadSection title="Orçamento" icon="payments">
         <BudgetTable items={demand.budgetItems} />
+        {/* TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — o Poder Público não deveria ver a composição 4% + 6%; ver TODO em services/post-service/migrations/007-demands.sql. */}
         <div className="mt-4"><CompositionCard composition={demand.composition} /></div>
       </ReadSection>
       <ReadSection title="Cronograma" icon="calendar">

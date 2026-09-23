@@ -62,6 +62,7 @@ const DOCUMENT_TYPES = {
  * Vídeo: um PUT único aceita até 5 GB no S3; o limite da plataforma é 500 MB
  * sem multipart (conexões ruins podem precisar de reenvio).
  */
+// TODO(fonte-da-verdade): Modelo de Conexão §09/§33 — visibility só tem public/private; falta o nível Institucional (partes conectadas acessam documentos e dossiê integral; ver src/routes/dossiers.js authorizedDemand).
 const PURPOSES = {
   demand_photo: {
     label: 'Fotografia da demanda', target: 'demand', folder: 'photo',

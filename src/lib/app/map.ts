@@ -27,6 +27,7 @@ export interface MapLegendClass {
 }
 
 /** Classes da legenda, na ordem do slide 19. */
+// TODO(fonte-da-verdade): Modelo de Conexão §03 — legenda de 1 classe por categoria; faltam 7 tipos de demanda (ver TODO em services/post-service/migrations/007-demands.sql).
 export const MAP_LEGEND: MapLegendClass[] = [
   { id: "problemas_urgentes", label: "Problemas urgentes", category: "problema_urgente", color: "#E53935", shape: "triangulo" },
   { id: "problemas_urbanos", label: "Problemas urbanos", category: "problema_urbano", color: "#1B4F72", shape: "quadrado" },

@@ -43,6 +43,7 @@ type ExpenseRow = { id: number; target: string; amount: string; description: str
 
 const newExpense = (id: number): ExpenseRow => ({ id, target: "", amount: "", description: "" });
 
+// TODO(fonte-da-verdade): Modelo de Conexão §19 — faltam percentual de execução e registro de ocorrências (também em services/post-service/src/execution/store.js).
 export function DemandExecutionPanel({ demandId, onChanged }: {
   demandId: string;
   /** Avisa a lista quando algo muda (pendências das transições). */

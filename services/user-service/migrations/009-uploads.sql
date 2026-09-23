@@ -11,7 +11,7 @@
 --
 -- A gestão lê esta tabela (SELECT padrão do gestao_app no user_db) e assina a
 -- leitura de `object_key` com a credencial da instância; ver
--- dm-docs/docs/gestao/04-modelagem-de-dados.md.
+-- dm-docs/gestao/04-modelagem-de-dados.md.
 --
 -- Idempotente: pode rodar de novo.
 

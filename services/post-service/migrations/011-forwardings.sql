@@ -1,13 +1,13 @@
 -- Migração 011: encaminhamentos da demanda entre órgãos e setores (T14).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/03-fluxo-cadastro-poder-publico.html,
+-- Fonte: dm-docs/fonte-da-verdade/03-fluxo-cadastro-poder-publico.html,
 -- etapa 06 (slide 11, "Encaminhamento"): quando a demanda não estiver sob
 -- responsabilidade do órgão que a recebeu, o Poder Público a encaminha ao setor
 -- ou órgão competente, e a plataforma registra órgão responsável, setor de
 -- destino, data do encaminhamento, responsável pelo encaminhamento, status,
 -- providências realizadas e atualizações posteriores — o histórico de
 -- tramitação. Etapa 08 (slide 15): encaminhamentos entram na linha do tempo.
--- Contrato com o dm-gestao: dm-docs/docs/gestao/04-modelagem-de-dados.md §3.9.
+-- Contrato com o dm-gestao: dm-docs/gestao/04-modelagem-de-dados.md §3.9.
 --
 -- - `demand_forwardings`: um encaminhamento parte do acompanhamento do órgão
 --   de origem (FK composta (track_id, demand_id, organization_id) para
@@ -46,6 +46,7 @@ DO $$ BEGIN
   CREATE TYPE forwarding_update_kind AS ENUM ('providencia', 'atualizacao', 'status');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+-- TODO(fonte-da-verdade): Modelo de Conexão §13 — encaminhamento sem prazo.
 CREATE TABLE IF NOT EXISTS demand_forwardings (
   id                              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   -- Acompanhamento do órgão de origem (quem encaminha).
@@ -113,6 +114,8 @@ CREATE INDEX IF NOT EXISTS idx_demand_forwardings_destination
   ON demand_forwardings(destination_organization_id, status, forwarded_at DESC)
   WHERE destination_organization_id IS NOT NULL;
 
+-- TODO(fonte-da-verdade): Modelo de Conexão §12 — faltam mensagens com cargo, destinatário e anexos
+-- entre o Agente e os conectados.
 CREATE TABLE IF NOT EXISTS demand_forwarding_updates (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   forwarding_id      UUID NOT NULL,

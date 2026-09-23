@@ -1,5 +1,5 @@
 -- Migração 006: visibilidade de moderação dos posts (decisão 7 de
--- dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md).
+-- dm-docs/fonte-da-verdade/decisoes-de-implementacao.md).
 --
 -- Os posts antigos não viram demandas. O status deles deixa de ser editado
 -- (nem pelo autor, nem pela gestão); o que a moderação controla é se o post

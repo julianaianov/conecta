@@ -1,11 +1,11 @@
 -- Migração 010: resposta institucional e status do Poder Público (T13).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/03-fluxo-cadastro-poder-publico.html,
+-- Fonte: dm-docs/fonte-da-verdade/03-fluxo-cadastro-poder-publico.html,
 -- etapas 03 a 08 (slides 8–15): análise das demandas, atuação institucional,
 -- resposta institucional, recursos e formas de apoio, acompanhamento e status,
 -- histórico e transparência; decisão 4 de decisoes-de-implementacao.md (status
 -- institucional por órgão e por demanda). Contrato com o dm-gestao:
--- dm-docs/docs/gestao/04-modelagem-de-dados.md.
+-- dm-docs/gestao/04-modelagem-de-dados.md.
 --
 -- - `demand_institutional_tracks`: um acompanhamento por (demanda, órgão do
 --   Poder Público com cadastro validado), com o status institucional canônico
@@ -36,6 +36,10 @@
 --
 -- Idempotente: pode rodar de novo (o deploy reaplica o manifesto inteiro).
 
+-- TODO(fonte-da-verdade): Modelo de Conexão §16 — falta o status padronizado do processo
+-- (Solicitação de informações, Aprovada para execução, Prestação de contas/Resultados, Aguardando
+-- documentação, Aguardando recurso, Não aprovada, Suspensa, Cancelada); conciliar com o Fluxo do
+-- Poder Público. Espelho: src/institutional/constants.js.
 DO $$ BEGIN
   CREATE TYPE institutional_status AS ENUM (
     'recebida', 'em_analise', 'encaminhada', 'em_articulacao', 'acao_programada',
@@ -44,6 +48,9 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- "A resposta poderá informar" (slide 10).
+-- TODO(fonte-da-verdade): Modelo de Conexão §10 — faltam solicitar documentos, solicitar reunião,
+-- solicitar análise técnica e recusar com motivo (Parceiros e Poder Público); ver TODO em
+-- src/interest/constants.js.
 DO $$ BEGIN
   CREATE TYPE institutional_response_type AS ENUM (
     'recebimento', 'analise_em_andamento', 'orgao_ou_setor_responsavel', 'encaminhamento_realizado',
@@ -75,6 +82,8 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- TODO(fonte-da-verdade): Modelo de Conexão §11/§28/§35 — o acompanhamento não é um Processo de
+-- Conexão com protocolo DM-AAAA-NNNNNN; ver TODO em user-service/src/routes/connections.js.
 CREATE TABLE IF NOT EXISTS demand_institutional_tracks (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   demand_id          UUID NOT NULL REFERENCES demands(id) ON DELETE RESTRICT,
@@ -94,6 +103,7 @@ CREATE TABLE IF NOT EXISTS demand_institutional_tracks (
   status_note        TEXT CHECK (status_note IS NULL OR char_length(status_note) <= 2000),
   status_changed_by  UUID,
   -- Responsável pelo acompanhamento no órgão (nome e cargo/setor). Privado.
+  -- TODO(fonte-da-verdade): Modelo de Conexão §14 — faltam data limite e setor do responsável atual.
   responsible_name   VARCHAR(255),
   responsible_role   VARCHAR(255),
   received_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),

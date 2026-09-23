@@ -730,6 +730,7 @@ export const DOCUMENT_TYPE_LABELS: Record<DemandDocumentType, string> = {
   outros: "Outros documentos",
 };
 
+// TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda; ver TODO em services/post-service/migrations/007-demands.sql.
 export const DEMAND_CATEGORIES: DemandCategory[] = [
   "projeto_social", "projeto_ambiental", "necessidade_de_patrocinio", "problema_urbano", "problema_urgente",
 ];

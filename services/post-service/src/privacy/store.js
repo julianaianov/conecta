@@ -4,7 +4,7 @@
 // conta na publicação dele, mensagem do outro lado de uma conexão, apoio de
 // outra pessoa à demanda dele).
 //
-// Regra da eliminação, por tipo de dado, em dm-docs/docs/gestao/05-lgpd.md §7.
+// Regra da eliminação, por tipo de dado, em dm-docs/gestao/05-lgpd.md §7.
 
 /** Rótulo que substitui o nome nas publicações e comentários do feed. */
 const ANONYMOUS_NAME = 'Conta removida';

@@ -2,6 +2,7 @@
 // Os valores são os mesmos dos enums da migração post-service/007-demands.sql;
 // test/demand-schema.test.js confere as duas listas.
 
+// TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda; ver TODO em services/post-service/migrations/007-demands.sql.
 const CATEGORIES = [
   'projeto_social', 'projeto_ambiental', 'necessidade_de_patrocinio',
   'problema_urbano', 'problema_urgente',
@@ -65,6 +66,7 @@ const RESOURCE_TYPES_BY_KIND = {
   contrapartida: COUNTERPART_RESOURCE_TYPES,
 };
 
+// TODO(fonte-da-verdade): Modelo de Conexão §29 — faltam módulos por tipo (Obras, Ambiental, Social, Apoio/Investimento, Articulação Pública) com documentos próprios (ART/RRT, documento do imóvel, licenças, projeto arquitetônico) e indicadores próprios.
 const DOCUMENT_TYPES = [
   'documentos_institucionais', 'estatuto', 'documentos_de_representacao',
   'autorizacoes', 'orcamentos_e_cotacoes', 'projetos_tecnicos', 'fotografias', 'outros',

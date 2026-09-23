@@ -39,6 +39,7 @@ const EVIDENCE_PURPOSE_BY_MEDIA = {
 };
 
 // Situação da etapa do cronograma na atualização de andamento (slide 23).
+// TODO(fonte-da-verdade): Modelo de Conexão §18 — faltam os status Atrasada e Bloqueada; ver TODO em migrations/014-execution.sql.
 const STAGE_PROGRESS = ['nao_iniciada', 'em_andamento', 'concluida'];
 
 const STAGE_PROGRESS_LABELS = {

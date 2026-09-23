@@ -128,6 +128,7 @@ function opportunityQuery(query) {
   const min = cents('minTotalCents');
   const max = cents('maxTotalCents');
   if (min !== null && max !== null && min > max) fields.maxTotalCents = 'O valor máximo é menor que o mínimo';
+  // TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — filtro pelo total com 4% + 6%, que não vale para o Poder Público; ver TODO em migrations/007-demands.sql.
   if (min !== null) add('d.total_amount_cents >= ?', min);
   if (max !== null) add('d.total_amount_cents <= ?', max);
 

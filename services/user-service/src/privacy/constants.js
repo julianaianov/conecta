@@ -7,7 +7,7 @@
 // tal").
 //
 // Os tipos e o prazo são **os mesmos do dm-gestao**
-// (`gestao_db.data_subject_requests`, dm-docs/docs/gestao/05-lgpd.md §2), para
+// (`gestao_db.data_subject_requests`, dm-docs/gestao/05-lgpd.md §2), para
 // que a solicitação nascida no portal entre na fila de lá sem tradução.
 //
 // Espelhado em `src/lib/app/privacy.ts` (há teste que compara os dois).

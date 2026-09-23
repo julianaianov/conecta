@@ -10,6 +10,7 @@ const { CATEGORIES, NEEDED_RESOURCE_TYPES } = require('../demand/constants');
 // Manifestações: `apoio` (Parceiro, Poder Público: "demonstrar interesse"),
 // `participacao` e `voluntariado` (Membro da Comunidade: "demonstrar interesse
 // em participar", "oferecer voluntariado").
+// TODO(fonte-da-verdade): Modelo de Conexão §10 — faltam solicitar documentos, solicitar reunião, solicitar análise técnica e recusar com motivo (Parceiros e Poder Público); também em migrations/010 institutional_response_type.
 const INTEREST_KINDS = ['apoio', 'participacao', 'voluntariado'];
 
 const INTEREST_KIND_LABELS = {
@@ -19,6 +20,7 @@ const INTEREST_KIND_LABELS = {
 };
 
 // "Recursos, produtos, serviços, conhecimento, estrutura ou investimento" (slide 10).
+// TODO(fonte-da-verdade): Modelo de Conexão §27 — faltam oferta de equipe e execução de etapa vinculada ao cronograma.
 const OFFER_TYPES = ['recursos', 'produtos', 'servicos', 'conhecimento', 'estrutura', 'investimento'];
 
 const OFFER_TYPE_LABELS = {

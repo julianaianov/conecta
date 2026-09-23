@@ -8,6 +8,7 @@ import { forwardingNotification } from "@/lib/app/institutional";
 import type { AppNotification } from "@/lib/app/types";
 import { Icon, type IconName } from "./Icon";
 
+// TODO(fonte-da-verdade): Modelo de Conexão §08/§34 — lido só em localStorage; falta central de notificações persistente; ver TODO em services/user-service/src/routes/social.js.
 const READ_KEY = (userId: string) => `conecta:notif:read:${userId}`;
 
 function loadRead(userId: string): Set<string> {

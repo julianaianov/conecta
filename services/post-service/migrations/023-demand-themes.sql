@@ -1,6 +1,6 @@
 -- Migração 023: eixos temáticos da demanda e inteligência territorial (T26).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/01-apresentacao-institucional.html,
+-- Fonte: dm-docs/fonte-da-verdade/01-apresentacao-institucional.html,
 -- slide 26 ("Dados e inteligência territorial como ativo"): "a plataforma
 -- constrói um mapa contínuo das demandas e necessidades dos territórios" e
 -- "essas informações permitem identificar padrões, prioridades e oportunidades
@@ -28,7 +28,7 @@
 --   `idx_demand_themes_theme` serve a agregação por eixo e a chave primária
 --   (demanda, eixo) serve a leitura por demanda.
 --
--- Contrato com o dm-gestao: dm-docs/docs/gestao/04-modelagem-de-dados.md §3.19
+-- Contrato com o dm-gestao: dm-docs/gestao/04-modelagem-de-dados.md §3.19
 -- (somente leitura; grant em dmconecta-infra/db/migrations/gestao/023).
 --
 -- Idempotente: pode rodar de novo (o deploy reaplica o manifesto inteiro).

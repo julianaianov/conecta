@@ -62,6 +62,7 @@ function feeCents(baseCents, bps) {
  * `{ budgetAmountCents, agentFeeBps, platformFeeBps, agentFeeCents,
  *    platformFeeCents, totalAmountCents }`.
  */
+// TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% só se aplica a conexões com Parceiros/Investidores/Empresas, não ao Poder Público; hoje é calculado por demanda. Ver TODO em migrations/007-demands.sql.
 function computeComposition(baseCents) {
   if (!isCents(baseCents) || baseCents > MAX_BUDGET_CENTS) {
     throw new RangeError('valor do orçamento inválido');

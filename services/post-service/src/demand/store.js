@@ -385,6 +385,7 @@ function toValidationInput(row, items) {
 }
 
 /** Recalcula e grava a composição a partir dos itens do orçamento. */
+// TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql.
 async function recomputeComposition(db, demandId) {
   const { rows } = await db.query(
     'SELECT coalesce(sum(total_cents), 0)::text AS base FROM demand_budget_items WHERE demand_id = $1',

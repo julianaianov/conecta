@@ -106,6 +106,7 @@ function OpportunityCard({ item }: { item: Opportunity }) {
         <p className="mt-1 line-clamp-2 text-sm" style={{ color: "var(--th-muted)" }}>{d.description}</p>
         <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: "var(--th-muted)" }}>
           {place && <div><dt className="sr-only">Local</dt><dd className="inline-flex items-center gap-1"><Icon name="location" size={12} />{place}</dd></div>}
+          {/* TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql. */}
           <div><dt className="inline">Valor total: </dt><dd className="inline font-numeric">{formatCents(d.totalAmountCents)}</dd></div>
           {d.beneficiariesEstimate != null && <div><dt className="inline">Beneficiados: </dt><dd className="inline font-numeric">{d.beneficiariesEstimate.toLocaleString("pt-BR")}</dd></div>}
         </dl>

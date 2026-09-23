@@ -29,6 +29,9 @@ articulam · Comunicação amplifica · Membros da Comunidade participam.
 | `government` | Poder Público | Articulação | `prefeitura`, `secretaria`, `orgao_publico`, `representante_poder_publico`, `politico` |
 | `media` | Comunicação | Amplificação | `imprensa`, `veiculo_comunicacao`, `jornalista` |
 
+> TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 — a função "Publicadores" desta tabela diverge
+> de `ROLE_FUNCTIONS.agent` em `src/lib/app/types.ts` ("Iniciadores").
+
 Previstos para versões futuras: investidores e financiadores (Parceiros) e
 criadores de conteúdo (Comunicação).
 
@@ -49,6 +52,9 @@ para todos os perfis.
 | `support` — apoiar projetos, oferecer recursos, produtos ou serviços | | ✓ | ✓ | ✓ | |
 | `volunteer` — voluntariado e inscrição em eventos | | ✓ | | | |
 | `ranking` — ranking de apoiadores e impacto | | ✓ | ✓ | | |
+
+> TODO(fonte-da-verdade): Arquitetura de Perfis §3.2 — `interact` = comentar e curtir/apoiar na fonte;
+> a interface proíbe "curtir" (`src/lib/app/language.test.mjs`), decisão de produto.
 
 Os Agentes de Transformação aparecem no ranking de impacto pelos projetos que
 publicam e pelos apoios que recebem.
@@ -87,6 +93,11 @@ Comunicação contribuem com **Divulgação** (`sharing`).
 | 1/2 | Parceiros | descoberta, filtros, interesse e conexão |
 | 2 | Membros da Comunidade | apoio, participação, voluntariado, eventos e interação |
 | 2 | Comunicação | descoberta de pautas, conexão e amplificação |
+
+> TODO(fonte-da-verdade): Arquitetura de Perfis §5 x §8 — o fluxo do ecossistema (§5) conta com
+> apoio da comunidade e amplificação pela Comunicação desde o ciclo principal, enquanto a
+> estrutura do MVP (§8) libera Membros e Comunicação só na Fase 2; a fonte é contraditória e
+> precisa de decisão.
 
 ## Migração de dados
 

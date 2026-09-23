@@ -1,10 +1,10 @@
 -- Migração 022: sugestões de inteligência artificial (T23).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/01-apresentacao-institucional.html,
+-- Fonte: dm-docs/fonte-da-verdade/01-apresentacao-institucional.html,
 -- slide 23 ("Inteligência artificial": organização automática de demandas,
 -- detecção de urgência, sugestão de editais, conexão com patrocinadores ideais
 -- e geração de relatórios para governo). Decisão 6
--- (dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md): os recursos de
+-- (dm-docs/fonte-da-verdade/decisoes-de-implementacao.md): os recursos de
 -- IA usam a API do Claude, ficam atrás de uma flag desligada por padrão e
 -- **nunca bloqueiam o fluxo** se falharem. GPT não é usado para isso.
 --

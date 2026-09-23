@@ -10,7 +10,7 @@
 //
 // A gestão confere de novo na publicação: user_db.organizations.validation_status
 // da demanda.organization_id precisa continuar `validada` (contrato em
-// dm-docs/docs/gestao/04-modelagem-de-dados.md §3).
+// dm-docs/gestao/04-modelagem-de-dados.md §3).
 
 const { normalizeRole } = require('../roles');
 

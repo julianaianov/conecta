@@ -1,14 +1,14 @@
 -- Migração 021: eventos do território e inscrição da comunidade (T25).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/01-apresentacao-institucional.html,
+-- Fonte: dm-docs/fonte-da-verdade/01-apresentacao-institucional.html,
 -- slide 9 (Membros da Comunidade: "Inscrever-se em eventos", "Oferecer
 -- voluntariado"), slide 18 (conteúdos do território: Eventos, Oficinas
 -- culturais, Mutirões, Ações ambientais, Aulas esportivas), slide 19 (o mapa
 -- mostra demandas e conteúdos) e slide 20 ("Financiar eventos" como forma de
--- apoio). Decisão 5 (dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md):
+-- apoio). Decisão 5 (dm-docs/fonte-da-verdade/decisoes-de-implementacao.md):
 -- a plataforma **não processa pagamento** — evento pago declara o valor, e a
 -- cobrança acontece fora da plataforma.
--- Contrato com o dm-gestao: dm-docs/docs/gestao/04-modelagem-de-dados.md §3.17.
+-- Contrato com o dm-gestao: dm-docs/gestao/04-modelagem-de-dados.md §3.17.
 --
 -- - `events`: evento publicado por Agente de Transformação ou Poder Público,
 --   opcionalmente vinculado a uma demanda (`demand_id`, sempre do próprio

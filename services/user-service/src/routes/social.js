@@ -177,6 +177,7 @@ module.exports = (pool, auth, operation) => {
   });
 
   // ── Notificações ─────────────────────────────────────────
+  // TODO(fonte-da-verdade): Modelo de Conexão §08/§34 — falta central de notificações persistente (nova demanda compatível, prazo, solicitação de análise, atualização de processo, mensagem, documento) com e-mail como alerta (sem provedor hoje); o "recado" é legado.
   router.get('/notifications', auth, async (req, res) => {
     try {
       const userId = req.user.userId;

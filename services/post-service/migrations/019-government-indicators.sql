@@ -1,7 +1,7 @@
 -- Migração 019: área de governo e gestão pública — indicadores, priorização de
 -- áreas, divulgação de ações e medição de impacto (T22).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/01-apresentacao-institucional.html,
+-- Fonte: dm-docs/fonte-da-verdade/01-apresentacao-institucional.html,
 -- slide 24 ("Área de governo e gestão pública": monitoramento em tempo real,
 -- respostas oficiais, priorização de áreas, divulgação de ações, medição de
 -- impacto) e 03-fluxo-cadastro-poder-publico.html, slide 14 (os 10 indicadores:

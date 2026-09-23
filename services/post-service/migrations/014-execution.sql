@@ -1,6 +1,6 @@
 -- Migração 014: execução, evidências antes/depois e acompanhamento (T17).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/02-fluxo-cadastro-agente-de-transformacao.html
+-- Fonte: dm-docs/fonte-da-verdade/02-fluxo-cadastro-agente-de-transformacao.html
 -- — slide 11 ("o registro deverá documentar visualmente a situação inicial e
 -- os resultados obtidos após a execução, funcionando como evidência de
 -- acompanhamento, transparência e comprovação"), slide 12 (o que o registro
@@ -13,7 +13,7 @@
 -- orçamentária, resultados parciais e evidências") e slide 24 ("os registros
 -- de antes e depois deverão estar vinculados à demanda e poderão compor o
 -- histórico visual do projeto"). Contrato com o dm-gestao:
--- dm-docs/docs/gestao/04-modelagem-de-dados.md §3.12.
+-- dm-docs/gestao/04-modelagem-de-dados.md §3.12.
 --
 -- - `demand_evidences`: cada foto ou vídeo da execução, vinculado à demanda,
 --   à etapa do cronograma (opcional) e ao marco `antes`/`acompanhamento`/
@@ -45,6 +45,8 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Situação da etapa do cronograma no momento da atualização (slide 23:
 -- "etapas concluídas" e "etapas em andamento").
+-- TODO(fonte-da-verdade): Modelo de Conexão §18 — faltam os status Atrasada e Bloqueada da etapa;
+-- espelho em src/execution/constants.js.
 DO $$ BEGIN
   CREATE TYPE demand_stage_progress AS ENUM ('nao_iniciada', 'em_andamento', 'concluida');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -143,6 +145,7 @@ CREATE TABLE IF NOT EXISTS demand_evidences (
   progress_update_id UUID REFERENCES demand_progress_updates(id) ON DELETE RESTRICT,
   -- Etapa do cronograma a que o registro se refere (slide 14).
   schedule_item_id   UUID,
+  -- TODO(fonte-da-verdade): Modelo de Conexão §20/§24 — faltam os marcos diagnóstico e monitoramento.
   milestone          demand_record_milestone NOT NULL,
   media_kind         demand_evidence_media NOT NULL,
   -- Arquivo da T08: `upload:<id>` de um upload confirmado desta demanda.

@@ -104,6 +104,7 @@ export function StatusTrack({ status }: { status: DemandStatus }) {
  * Composição financeira (Fluxo 2, slides 9 e 10; decisão 5). Os percentuais
  * são acrescidos ao valor original, nunca descontados do recurso de execução.
  */
+// TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql.
 export function CompositionCard({ composition, preview = false, pending = false, title = "Composição financeira" }: {
   composition: DemandComposition; preview?: boolean; pending?: boolean; title?: string;
 }) {

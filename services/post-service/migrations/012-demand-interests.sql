@@ -1,12 +1,12 @@
 -- Migração 012: interesse, participação e conexão com a demanda (T15).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/01-apresentacao-institucional.html
+-- Fonte: dm-docs/fonte-da-verdade/01-apresentacao-institucional.html
 -- (slides 9–11: permissões de Membros da Comunidade, Parceiros e Poder Público;
 -- slide 15: "Empresas, marcas, comércio, patrocinadores, poder público ou
 -- comunidade demonstram interesse e oferecem recursos, serviços, divulgação ou
 -- articulação") e 02-fluxo-cadastro-agente-de-transformacao.html, slide 22
 -- (Conexão com parceiros: demanda publicada → interesse → conexão → apoio).
--- Contrato com o dm-gestao: dm-docs/docs/gestao/04-modelagem-de-dados.md.
+-- Contrato com o dm-gestao: dm-docs/gestao/04-modelagem-de-dados.md.
 --
 -- - `demand_interests`: uma manifestação por (demanda, conta, tipo) em aberto.
 --   Tipos: `apoio` (Parceiro ou Poder Público demonstra interesse em apoiar e

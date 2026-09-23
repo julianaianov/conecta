@@ -75,7 +75,7 @@ const ROLE_ORGANIZER_CATEGORY = { agent: 'agente', government: 'poder_publico' }
 // **Inscrever-se em eventos é uma permissão de Membros da Comunidade** (slide 9).
 // Nenhuma outra categoria recebe essa permissão na fonte; enquanto a
 // coordenação do produto não decidir o contrário, só `member` se inscreve
-// (pendência registrada em dm-docs/docs/production-status.md).
+// (pendência registrada em dm-docs/production-status.md).
 const SIGNUP_ROLES = ['member'];
 
 // Categoria gravada em event_signups.user_category, por papel da conta.

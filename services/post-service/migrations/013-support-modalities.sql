@@ -1,7 +1,7 @@
 -- Migração 013: modalidades de apoio da fonte, registro de apoio realizado,
 -- dupla confirmação e histórico público de apoio (T16).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/01-apresentacao-institucional.html,
+-- Fonte: dm-docs/fonte-da-verdade/01-apresentacao-institucional.html,
 -- slide 20 ("Sistema de apoio": patrocinar projetos, doar recursos, financiar
 -- eventos, adotar espaços públicos, apoiar ações ambientais, contratar
 -- serviços locais), slide 21 ("Transparência e impacto": histórico de apoio) e
@@ -10,7 +10,7 @@
 -- "participar do ranking de apoiadores"); slide 11 (Poder Público também
 -- apoia, sem ranking competitivo). Decisão 5 (decisoes-de-implementacao.md):
 -- a plataforma não processa pagamento — o apoio financeiro é valor declarado.
--- Contrato com o dm-gestao: dm-docs/docs/gestao/04-modelagem-de-dados.md.
+-- Contrato com o dm-gestao: dm-docs/gestao/04-modelagem-de-dados.md.
 --
 -- O apoio continua na tabela `supports` (a mesma que o dm-gestao lê e cujo
 -- `status` ele confirma/rejeita). A T16 acrescenta:

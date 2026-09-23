@@ -8,7 +8,7 @@ alwaysApply: true
 
 - Local: Docker Compose; somente dados persistidos reais.
 - Homologação: AWS em `https://homologacao.dmconecta.org` (branch `develop`); somente dados persistidos reais.
-- A Vercel não é mais usada. Mapa completo: `DmConnecta/dm-docs` → `docs/arquitetura.md`.
+- A Vercel não é mais usada. Mapa completo: `DmConnecta/dm-docs` → `arquitetura.md`.
 - Produção: AWS + Cloudflare em `https://dmconecta.org`; fallback de demonstração proibido.
 
 Em produção, `NEXT_PUBLIC_API_URL` vazio significa `/api` no mesmo domínio.

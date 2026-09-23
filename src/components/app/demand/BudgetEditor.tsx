@@ -45,6 +45,7 @@ function isBlankForm(form: BudgetItemForm) {
  * item obrigatório de registro fotográfico/audiovisual quando há execução
  * física e composição 4%/6% calculada ao vivo pelo servidor (preview).
  */
+// TODO(fonte-da-verdade): Modelo de Conexão §04 — faltam coluna Item separada da descrição, Fornecedor/referência e importação de planilha; ver TODO em services/post-service/migrations/007-demands.sql.
 export function BudgetEditor({ demand, onDemand, disabled, hasPhysicalExecution, onPhysicalChange, stepErrors }: {
   demand: Demand;
   onDemand: (next: Demand) => void;

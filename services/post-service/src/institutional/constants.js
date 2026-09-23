@@ -6,6 +6,7 @@
 
 // Status institucional, por órgão e por demanda (slide 13): os 7 do fluxo e as
 // duas situações de fora da competência.
+// TODO(fonte-da-verdade): Modelo de Conexão §16 — faltam os status padronizados do processo; ver TODO em migrations/010-institutional-tracks.sql.
 const INSTITUTIONAL_STATUSES = [
   'recebida', 'em_analise', 'encaminhada', 'em_articulacao', 'acao_programada',
   'em_execucao', 'concluida', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel',

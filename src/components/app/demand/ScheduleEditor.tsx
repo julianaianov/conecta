@@ -26,6 +26,7 @@ import { Checkbox, FormAlert, TextArea, TextInput, demandFieldId } from "./field
  * prazos e responsáveis; vínculo de cada custo à etapa (físico-financeiro) e
  * momentos de registro antes / acompanhamento / depois.
  */
+// TODO(fonte-da-verdade): Modelo de Conexão §05 — etapa sem recursos necessários, valor associado explícito e status; ver TODO em services/post-service/migrations/007-demands.sql.
 export function ScheduleEditor({ demand, onDemand, disabled, hasPhysicalExecution, stepErrors, warnings }: {
   demand: Demand;
   onDemand: (next: Demand) => void;

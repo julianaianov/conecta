@@ -6,6 +6,7 @@
 
 const { normalizeRole } = require('./roles');
 
+// TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda; ver TODO em services/post-service/migrations/007-demands.sql.
 const INTEREST_CATEGORIES = [
   'projeto_social', 'projeto_ambiental', 'necessidade_de_patrocinio',
   'problema_urbano', 'problema_urgente',

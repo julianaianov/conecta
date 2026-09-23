@@ -2,7 +2,7 @@
 
 ## Arquitetura do DM Conecta (resumo)
 
-Mapa completo: `DmConnecta/dm-docs` → `docs/arquitetura.md`. No workspace
+Mapa completo: `DmConnecta/dm-docs` → `arquitetura.md`. No workspace
 local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 
 | Ambiente | Onde roda | Endereço | Branch | Dados sintéticos |
@@ -59,8 +59,8 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
   auth-service 005, user-service 012, post-service 024. Registre a migração em
-  `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
-- Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
+  `dm-docs/production-status.md` até ela ser aplicada em produção.
+- Posts antigos (decisão 7 de `dm-docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
   alterna `visibility` (`visible`/`hidden`, migração post 006), e post oculto
   não aparece em rota pública nem aceita comentário, reação ou apoio. Status
@@ -142,6 +142,8 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Composição: 4% e 6% sobre o orçamento original, cada parcela arredondada meio
   para cima ao centavo, total = base + 4% + 6% (`src/demand/finance.js`, CHECK
   `demands_financial_composition`).
+  > TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% só se aplica a conexões com
+  > Parceiros/Investidores/Empresas, não ao Poder Público; hoje a composição é por demanda.
 - Domínio puro em `services/post-service/src/demand/` (constantes, cálculo,
   validação de rascunho e de envio, máquina de estados, gate T06a). Enviar exige
   Agente com instituição `validada` (`requireValidatedAgent`, que usa o cliente
@@ -573,7 +575,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   para a demanda.
 - Grant dm-infra `013-gestao-app-post-supports.sql` (`SELECT` + `UPDATE
   (status, updated_at)`). Contrato e o ajuste pendente do dm-gestao em
-  `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.11.
+  `dm-docs/gestao/04-modelagem-de-dados.md` §3.11.
 - Testes: `test/support-domain.test.js`, `test/supports-routes.test.js`,
   `test/support-e2e.test.js` (no `test:e2e`) e `src/lib/app/support.test.mjs`.
 
@@ -644,7 +646,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Testes: `test/execution-domain.test.js`, `test/execution-routes.test.js`,
   `test/execution-e2e.test.js` (no `test:e2e`) e `src/lib/app/execution.test.mjs`.
 - Contrato e pendências do dm-gestao em
-  `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.12.
+  `dm-docs/gestao/04-modelagem-de-dados.md` §3.12.
 
 ## Prestação de contas e prestação de resultados (T18)
 
@@ -727,7 +729,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `test:e2e`), os dois testes novos de `test/dossier.test.js` e
   `src/lib/app/accountability.test.mjs`.
 - Contrato e pendências do dm-gestao em
-  `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.13.
+  `dm-docs/gestao/04-modelagem-de-dados.md` §3.13.
 
 ## Mapa inteligente (T20)
 
@@ -738,6 +740,9 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   Problemas urgentes (`problema_urgente`), Problemas urbanos (`problema_urbano`),
   Projetos sociais (`projeto_social`), Ações ambientais (`projeto_ambiental`) e
   Necessidades (Oportunidades de patrocínio) (`necessidade_de_patrocinio`).
+  > TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda (obra/infraestrutura,
+  > revitalização de espaço, recuperação ambiental, apoio técnico, apoio com serviços, apoio com
+  > materiais, outras); a legenda de 1 classe por categoria precisa ser revista.
   Cada classe tem cor do manual de marca **e** forma própria (triângulo,
   quadrado, círculo, losango, estrela), para o mapa não depender só de cor;
   `Conteúdos do feed` é a sexta camada (`#5A9BC4`, ponto). Vocabulário em
@@ -934,7 +939,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   desfecho); o `gestao_db.reports` fica como legado, sem migração de dados.
   LGPD: na gestão o denunciante aparece pseudonimizado e a revelação é
   auditada e de admin+. Detalhes em
-  `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.14.
+  `dm-docs/gestao/04-modelagem-de-dados.md` §3.14.
 - Testes: `test/report-domain.test.js`, `test/reports-routes.test.js`,
   `test/report-e2e.test.js` (no `test:e2e`) e `src/lib/app/report.test.mjs`.
 
@@ -1037,7 +1042,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Fonte: Apresentação Institucional, slide 23 ("Inteligência artificial":
   organização automática de demandas, detecção de urgência, sugestão de
   editais, conexão com patrocinadores ideais e geração de relatórios para
-  governo). Decisão 6 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`:
+  governo). Decisão 6 de `dm-docs/fonte-da-verdade/decisoes-de-implementacao.md`:
   **API do Claude**, flag desligada por padrão, e a IA **nunca bloqueia o
   fluxo** se falhar. GPT/OpenAI não é usado para isso (regra global do
   workspace: só imagem e tradução).
@@ -1101,7 +1106,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   Minhas demandas (`src/components/app/ai/AiSuggestionPanel.tsx`, com aceitar/
   ignorar) e "Relatório sugerido por IA" em `/governo/indicadores`
   (`GovernmentAiReport.tsx`). Todo cartão abre com o selo **"Sugestão de IA"**.
-- Contrato com a gestão: `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.18.
+- Contrato com a gestão: `dm-docs/gestao/04-modelagem-de-dados.md` §3.18.
 - Testes: `test/ai-domain.test.js`, `test/ai-routes.test.js` e
   `test/ai-e2e.test.js` (no `test:e2e`, suíte `ai`), mais
   `src/lib/app/ai.test.mjs`. O cliente do modelo é sempre um duplo:
@@ -1113,7 +1118,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   a coleta, uso e compartilhamento de dados territoriais"; "apenas dados
   verificáveis são publicados; funcionalidades ainda em desenvolvimento são
   identificadas como tal"). Contrato com a gestão e a regra de retenção por
-  tipo de dado: `dm-docs/docs/gestao/05-lgpd.md` §2.1 e §7.
+  tipo de dado: `dm-docs/gestao/05-lgpd.md` §2.1 e §7.
 - **Consentimento versionado** (auth migração 004, `004-consentimentos.sql`):
   `user_consents` é append-only (trigger `user_consents_guard` recusa UPDATE,
   DELETE e TRUNCATE) com documento, versão, data da versão, origem
@@ -1266,8 +1271,8 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   Componentes em `src/components/app/event/` (`EventParts`, `PublicEventView`,
   `EventSignupPanel`, `MyEventsClient`, `MyEventSignupsClient`).
 - Grant dm-infra `021-gestao-app-post-events.sql` (**só `SELECT`**); contrato e
-  pendências em `dm-docs/docs/gestao/04-modelagem-de-dados.md` §3.17 e
-  `dm-docs/docs/production-status.md`.
+  pendências em `dm-docs/gestao/04-modelagem-de-dados.md` §3.17 e
+  `dm-docs/production-status.md`.
 - Testes: `test/event-domain.test.js`, `test/events-routes.test.js`,
   `test/event-e2e.test.js` (suíte `event` do `test:e2e`) e
   `src/lib/app/event.test.mjs`.

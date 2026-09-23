@@ -1,6 +1,6 @@
 -- Migração 009: Documento Oficial da Demanda — Dossiê da Demanda (T10).
 --
--- Fonte: dm-docs/docs/fonte-da-verdade/02-fluxo-cadastro-agente-de-transformacao.html,
+-- Fonte: dm-docs/fonte-da-verdade/02-fluxo-cadastro-agente-de-transformacao.html,
 -- slides 18–19 ("Geração automática do dossiê" e "O que o dossiê reúne") e 20
 -- (envio → análise → dossiê → publicação).
 --

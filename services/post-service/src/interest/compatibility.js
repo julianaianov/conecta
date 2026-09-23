@@ -1,3 +1,4 @@
+// TODO(fonte-da-verdade): Modelo de Conexão §07 — identificar potenciais conexões já na publicação (território, competência institucional, valor, público, programas, interesse cadastrado) e mostrar ao Agente e aos apoiadores; ver TODO em migrations/007-demands.sql (demands_record_event).
 // Compatibilidade entre o perfil de apoio e a demanda (T15). Cálculo
 // transparente, sem IA: três critérios com pesos fixos (território 40,
 // categoria 30, recursos 30), cada um com o motivo em texto. A fonte pede que a

@@ -72,6 +72,7 @@ const ACTIONS = {
     to: { status: 'concluida' },
     requires: [],
   },
+  // TODO(fonte-da-verdade): Modelo de Conexão §22 — o ciclo termina em prestacao_de_contas; falta um estado final de encerramento após a prestação de contas.
   prestar_contas: {
     label: 'Iniciar prestação de contas',
     actors: ['agente'],

@@ -8,7 +8,7 @@
  * Fonte da verdade: Fluxo 2, etapas 01–02 (CNPJ + CNAE do Agente de
  * Transformação) e Fluxo 3, etapas 01–02 (órgão, esfera, território e
  * representante do Poder Público); decisões 2 e 3 de
- * dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md.
+ * dm-docs/fonte-da-verdade/decisoes-de-implementacao.md.
  */
 import {
   INSTITUTION_EDITABLE_STATUSES,
