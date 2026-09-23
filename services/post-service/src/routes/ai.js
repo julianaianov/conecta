@@ -13,7 +13,7 @@
 //   GET  /ai/status                              o que está ligado, por quê e com que modelo
 //
 // Agente de Transformação autor da demanda (404 para quem não é o autor):
-//   POST /demands/:id/ai/organization            sugere categoria e território
+//   POST /demands/:id/ai/organization            sugere categoria, território e eixos (T26)
 //   POST /demands/:id/ai/urgency                 sugere prioridade, com justificativa
 //   POST /demands/:id/ai/editais                 aponta editais divulgados com aderência
 //   POST /demands/:id/ai/partners                ordena os interessados já registrados
@@ -137,6 +137,7 @@ module.exports = ({ pool, auth, ai, governmentActor, governmentProfile }) => {
       evidence: {
         categoria_atual: row.category ?? null,
         territorio_atual: row.territory ?? null,
+        eixos_atuais: Array.isArray(row.themes) ? row.themes : [],
         municipio: row.municipality ?? null,
         uf: row.uf ?? null,
       },

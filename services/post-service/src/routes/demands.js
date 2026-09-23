@@ -4,7 +4,8 @@
 // Contrato (JSON em camelCase, o mesmo formato de src/demand/validation.js):
 //
 // Público (sem login; só demandas da publicação em diante, fora `arquivada`):
-//   GET  /                         lista (filtros e paginação keyset)
+//   GET  /                         lista (filtros e paginação keyset; `theme`
+//                                  filtra pelos eixos temáticos da T26)
 //   GET  /:id                      detalhe público (sem endereço fino, sem
 //                                  dados da análise, documentos sem link)
 //   GET  /:id/timeline             linha do tempo pública (demand_events.is_public;
@@ -49,7 +50,7 @@ const express = require('express');
 const { isUuid } = require('../security');
 const { normalizeRole } = require('../roles');
 const {
-  CATEGORIES, PRIORITIES, PUBLIC_STATUSES, STATUSES,
+  CATEGORIES, PRIORITIES, PUBLIC_STATUSES, STATUSES, THEMES,
 } = require('../demand/constants');
 const { validateDemand, MAX_ITEMS } = require('../demand/validation');
 const {
@@ -156,6 +157,17 @@ function scalarChanges(body) {
   const { value, errors } = validateDemand(input);
   if (Object.keys(errors).length) throw validationError(errors);
   return present.map((key) => [store.SCALAR_COLUMNS[key], value[key]]);
+}
+
+/**
+ * Eixos temáticos no corpo (T26): `themes` ausente não mexe em nada; presente,
+ * substitui a lista inteira. São opcionais — lista vazia é válida.
+ */
+function themeChanges(body) {
+  if (!has(body, 'themes')) return null;
+  const { value, errors } = validateDemand({ themes: body.themes });
+  if (Object.keys(errors).length) throw validationError(errors);
+  return value.themes;
 }
 
 /** Valida um item isolado com as regras de validation.js (sem o prefixo da lista). */
@@ -276,6 +288,12 @@ function publicListQuery(query) {
   if (categories) add('d.category = ANY(?::demand_category[])', categories);
   const priorities = parseList(query.priority, PRIORITIES, 'priority', fields);
   if (priorities) add('d.priority = ANY(?::demand_priority[])', priorities);
+  // Eixo temático (T26): a demanda entra se tiver **algum** dos eixos pedidos.
+  const themes = parseList(query.theme, THEMES, 'theme', fields);
+  if (themes) {
+    add(`EXISTS (SELECT 1 FROM demand_themes dt
+                   WHERE dt.demand_id = d.id AND dt.theme = ANY(?::demand_theme[]))`, themes);
+  }
 
   for (const [param, column] of [['territory', 'd.territory'], ['municipality', 'd.municipality']]) {
     const value = typeof query[param] === 'string' ? query[param].trim() : '';
@@ -471,6 +489,7 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
   // ── Agente autor: rascunho ────────────────────────────────────────────────
   router.post('/', auth, requireAgent, handle(async (req, res) => {
     const changes = scalarChanges(req.body ?? {});
+    const themes = themeChanges(req.body ?? {});
     const columns = ['author_id', 'author_name', 'author_avatar', ...changes.map(([col]) => col)];
     const values = [
       req.user.userId,
@@ -486,6 +505,7 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
          VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING id`,
         values,
       );
+      if (themes) await store.replaceThemes(client, rows[0].id, themes);
       return ownerView(client, rows[0].id, req.user.userId);
     });
     res.status(201).json(created);
@@ -493,6 +513,7 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
 
   router.put('/:id', auth, requireAgent, handle(async (req, res) => {
     const changes = scalarChanges(req.body ?? {});
+    const themes = themeChanges(req.body ?? {});
     const updated = await withTransaction(pool, async (client) => {
       const row = await store.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
       store.assertEditable(row);
@@ -503,6 +524,7 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
           [req.params.id, ...changes.map(([, value]) => value)],
         );
       }
+      if (themes) await store.replaceThemes(client, req.params.id, themes);
       return ownerView(client, req.params.id, req.user.userId);
     });
     res.json(updated);

@@ -12,7 +12,9 @@
 // `src/lib/app/map.ts` espelha este arquivo no frontend; `src/lib/app/map.test.mjs`
 // compara os dois.
 
-const { CATEGORIES, PRIORITIES, PUBLIC_STATUSES } = require('../demand/constants');
+const {
+  CATEGORIES, PRIORITIES, PUBLIC_STATUSES, THEMES, THEME_LABELS,
+} = require('../demand/constants');
 
 /** Classes da legenda, na ordem do slide 19. */
 const LEGEND = [
@@ -52,6 +54,16 @@ const LEGEND = [
     shape: 'estrela',
   },
 ];
+
+/**
+ * Eixos temáticos como filtro do mapa (T26, slide 26). Não são uma sexta classe
+ * da legenda: a legenda do slide 19 continua sendo a das cinco categorias. O
+ * eixo é um recorte que se cruza com ela — o mapa mostra "Saneamento" dentro
+ * das mesmas cinco formas e cores, e a contagem por eixo vem em `counts.theme`.
+ * Como o eixo é opcional, `counts.themed` diz quantas demandas do recorte já
+ * têm eixo marcado.
+ */
+const THEME_FILTERS = THEMES.map((theme) => ({ id: theme, label: THEME_LABELS[theme] }));
 
 /** Camada do feed (slide 18, "Conteúdos"): publicações comuns, sem demanda. */
 const FEED_LAYER = { id: 'feed', label: 'Conteúdos do feed', color: '#5A9BC4', shape: 'ponto' };
@@ -137,6 +149,9 @@ function territorySlug({ territory, municipality, uf }) {
 module.exports = {
   LEGEND,
   FEED_LAYER,
+  THEME_FILTERS,
+  THEMES,
+  THEME_LABELS,
   AUDIENCES,
   CATEGORIES,
   PRIORITIES,

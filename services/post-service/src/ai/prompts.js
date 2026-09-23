@@ -11,7 +11,9 @@
 //     edital, patrocinador, número ou beneficiário);
 //   - nenhum dado pessoal é pedido nem devolvido.
 
-const { CATEGORIES, CATEGORY_LABELS, PRIORITIES } = require('../demand/constants');
+const {
+  CATEGORIES, CATEGORY_LABELS, PRIORITIES, THEMES, THEME_LABELS,
+} = require('../demand/constants');
 
 const CONFIDENCE = ['baixa', 'media', 'alta'];
 
@@ -26,6 +28,7 @@ const BASE_SYSTEM = [
 ].join(' ');
 
 const categoryHelp = CATEGORIES.map((c) => `${c} (${CATEGORY_LABELS[c]})`).join(', ');
+const themeHelp = THEMES.map((t) => `${t} (${THEME_LABELS[t]})`).join(', ');
 
 const schema = (properties) => ({
   type: 'object',
@@ -40,11 +43,14 @@ const PROMPTS = {
   organizacao_da_demanda: {
     system: `${BASE_SYSTEM} Sua tarefa é organizar a demanda: sugerir em qual das 5 categorias oficiais ela se encaixa `
       + `(${categoryHelp}) e qual território de abrangência descreve melhor a área atendida. `
-      + 'O território é um texto curto (bairro, comunidade ou região) que já apareça no contexto; se não houver base, devolva null.',
-    instruction: 'Sugira a categoria e o território desta demanda.',
+      + 'O território é um texto curto (bairro, comunidade ou região) que já apareça no contexto; se não houver base, devolva null. '
+      + `Sugira também os eixos temáticos do território a que a demanda pertence, entre os nove da plataforma (${themeHelp}). `
+      + 'Uma demanda pode ter mais de um eixo; use no máximo três, os que o texto sustentar, e a lista vazia quando nenhum couber.',
+    instruction: 'Sugira a categoria, o território e os eixos temáticos desta demanda.',
     schema: schema({
       categoria: { type: 'string', enum: CATEGORIES },
       territorio: { type: ['string', 'null'], maxLength: 255 },
+      eixos: { type: 'array', maxItems: 3, items: { type: 'string', enum: THEMES } },
       confianca: { type: 'string', enum: CONFIDENCE },
       justificativa: text(600),
     }),
@@ -144,6 +150,10 @@ function validateSuggestion(kind, value, { references = 0 } = {}) {
   if (kind === 'organizacao_da_demanda') {
     error = check(CATEGORIES.includes(value.categoria), 'categoria')
       ?? check(value.territorio === null || nonEmpty(value.territorio, 255), 'territorio')
+      // Eixos temáticos (T26): lista da fonte, sem repetição e sem invenção.
+      ?? check(Array.isArray(value.eixos) && value.eixos.length <= 3
+        && value.eixos.every((t) => THEMES.includes(t))
+        && new Set(value.eixos).size === value.eixos.length, 'eixos')
       ?? check(CONFIDENCE.includes(value.confianca), 'confianca')
       ?? check(nonEmpty(value.justificativa, 600), 'justificativa');
   } else if (kind === 'deteccao_de_urgencia') {
