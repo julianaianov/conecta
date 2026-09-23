@@ -38,9 +38,12 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 
 - `NEXT_PUBLIC_RUNTIME_ENV`: `local`, `homologation` ou `production`
   (`src/lib/app/runtime.ts`).
-- Em produção, `NEXT_PUBLIC_API_URL` vazio usa `/api` no mesmo domínio. Não
-  adicione fallback silencioso para dados locais nem coloque segredos em
-  `NEXT_PUBLIC_*`.
+- Em produção, `NEXT_PUBLIC_API_URL` vazio usa `/api` no mesmo domínio para
+  as chamadas do navegador. O SSR das páginas públicas lê os serviços pela rede
+  interna, sem token: `DM_INTERNAL_POST_API_URL` (`http://post-service:3003`) e
+  `DM_INTERNAL_USER_API_URL` (`http://user-service:3002`), só no servidor
+  (`src/lib/server/public-api.ts`). Não adicione fallback silencioso para dados
+  locais nem coloque segredos em `NEXT_PUBLIC_*`.
 - Deploy: o único remoto da aplicação é `origin` → `DmConnecta/dm-web`;
   `git push origin develop` basta.
 - Schema: fonte única em `services/migrations.manifest` (ordem de `init.sql`,

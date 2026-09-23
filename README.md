@@ -59,6 +59,7 @@ origens do próprio ambiente.
 
 ```bash
 npm run test
+npm run test:services
 npm run lint -- --max-warnings=0
 npx tsc --noEmit
 npm run build
@@ -70,22 +71,42 @@ imagens no ECR e executa a atualização na AWS por SSM.
 
 ## Rotas do portal
 
-| Rota | Conteúdo |
-| --- | --- |
-| `/` | apresentação |
-| `/login`, `/register` | autenticação |
-| `/feed` | publicações |
-| `/mapa` | mapa de demandas |
-| `/conexoes` | conexões recebidas, enviadas, ativas e histórico |
-| `/conexoes/nova` | solicitar uma conexão |
-| `/conexoes/[id]` | linha do tempo, aceite e resultado |
-| `/perfil`, `/perfil/[id]` | perfis |
-| `/post/[id]` | publicação, comentários e apoios |
-| `/post/[id]/apoiar` | fluxo de apoio |
-| `/criar` | nova publicação |
-| `/ranking` | ranking |
-| `/meus-apoios` | apoios do usuário |
-| `/admin` | painel da operação |
+Rotas públicas são renderizadas no servidor (SSR) e entram no `sitemap.xml`;
+rotas protegidas pedem sessão e ficam fora do índice (`noindex` e `robots.txt`).
+O contrato está em `src/lib/app/access.ts`.
+
+| Rota | Acesso | Conteúdo |
+| --- | --- | --- |
+| `/` | Público | apresentação |
+| `/feed` | Público (SSR) | pulso do território |
+| `/mapa`, `/mapa/[territorio]` | Público (SSR) | mapa inteligente de demandas |
+| `/ranking` | Público (SSR) | rankings de impacto |
+| `/conexoes` | Público (SSR) / Privado | diretório público e conexões do usuário |
+| `/post/[id]` | Público (SSR) | publicação, comentários e apoios |
+| `/perfil/[id]` | Público (SSR) | perfil de atuação territorial |
+| `/demandas/[id]` | Público (SSR) | página pública da demanda |
+| `/eventos`, `/eventos/[id]` | Público (SSR) | agenda do território |
+| `/politica-de-privacidade`, `/privacidade`, `/termos-de-uso` | Público | documentos legais e LGPD |
+| `/seguranca-infantil` | Público | padrões de segurança infantil (CSAE/CSAM), exigidos pela Play Store |
+| `/robots.txt`, `/sitemap.xml` | Público | indexação |
+| `/login`, `/register`, `/recuperar-senha` | Público (sem índice) | autenticação |
+| `/conexoes/nova`, `/conexoes/[id]` | Protegido | solicitar e acompanhar conexões |
+| `/post/[id]/apoiar` | Protegido | fluxo de apoio |
+| `/criar`, `/demandas/nova`, `/demandas/[id]/editar`, `/minhas-demandas` | Protegido | publicar e gerir demandas |
+| `/perfil`, `/perfil/privacidade` | Protegido | perfil próprio e direitos do titular |
+| `/meus-apoios`, `/oportunidades`, `/meus-eventos`, `/minhas-inscricoes` | Protegido | área da conta |
+| `/cadastro-institucional` | Protegido | cadastro institucional (T05) |
+| `/governo` | Protegido | área do Poder Público |
+| `/admin` | Protegido | painel da operação |
+
+### Dados no servidor (SSR)
+
+As páginas públicas leem os serviços pela rede interna, sem token:
+`DM_INTERNAL_POST_API_URL` (`http://post-service:3003`) e
+`DM_INTERNAL_USER_API_URL` (`http://user-service:3002`), só no servidor e nunca
+em `NEXT_PUBLIC_*`. Sem resposta, a página mostra a lista vazia: não há
+catálogo substituto. As chamadas do navegador continuam em `/api` no mesmo
+domínio.
 
 ## Fluxo de conexões (`/conexoes`)
 
