@@ -70,6 +70,37 @@ const DOCUMENT_TYPES = [
   'autorizacoes', 'orcamentos_e_cotacoes', 'projetos_tecnicos', 'fotografias', 'outros',
 ];
 
+// Eixos temáticos do território (T26). Fonte: Apresentação Institucional,
+// slide 26 ("Dados e inteligência territorial como ativo"), que lista os nove
+// eixos na ordem abaixo. São o recorte temático da inteligência territorial, ao
+// lado da categoria (classificação única da demanda) e do território (lugar).
+// Os valores são os do enum `demand_theme` da migração post 023 e os rótulos
+// são os do slide, palavra por palavra.
+const THEMES = [
+  'iluminacao', 'seguranca', 'saneamento', 'limpeza', 'esporte',
+  'educacao', 'mobilidade', 'cultura', 'meio_ambiente',
+];
+
+const THEME_LABELS = {
+  iluminacao: 'Iluminação',
+  seguranca: 'Segurança',
+  saneamento: 'Saneamento',
+  limpeza: 'Limpeza',
+  esporte: 'Esporte',
+  educacao: 'Educação',
+  mobilidade: 'Mobilidade',
+  cultura: 'Cultura',
+  meio_ambiente: 'Meio Ambiente',
+};
+
+// Uma demanda pode cruzar mais de um eixo; o teto é a própria lista.
+const MAX_THEMES = THEMES.length;
+
+// O eixo é **opcional**: a lista de obrigatórios do Fluxo 2 não o inclui, e a
+// fonte não manda exigi-lo. A interface incentiva e a IA da T23 sugere; nada
+// bloqueia o envio por falta de eixo.
+const THEMES_REQUIRED = false;
+
 // Composição financeira (decisão 5): pontos-base sobre o orçamento original.
 const AGENT_FEE_BPS = 400;
 const PLATFORM_FEE_BPS = 600;
@@ -91,6 +122,10 @@ module.exports = {
   COUNTERPART_RESOURCE_TYPES,
   RESOURCE_TYPES_BY_KIND,
   DOCUMENT_TYPES,
+  THEMES,
+  THEME_LABELS,
+  MAX_THEMES,
+  THEMES_REQUIRED,
   AGENT_FEE_BPS,
   PLATFORM_FEE_BPS,
   ACTORS,

@@ -24,6 +24,7 @@ function complete(overrides = {}) {
     latitude: -22.9,
     longitude: -43.2,
     territory: 'Centro',
+    themes: ['iluminacao', 'esporte'],
     hasPhysicalExecution: true,
     scheduleItems: [
       { id: S1, stage: 'Preparação', activities: 'Registro inicial e compras', startsOn: '2026-10-01', endsOn: '2026-10-05', recordMilestones: ['antes'] },
@@ -60,6 +61,24 @@ test('demanda completa passa no envio, com composição calculada', () => {
     [composition.budgetAmountCents, composition.agentFeeCents, composition.platformFeeCents, composition.totalAmountCents],
     [1_000_000, 40_000, 60_000, 1_100_000],
   );
+});
+
+test('eixos temáticos (T26): opcionais, na ordem da fonte, sem repetição e sem invenção', () => {
+  const ordered = validateDemand(complete({ themes: ['esporte', 'iluminacao', 'esporte'] }), { forSubmission: true });
+  assert.deepEqual(ordered.value.themes, ['iluminacao', 'esporte']);
+  assert.deepEqual(ordered.errors, {});
+
+  // Sem eixo, o envio passa: a ausência é aviso, nunca erro.
+  const none = validateDemand(complete({ themes: undefined }), { forSubmission: true });
+  assert.deepEqual(none.errors, {});
+  assert.deepEqual(none.value.themes, []);
+  assert.match(none.warnings.themes, /eixos temáticos/);
+
+  // Rascunho sem eixo não recebe aviso.
+  assert.equal(validateDemand(complete({ themes: [] })).warnings.themes, undefined);
+
+  assert.match(validateDemand(complete({ themes: ['inventado'] })).errors.themes, /nove/);
+  assert.match(validateDemand(complete({ themes: 'iluminacao' })).errors.themes, /inválida/);
 });
 
 test('envio: cada obrigatório da fonte, quando ausente, gera erro no próprio campo', () => {

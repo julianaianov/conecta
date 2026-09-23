@@ -8,7 +8,7 @@
 
 const { HttpError } = require('../demand/store');
 const {
-  CATEGORIES, PRIORITIES, PUBLIC_STATUSES,
+  CATEGORIES, PRIORITIES, PUBLIC_STATUSES, THEMES,
   CELLS_MAX, POINTS_MAX, TERRITORIES_MAX, ZOOM_MAX, ZOOM_MIN, cellSizeDegrees,
 } = require('./constants');
 
@@ -88,6 +88,14 @@ function mapFilter(query, { geo = true } = {}) {
   if (categories) add('d.category = ANY(?::demand_category[])', categories);
   const priorities = parseList(query.priority, PRIORITIES, 'priority', fields);
   if (priorities) add('d.priority = ANY(?::demand_priority[])', priorities);
+  // Eixo temático (T26, slide 26): a camada por eixo do mapa. A demanda entra
+  // se tiver **algum** dos eixos pedidos; `demand_themes` é lida pelo índice
+  // `idx_demand_themes_theme` (migração post 023).
+  const themes = parseList(query.theme, THEMES, 'theme', fields);
+  if (themes) {
+    add(`EXISTS (SELECT 1 FROM demand_themes dt
+                   WHERE dt.demand_id = d.id AND dt.theme = ANY(?::demand_theme[]))`, themes);
+  }
 
   for (const [param, column] of [
     ['territory', 'd.territory'], ['municipality', 'd.municipality'], ['district', 'd.district'],
@@ -145,12 +153,31 @@ function filteredCounts(column, values, prefix) {
     .join(',\n         ');
 }
 
+/**
+ * Contagem por eixo temático (T26): os eixos são um vínculo (uma demanda pode
+ * ter vários), então cada demanda do recorte traz a sua lista por um LATERAL
+ * indexado (`idx_demand_themes_theme`, chave primária da tabela de vínculo) e a
+ * contagem sai do mesmo agregado — a consulta continua sendo uma só.
+ */
+const THEMES_LATERAL = `
+   LEFT JOIN LATERAL (
+     SELECT array_agg(dt.theme::text) AS list FROM demand_themes dt WHERE dt.demand_id = d.id
+   ) th ON true`;
+
+function themeCounts() {
+  return THEMES
+    .map((theme) => `count(*) FILTER (WHERE th.list @> ARRAY['${theme}'])::int AS thm_${theme}`)
+    .join(',\n         ');
+}
+
 function countsSql(where) {
   return `SELECT count(*)::int AS total,
          ${filteredCounts('category', CATEGORIES, 'cat')},
          ${filteredCounts('priority', PRIORITIES, 'pri')},
-         ${filteredCounts('status', PUBLIC_STATUSES, 'sta')}
-    FROM demands d
+         ${filteredCounts('status', PUBLIC_STATUSES, 'sta')},
+         ${themeCounts()},
+         count(*) FILTER (WHERE th.list IS NOT NULL)::int AS thm_total
+    FROM demands d${THEMES_LATERAL}
    WHERE ${where}`;
 }
 
@@ -163,6 +190,9 @@ function serializeCounts(row) {
     category: pick(CATEGORIES, 'cat'),
     priority: pick(PRIORITIES, 'pri'),
     status: pick(PUBLIC_STATUSES, 'sta'),
+    theme: pick(THEMES, 'thm'),
+    // Quantas demandas do recorte já têm eixo marcado (o eixo é opcional).
+    themed: Number(row?.thm_total ?? 0),
   };
 }
 
@@ -231,8 +261,9 @@ function territoriesSql(where, limitParam) {
                  max(d.published_at) AS last_published_at,
                  avg(d.latitude)::float8 AS latitude,
                  avg(d.longitude)::float8 AS longitude,
-                 ${filteredCounts('category', CATEGORIES, 'cat')}
-            FROM demands d
+                 ${filteredCounts('category', CATEGORIES, 'cat')},
+                 ${themeCounts()}
+            FROM demands d${THEMES_LATERAL}
            WHERE ${where} AND d.territory IS NOT NULL AND btrim(d.territory) <> ''
            GROUP BY d.territory, d.municipality, d.uf
            ORDER BY total DESC, d.territory
@@ -240,6 +271,8 @@ function territoriesSql(where, limitParam) {
 }
 
 module.exports = {
+  THEMES_LATERAL,
+  themeCounts,
   CELLS_MAX,
   POINTS_MAX,
   TERRITORIES_MAX,

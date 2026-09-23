@@ -118,6 +118,7 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, cache = crea
     filters: {
       category: ctx.filters.categories,
       priority: ctx.filters.priorities,
+      theme: ctx.filters.themes,
       territory: ctx.filters.territory,
     },
     sources: INDICATOR_SOURCES,
@@ -133,6 +134,8 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, cache = crea
       cached: data.cached,
       territories: rankAreas(data.territories, { limit: LIMITS.areas }),
       categories: rankAreas(data.categories, { limit: LIMITS.areas }),
+      // Priorização por eixo temático (T26, slide 26).
+      themes: rankAreas(data.themes ?? [], { limit: LIMITS.areas }),
     });
   };
 

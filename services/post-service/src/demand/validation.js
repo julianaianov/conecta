@@ -12,13 +12,15 @@
 //   com estimativa e perfil, prioridade, território, metas com indicadores) e a
 //   regra do registro fotográfico/audiovisual quando houver execução física.
 // - `warnings`: o que a fonte pede "sempre que possível" (vínculo das etapas ao
-//   custo, marco de acompanhamento); não bloqueia.
+//   custo, marco de acompanhamento) e o que ela não exige mas a plataforma
+//   incentiva (os eixos temáticos do slide 26); não bloqueia.
 // - `composition`: composição financeira calculada dos itens (finance.js).
 //
 // O banco repete as regras estruturais no envio (demand_assert_submittable).
 
 const {
   CATEGORIES, PRIORITIES, RECORD_MILESTONES, RESOURCE_KINDS, RESOURCE_TYPES_BY_KIND, DOCUMENT_TYPES,
+  THEMES,
 } = require('./constants');
 const { quantityToMilli, lineTotalCents, computeComposition, MAX_BUDGET_CENTS } = require('./finance');
 const { parseUploadRef, formatUploadRef } = require('../uploads');
@@ -276,6 +278,24 @@ function normalizeDocument(errors, raw, i) {
   return doc;
 }
 
+/**
+ * Eixos temáticos do território (T26, slide 26): lista sem repetição, na ordem
+ * da fonte. **Opcional** — lista ausente ou vazia é válida, inclusive no envio;
+ * o que a fonte exige está em REQUIRED_ON_SUBMIT.
+ */
+function normalizeThemes(errors, raw) {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    errors.themes = 'Lista de eixos inválida';
+    return [];
+  }
+  if (raw.some((theme) => typeof theme !== 'string' || !THEMES.includes(theme))) {
+    errors.themes = 'Eixo temático fora dos nove da plataforma';
+    return [];
+  }
+  return THEMES.filter((theme) => raw.includes(theme));
+}
+
 function normalizeCep(errors, raw) {
   if (isBlank(raw)) return null;
   const digits = typeof raw === 'string' || typeof raw === 'number' ? String(raw).replace(/\D/g, '') : '';
@@ -325,6 +345,7 @@ function validateDemand(input, { forSubmission = false } = {}) {
     latitude: coordinate(errors, 'latitude', body.latitude, 90),
     longitude: coordinate(errors, 'longitude', body.longitude, 180),
     territory: text(errors, 'territory', body.territory, LIMITS.territory),
+    themes: normalizeThemes(errors, body.themes),
     hasPhysicalExecution: body.hasPhysicalExecution === undefined ? true : body.hasPhysicalExecution,
     budgetItems: [],
     scheduleItems: [],
@@ -395,6 +416,14 @@ function validateDemand(input, { forSubmission = false } = {}) {
     }
   }
 
+  // Eixos temáticos (T26, slide 26): opcionais, mas é deles que sai a
+  // inteligência territorial por tema. No envio, a ausência vira incentivo —
+  // aviso, nunca bloqueio.
+  if (forSubmission && value.themes.length === 0 && !errors.themes) {
+    warnings.themes = 'Marque os eixos temáticos desta demanda (Iluminação, Segurança, Saneamento, Limpeza, '
+      + 'Esporte, Educação, Mobilidade, Cultura, Meio Ambiente): é assim que ela entra na leitura por tema do território';
+  }
+
   // Cronograma físico-financeiro "sempre que possível" (slide 14).
   if (value.budgetItems.length > 0 && value.scheduleItems.length > 0
       && value.budgetItems.some((item) => !item.scheduleItemId)) {
@@ -404,4 +433,4 @@ function validateDemand(input, { forSubmission = false } = {}) {
   return { value, errors, warnings, composition };
 }
 
-module.exports = { validateDemand, LIMITS, UFS, MAX_ITEMS };
+module.exports = { validateDemand, normalizeThemes, LIMITS, UFS, MAX_ITEMS };

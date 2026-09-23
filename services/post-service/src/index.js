@@ -25,6 +25,7 @@ const supportsRoutes = require('./routes/supports');
 const executionRoutes = require('./routes/execution');
 const accountabilityRoutes = require('./routes/accountability');
 const mapRoutes = require('./routes/map');
+const themeRoutes = require('./routes/themes');
 const rankingsRoutes = require('./routes/rankings');
 const reportsRoutes = require('./routes/reports');
 const privacyRoutes = require('./routes/privacy');
@@ -118,6 +119,9 @@ const createApp = ({
   app.use('/demands', accountabilityRoutes({ pool, auth, validatedAgent, dossiers }));
   // Mapa inteligente (T20): /demands/map, /demands/map/territories e /demands/map/legend.
   app.use('/demands', mapRoutes({ pool }));
+  // Eixos temáticos e inteligência territorial (T26): antes das rotas da
+  // demanda, porque `/demands/themes*` não é um id.
+  app.use('/demands', themeRoutes({ pool }));
   // Engajamento, rankings e selos de impacto social (T21): /rankings, /shares
   // e /profiles/:userId/impact. Antes das rotas de posts, cujo `/:id` é UUID.
   app.use('/', rankingsRoutes({ pool, auth }));

@@ -52,7 +52,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 005, user-service 012, post-service 022. Registre a migração em
+  auth-service 005, user-service 012, post-service 024. Registre a migração em
   `dm-docs/docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
@@ -1265,6 +1265,31 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Testes: `test/event-domain.test.js`, `test/events-routes.test.js`,
   `test/event-e2e.test.js` (suíte `event` do `test:e2e`) e
   `src/lib/app/event.test.mjs`.
+
+## Eixos temáticos e inteligência territorial (T26)
+
+- Fonte: Apresentação, slide 26 ("Dados e inteligência territorial como
+  ativo"), com os nove eixos Iluminação, Segurança, Saneamento, Limpeza,
+  Esporte, Educação, Mobilidade, Cultura e Meio Ambiente.
+- Migração post 023 (`023-demand-themes.sql`): enum `demand_theme` e tabela de
+  vínculo `demand_themes` (uma demanda tem zero ou mais eixos). O eixo é
+  **opcional**: não está entre os obrigatórios do Fluxo 2; no envio, a ausência
+  vira aviso (`warnings.themes`), nunca erro. O trigger `demand_themes_guard`
+  só aceita mudança com a demanda em rascunho ou devolvida e a gestão só lê.
+- Domínio: `THEMES`/`THEME_LABELS` em `src/demand/constants.js`; `themes` no
+  corpo do POST/PUT da demanda substitui a lista (`store.replaceThemes`); as
+  projeções do dono e públicas trazem `themes`.
+- Filtro `theme` na lista pública de demandas, no mapa (`counts.theme`,
+  `counts.themed`, contagem por território) e nos indicadores do Poder Público
+  (priorização por eixo no JSON, CSV e PDF). A IA de organização (T23) sugere
+  até três eixos (`eixos`), sempre como sugestão revisável.
+- Rotas públicas (`src/routes/themes.js`, montada em `/demands`):
+  `GET /themes` (vocabulário) e `GET /themes/intelligence` (eixo × território,
+  uma consulta agregada, sem dado pessoal, teto de 500 linhas).
+- Pendências: grant `SELECT` em `demand_themes` para `gestao_app` no dm-infra
+  e a interface do portal (marcar eixos na ficha da demanda e filtro no mapa).
+- Testes: `test/themes-routes.test.js`, `test/demand-validation.test.js`,
+  `test/ai-domain.test.js` e `test/ai-routes.test.js`.
 
 ## Segurança dos serviços
 

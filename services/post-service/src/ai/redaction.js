@@ -15,7 +15,7 @@
 //     titulo, descricao, objetivo, justificativa, perfil_do_publico,
 //     beneficiarios_estimados, bairro, municipio, uf, territorio,
 //     tem_execucao_fisica, orcamento_total_reais, recursos_necessarios,
-//     categoria_atual, prioridade_atual
+//     categoria_atual, prioridade_atual, eixos_atuais
 //   sugestao_de_editais
 //     os mesmos campos de classificação da demanda (sem descrição longa) e a
 //     lista pública de editais divulgados pelos órgãos (título, resumo,
@@ -93,6 +93,8 @@ function demandContext(row, resources = []) {
       .slice(0, MAX_LIST),
     categoria_atual: row?.category ?? null,
     prioridade_atual: row?.priority ?? null,
+    // Eixos temáticos já marcados (T26): o modelo complementa, não recomeça.
+    eixos_atuais: Array.isArray(row?.themes) ? row.themes.slice(0, MAX_LIST) : [],
   });
 }
 

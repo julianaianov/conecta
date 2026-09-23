@@ -222,7 +222,7 @@ test('organização e urgência: sugestão gravada, marcada como IA, sem dado pe
   const pool = fakePool();
   const { client, seen } = fakeModel((prompt) => (/prioridade/.test(prompt.system)
     ? { prioridade: 'urgente', sinais: ['risco à noite'], confianca: 'alta', justificativa: 'há risco' }
-    : { categoria: 'problema_urbano', territorio: 'Centro', confianca: 'alta', justificativa: 'é urbano' }));
+    : { categoria: 'problema_urbano', territorio: 'Centro', eixos: ['iluminacao'], confianca: 'alta', justificativa: 'é urbano' }));
   await withServer(pool, { config: enabledConfig(), model: client }, async (base) => {
     const org = await (await post(base, `/demands/${DEMAND}/ai/organization`, agentToken())).json();
     assert.equal(org.available, true);
@@ -230,6 +230,7 @@ test('organização e urgência: sugestão gravada, marcada como IA, sem dado pe
     assert.equal(org.label, 'Sugestão de IA');
     assert.equal(org.suggestion.status, 'sugerida');
     assert.equal(org.suggestion.payload.categoria, 'problema_urbano');
+    assert.deepEqual(org.suggestion.payload.eixos, ['iluminacao']);
     assert.equal(org.suggestion.aiGenerated, true);
     // Número verificável ao lado do texto.
     assert.equal(org.suggestion.evidence.categoria_atual, 'problema_urbano');

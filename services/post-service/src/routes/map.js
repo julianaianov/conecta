@@ -6,7 +6,7 @@
 //   GET /map              pontos ou agrupamento por célula, com contagens
 //                         (filtros: category, priority, status, territory,
 //                         municipality, district, uf, q, from, to, bbox,
-//                         zoom, limit)
+//                         zoom, limit, theme)
 //   GET /map/territories  agregação por território/município/UF
 //   GET /map/legend       legenda, camadas e atalhos de leitura rápida
 //
@@ -21,7 +21,7 @@
 const express = require('express');
 const { sendError } = require('../demand/store');
 const {
-  AUDIENCES, CLUSTER_THRESHOLD, FEED_LAYER, LEGEND, territorySlug,
+  AUDIENCES, CLUSTER_THRESHOLD, FEED_LAYER, LEGEND, THEME_FILTERS, territorySlug,
 } = require('../map/constants');
 const {
   CELLS_MAX, TERRITORIES_MAX, cellSizeDegrees, mapFilter, countsSql, serializeCounts,
@@ -39,7 +39,14 @@ module.exports = ({ pool }) => {
   };
 
   router.get('/map/legend', (_req, res) => {
-    res.json({ legend: LEGEND, feedLayer: FEED_LAYER, audiences: AUDIENCES, clusterThreshold: CLUSTER_THRESHOLD });
+    res.json({
+      legend: LEGEND,
+      feedLayer: FEED_LAYER,
+      // Filtro por eixo temático (T26): recorte que se cruza com a legenda.
+      themes: THEME_FILTERS,
+      audiences: AUDIENCES,
+      clusterThreshold: CLUSTER_THRESHOLD,
+    });
   });
 
   router.get('/map/territories', handle(async (req, res) => {
@@ -59,6 +66,7 @@ module.exports = ({ pool }) => {
           ? row.last_published_at.toISOString()
           : row.last_published_at ?? null,
         category: Object.fromEntries(LEGEND.map((item) => [item.category, Number(row[`cat_${item.category}`] ?? 0)])),
+        theme: Object.fromEntries(THEME_FILTERS.map((item) => [item.id, Number(row[`thm_${item.id}`] ?? 0)])),
       })),
     });
   }));

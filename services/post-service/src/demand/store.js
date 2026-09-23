@@ -110,6 +110,8 @@ const OWNER_DEMAND_SQL = `
   d.platform_fee_cents, d.total_amount_cents, d.status, d.review_state, d.review_note,
   d.reviewed_at, d.submitted_at, d.published_at, d.archive_reason, d.archived_at,
   d.record_waiver_reason, d.record_waiver_at, d.created_at, d.updated_at,
+  (SELECT coalesce(array_agg(t.theme::text ORDER BY t.theme), '{}')
+     FROM demand_themes t WHERE t.demand_id = d.id) AS themes,
   (SELECT p.id FROM posts p WHERE p.demand_id = d.id AND p.visibility = 'visible') AS post_id`;
 
 // Projeção pública: sem endereço fino (CEP, rua, número, complemento), sem
@@ -122,6 +124,8 @@ const PUBLIC_DEMAND_SQL = `
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
   d.platform_fee_cents, d.total_amount_cents, d.status, d.published_at, d.updated_at,
   d.record_waiver_reason, d.shares_count,
+  (SELECT coalesce(array_agg(t.theme::text ORDER BY t.theme), '{}')
+     FROM demand_themes t WHERE t.demand_id = d.id) AS themes,
   (SELECT p.id FROM posts p WHERE p.demand_id = d.id AND p.visibility = 'visible') AS post_id`;
 
 const PUBLIC_SUMMARY_SQL = `
@@ -130,6 +134,8 @@ const PUBLIC_SUMMARY_SQL = `
   d.municipality, d.uf, d.latitude, d.longitude, d.territory, d.beneficiaries_estimate,
   d.budget_amount_cents, d.total_amount_cents, d.status, d.published_at,
   d.published_at::text AS cursor_ts,
+  (SELECT coalesce(array_agg(t.theme::text ORDER BY t.theme), '{}')
+     FROM demand_themes t WHERE t.demand_id = d.id) AS themes,
   (SELECT p.id FROM posts p WHERE p.demand_id = d.id AND p.visibility = 'visible') AS post_id`;
 
 const ITEM_SQL = {
@@ -234,6 +240,9 @@ function serializeScalars(row) {
     latitude: toNumber(row.latitude),
     longitude: toNumber(row.longitude),
     territory: row.territory ?? null,
+    // Eixos temáticos do território (T26, slide 26): opcionais, sempre uma
+    // lista (vazia quando o Agente ainda não marcou nenhum).
+    themes: Array.isArray(row.themes) ? row.themes : [],
     hasPhysicalExecution: row.has_physical_execution,
     // Justificativa de que não há execução física a registrar (T17); pública,
     // porque explica a ausência do antes e do depois no histórico visual.
@@ -312,6 +321,7 @@ function serializePublicSummary(row) {
     latitude: toNumber(row.latitude),
     longitude: toNumber(row.longitude),
     territory: row.territory ?? null,
+    themes: Array.isArray(row.themes) ? row.themes : [],
     beneficiariesEstimate: toNumber(row.beneficiaries_estimate),
     budgetAmountCents: toNumber(row.budget_amount_cents),
     totalAmountCents: toNumber(row.total_amount_cents),
@@ -399,6 +409,24 @@ async function recomputeComposition(db, demandId) {
 }
 
 /**
+ * Regrava os eixos temáticos da demanda (T26). O trigger `demand_themes_guard`
+ * não aceita UPDATE (o vínculo nasce e some), então a troca é apagar e inserir
+ * dentro da mesma transação; a lista já vem normalizada por `validateDemand`.
+ */
+async function replaceThemes(db, demandId, themes) {
+  await db.query('DELETE FROM demand_themes WHERE demand_id = $1 AND NOT (theme::text = ANY($2::text[]))',
+    [demandId, themes]);
+  if (themes.length) {
+    await db.query(
+      `INSERT INTO demand_themes (demand_id, theme)
+       SELECT $1, theme::demand_theme FROM unnest($2::text[]) AS theme
+       ON CONFLICT (demand_id, theme) DO NOTHING`,
+      [demandId, themes],
+    );
+  }
+}
+
+/**
  * Aplica uma ação da máquina de estados fora da análise (buscar_parceiro,
  * conectar, iniciar_execucao, concluir, prestar_contas) dentro da transação
  * de `db`. `actor`: `agente` (o autor; padrão do banco) ou `sistema` (o portal,
@@ -449,5 +477,6 @@ module.exports = {
   assertEditable,
   toValidationInput,
   recomputeComposition,
+  replaceThemes,
   transitionDemand,
 };

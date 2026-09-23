@@ -196,9 +196,19 @@ test('a contenção de custo tem teto por serviço, por conta e disjuntor', () =
 });
 
 test('a resposta do modelo é validada campo a campo', () => {
-  const ok = { categoria: CATEGORIES[0], territorio: 'Centro', confianca: 'alta', justificativa: 'porque sim' };
+  const ok = {
+    categoria: CATEGORIES[0], territorio: 'Centro', eixos: ['iluminacao', 'seguranca'], confianca: 'alta', justificativa: 'porque sim',
+  };
   assert.equal(validateSuggestion('organizacao_da_demanda', ok).valid, true);
+  assert.equal(validateSuggestion('organizacao_da_demanda', { ...ok, eixos: [] }).valid, true);
   assert.equal(validateSuggestion('organizacao_da_demanda', { ...ok, categoria: 'outra' }).error, 'categoria');
+  // Eixos temáticos (T26): só os nove da fonte, sem repetição, no máximo três.
+  assert.equal(validateSuggestion('organizacao_da_demanda', { ...ok, eixos: ['inventado'] }).error, 'eixos');
+  assert.equal(validateSuggestion('organizacao_da_demanda', { ...ok, eixos: ['cultura', 'cultura'] }).error, 'eixos');
+  assert.equal(validateSuggestion('organizacao_da_demanda', {
+    ...ok, eixos: ['cultura', 'esporte', 'limpeza', 'educacao'],
+  }).error, 'eixos');
+  assert.equal(validateSuggestion('organizacao_da_demanda', { ...ok, eixos: undefined }).error, 'eixos');
   assert.equal(validateSuggestion('organizacao_da_demanda', 'texto').error, 'formato');
   assert.equal(validateSuggestion('deteccao_de_urgencia', {
     prioridade: PRIORITIES[3], sinais: ['risco'], confianca: 'media', justificativa: 'há risco',

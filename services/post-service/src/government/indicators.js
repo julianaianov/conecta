@@ -2,7 +2,9 @@
 // da priorização de áreas e exportação CSV. Nada aqui toca o banco nem o HTTP;
 // as consultas ficam em ./store.js e as rotas em ../routes/government-indicators.js.
 
-const { CATEGORIES, CATEGORY_LABELS, PRIORITIES } = require('../demand/constants');
+const {
+  CATEGORIES, CATEGORY_LABELS, PRIORITIES, THEMES, THEME_LABELS,
+} = require('../demand/constants');
 const {
   DEFAULT_PERIOD, DEFAULT_SCOPE, INDICATORS, LIMITS, PERIODS, PERIOD_DAYS, PERIOD_LABELS,
   SCOPES, SCOPE_LABELS,
@@ -84,6 +86,18 @@ function validateIndicatorQuery(query = {}, now = new Date()) {
     }
   }
 
+  // Eixo temático (T26, slide 26): recorte do painel e base da priorização por
+  // eixo. Opcional, como o campo na demanda.
+  let themes = null;
+  if (query.theme !== undefined && query.theme !== '') {
+    const list = String(query.theme).split(',').map((v) => v.trim()).filter(Boolean);
+    if (!list.length || list.some((v) => !THEMES.includes(v))) {
+      errors.theme = `Valores aceitos: ${THEMES.join(', ')}`;
+    } else {
+      themes = [...new Set(list)];
+    }
+  }
+
   const territory = typeof query.territory === 'string' ? query.territory.trim() : '';
   if (territory.length > LIMITS.territory) errors.territory = `Use no máximo ${LIMITS.territory} caracteres`;
 
@@ -98,6 +112,7 @@ function validateIndicatorQuery(query = {}, now = new Date()) {
       period: period.value,
       categories,
       priorities,
+      themes,
       territory: territory || null,
     },
   };
@@ -176,9 +191,14 @@ function priorityCsv(report) {
     '',
     csvRow(['Área', 'Tipo', 'Demandas', 'Urgentes', 'Sem resposta do órgão', 'Maior espera (dias)', 'Espera média (dias)']),
   ];
-  for (const [kind, rows] of [['Território', report.territories ?? []], ['Categoria', report.categories ?? []]]) {
+  for (const [kind, rows] of [
+    ['Território', report.territories ?? []],
+    ['Categoria', report.categories ?? []],
+    ['Eixo temático', report.themes ?? []],
+  ]) {
     for (const row of rows) {
-      lines.push(csvRow([row.label, kind, row.total, row.urgent, row.withoutResponse, row.oldestWaitDays, row.averageWaitDays]));
+      const label = kind === 'Eixo temático' ? THEME_LABELS[row.label] ?? row.label : row.label;
+      lines.push(csvRow([label, kind, row.total, row.urgent, row.withoutResponse, row.oldestWaitDays, row.averageWaitDays]));
     }
   }
   return lines.join('\n');

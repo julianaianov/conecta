@@ -65,6 +65,7 @@ function cacheKey(organizationId, view, filters) {
     (filters.categories ?? []).join('|') || '-',
     (filters.priorities ?? []).join('|') || '-',
     filters.territory ?? '-',
+    (filters.themes ?? []).join('|') || '-',
   ].join('::');
 }
 

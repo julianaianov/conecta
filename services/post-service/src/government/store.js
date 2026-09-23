@@ -40,6 +40,10 @@ function baseClauses({ organizationId, profile, filters }) {
   }
   if (filters.categories) add('d.category = ANY(?::demand_category[])', filters.categories);
   if (filters.priorities) add('d.priority = ANY(?::demand_priority[])', filters.priorities);
+  if (filters.themes) {
+    add(`EXISTS (SELECT 1 FROM demand_themes dt
+                   WHERE dt.demand_id = d.id AND dt.theme = ANY(?::demand_theme[]))`, filters.themes);
+  }
   if (filters.territory) add("d.territory ILIKE ('%' || ? || '%') ESCAPE '\\'", filters.territory.replace(/[\\%_]/g, '\\$&'));
   return { params, where };
 }
@@ -168,8 +172,14 @@ async function loadPriorityAreas(db, { organizationId, profile, filters }) {
     cat AS (
       SELECT 'categoria'::text AS kind, b.category::text AS label, NULL::char(2) AS uf,${waiting}
         FROM base b GROUP BY 1, 2, 3
+    ),
+    -- Priorização por eixo temático (T26): mesma fila de trabalho, recortada
+    -- pelos nove eixos do slide 26. Demanda sem eixo não entra nesta lista.
+    thm AS (
+      SELECT 'eixo'::text AS kind, t.theme::text AS label, NULL::char(2) AS uf,${waiting}
+        FROM base b JOIN demand_themes t ON t.demand_id = b.id GROUP BY 1, 2, 3
     )
-    SELECT * FROM terr UNION ALL SELECT * FROM cat`, params);
+    SELECT * FROM terr UNION ALL SELECT * FROM cat UNION ALL SELECT * FROM thm`, params);
   const map = (row) => ({
     label: row.label,
     uf: row.uf ?? null,
@@ -182,6 +192,7 @@ async function loadPriorityAreas(db, { organizationId, profile, filters }) {
   return {
     territories: rows.filter((r) => r.kind === 'territorio').map(map),
     categories: rows.filter((r) => r.kind === 'categoria').map(map),
+    themes: rows.filter((r) => r.kind === 'eixo').map(map),
   };
 }
 

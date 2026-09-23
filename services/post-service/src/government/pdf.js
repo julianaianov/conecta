@@ -8,7 +8,7 @@
 
 const path = require('node:path');
 const PDFDocument = require('pdfkit');
-const { CATEGORY_LABELS } = require('../demand/constants');
+const { CATEGORY_LABELS, THEME_LABELS } = require('../demand/constants');
 const { INDICATORS } = require('./constants');
 const { DM_MARK_PATH, DM_MARK_VIEWBOX } = require('../dossier/brand');
 
@@ -204,6 +204,18 @@ function renderIndicatorsPdf({ report, priority = null, impact = null }) {
           ]),
           [WIDTH - 260, 65, 65, 75, 55],
         );
+        if ((priority.themes ?? []).length) {
+          sectionTitle(doc, 'Priorização por eixo temático');
+          table(
+            doc,
+            ['Eixo', 'Demandas', 'Urgentes', 'Sem resposta', 'Maior espera'],
+            priority.themes.map((a) => [
+              THEME_LABELS[a.label] ?? a.label, number(a.total), number(a.urgent),
+              number(a.withoutResponse), `${number(a.oldestWaitDays)} d`,
+            ]),
+            [WIDTH - 260, 65, 65, 75, 55],
+          );
+        }
       }
 
       if (impact) {
