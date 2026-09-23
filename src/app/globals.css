@@ -192,6 +192,27 @@ body {
   box-shadow: 0 1px 0 var(--th-nav-border);
 }
 
+/* ── Trilho lateral (desktop) ────────────────────────────
+   Papel quente com borda fina; petróleo como base e laranja cívico só como
+   apoio (indicador do item ativo e o sinal do botão primário). Contrastes AA:
+   muted/rail claro ≈ 5:1, muted/rail escuro ≈ 7:1, branco/petróleo ≈ 8.9:1,
+   branco/azul médio (escuro) ≈ 4.6:1. */
+.app-rail {
+  background: #fbf8f2;
+  border-color: var(--th-border);
+}
+.dark .app-rail { background: var(--th-card); }
+
+.rail-item { color: var(--th-muted); }
+.rail-item:hover { color: var(--th-text); background: var(--th-card-alt); }
+.rail-item[aria-current="page"] { color: var(--th-text); background: var(--th-card-alt); }
+
+.rail-primary { background: #1b4f72; }
+.rail-primary:hover { background: #163e5a; }
+.dark .rail-primary { background: #2e7ba8; }
+.dark .rail-primary:hover { background: #276a92; }
+.dark .rail-primary svg { color: #ffffff; }
+
 /* ── Título de destaque (cor sólida — sem degradê) ───────── */
 .gradient-text {
   color: #f4841a;
