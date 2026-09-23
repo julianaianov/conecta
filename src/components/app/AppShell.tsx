@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/app/auth";
 import { isPlatformAdmin } from "@/lib/app/admin-access";
 import { MY_DEMANDS_PATH } from "@/lib/app/demand";
@@ -39,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const isAdmin = isPlatformAdmin(user);
   // Agente de Transformação estrutura demandas (T09).
   const isAgent = Boolean(user && normalizeRole(user.role, user.profileType) === "agent");
@@ -53,6 +54,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isActive = (href: string) =>
     href === "/perfil" ? pathname === "/perfil" : pathname === href || pathname.startsWith(href + "/");
+
+  // Esc fecha o menu da conta e devolve o foco ao botão que o abriu.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [menuOpen]);
+
+  function go(href: string) {
+    setMenuOpen(false);
+    router.push(href);
+  }
 
   function handleLogout() {
     logout();
@@ -107,37 +125,65 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
             <NotificationBell userId={user?.id ?? null} government={isGovernment} />
 
-            {/* avatar + menu */}
-            {user ? <div className="relative">
-              <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Conta">
-                <Avatar name={user.name} src={user.avatarUrl} email={user.email} id={user.id} size={36} />
+            {/* avatar + menu. No mobile, Agenda e Impacto não cabem na barra
+                inferior (NAV[4..]); o menu da conta — e o do visitante — é o
+                caminho até eles, a um toque além da barra. */}
+            <div className="relative">
+              <button
+                ref={menuButtonRef}
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label={user ? "Menu da conta" : "Menu do visitante"}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-controls="app-account-menu"
+                className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4841a]"
+              >
+                {user
+                  ? <Avatar name={user.name} src={user.avatarUrl} email={user.email} id={user.id} size={36} />
+                  : <Avatar name="Visitante" size={36} />}
               </button>
               {menuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                   <div
+                    id="app-account-menu"
+                    role="menu"
+                    aria-label={user ? "Conta" : "Visitante"}
                     className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-xl border shadow-xl"
                     style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}
                   >
-                    <div className="border-b px-4 py-3" style={{ borderColor: "var(--th-border)" }}>
-                      <p className="truncate text-sm font-semibold" style={{ color: "var(--th-text)" }}>{user?.name}</p>
-                      <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>{user?.email}</p>
-                    </div>
-                    <MenuItem icon="person" label="Meu perfil" onClick={() => { setMenuOpen(false); router.push("/perfil"); }} />
-                    <MenuItem icon="shield" label="Privacidade" onClick={() => { setMenuOpen(false); router.push(PRIVACY_PATH); }} />
-                    <MenuItem icon="trophy" label="Impacto" onClick={() => { setMenuOpen(false); router.push("/ranking"); }} />
-                    <MenuItem icon="volunteer" label="Ações apoiadas" onClick={() => { setMenuOpen(false); router.push("/meus-apoios"); }} />
-                    {isAgent && <MenuItem icon="inventory" label="Minhas demandas" onClick={() => { setMenuOpen(false); router.push(MY_DEMANDS_PATH); }} />}
-                    {seesOpportunities && <MenuItem icon="filter" label="Oportunidades de apoio" onClick={() => { setMenuOpen(false); router.push(OPPORTUNITIES_PATH); }} />}
-                    {isMember && <MenuItem icon="calendar" label="Minhas inscrições" onClick={() => { setMenuOpen(false); router.push("/minhas-inscricoes"); }} />}
-                    {organizesEvents && <MenuItem icon="calendar" label="Meus eventos" onClick={() => { setMenuOpen(false); router.push("/meus-eventos"); }} />}
-                    {isGovernment && <MenuItem icon="building" label="Atuação institucional" onClick={() => { setMenuOpen(false); router.push(INSTITUTIONAL_AREA_PATH); }} />}
-                    {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => { setMenuOpen(false); router.push("/admin"); }} />}
-                    <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />
+                    {user ? (
+                      <>
+                        <div className="border-b px-4 py-3" style={{ borderColor: "var(--th-border)" }}>
+                          <p className="truncate text-sm font-semibold" style={{ color: "var(--th-text)" }}>{user.name}</p>
+                          <p className="truncate text-xs" style={{ color: "var(--th-muted)" }}>{user.email}</p>
+                        </div>
+                        <MenuItem icon="person" label="Meu perfil" onClick={() => go("/perfil")} />
+                        <MenuItem icon="shield" label="Privacidade" onClick={() => go(PRIVACY_PATH)} />
+                        <MenuItem icon="calendar" label="Agenda" onClick={() => go("/eventos")} />
+                        <MenuItem icon="trophy" label="Impacto" onClick={() => go("/ranking")} />
+                        <MenuItem icon="volunteer" label="Ações apoiadas" onClick={() => go("/meus-apoios")} />
+                        {isAgent && <MenuItem icon="inventory" label="Minhas demandas" onClick={() => go(MY_DEMANDS_PATH)} />}
+                        {seesOpportunities && <MenuItem icon="filter" label="Oportunidades de apoio" onClick={() => go(OPPORTUNITIES_PATH)} />}
+                        {isMember && <MenuItem icon="calendar" label="Minhas inscrições" onClick={() => go("/minhas-inscricoes")} />}
+                        {organizesEvents && <MenuItem icon="calendar" label="Meus eventos" onClick={() => go("/meus-eventos")} />}
+                        {isGovernment && <MenuItem icon="building" label="Atuação institucional" onClick={() => go(INSTITUTIONAL_AREA_PATH)} />}
+                        {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => go("/admin")} />}
+                        <MenuItem icon="logout" label="Sair" onClick={handleLogout} danger />
+                      </>
+                    ) : (
+                      <>
+                        {/* /eventos e /ranking são públicas (SSR, indexáveis). */}
+                        <MenuItem icon="calendar" label="Agenda" onClick={() => go("/eventos")} />
+                        <MenuItem icon="trophy" label="Impacto" onClick={() => go("/ranking")} />
+                        <MenuItem icon="person" label="Entrar ou criar conta" onClick={() => go("/login?next=%2Fperfil")} />
+                      </>
+                    )}
                   </div>
                 </>
               )}
-            </div> : <Link href="/login?next=%2Fperfil" aria-label="Entrar ou criar conta"><Avatar name="Visitante" size={36} /></Link>}
+            </div>
           </div>
         </div>
       </header>
@@ -183,8 +229,9 @@ function MenuItem({ icon, label, onClick, danger }: { icon: IconName; label: str
   return (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[var(--th-card-alt)]"
+      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[var(--th-card-alt)] focus-visible:bg-[var(--th-card-alt)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#f4841a]"
       style={{ color: danger ? "#e53935" : "var(--th-text)" }}
     >
       <Icon name={icon} size={17} />

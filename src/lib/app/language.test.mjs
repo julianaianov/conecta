@@ -66,7 +66,29 @@ test("a interface usa linguagem de plataforma territorial", () => {
 test("a navegação usa o vocabulário territorial do produto", () => {
   const source = fs.readFileSync(path.join(root, "src/components/app/AppShell.tsx"), "utf8");
 
-  for (const label of ["O pulso", "Território", "Conexões", "Meu sinal", "Impacto"]) {
+  for (const label of ["O pulso", "Território", "Conexões", "Meu sinal", "Impacto", "Agenda"]) {
     assert.match(source, new RegExp(`label: "${label}"`));
   }
+});
+
+test("Agenda e Impacto ficam a um toque da barra inferior no mobile", () => {
+  const source = fs.readFileSync(path.join(root, "src/components/app/AppShell.tsx"), "utf8");
+
+  // A barra inferior continua com os quatro rótulos próprios + o FAB.
+  const bottomItems = source.match(/<BottomItem item=\{NAV\[\d\]\}/g) ?? [];
+  assert.equal(bottomItems.length, 4);
+
+  // O menu da conta (logado) e o do visitante levam à Agenda e ao Impacto.
+  const menu = source.slice(source.indexOf('id="app-account-menu"'));
+  const [logged, visitor] = menu.split(") : (");
+  for (const block of [logged, visitor]) {
+    assert.match(block, /label="Agenda" onClick=\{\(\) => go\("\/eventos"\)\}/);
+    assert.match(block, /label="Impacto" onClick=\{\(\) => go\("\/ranking"\)\}/);
+  }
+
+  // Acessibilidade do menu: aria, papel de menu e fechamento com Esc.
+  assert.match(source, /aria-haspopup="menu"/);
+  assert.match(source, /aria-expanded=\{menuOpen\}/);
+  assert.match(source, /role="menu"/);
+  assert.match(source, /event\.key !== "Escape"/);
 });
