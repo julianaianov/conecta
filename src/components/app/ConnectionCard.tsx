@@ -81,6 +81,11 @@ export function ConnectionCard({ connection: c, meId, onRespond, busy }: CardPro
             <ConnectionTypePill type={c.type} size="sm" />
             <ConnectionStatusBadge status={c.status} />
             <span className="font-numeric text-[11px]" style={{ color: "var(--th-muted)" }}>{timeAgo(c.updatedAt)}</span>
+            {c.messagesCount > 0 && (
+              <span className="inline-flex items-center gap-1 font-numeric text-[11px]" style={{ color: "var(--th-muted)" }}>
+                <Icon name="message" size={11} /> {c.messagesCount} {c.messagesCount === 1 ? "mensagem" : "mensagens"}
+              </span>
+            )}
           </div>
 
           <p className="mt-2 text-sm clamp-2" style={{ color: "var(--th-text)" }}>{c.message}</p>

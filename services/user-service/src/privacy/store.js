@@ -106,7 +106,7 @@ async function exportUserData(db, userId) {
   const q = async (text, params = [userId]) => (await db.query(text, params)).rows;
 
   const [perfil, instituicao, representante, perfilDeApoio, conexoes, recadosEscritos,
-    depoimentosEscritos, arquivos, solicitacoes, anonimizacoes] = await Promise.all([
+    depoimentosEscritos, mensagensDeConexao, arquivos, solicitacoes, anonimizacoes] = await Promise.all([
     q(`SELECT user_id, name, bio, avatar_url, cover_url, status, neighborhood, phone, website,
               city, state, role, profile_type, member_since, friend_count, created_at, updated_at,
               anonymized_at
@@ -134,6 +134,8 @@ async function exportUserData(db, userId) {
          FROM connections WHERE from_user_id = $1 OR to_user_id = $1 ORDER BY created_at`),
     q(`SELECT id, target_user_id, content, created_at FROM scraps WHERE author_id = $1 ORDER BY created_at`),
     q(`SELECT id, target_user_id, content, created_at FROM testimonials WHERE author_id = $1 ORDER BY created_at`),
+    // Conversa da conexão (T27): só o que o titular escreveu.
+    q(`SELECT id, connection_id, body, created_at FROM connection_messages WHERE author_id = $1 ORDER BY created_at`),
     q(`SELECT id, purpose, status, content_type, size_bytes, original_name, organization_id,
               created_at, confirmed_at
          FROM uploads WHERE owner_id = $1 ORDER BY created_at`),
@@ -151,6 +153,7 @@ async function exportUserData(db, userId) {
     conexoes,
     recadosEscritos,
     depoimentosEscritos,
+    mensagensDeConexao,
     arquivos,
     solicitacoesLgpd: solicitacoes,
     anonimizacoes,
@@ -184,6 +187,14 @@ async function anonymizeUserData(db, userId, { requestId = null, protocol = null
       RETURNING id`,
     [userId, '[removido a pedido do titular]'],
   );
+  // Conversa da conexão (T27): as mensagens escritas pelo titular perdem o
+  // corpo; a linha fica, porque a conversa também é registro da outra parte.
+  const mensagens = await db.query(
+    `UPDATE connection_messages SET body = $2
+      WHERE author_id = $1 AND body IS DISTINCT FROM $2
+      RETURNING id`,
+    [userId, '[removido a pedido do titular]'],
+  );
 
   // Representante: os contatos saem enquanto o cadastro não foi enviado nem
   // validado. Cadastro em análise, validado ou revogado guarda a prova de quem
@@ -207,6 +218,7 @@ async function anonymizeUserData(db, userId, { requestId = null, protocol = null
     recadosRemovidos: count(recados),
     depoimentosRemovidos: count(depoimentos),
     conexoesComMensagemRemovida: count(conexoes),
+    mensagensDeConexaoRemovidas: count(mensagens),
     representanteAnonimizado: count(representante),
   };
 

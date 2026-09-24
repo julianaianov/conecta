@@ -58,13 +58,25 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 005, user-service 012, post-service 024. Registre a migração em
+  auth-service 005, user-service 013, post-service 025. Registre a migração em
   `dm-docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
   alterna `visibility` (`visible`/`hidden`, migração post 006), e post oculto
   não aparece em rota pública nem aceita comentário, reação ou apoio. Status
   desconhecido não ganha rótulo na interface (`normalizePostStatus`).
+- **Foto e ponto obrigatórios para entrar no mapa** (migração post 024,
+  `024-post-photos.sql`; decisão do usuário em 24/09/2026): o sinal do feed só
+  é publicado com `latitude`/`longitude` válidas **e** `images` não vazio
+  (`POST /posts` responde 400 `photo_required`), e o `PUT /:id` não apaga o
+  ponto nem a foto. A foto vai por upload (`post_photo`, ver T08): o `/criar`
+  tem o campo `FileUpload` e manda `images: ["upload:<id>"]`. A camada do feed
+  (`GET /posts/map`) e a home só devolvem posts com ponto **e** foto; a
+  demanda só entra em `GET /demands/map` com ponto e `photo_ref`, e o envio da
+  demanda passou a exigir latitude/longitude (`REQUIRED_ON_SUBMIT`,
+  `demand_assert_submittable`, espelho em `src/lib/app/demand.ts`). Posts
+  antigos sem foto ou sem ponto continuam no feed e no detalhe, fora do mapa.
+  Evento publicado sem `photoRef` também fica fora da camada do feed.
 
 ## Cadastro institucional (T04)
 
@@ -208,9 +220,19 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Finalidades: `demand_photo` e `demand_evidence_photo` (JPEG/PNG/WEBP/HEIC,
   15 MB), `demand_evidence_video` (MP4/MOV, 500 MB em PUT único, sem
   multipart), `demand_document`, `demand_accountability_document` (T18, só com
-  a demanda em `prestacao_de_contas`) e `institution_proof`
-  (PDF/DOCX/XLSX/ODT/ODS/JPG/PNG, 25 MB). Frontend espelha em
+  a demanda em `prestacao_de_contas`), `institution_proof`
+  (PDF/DOCX/XLSX/ODT/ODS/JPG/PNG, 25 MB) e `post_photo` (foto do sinal do
+  feed, JPEG/PNG/WEBP/HEIC, 15 MB; migração post 024). Frontend espelha em
   `src/lib/app/uploads.ts` (teste compara).
+- `post_photo` tem **vínculo adiado** (`deferredTarget`): quem publica no feed
+  (`canPublishAny`) faz presign e confirma **sem** `demandId`; o arquivo vai
+  para `posts/<owner_id>/photo/<id>.<ext>` com `uploads.post_id` nulo, e o
+  `POST /posts` confere que cada `upload:<id>` de `images` é confirmado, do
+  autor, dessa finalidade e ainda sem post (422 em `fields.images`) e grava
+  `post_id` na mesma transação. Pública só com o post `visible`. A política do
+  post-service expõe `targetColumns` (`demand_id`, `post_id`) e
+  `targetColumnFor(purpose)`; o módulo compartilhado continua o mesmo nos dois
+  serviços.
 - Rotas (`/api/posts/uploads` para a demanda, `/api/users/uploads` para a
   instituição): `POST /presign` (token; grava pendente, devolve PUT
   pré-assinado para `tmp/<uuid>` com `Content-Type` assinado e, se houver,
@@ -770,6 +792,8 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   rua, número e orçamento **não** saem no mapa.
 - Camada de conteúdos do feed: `GET /map` de posts (`routes/posts.js`) passou a
   aceitar `bbox` e `limit` (teto de 500); a resposta continua sendo o array.
+  Desde a migração 024 só entram posts com ponto **e** foto (`ON_MAP`), e as
+  demandas só entram com ponto e `photo_ref`.
 - Leitura rápida por público (atalhos que pré-aplicam filtros coerentes com as
   permissões da fonte): **Governo** (problemas urgentes e urbanos, prioridade
   alta/urgente, em aberto), **Empresas** (patrocínio, projetos sociais e
@@ -1301,6 +1325,37 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   e a interface do portal (marcar eixos na ficha da demanda e filtro no mapa).
 - Testes: `test/themes-routes.test.js`, `test/demand-validation.test.js`,
   `test/ai-domain.test.js` e `test/ai-routes.test.js`.
+
+## Mensagens na conexão (T27)
+
+- Fonte: Arquitetura de Perfis §3.1 ("Receber solicitações de conexão",
+  "Conversar com parceiros") e Modelo de Conexão §12 (comunicação dentro do
+  processo). Até a T27 a conexão só tinha a mensagem inicial do pedido e o
+  desfecho; a conversa entre as partes não existia.
+- Migração user 012 (`012-connection-messages.sql`): `connection_messages`
+  (conexão, autor, corpo ≤ 2000, data; append-only — o trigger
+  `connection_messages_guard` recusa DELETE, escrita da sessão `gestao_app` e
+  qualquer UPDATE que não seja a anonimização do corpo para
+  `[removido a pedido do titular]`; TRUNCATE bloqueado), `connection_message_reads`
+  (última leitura por parte, para o sino) e `connections.messages_count` /
+  `last_message_at` mantidos por trigger, que também sobe a conexão na lista
+  (`updated_at`). A gestão só lê (grant herdado do dm-infra 003).
+- Rotas (`routes/connections.js`, só as duas partes — terceiros recebem o
+  mesmo 404): `GET /connections/:id/messages` (cronológica, `limit` ≤ 100,
+  `before=<ISO>` pagina para trás, grava a leitura; `{ messages, hasMore, open }`)
+  e `POST /connections/:id/messages` (`{ body }`; só com a conexão `pending` ou
+  `accepted`, senão 409 `connection_closed`). `GET /notifications` avisa
+  mensagem não lida (`kind: 'message'`, `href: /conexoes/<id>`), numa consulta.
+- LGPD: a exportação leva só as mensagens escritas pelo titular; a eliminação
+  troca o corpo delas pelo rótulo (a conversa fica, porque é registro da outra
+  parte). Regra `conexoes` de `RETENTION_RULES` e `/privacidade` atualizadas.
+- Frontend: `ConnectionMessage`/`ConnectionMessagePage` em `types.ts`,
+  `api.connectionMessages`/`api.sendConnectionMessage`, `ConnectionThread`
+  (`role="log"`, `aria-live`, Ctrl+Enter envia, desabilitado em estado final)
+  na página `/conexoes/[id]` e contagem de mensagens no `ConnectionCard`.
+- Testes: `services/user-service/test/connections.test.js` (leitura, escrita,
+  404 de terceiro, 409 encerrada, 400 corpo, notificação) e
+  `test/privacy.test.js` (anonimização das mensagens).
 
 ## Segurança dos serviços
 

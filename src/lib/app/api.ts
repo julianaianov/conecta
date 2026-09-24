@@ -7,6 +7,7 @@ import {
   type SupportType, type PaymentMethod, type Community,
   type AppNotification, type RankCategory, type RankEntry,
   type Connection, type ConnectionEvent, type ConnectionParty, type ConnectionStatus, type ConnectionType,
+  type ConnectionMessage, type ConnectionMessagePage,
   type AdminSnapshot,
 } from "./types";
 import { buildRanking, type RankingMetrics, type RankingUser } from "./ranking";
@@ -259,6 +260,21 @@ function mapConnection(r: RawPost): Connection {
     createdAt: String(r.createdAt ?? r.created_at ?? ""),
     updatedAt: String(r.updatedAt ?? r.updated_at ?? ""),
     events: Array.isArray(r.events) ? (r.events as ConnectionEvent[]) : [],
+    messagesCount: Number(r.messagesCount ?? r.messages_count ?? 0),
+    lastMessageAt: (r.lastMessageAt ?? r.last_message_at ?? null) as string | null,
+  };
+}
+
+function mapConnectionMessage(r: RawPost): ConnectionMessage {
+  return {
+    id: String(r.id),
+    connectionId: String(r.connectionId ?? ""),
+    authorId: String(r.authorId ?? ""),
+    authorName: String(r.authorName ?? ""),
+    authorAvatarUrl: (r.authorAvatarUrl ?? null) as string | null,
+    mine: Boolean(r.mine),
+    body: String(r.body ?? ""),
+    createdAt: String(r.createdAt ?? ""),
   };
 }
 
@@ -867,6 +883,27 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ status, outcome }),
     }).then(mapConnection);
+  },
+  // ── CONVERSA DA CONEXÃO (T27) ────────────────────────────
+  /** Mensagens em ordem cronológica; `before` pagina para trás. A leitura marca a conversa como lida. */
+  connectionMessages(id: string, options: { before?: string | null; limit?: number } = {}): Promise<ConnectionMessagePage> {
+    const params = new URLSearchParams();
+    if (options.before) params.set("before", options.before);
+    if (options.limit) params.set("limit", String(options.limit));
+    const query = params.toString();
+    return request<{ messages: RawPost[]; hasMore: boolean; open: boolean }>(
+      `/api/users/connections/${encodeURIComponent(id)}/messages${query ? `?${query}` : ""}`,
+    ).then((body) => ({
+      messages: (body.messages ?? []).map(mapConnectionMessage),
+      hasMore: Boolean(body.hasMore),
+      open: Boolean(body.open),
+    }));
+  },
+  sendConnectionMessage(id: string, body: string): Promise<ConnectionMessage> {
+    return request<RawPost>(`/api/users/connections/${encodeURIComponent(id)}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }).then(mapConnectionMessage);
   },
 
   /** Base bruta do painel administrativo, agregada pelos serviços persistentes. */

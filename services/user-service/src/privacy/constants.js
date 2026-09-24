@@ -105,9 +105,9 @@ const RETENTION_RULES = [
   },
   {
     key: 'conexoes',
-    data: 'Conexões e mensagens escritas pelo titular',
+    data: 'Conexões, pedido e mensagens da conversa escritas pelo titular',
     action: 'anonimiza',
-    rule: 'A mensagem escrita pelo titular é removida; a conexão fica, porque também é registro da outra parte e da demanda a que se vinculou.',
+    rule: 'O pedido e as mensagens da conversa escritas pelo titular são removidos; a conexão e a conversa ficam, porque também são registro da outra parte e da demanda a que se vincularam.',
     basis: 'LGPD art. 18, IV, e art. 7º, VI',
   },
   {

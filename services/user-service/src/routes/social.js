@@ -229,6 +229,40 @@ module.exports = (pool, auth, operation) => {
         });
       }
 
+      // Mensagens não lidas na conversa da conexão (T27): a outra parte
+      // escreveu depois da última leitura desta conta. Uma consulta só.
+      const unreadMessages = await pool.query(
+        `SELECT c.id, c.last_message_at,
+                p.name AS other_name,
+                (SELECT count(*)::int FROM connection_messages m
+                  WHERE m.connection_id = c.id AND m.author_id <> $1
+                    AND m.created_at > COALESCE(r.last_read_at, 'epoch'::timestamptz)) AS unread
+           FROM connections c
+           LEFT JOIN connection_message_reads r ON r.connection_id = c.id AND r.user_id = $1
+           LEFT JOIN profiles p ON p.user_id = CASE WHEN c.from_user_id = $1 THEN c.to_user_id ELSE c.from_user_id END
+          WHERE (c.from_user_id = $1 OR c.to_user_id = $1)
+            AND c.last_message_at IS NOT NULL
+            AND c.last_message_at > COALESCE(r.last_read_at, 'epoch'::timestamptz)
+          ORDER BY c.last_message_at DESC LIMIT 10`,
+        [userId]
+      );
+      for (const r of unreadMessages.rows) {
+        if (!r.unread) continue;
+        notifs.push({
+          id: `n-msg-${r.id}-${new Date(r.last_message_at).getTime()}`,
+          kind: 'message',
+          actorName: r.other_name || '',
+          postId: '',
+          postTitle: 'Conversa',
+          summary: r.unread > 1
+            ? `enviou ${r.unread} mensagens na conexão`
+            : 'enviou uma mensagem na conexão',
+          icon: 'message',
+          href: `/conexoes/${r.id}`,
+          createdAt: r.last_message_at,
+        });
+      }
+
       // Recados recebidos
       const scraps = await pool.query(
         `SELECT s.id, s.created_at, p.name AS author_name

@@ -17,6 +17,7 @@ import { Button } from "@/components/app/Button";
 import { Icon, type IconName } from "@/components/app/Icon";
 import { Card, EmptyState } from "@/components/app/ui";
 import { ConnectionStatusBadge, ConnectionTypePill, partyLabel } from "@/components/app/ConnectionCard";
+import { ConnectionThread } from "@/components/app/ConnectionThread";
 import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 export default function ConnectionDetailPage() {
@@ -153,6 +154,14 @@ export default function ConnectionDetailPage() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* conversa entre as partes (T27: "Conversar com parceiros") */}
+      {(souDestinatario || souRemetente) && (
+        <ConnectionThread
+          connectionId={c.id}
+          onSent={() => setC((current) => (current ? { ...current, messagesCount: current.messagesCount + 1, lastMessageAt: new Date().toISOString() } : current))}
+        />
       )}
 
       {c.outcome && (

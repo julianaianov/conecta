@@ -28,6 +28,7 @@ user_db user-service/migrations/008-institutional-registration.sql
 user_db user-service/migrations/009-uploads.sql
 user_db user-service/migrations/010-partner-profiles.sql
 user_db user-service/migrations/011-lgpd-titular.sql
+user_db user-service/migrations/012-connection-messages.sql
 
 post_db post-service/init.sql
 post_db post-service/migrate_supports.sql

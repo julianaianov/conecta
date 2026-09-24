@@ -90,6 +90,8 @@ function createPool({ anonymized = false } = {}) {
       if (sql.startsWith('DELETE FROM scraps')) return { rows: [{ id: 's1' }], rowCount: 1 };
       if (sql.startsWith('DELETE FROM testimonials')) return { rows: [], rowCount: 0 };
       if (sql.startsWith('UPDATE connections')) return { rows: [{ id: 'c1' }], rowCount: 1 };
+      // Conversa da conexão (T27): as mensagens do titular perdem o corpo.
+      if (sql.startsWith('UPDATE connection_messages')) return { rows: [{ id: 'm1' }, { id: 'm2' }], rowCount: 2 };
       if (sql.startsWith('UPDATE organization_representatives')) return { rows: [], rowCount: 0 };
       if (sql.startsWith('SELECT')) return { rows: [] };
       throw new Error(`consulta inesperada: ${sql}`);
@@ -278,6 +280,10 @@ test('a eliminação anonimiza conteúdo, perfil e conta, nessa ordem, e registr
   for (const q of pool.queries.filter((x) => x.text.trim().startsWith('DELETE'))) {
     assert.match(q.text, /partner_profiles|scraps|testimonials/);
   }
+  // A conversa da conexão (T27) é anonimizada, nunca excluída, com o mesmo rótulo do pedido.
+  const mensagens = pool.queries.find((q) => q.text.trim().startsWith('UPDATE connection_messages'));
+  assert.equal(mensagens.params[1], '[removido a pedido do titular]');
+  assert.equal(pool.trail.find((t) => t.scope === 'perfil').summary.mensagensDeConexaoRemovidas, 2);
 });
 
 test('conta já anonimizada não é anonimizada de novo', async () => {

@@ -151,9 +151,9 @@ export const RETENTION_RULES: RetentionRule[] = [
   },
   {
     key: "conexoes",
-    data: "Conexões e mensagens escritas pelo titular",
+    data: "Conexões, pedido e mensagens da conversa escritas pelo titular",
     action: "anonimiza",
-    rule: "A mensagem escrita pelo titular é removida; a conexão fica, porque também é registro da outra parte e da demanda a que se vinculou.",
+    rule: "O pedido e as mensagens da conversa escritas pelo titular são removidos; a conexão e a conversa ficam, porque também são registro da outra parte e da demanda a que se vincularam.",
     basis: "LGPD art. 18, IV, e art. 7º, VI",
   },
   {
@@ -283,9 +283,9 @@ export const DATA_INVENTORY: DataInventoryEntry[] = [
     optional: true,
   },
   {
-    source: "user_db.connections, scraps, testimonials, partner_profiles",
+    source: "user_db.connections, connection_messages, scraps, testimonials, partner_profiles",
     group: "Conexões e rede",
-    fields: ["mensagem de contato", "estado e desfecho", "recados e depoimentos", "perfil de apoio: territórios, categorias e recursos de interesse"],
+    fields: ["mensagem de contato", "mensagens da conversa da conexão e data da última leitura", "estado e desfecho", "recados e depoimentos", "perfil de apoio: territórios, categorias e recursos de interesse"],
     purpose: "Aproximar quem pede e quem apoia.",
     visibility: "privado",
   },

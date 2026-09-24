@@ -30,11 +30,15 @@ function mapRow(r) {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     events: r.events || [],
+    // Conversa dentro da conexão (T27, migração user 012).
+    messagesCount: Number(r.messages_count ?? 0),
+    lastMessageAt: r.last_message_at || null,
   };
 }
 
 const DETAIL_SQL = `SELECT
            c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.demand_id, c.outcome, c.events, c.created_at, c.updated_at,
+           c.messages_count, c.last_message_at,
            p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
            p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
          FROM connections c
@@ -46,6 +50,39 @@ const DETAIL_SQL = `SELECT
 // TODO(fonte-da-verdade): Modelo de Conexão §11/§28/§35 — conexão não vira Processo de Conexão com protocolo DM-AAAA-NNNNNN ao formalizar; faltam vários processos por demanda com a contribuição de cada conectado e comunicação, encaminhamentos, documentos, prazos, execução, resultados e linha do tempo vinculados ao processo.
 const CONNECTION_TYPES = ['support', 'sponsorship', 'partnership', 'meeting', 'resources', 'outreach'];
 const MAX_MESSAGE_LENGTH = 2000;
+
+// Conversa dentro da conexão (T27): aberta enquanto o pedido está em
+// andamento ou a conexão ativa; em estado final a conversa fica registrada.
+const OPEN_STATUSES = ['pending', 'accepted'];
+const MESSAGES_LIMIT_DEFAULT = 50;
+const MESSAGES_LIMIT_MAX = 100;
+
+function mapMessage(r, meId) {
+  return {
+    id: r.id,
+    connectionId: r.connection_id,
+    authorId: r.author_id,
+    authorName: r.author_name || '',
+    authorAvatarUrl: r.author_avatar_url || null,
+    mine: r.author_id === meId,
+    body: r.body,
+    createdAt: r.created_at,
+  };
+}
+
+const MESSAGE_SQL = `SELECT m.id, m.connection_id, m.author_id, m.body, m.created_at,
+                            p.name AS author_name, p.avatar_url AS author_avatar_url
+                       FROM connection_messages m
+                       LEFT JOIN profiles p ON p.user_id = m.author_id`;
+
+/** Conexão da qual o usuário é parte, ou null (mesmo 404 para inexistente e alheia). */
+async function loadParty(pool, id, userId) {
+  const { rows } = await pool.query(
+    'SELECT id, status, from_user_id, to_user_id FROM connections WHERE id = $1 AND (from_user_id = $2 OR to_user_id = $2)',
+    [id, userId],
+  );
+  return rows[0] ?? null;
+}
 
 /**
  * Quem pode levar a conexão para cada status, a partir do status atual.
@@ -94,6 +131,7 @@ module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) 
       const { rows } = await pool.query(
         `SELECT
            c.id, c.type, c.status, c.message, c.post_id, c.post_title, c.demand_id, c.outcome, c.events, c.created_at, c.updated_at,
+           c.messages_count, c.last_message_at,
            p_from.user_id as from_user_id, p_from.name as from_name, p_from.avatar_url as from_avatar_url, p_from.role as from_role, p_from.profile_type as from_profile_type,
            p_to.user_id as to_user_id, p_to.name as to_name, p_to.avatar_url as to_avatar_url, p_to.role as to_role, p_to.profile_type as to_profile_type
          FROM connections c
@@ -173,8 +211,96 @@ module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) 
     }
   });
 
-  // PUT /:id — atualizar status e desfecho
-  // TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 / Modelo de Conexão §12 — não há mensagens dentro da conexão: só a mensagem inicial; este PUT muda status/desfecho.
+  // GET /:id/messages — a conversa da conexão (T27), em ordem cronológica.
+  // Só as duas partes; `limit` ≤ 100 e `before=<ISO>` paginam para trás. A
+  // leitura registra a última leitura do leitor (para o sino).
+  router.get('/:id/messages', auth, async (req, res) => {
+    if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Conexão não encontrada' });
+    let limit = MESSAGES_LIMIT_DEFAULT;
+    if (req.query.limit !== undefined && req.query.limit !== '') {
+      const parsed = Number(req.query.limit);
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > MESSAGES_LIMIT_MAX) {
+        return res.status(400).json({ error: `limit entre 1 e ${MESSAGES_LIMIT_MAX}` });
+      }
+      limit = parsed;
+    }
+    let before = null;
+    if (typeof req.query.before === 'string' && req.query.before.trim()) {
+      before = new Date(req.query.before);
+      if (Number.isNaN(before.getTime())) return res.status(400).json({ error: 'before inválido' });
+    }
+    try {
+      const c = await loadParty(pool, req.params.id, req.user.userId);
+      if (!c) return res.status(404).json({ error: 'Conexão não encontrada' });
+      const params = [c.id];
+      let where = 'm.connection_id = $1';
+      if (before) {
+        params.push(before.toISOString());
+        where += ` AND m.created_at < $${params.length}`;
+      }
+      params.push(limit + 1);
+      const { rows } = await pool.query(
+        `${MESSAGE_SQL} WHERE ${where} ORDER BY m.created_at DESC, m.id DESC LIMIT $${params.length}`,
+        params,
+      );
+      const hasMore = rows.length > limit;
+      const page = rows.slice(0, limit).reverse();
+      await pool.query(
+        `INSERT INTO connection_message_reads (connection_id, user_id, last_read_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (connection_id, user_id) DO UPDATE SET last_read_at = NOW()`,
+        [c.id, req.user.userId],
+      );
+      res.json({
+        messages: page.map((r) => mapMessage(r, req.user.userId)),
+        hasMore,
+        open: OPEN_STATUSES.includes(c.status),
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // POST /:id/messages — escrever na conversa (T27). Só as partes; só com a
+  // conexão em andamento ou ativa (409 `connection_closed` nos estados finais).
+  router.post('/:id/messages', auth, async (req, res) => {
+    if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Conexão não encontrada' });
+    const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+    if (!body) return res.status(400).json({ error: 'Escreva a mensagem' });
+    if (body.length > MAX_MESSAGE_LENGTH) {
+      return res.status(400).json({ error: `A mensagem aceita até ${MAX_MESSAGE_LENGTH} caracteres` });
+    }
+    try {
+      const c = await loadParty(pool, req.params.id, req.user.userId);
+      if (!c) return res.status(404).json({ error: 'Conexão não encontrada' });
+      if (!OPEN_STATUSES.includes(c.status)) {
+        return res.status(409).json({
+          error: 'A conexão foi encerrada; a conversa fica registrada e não recebe novas mensagens',
+          code: 'connection_closed',
+        });
+      }
+      await ensureProfile(pool, req.user);
+      const { rows } = await pool.query(
+        `INSERT INTO connection_messages (connection_id, author_id, body) VALUES ($1, $2, $3) RETURNING id`,
+        [c.id, req.user.userId, body],
+      );
+      const detail = await pool.query(`${MESSAGE_SQL} WHERE m.id = $1`, [rows[0].id]);
+      await pool.query(
+        `INSERT INTO connection_message_reads (connection_id, user_id, last_read_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (connection_id, user_id) DO UPDATE SET last_read_at = NOW()`,
+        [c.id, req.user.userId],
+      );
+      res.status(201).json(mapMessage(detail.rows[0], req.user.userId));
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // PUT /:id — atualizar status e desfecho. A conversa entre as partes vive em
+  // /:id/messages (T27); aqui só o ciclo pedido → aceite → resultado.
   router.put('/:id', auth, async (req, res) => {
     const { status, outcome } = req.body ?? {};
     if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Conexão não encontrada' });
@@ -243,3 +369,5 @@ module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) 
 
 module.exports.transitionAllowed = transitionAllowed;
 module.exports.CONNECTION_TYPES = CONNECTION_TYPES;
+module.exports.OPEN_STATUSES = OPEN_STATUSES;
+module.exports.MESSAGES_LIMIT_MAX = MESSAGES_LIMIT_MAX;

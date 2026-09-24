@@ -578,10 +578,39 @@ export interface Connection {
   createdAt: string;
   updatedAt: string;
   events: ConnectionEvent[];
+  /** Conversa dentro da conexão (T27): quantidade e data da última mensagem. */
+  messagesCount: number;
+  lastMessageAt: string | null;
 }
 
+/**
+ * Mensagem da conversa da conexão (T27, "Conversar com parceiros" — Arquitetura
+ * de Perfis §3.1). Só as duas partes leem e escrevem; append-only.
+ */
+export interface ConnectionMessage {
+  id: string;
+  connectionId: string;
+  authorId: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  /** escrita pela conta logada */
+  mine: boolean;
+  body: string;
+  createdAt: string;
+}
+
+export interface ConnectionMessagePage {
+  messages: ConnectionMessage[];
+  /** há mensagens anteriores à primeira desta página */
+  hasMore: boolean;
+  /** a conexão ainda aceita mensagens (pendente ou ativa) */
+  open: boolean;
+}
+
+export const CONNECTION_MESSAGE_MAX_LENGTH = 2000;
+
 // ── Notificações ───────────────────────────────────────────
-export type NotificationKind = "comment" | "support" | "reaction" | "connection" | "forwarding";
+export type NotificationKind = "comment" | "support" | "reaction" | "connection" | "forwarding" | "message";
 
 export interface AppNotification {
   id: string;
