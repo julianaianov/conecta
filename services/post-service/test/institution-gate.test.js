@@ -38,7 +38,7 @@ async function withServer(options, callback) {
   }
 }
 
-const MESSAGE = JSON.stringify({ type: 'message', title: 'Aviso', description: 'Programa municipal', latitude: -22.9, longitude: -43.2 });
+const MESSAGE = JSON.stringify({ type: 'message', title: 'Aviso', description: 'Programa municipal', latitude: -22.9, longitude: -43.2, images: ['https://exemplo.org/aviso.jpg'] });
 
 test('Poder Público sem validação não publica, não comenta, não edita e não apoia', async () => {
   for (const status of [null, 'pendente', 'em_analise', 'devolvida', 'revogada']) {
@@ -81,7 +81,7 @@ test('outras categorias não passam pelo gate institucional', async () => {
   await withServer({ pool: createPool(), institutionStatus }, async (base) => {
     const res = await fetch(`${base}/`, {
       method: 'POST', headers: headers('agent', 'ong'),
-      body: JSON.stringify({ type: 'project', title: 'Horta', description: 'Horta comunitária', latitude: -22.9, longitude: -43.2 }),
+      body: JSON.stringify({ type: 'project', title: 'Horta', description: 'Horta comunitária', latitude: -22.9, longitude: -43.2, images: ['https://exemplo.org/horta.jpg'] }),
     });
     assert.equal(res.status, 201);
   });

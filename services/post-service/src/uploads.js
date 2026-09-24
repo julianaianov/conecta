@@ -88,9 +88,17 @@ const PURPOSES = {
     label: 'Comprovação da representação', target: 'institution', folder: 'proof',
     types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
   },
+  // Foto do sinal do feed: obrigatória para a publicação entrar no mapa. O
+  // post ainda não existe na confirmação (`deferredTarget`): o arquivo fica em
+  // `posts/<owner_id>/photo/<id>.<ext>` e o POST /posts grava o vínculo
+  // (`uploads.post_id`) ao publicar.
+  post_photo: {
+    label: 'Foto do sinal', target: 'post', folder: 'photo',
+    types: IMAGE_TYPES, maxBytes: 15 * MB, visibility: 'public', deferredTarget: true,
+  },
 };
 
-const TARGET_PREFIX = { demand: 'demands', institution: 'institutions' };
+const TARGET_PREFIX = { demand: 'demands', institution: 'institutions', post: 'posts' };
 
 const PUT_EXPIRES_SECONDS = 15 * 60;
 const GET_EXPIRES_SECONDS = 5 * 60;
@@ -370,13 +378,15 @@ const UPLOAD_COLUMNS = [
   'declared_size_bytes', 'size_bytes', 'sha256', 'original_name', 'created_at', 'confirmed_at',
 ];
 
-const uploadSelect = (targetColumn) => [...UPLOAD_COLUMNS, targetColumn].join(', ');
+/** Uma coluna de vínculo ou várias (`['demand_id', 'post_id']` no post-service). */
+const targetList = (targetColumns) => (Array.isArray(targetColumns) ? targetColumns : [targetColumns]);
+const uploadSelect = (targetColumns) => [...UPLOAD_COLUMNS, ...targetList(targetColumns)].join(', ');
 
 const toIso = (v) => (v instanceof Date ? v.toISOString() : v ?? null);
 const camel = (column) => column.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 
-function serializeUpload(row, targetColumn) {
-  return {
+function serializeUpload(row, targetColumns) {
+  const out = {
     id: row.id,
     ref: formatUploadRef(row.id),
     purpose: row.purpose,
@@ -385,10 +395,11 @@ function serializeUpload(row, targetColumn) {
     size: Number(row.size_bytes ?? row.declared_size_bytes),
     fileName: row.original_name ?? null,
     sha256: row.sha256 ?? null,
-    [camel(targetColumn)]: row[targetColumn] ?? null,
-    createdAt: toIso(row.created_at),
-    confirmedAt: toIso(row.confirmed_at),
   };
+  for (const column of targetList(targetColumns)) out[camel(column)] = row[column] ?? null;
+  out.createdAt = toIso(row.created_at);
+  out.confirmedAt = toIso(row.confirmed_at);
+  return out;
 }
 
 /**
@@ -453,10 +464,13 @@ const UNAVAILABLE = {
 /**
  * Rotas `/uploads`. `policy` (por serviço):
  *   purposes: finalidades aceitas;
- *   targetColumn: 'demand_id' | 'organization_id';
+ *   targetColumn: 'demand_id' | 'organization_id' (coluna de vínculo padrão);
+ *   targetColumns (opcional): todas as colunas de vínculo do serviço;
+ *   targetColumnFor(purpose) (opcional): a coluna de vínculo da finalidade;
  *   publicPrefix: prefixo público das rotas (ex.: '/api/posts/uploads');
  *   canPresign(user, purpose) → null | { status, body };
  *   resolveTarget(db, user, purpose, body) → id do alvo (lança UploadError);
+ *     `null` nas finalidades com `deferredTarget` (o vínculo vem depois);
  *   isPublic(db, row) → o alvo está publicado?
  */
 function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = new Set() }) {
@@ -464,7 +478,9 @@ function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = ne
   if (typeof auth !== 'function' || !policy) throw new Error('upload routes exigem auth e política');
   const router = express.Router();
   const { targetColumn } = policy;
-  const select = uploadSelect(targetColumn);
+  const targetColumns = policy.targetColumns ?? [targetColumn];
+  const columnFor = (purpose) => policy.targetColumnFor?.(purpose) ?? targetColumn;
+  const select = uploadSelect(targetColumns);
 
   const handle = (fn) => async (req, res) => {
     try {
@@ -533,10 +549,13 @@ function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = ne
     const row = rows[0];
     if (!row || !policy.purposes.includes(row.purpose)) return notFound(res);
     if (row.status === 'confirmado') {
-      return res.json({ ...serializeUpload(row, targetColumn), url: await readUrl(storage, row) });
+      return res.json({ ...serializeUpload(row, targetColumns), url: await readUrl(storage, row) });
     }
 
     const targetId = await policy.resolveTarget(pool, req.user, row.purpose, req.body ?? {});
+    if (targetId === null && !PURPOSES[row.purpose]?.deferredTarget) {
+      throw new UploadError(422, { error: 'Informe a que o arquivo se vincula', code: 'validation_failed' });
+    }
 
     const head = await storage.head(row.tmp_key);
     if (!head) {
@@ -568,19 +587,21 @@ function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = ne
       return reject('O conteúdo do arquivo não corresponde ao tipo informado');
     }
 
-    const key = finalKey(row.purpose, targetId, row.id, row.content_type);
+    // Vínculo adiado (ex.: foto do sinal antes do post existir): a chave fica
+    // sob o dono do arquivo.
+    const key = finalKey(row.purpose, targetId ?? row.owner_id, row.id, row.content_type);
     await storage.copy(row.tmp_key, key);
     await storage.remove(row.tmp_key);
     const { rows: updated } = await pool.query(
       `UPDATE uploads
-          SET status = 'confirmado', object_key = $2, size_bytes = $3, ${targetColumn} = $4, confirmed_at = NOW()
+          SET status = 'confirmado', object_key = $2, size_bytes = $3, ${columnFor(row.purpose)} = $4, confirmed_at = NOW()
         WHERE id = $1 AND status = 'pendente'
         RETURNING ${select}`,
       [row.id, key, head.size, targetId],
     );
     const confirmed = updated[0]
       ?? (await pool.query(`SELECT ${select} FROM uploads WHERE id = $1`, [row.id])).rows[0];
-    res.json({ ...serializeUpload(confirmed, targetColumn), url: await readUrl(storage, confirmed) });
+    res.json({ ...serializeUpload(confirmed, targetColumns), url: await readUrl(storage, confirmed) });
   }));
 
   router.get('/:id', auth, handle(async (req, res) => {
@@ -588,7 +609,7 @@ function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = ne
     const row = rows[0];
     if (!row || !(await canRead(row, req.user))) return notFound(res);
     const url = storage && row.status === 'confirmado' ? await readUrl(storage, row) : null;
-    res.json({ ...serializeUpload(row, targetColumn), url });
+    res.json({ ...serializeUpload(row, targetColumns), url });
   }));
 
   router.get('/:id/content', requireStorage, handle(async (req, res) => {

@@ -565,3 +565,99 @@ test('visão pública da demanda: foto por upload sai pelo endereço estável /c
     assert.equal((await res.json()).photoUrl, `/api/posts/uploads/${UPLOAD}/content`);
   });
 });
+
+// ── Foto do sinal do feed (`post_photo`, migração 024) ──────────────────────
+
+test('post_photo: quem publica no feed envia; a confirmação não exige demanda e fica sob o dono', async () => {
+  const P = U.PURPOSES.post_photo;
+  assert.equal(P.target, 'post');
+  assert.equal(P.visibility, 'public');
+  assert.equal(P.deferredTarget, true);
+  assert.equal(U.finalKey('post_photo', AGENT, UPLOAD, 'image/jpeg'), `posts/${AGENT}/photo/${UPLOAD}.jpg`);
+
+  const presignPool = fakePool((text) => {
+    if (text.startsWith('DELETE FROM uploads')) return { rows: [] };
+    if (/count\(\*\)::int AS n FROM uploads/.test(text)) return { rows: [{ n: 0 }] };
+    if (text.startsWith('INSERT INTO uploads')) return { rows: [] };
+    return null;
+  });
+  await withServer(presignPool, memoryStorage(), async (base) => {
+    const body = { purpose: 'post_photo', contentType: 'image/png', size: 2048, fileName: 'buraco.png' };
+    // Membro da Comunidade não publica no feed: não envia foto de sinal.
+    assert.equal((await send(base, 'POST', '/uploads/presign', body, headers(OTHER, 'member', 'morador'))).status, 403);
+    // Poder Público publica `message`: pode enviar.
+    assert.equal((await send(base, 'POST', '/uploads/presign', body, headers(OTHER, 'government', 'prefeitura'))).status, 201);
+    assert.equal((await send(base, 'POST', '/uploads/presign', body)).status, 201);
+  });
+
+  const state = { row: uploadRow({ purpose: 'post_photo', post_id: null }) };
+  const pool = fakePool((text, params) => {
+    if (/FROM uploads WHERE id = \$1 AND owner_id = \$2/.test(text)) {
+      assert.match(text, /demand_id, post_id/);
+      return { rows: params[1] === AGENT ? [state.row] : [] };
+    }
+    if (/FROM uploads WHERE id = \$1$/.test(text)) return { rows: [state.row] };
+    if (text.startsWith('UPDATE uploads')) {
+      assert.match(text, /post_id = \$4/);
+      state.row = { ...state.row, status: 'confirmado', object_key: params[1], size_bytes: params[2], post_id: params[3], confirmed_at: new Date() };
+      return { rows: [state.row] };
+    }
+    return null;
+  });
+  const storage = memoryStorage(new Map([[`tmp/${UPLOAD}`, { bytes: PNG, size: 2048, contentType: 'image/png' }]]));
+  await withServer(pool, storage, async (base) => {
+    const res = await send(base, 'POST', `/uploads/${UPLOAD}/confirm`, {});
+    assert.equal(res.status, 200, JSON.stringify(await res.clone().json()));
+    const body = await res.json();
+    const key = `posts/${AGENT}/photo/${UPLOAD}.png`;
+    assert.equal(body.status, 'confirmado');
+    assert.equal(body.postId, null);
+    assert.equal(body.demandId, null);
+    assert.equal(state.row.object_key, key);
+    assert.ok(storage.objects.has(key));
+    // Sem post ainda, a foto não é pública; o dono lê.
+    assert.equal((await send(base, 'GET', `/uploads/${UPLOAD}/content`, undefined, {})).status, 404);
+  });
+});
+
+test('POST /posts com foto por upload: confere o upload confirmado do autor e grava o vínculo na mesma transação', async () => {
+  const POST_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const calls = [];
+  const tx = [];
+  const client = {
+    async query(text, params = []) {
+      tx.push({ text, params });
+      if (text.includes('INSERT INTO posts')) return { rows: [{ id: POST_ID, images: params[10] }] };
+      if (text.startsWith('UPDATE uploads SET post_id')) {
+        assert.deepEqual(params, [POST_ID, [UPLOAD]]);
+        return { rows: [] };
+      }
+      return { rows: [] };
+    },
+    release() {},
+  };
+  const usable = { current: true };
+  const pool = {
+    async query(text, params = []) {
+      calls.push({ text, params });
+      if (/FROM uploads\s+WHERE id = ANY/.test(text)) {
+        assert.equal(params[1], AGENT);
+        assert.equal(params[2], null);
+        return { rows: usable.current ? [{ id: UPLOAD }] : [] };
+      }
+      throw new Error(`Consulta inesperada: ${text}`);
+    },
+    async connect() { return client; },
+  };
+  await withServer(pool, memoryStorage(), async (base) => {
+    const body = { type: 'problem', title: 'Buraco', description: 'Na esquina', latitude: -23.02, longitude: -43.45, images: [`upload:${UPLOAD}`] };
+    const created = await send(base, 'POST', '/', body);
+    assert.equal(created.status, 201, JSON.stringify(await created.clone().json()));
+    assert.deepEqual(tx.map((c) => c.text.split(' ')[0]), ['BEGIN', 'INSERT', 'UPDATE', 'COMMIT']);
+
+    usable.current = false;
+    const rejected = await send(base, 'POST', '/', body);
+    assert.equal(rejected.status, 422);
+    assert.ok((await rejected.json()).fields.images);
+  });
+});

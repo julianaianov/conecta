@@ -77,7 +77,9 @@ function mapFilter(query, { geo = true } = {}) {
   const where = ['d.status = ANY($1::demand_status[])'];
   const statuses = parseList(query.status, PUBLIC_STATUSES, 'status', fields);
   params.push(statuses ?? PUBLIC_STATUSES);
-  if (geo) where.push('d.latitude IS NOT NULL AND d.longitude IS NOT NULL');
+  // Ponto e fotografia: o mapa só mostra demanda com os dois (a fotografia já
+  // é obrigatória no envio; a coordenada passou a ser, migração 024).
+  if (geo) where.push("d.latitude IS NOT NULL AND d.longitude IS NOT NULL AND coalesce(btrim(d.photo_ref), '') <> ''");
 
   const add = (sql, value) => {
     params.push(value);

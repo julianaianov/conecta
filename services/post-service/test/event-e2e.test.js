@@ -92,6 +92,8 @@ const EVENT_BODY = {
   uf: 'RJ',
   latitude: -23.02,
   longitude: -43.45,
+  // Foto e ponto: sem os dois o post-vitrine não entra na camada do mapa (migração 024).
+  photoRef: 'https://exemplo.org/mutirao.jpg',
   audience: 'Moradores e voluntários do bairro',
   pricing: 'gratuito',
   accessibility: ['acesso_para_cadeirantes', 'banheiro_acessivel'],

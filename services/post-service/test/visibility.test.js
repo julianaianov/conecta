@@ -129,7 +129,7 @@ test('Poder Público validado publica mensagem (D2)', async () => {
       headers: auth('government', 'prefeitura'),
       body: JSON.stringify({
         type: 'message', title: 'Aviso', description: 'Mutirão de limpeza no sábado',
-        latitude: -22.9, longitude: -43.2,
+        latitude: -22.9, longitude: -43.2, images: ['https://exemplo.org/aviso.jpg'],
       }),
     });
     assert.equal(response.status, 201);

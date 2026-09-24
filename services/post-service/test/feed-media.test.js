@@ -101,3 +101,18 @@ test('PUT /:id persists replacement videos', async () => {
     assert.deepEqual(update.params[3], ['/videos/horta-comunitaria.webm']);
   });
 });
+
+test('POST / sem foto não publica: o sinal precisa de foto para entrar no mapa', async () => {
+  const pool = createPool();
+
+  await withServer(pool, async (base) => {
+    const response = await fetch(`${base}/`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token()}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'project', title: 'Horta', description: 'Mutirão', latitude: -23.0245, longitude: -43.458 }),
+    });
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).code, 'photo_required');
+    assert.equal(pool.calls.length, 0);
+  });
+});

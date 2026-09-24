@@ -8,19 +8,24 @@
 // - Documentos da prestação de contas (T18): só com a demanda em
 //   `prestacao_de_contas` (comprovantes, relatórios e registros das ações).
 // - Público: foto e evidências de demanda publicada; documentos, nunca.
+// - Foto do sinal do feed (`post_photo`): quem publica no feed envia antes de
+//   criar o post (o vínculo `uploads.post_id` é gravado pelo POST /posts);
+//   pública quando o post está visível.
 
-const { normalizeRole } = require('./roles');
+const { normalizeRole, canPublishAny } = require('./roles');
 const { isUuid } = require('./security');
 const { PUBLIC_STATUSES } = require('./demand/constants');
 const { UploadError, findUsableUpload, parseUploadRef, describeUploads, contentPath } = require('./uploads');
 
 const PURPOSES = ['demand_photo', 'demand_evidence_photo', 'demand_evidence_video', 'demand_document',
-  'demand_accountability_document'];
+  'demand_accountability_document', 'post_photo'];
+const POST_PURPOSES = ['post_photo'];
 const EDITABLE_PURPOSES = ['demand_photo', 'demand_document'];
 // Prestação de contas (T18): a demanda precisa estar no último status canônico.
 const ACCOUNTABILITY_PURPOSES = ['demand_accountability_document'];
 const PUBLIC_PREFIX = '/api/posts/uploads';
 const TARGET_COLUMN = 'demand_id';
+const POST_TARGET_COLUMN = 'post_id';
 
 const DEMAND_NOT_FOUND = { error: 'Demanda não encontrada' };
 
@@ -28,9 +33,15 @@ function createPostUploadPolicy() {
   return {
     purposes: PURPOSES,
     targetColumn: TARGET_COLUMN,
+    targetColumns: [TARGET_COLUMN, POST_TARGET_COLUMN],
+    targetColumnFor: (purpose) => (POST_PURPOSES.includes(purpose) ? POST_TARGET_COLUMN : TARGET_COLUMN),
     publicPrefix: PUBLIC_PREFIX,
 
-    canPresign(user) {
+    canPresign(user, purpose) {
+      if (POST_PURPOSES.includes(purpose)) {
+        if (canPublishAny(user)) return null;
+        return { status: 403, body: { error: 'Seu perfil não publica sinais no feed', code: 'cannot_publish' } };
+      }
       if (normalizeRole(user?.role, user?.profileType) === 'agent') return null;
       return {
         status: 403,
@@ -39,6 +50,8 @@ function createPostUploadPolicy() {
     },
 
     async resolveTarget(db, user, purpose, body) {
+      // A foto do sinal é confirmada antes do post existir; o vínculo vem no POST /posts.
+      if (POST_PURPOSES.includes(purpose)) return null;
       const demandId = body?.demandId;
       if (!isUuid(demandId)) {
         throw new UploadError(422, {
@@ -76,6 +89,11 @@ function createPostUploadPolicy() {
     },
 
     async isPublic(db, row) {
+      if (POST_PURPOSES.includes(row.purpose)) {
+        if (!row.post_id) return false;
+        const { rows } = await db.query("SELECT 1 FROM posts WHERE id = $1 AND visibility = 'visible'", [row.post_id]);
+        return rows.length > 0;
+      }
       if (!row.demand_id) return false;
       const { rows } = await db.query(
         'SELECT 1 FROM demands WHERE id = $1 AND status = ANY($2::demand_status[])',
@@ -147,11 +165,46 @@ async function attachOwnerUploads(db, storage, demand) {
   return demand;
 }
 
+// ── Foto do sinal do feed ───────────────────────────────────────────────────
+
+/**
+ * Confere as imagens de um post antes de gravar: toda referência `upload:<id>`
+ * precisa ser upload confirmado, do autor, da finalidade `post_photo` e ainda
+ * sem post (ou já deste post, na edição). Link https passa (compatibilidade).
+ * Devolve os ids de upload a vincular.
+ */
+async function assertPostPhotoUploads(db, { images, ownerId, postId = null }) {
+  const ids = [...new Set(images.map(parseUploadRef).filter(Boolean))];
+  if (!ids.length) return [];
+  const { rows } = await db.query(
+    `SELECT id FROM uploads
+      WHERE id = ANY($1::uuid[]) AND owner_id = $2 AND purpose = 'post_photo' AND status = 'confirmado'
+        AND (post_id IS NULL OR post_id = $3)`,
+    [ids, ownerId, postId],
+  );
+  if (rows.length !== ids.length) {
+    throw new UploadError(422, {
+      error: 'Confira os campos destacados',
+      code: 'validation_failed',
+      fields: { images: 'Foto não encontrada: envie e confirme a foto antes de publicar' },
+    });
+  }
+  return ids;
+}
+
+/** Grava o vínculo das fotos confirmadas com o post recém-criado. */
+async function attachPostPhotoUploads(db, { ids, postId }) {
+  if (!ids.length) return;
+  await db.query('UPDATE uploads SET post_id = $1 WHERE id = ANY($2::uuid[]) AND post_id IS NULL', [postId, ids]);
+}
+
 module.exports = {
   createPostUploadPolicy,
   publicMediaUrl,
   assertDemandUpload,
   attachOwnerUploads,
+  assertPostPhotoUploads,
+  attachPostPhotoUploads,
   POST_IMAGES_SQL,
   UPLOAD_PURPOSES: PURPOSES,
   PUBLIC_PREFIX,

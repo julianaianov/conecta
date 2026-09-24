@@ -6,6 +6,8 @@ const { createApp } = require('../src');
 const SECRET = 'test-secret';
 const USER_ID = '11111111-1111-1111-1111-111111111111';
 const POST_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+// Foto por link (compatibilidade): não consulta `uploads`.
+const PHOTO = ['https://exemplo.org/buraco.jpg'];
 
 function token() {
   return jwt.sign({ userId: USER_ID, name: 'Maria Silva', role: 'agent', profileType: 'associacao' }, SECRET);
@@ -45,10 +47,39 @@ test('POST exige uma localização completa para o sinal entrar no mapa', async 
     const response = await fetch(`${base}/`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ type: 'project', title: 'Horta', description: 'Mutirão local' }),
+      body: JSON.stringify({ type: 'project', title: 'Horta', description: 'Mutirão local', images: PHOTO }),
     });
 
     assert.equal(response.status, 400);
+    assert.equal(pool.calls.length, 0);
+  });
+});
+
+test('POST exige a foto do local para o sinal entrar no mapa', async () => {
+  const pool = createPool();
+
+  await withServer(pool, async (base) => {
+    for (const images of [undefined, [], ['', ' '], 'https://exemplo.org/a.jpg']) {
+      const response = await fetch(`${base}/`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ type: 'project', title: 'Horta', description: 'Mutirão local', latitude: -23.0245, longitude: -43.458, images }),
+      });
+      assert.equal(response.status, 400, JSON.stringify(images));
+      assert.equal((await response.json()).code, 'photo_required');
+    }
+    assert.equal(pool.calls.length, 0);
+  });
+});
+
+test('PUT não apaga o ponto nem a foto (o sinal sairia do mapa)', async () => {
+  const pool = createPool();
+
+  await withServer(pool, async (base) => {
+    for (const body of [{ latitude: null, longitude: null }, { latitude: -23.0245 }, { images: [] }]) {
+      const response = await fetch(`${base}/${POST_ID}`, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+      assert.equal(response.status, 400, JSON.stringify(body));
+    }
     assert.equal(pool.calls.length, 0);
   });
 });
@@ -66,6 +97,7 @@ test('POST e PUT persistem o mesmo par de coordenadas válidas', async () => {
         description: 'Mutirão local',
         latitude: '-23.0245',
         longitude: '-43.458',
+        images: PHOTO,
       }),
     });
     assert.equal(createResponse.status, 201);
@@ -94,7 +126,7 @@ test('POST rejeita localização parcial ou fora dos limites geográficos', asyn
       const response = await fetch(`${base}/`, {
         method: 'POST',
         headers: headers(),
-        body: JSON.stringify({ type: 'project', title: 'Horta', description: 'Mutirão local', ...coordinates }),
+        body: JSON.stringify({ type: 'project', title: 'Horta', description: 'Mutirão local', images: PHOTO, ...coordinates }),
       });
       assert.equal(response.status, 400);
     }
@@ -102,7 +134,7 @@ test('POST rejeita localização parcial ou fora dos limites geográficos', asyn
   });
 });
 
-test('GET /map só consulta registros com as duas coordenadas', async () => {
+test('GET /map só consulta registros com as duas coordenadas e foto', async () => {
   const calls = [];
   const pool = {
     async query(text, params = []) {
@@ -116,5 +148,6 @@ test('GET /map só consulta registros com as duas coordenadas', async () => {
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), [{ id: POST_ID, latitude: -23.0245, longitude: -43.458 }]);
     assert.match(calls[0].text, /latitude IS NOT NULL AND longitude IS NOT NULL/);
+    assert.match(calls[0].text, /cardinality\(images\), 0\) > 0/);
   });
 });

@@ -18,8 +18,9 @@ import { InstitutionBanner } from "@/components/app/institution/InstitutionBanne
 import { InstitutionGateNotice } from "@/components/app/institution/InstitutionStatus";
 import { useInstitutionAccess } from "@/components/app/institution/useInstitutionAccess";
 import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
-import type { InstitutionValidationStatus } from "@/lib/app/types";
+import type { InstitutionValidationStatus, UploadedFile } from "@/lib/app/types";
 import { DEMAND_NEW_PATH, MY_DEMANDS_PATH } from "@/lib/app/demand";
+import { FileUpload } from "@/components/app/FileUpload";
 
 const LocationPicker = dynamic(
   () => import("@/components/app/LocationPicker").then((mod) => mod.LocationPicker),
@@ -52,6 +53,9 @@ function CreatePostContent() {
   const [tags, setTags] = useState("");
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  // Foto do local (upload `post_photo`): obrigatória, como o ponto, para o sinal entrar no mapa.
+  const [photo, setPhoto] = useState<UploadedFile | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   /** 403 `institution_not_validated` devolvido pelo post-service. */
@@ -65,6 +69,10 @@ function CreatePostContent() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !type) return;
+    if (!photo) {
+      setPhotoError("Envie uma foto do local: sem ela o sinal não entra no mapa.");
+      return;
+    }
     if (!coordinates) {
       setLocationError("Escolha no mapa onde esta demanda acontece.");
       return;
@@ -80,6 +88,7 @@ function CreatePostContent() {
           city: city.trim() || undefined,
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
+          images: [photo.ref],
           tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         },
         user,
@@ -220,10 +229,21 @@ function CreatePostContent() {
             </label>
           </div>
 
+          <FileUpload
+            id="post-photo"
+            label="Foto do local"
+            purpose="post_photo"
+            value={photo}
+            onChange={(file) => { setPhoto(file); setPhotoError(null); }}
+            required
+            error={photoError ?? undefined}
+            hint="Fotografe a situação, o local ou o projeto. Foto e localização são obrigatórias para o sinal aparecer no mapa."
+          />
+
           <div>
             <span className="mb-1.5 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>Localização do sinal</span>
             <p className="mb-2 text-xs" style={{ color: "var(--th-muted)" }}>
-              Marque no mapa o ponto aproximado da demanda. A localização é necessária para que o sinal apareça no mapa.
+              Marque no mapa o ponto aproximado da demanda. Sem a localização (e a foto) o sinal não aparece no mapa.
             </p>
             <LocationPicker
               value={coordinates}
@@ -242,7 +262,7 @@ function CreatePostContent() {
 
           {gate && <InstitutionGateNotice action="publicar" status={gate.status} />}
           {submitError && <p role="alert" className="rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(229,57,53,0.10)", color: "#e53935" }}>{submitError}</p>}
-          <Button type="submit" block size="lg" loading={submitting} icon="send" disabled={!title.trim() || !description.trim() || !coordinates}>Registrar sinal</Button>
+          <Button type="submit" block size="lg" loading={submitting} icon="send" disabled={!title.trim() || !description.trim() || !coordinates || !photo}>Registrar sinal</Button>
         </form>
       </Card>
     </div>

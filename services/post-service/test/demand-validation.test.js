@@ -84,7 +84,7 @@ test('eixos temáticos (T26): opcionais, na ordem da fonte, sem repetição e se
 test('envio: cada obrigatório da fonte, quando ausente, gera erro no próprio campo', () => {
   const required = [
     'category', 'title', 'description', 'objective', 'justification', 'beneficiariesEstimate',
-    'beneficiariesProfile', 'priority', 'photoRef', 'cep', 'municipality', 'uf', 'territory',
+    'beneficiariesProfile', 'priority', 'photoRef', 'cep', 'latitude', 'municipality', 'uf', 'territory',
   ];
   for (const field of required) {
     const { errors } = validateDemand(complete({ [field]: '' }), { forSubmission: true });
@@ -94,8 +94,9 @@ test('envio: cada obrigatório da fonte, quando ausente, gera erro no próprio c
 });
 
 test('envio: fotografia, CEP, orçamento e cronograma são obrigatórios', () => {
-  const { errors } = validateDemand(complete({ photoRef: null, cep: undefined, budgetItems: [], scheduleItems: [] }), { forSubmission: true });
+  const { errors } = validateDemand(complete({ photoRef: null, cep: undefined, latitude: null, longitude: null, budgetItems: [], scheduleItems: [] }), { forSubmission: true });
   assert.match(errors.photoRef, /fotografia/i);
+  assert.match(errors.latitude, /mapa/i);
   assert.match(errors.cep, /CEP/);
   assert.match(errors.budgetItems, /orçamento/i);
   assert.match(errors.scheduleItems, /cronograma/i);

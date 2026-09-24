@@ -69,6 +69,7 @@ const REQUIRED_ON_SUBMIT = [
   ['priority', 'Selecione o nível de prioridade'],
   ['photoRef', 'A fotografia da situação, local ou projeto é obrigatória'],
   ['cep', 'A localização com CEP é obrigatória'],
+  ['latitude', 'Marque no mapa o ponto da demanda: sem ele a demanda não aparece no mapa'],
   ['municipality', 'Informe o município'],
   ['uf', 'Informe a UF'],
   ['territory', 'Informe o território de abrangência (bairro, comunidade ou região)'],

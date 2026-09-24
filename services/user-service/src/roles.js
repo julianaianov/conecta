@@ -42,8 +42,13 @@ function canPublish(user, type) {
   return POST_TYPES_BY_ROLE[normalizeRole(user.role, user.profileType)].includes(type);
 }
 
+/** O perfil publica algum tipo de sinal no feed (ex.: pode enviar a foto do sinal). */
+function canPublishAny(user) {
+  return POST_TYPES_BY_ROLE[normalizeRole(user?.role, user?.profileType)].length > 0;
+}
+
 function canSupport(user, type) {
   return SUPPORTERS.includes(normalizeRole(user.role, user.profileType)) || type === 'sharing';
 }
 
-module.exports = { normalizeRole, canPublish, canSupport };
+module.exports = { normalizeRole, canPublish, canPublishAny, canSupport };

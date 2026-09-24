@@ -2,7 +2,8 @@ const express = require('express');
 const { canPublish, canSupport } = require('../roles');
 const { normalizeCoordinates } = require('../location');
 const { isUuid } = require('../security');
-const { POST_IMAGES_SQL } = require('../upload-policy');
+const { POST_IMAGES_SQL, assertPostPhotoUploads, attachPostPhotoUploads } = require('../upload-policy');
+const { UploadError } = require('../uploads');
 
 // Projeção pública de um post. Colunas novas ficam fora da API até serem
 // incluídas aqui de propósito.
@@ -33,6 +34,18 @@ const VISIBLE = "visibility = 'visible'";
 // Teto da camada de conteúdos do feed no mapa (T20).
 const MAP_LIMIT_MAX = 500;
 const VISIBLE_POST = `SELECT 1 FROM posts WHERE id=$1 AND ${VISIBLE}`;
+// O mapa só mostra sinal com foto e ponto (slide 19: o mapa é leitura do
+// território, não do texto). O POST exige os dois; o PUT não os apaga.
+const ON_MAP = "latitude IS NOT NULL AND longitude IS NOT NULL AND COALESCE(cardinality(images), 0) > 0";
+
+/** Lista de imagens válida: array não vazio de strings não vazias (até 10). */
+function normalizeImages(raw) {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 10) return null;
+  const images = raw.map((v) => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
+  return images.length === raw.length ? images : null;
+}
+
+const IMAGES_REQUIRED = 'A foto do local é obrigatória (images: lista de referências upload:<id>)';
 
 // Post-vitrine de demanda (posts.demand_id): o conteúdo vem da demanda, então
 // editar ou excluir pelo post é conflito de estado, não erro interno.
@@ -92,7 +105,7 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
   router.get('/map', async (req, res) => {
     const { type, status } = req.query;
     const params = [];
-    let where = `WHERE ${VISIBLE} AND latitude IS NOT NULL AND longitude IS NOT NULL`;
+    let where = `WHERE ${VISIBLE} AND ${ON_MAP}`;
     let i = 1;
     if (type)   { where += ` AND type=$${i++}`;   params.push(type); }
     if (status) { where += ` AND status=$${i++}`; params.push(status); }
@@ -282,16 +295,38 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
     const coordinates = normalizeCoordinates(latitude, longitude);
     if (!coordinates)
       return res.status(400).json({ error: 'latitude e longitude são obrigatórias e devem formar uma localização válida' });
+    const photos = normalizeImages(images);
+    if (!photos) return res.status(400).json({ error: IMAGES_REQUIRED, code: 'photo_required' });
     try {
-      const { rows } = await pool.query(
+      const uploadIds = await assertPostPhotoUploads(pool, { images: photos, ownerId: req.user.userId });
+      const insert = async (db) => db.query(
         `INSERT INTO posts
           (author_id,author_name,author_avatar,type,title,description,latitude,longitude,neighborhood,city,images,videos,tags)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING ${POST_SQL}`,
         [req.user.userId, req.user.name || req.user.email, req.user.avatarUrl || null, type, title, description,
-         coordinates?.latitude ?? null, coordinates?.longitude ?? null, neighborhood, city, images || [], videos || [], tags || []]
+         coordinates.latitude, coordinates.longitude, neighborhood, city, photos, videos || [], tags || []]
       );
-      res.status(201).json(rows[0]);
+      let post;
+      if (uploadIds.length) {
+        // Post e vínculo da foto na mesma transação.
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          post = (await insert(client)).rows[0];
+          await attachPostPhotoUploads(client, { ids: uploadIds, postId: post.id });
+          await client.query('COMMIT');
+        } catch (err) {
+          await client.query('ROLLBACK');
+          throw err;
+        } finally {
+          client.release();
+        }
+      } else {
+        post = (await insert(pool)).rows[0];
+      }
+      res.status(201).json(post);
     } catch (err) {
+      if (err instanceof UploadError) return res.status(err.status).json(err.body);
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });
     }
@@ -305,14 +340,21 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
     const hasLocation = Object.prototype.hasOwnProperty.call(req.body, 'latitude')
       || Object.prototype.hasOwnProperty.call(req.body, 'longitude');
     const coordinates = normalizeCoordinates(latitude, longitude);
-    if (hasLocation && (latitude != null || longitude != null) && !coordinates)
+    // O ponto pode mudar, nunca ser apagado: sem ele o sinal sai do mapa.
+    if (hasLocation && !coordinates)
       return res.status(400).json({ error: 'latitude e longitude devem formar uma localização válida' });
+    const hasImages = images !== undefined && images !== null;
+    const photos = hasImages ? normalizeImages(images) : null;
+    if (hasImages && !photos) return res.status(400).json({ error: IMAGES_REQUIRED, code: 'photo_required' });
     try {
       const { rows: existing } = await pool.query('SELECT author_id, demand_id FROM posts WHERE id=$1', [req.params.id]);
       if (!existing.length) return res.status(404).json({ error: 'Post não encontrado' });
       if (existing[0].author_id !== req.user.userId)
         return res.status(403).json({ error: 'Sem permissão' });
       if (existing[0].demand_id) return showcaseConflict(res, existing[0].demand_id);
+      const uploadIds = photos
+        ? await assertPostPhotoUploads(pool, { images: photos, ownerId: req.user.userId, postId: req.params.id })
+        : [];
 
       const updates = [
         'title=COALESCE($1,title)',
@@ -321,10 +363,10 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
         'videos=COALESCE($4,videos)',
         'tags=COALESCE($5,tags)',
       ];
-      const values = [title, description, images, videos, tags];
+      const values = [title, description, photos, videos, tags];
       if (hasLocation) {
         updates.push(`latitude=$${values.length + 1}`, `longitude=$${values.length + 2}`);
-        values.push(coordinates?.latitude ?? null, coordinates?.longitude ?? null);
+        values.push(coordinates.latitude, coordinates.longitude);
       }
       values.push(req.params.id);
 
@@ -333,8 +375,10 @@ module.exports = (pool, auth, operation, institutional = (_req, _res, next) => n
          WHERE id=$${values.length} RETURNING ${POST_SQL}`,
         values
       );
+      await attachPostPhotoUploads(pool, { ids: uploadIds, postId: req.params.id });
       res.json(rows[0]);
     } catch (err) {
+      if (err instanceof UploadError) return res.status(err.status).json(err.body);
       // Corrida com a publicação/arquivamento: o trigger do post-vitrine recusa.
       if (err?.code === '23514' && /post-vitrine/.test(err.message)) return showcaseConflict(res, null);
       console.error(err);

@@ -120,10 +120,15 @@ export function PostDetailClient({
 
   async function saveLocation() {
     if (!isAuthor || savingLocation) return;
+    // O ponto pode mudar, nunca ser apagado: sem ele o sinal sai do mapa.
+    if (!coordinates) {
+      setActionError("Escolha o ponto no mapa antes de salvar: sem ele o sinal sai do mapa.");
+      return;
+    }
     setSavingLocation(true);
     setActionError(null);
     try {
-      const updated = await api.updatePostLocation(post.id, coordinates?.latitude ?? null, coordinates?.longitude ?? null);
+      const updated = await api.updatePostLocation(post.id, coordinates.latitude, coordinates.longitude);
       if (updated) {
         setPost(updated);
         setCoordinates(normalizeCoordinates(updated.latitude, updated.longitude));

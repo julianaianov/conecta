@@ -1315,7 +1315,8 @@ export type UploadPurpose =
   | "demand_evidence_video"
   | "demand_document"
   | "demand_accountability_document"
-  | "institution_proof";
+  | "institution_proof"
+  | "post_photo";
 
 /** Serviço que guarda o arquivo: `posts` (demanda) ou `users` (instituição). */
 export type UploadService = "posts" | "users";
