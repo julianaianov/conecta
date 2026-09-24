@@ -54,6 +54,7 @@ para todos os perfis.
 | `support` — apoiar projetos, oferecer recursos, produtos ou serviços | | ✓ | ✓ | ✓ | |
 | `volunteer` — voluntariado e inscrição em eventos | | ✓ | | | |
 | `ranking` — ranking de apoiadores e impacto | | ✓ | ✓ | | |
+| `agenda` — identificar pautas e registrar divulgação (T28) | | | | | ✓ |
 
 O cadastro lista "Curtir/apoiar" como na fonte (§3.2). No produto, essa ação é
 a marcação de apoio do card de sinal, sem ícone de coração ou polegar; as telas
@@ -61,6 +62,11 @@ do produto continuam sem a palavra "curtida" (`src/lib/app/language.test.mjs`).
 
 Os Agentes de Transformação aparecem no ranking de impacto pelos projetos que
 publicam e pelos apoios que recebem.
+
+"Conversar com parceiros" é a conversa dentro da conexão (T27); "Identificar
+pautas" e "Divulgar projetos e resultados" são as pautas da Comunicação (T28);
+"o DM Conecta identifica potenciais parceiros" vale para o apoiador (T15) e
+para o Agente (T30).
 
 ### Tipos de publicação por categoria
 
@@ -78,8 +84,13 @@ Comunicação contribuem com **Divulgação** (`sharing`).
 ## Governança
 
 - Membros da Comunidade não publicam demandas ou projetos em nome de uma
-  organização ou comunidade sem vínculo ou autorização. O vínculo de usuários a
-  organizações, com permissões delegadas, está previsto para versões futuras.
+  organização ou comunidade sem vínculo ou autorização. O **vínculo** existe
+  (T29, `organization_members`): o titular do cadastro institucional convida
+  contas com nível `gestor`, `publicador` ou `colaborador`, e a conta vinculada
+  age em nome da instituição com as permissões do nível (delegação lida em
+  `GET /me/institution/status`; papel efetivo em `lib/app/organization.ts` e
+  `post-service/src/delegation.js`). Uma conta atua em nome de uma instituição
+  por vez.
 - Poder Público e Comunicação não participam do ranking competitivo de
   apoiadores, preservando a neutralidade institucional. O Poder Público é
   acompanhado por indicadores de atuação, respostas, encaminhamentos e
@@ -97,10 +108,10 @@ Comunicação contribuem com **Divulgação** (`sharing`).
 | 2 | Membros da Comunidade | apoio, participação, voluntariado, eventos e interação |
 | 2 | Comunicação | descoberta de pautas, conexão e amplificação |
 
-> TODO(fonte-da-verdade): Arquitetura de Perfis §5 x §8 — o fluxo do ecossistema (§5) conta com
-> apoio da comunidade e amplificação pela Comunicação desde o ciclo principal, enquanto a
-> estrutura do MVP (§8) libera Membros e Comunicação só na Fase 2; a fonte é contraditória e
-> precisa de decisão.
+Decisão 12 (`dm-docs/fonte-da-verdade/decisoes-de-implementacao.md`): a
+arquitetura existe desde o início e todas as fases estão liberadas; nada fica
+bloqueado por fase. Os perfis "futuramente" da fonte aparecem como "Em breve"
+no cadastro e não são selecionáveis.
 
 ## Migração de dados
 
