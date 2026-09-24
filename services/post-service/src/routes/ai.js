@@ -35,7 +35,6 @@
 
 const express = require('express');
 const { isUuid } = require('../security');
-const { normalizeRole } = require('../roles');
 const { requireEffectiveRole } = require('../delegation');
 const demandStore = require('../demand/store');
 const { listHelpers } = require('./demands');

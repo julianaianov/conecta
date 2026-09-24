@@ -48,7 +48,6 @@
 
 const express = require('express');
 const { isUuid } = require('../security');
-const { normalizeRole } = require('../roles');
 const { requireDemandAuthorRole } = require('../demand/gate');
 const {
   CATEGORIES, PRIORITIES, PUBLIC_STATUSES, STATUSES, THEMES,

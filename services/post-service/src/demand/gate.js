@@ -12,7 +12,6 @@
 // da demanda.organization_id precisa continuar `validada` (contrato em
 // dm-docs/gestao/04-modelagem-de-dados.md §3).
 
-const { normalizeRole } = require('../roles');
 const { effectiveRole, requireEffectiveRole } = require('../delegation');
 
 /**
