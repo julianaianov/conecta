@@ -43,7 +43,7 @@ const { CATEGORIES, PRIORITIES, NEEDED_RESOURCE_TYPES, PUBLIC_STATUSES } = requi
 const demandStore = require('../demand/store');
 const {
   ROLE_CATEGORY, KINDS_BY_ROLE, OPPORTUNITY_ROLES, INTEREST_OPEN_STATUSES,
-  OPPORTUNITY_DEFAULT_STATUSES, CONNECTABLE_STATUSES,
+  OPPORTUNITY_DEFAULT_STATUSES, CONNECTABLE_STATUSES, POTENTIAL_PARTNERS_STATUSES, POTENTIAL_PARTNERS_MAX,
 } = require('../interest/constants');
 const { validateInterest, validateConnectionRequest, connectionTypeFor } = require('../interest/validation');
 const { computeCompatibility, profileHasCriteria } = require('../interest/compatibility');
@@ -421,6 +421,60 @@ module.exports = ({
       interests: rows.map(store.serializeAgentInterest),
       summary: await store.interestSummary(pool, req.params.id),
     });
+  }));
+
+  // Potenciais parceiros e instituições (T30): "O DM Conecta identifica
+  // potenciais parceiros, instituições e outros atores que podem contribuir"
+  // (Arquitetura de Perfis §6, etapa 3). Os perfis de apoio (user-service) que
+  // cruzam os critérios da demanda, pontuados pela mesma compatibilidade da
+  // T15, com quem já manifestou interesse marcado. Nunca expõe contato.
+  router.get('/mine/:id/potential-partners', auth, requireAgent, handle(async (req, res) => {
+    const demand = await demandStore.loadOwnDemand(pool, req.params.id, req.user.userId);
+    if (!POTENTIAL_PARTNERS_STATUSES.includes(demand.status)) {
+      return res.json({ available: false, reason: 'demanda_nao_publicada', candidates: [] });
+    }
+    if (!partnerProfile || typeof partnerProfile.match !== 'function') {
+      throw new HttpError(503, { error: 'Perfis de apoio indisponíveis', code: 'partner_profile_unavailable' });
+    }
+    const needed = await store.neededResourcesByDemand(pool, [demand.id]);
+    const neededResources = needed.get(demand.id) ?? [];
+    const criteria = {
+      uf: demand.uf ?? '',
+      municipality: demand.municipality ?? '',
+      territory: demand.territory ?? '',
+      district: demand.district ?? '',
+      category: demand.category ?? '',
+      resources: neededResources,
+      limit: POTENTIAL_PARTNERS_MAX,
+    };
+    const [raw, interested] = await Promise.all([
+      partnerProfile.match(req, criteria),
+      pool.query(
+        `SELECT DISTINCT user_id FROM demand_interests WHERE demand_id = $1 AND withdrawn_at IS NULL`,
+        [demand.id],
+      ),
+    ]);
+    const alreadyInterested = new Set(interested.rows.map((r) => String(r.user_id).toLowerCase()));
+    const target = { ...demand, neededResources };
+    const candidates = raw
+      .map((c) => {
+        const compatibility = computeCompatibility(c.profile, target);
+        return {
+          userId: c.userId,
+          name: c.name,
+          avatarUrl: c.avatarUrl ?? null,
+          role: c.role ?? null,
+          profileType: c.profileType ?? null,
+          city: c.city ?? null,
+          state: c.state ?? null,
+          compatibility,
+          alreadyInterested: alreadyInterested.has(String(c.userId).toLowerCase()),
+        };
+      })
+      .filter((c) => c.compatibility.score > 0)
+      .sort((a, b) => b.compatibility.score - a.compatibility.score || a.name.localeCompare(b.name))
+      .slice(0, POTENTIAL_PARTNERS_MAX);
+    res.json({ available: true, candidates });
   }));
 
   /** Confere a conexão no user-service: destinatário é o autor e a demanda é esta. */

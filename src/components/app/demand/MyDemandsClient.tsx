@@ -31,6 +31,7 @@ import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import { CategoryBadge, DemandStatusBadge, StatusTrack } from "./DemandParts";
 import { DossierPanel } from "./DossierPanel";
 import { DemandInterestsInbox } from "../interest/DemandInterestsInbox";
+import { PotentialPartnersPanel } from "../interest/PotentialPartnersPanel";
 import { DemandSupportsInbox } from "../support/DemandSupportsInbox";
 import { DemandExecutionPanel } from "../execution/DemandExecutionPanel";
 import { DemandAccountabilityPanel } from "../accountability/DemandAccountabilityPanel";
@@ -194,6 +195,8 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
                 }).catch(() => onUpdated({ ...demand, status }));
               }}
             />
+            {/* Potenciais parceiros e instituições (T30, §6 etapa 3). */}
+            <PotentialPartnersPanel demand={demand} />
           </div>
         )}
         {panel === "ia" && (

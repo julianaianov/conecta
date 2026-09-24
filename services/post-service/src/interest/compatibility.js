@@ -1,4 +1,8 @@
-// TODO(fonte-da-verdade): Modelo de Conexão §07 — identificar potenciais conexões já na publicação (território, competência institucional, valor, público, programas, interesse cadastrado) e mostrar ao Agente e aos apoiadores; ver TODO em migrations/007-demands.sql (demands_record_event).
+// Identificação de potenciais conexões (Arquitetura de Perfis §6, etapa 3;
+// Modelo de Conexão §07): o apoiador vê as demandas compatíveis em
+// /opportunities (T15) e o Agente vê os perfis de apoio compatíveis com a
+// demanda em /mine/:id/potential-partners (T30), ambos sob demanda.
+// TODO(fonte-da-verdade): Modelo de Conexão §07 — falta a identificação automática no ato da publicação, com aviso aos dois lados (depende da central de notificações, §08); ver TODO em migrations/007-demands.sql (demands_record_event).
 // Compatibilidade entre o perfil de apoio e a demanda (T15). Cálculo
 // transparente, sem IA: três critérios com pesos fixos (território 40,
 // categoria 30, recursos 30), cada um com o motivo em texto. A fonte pede que a

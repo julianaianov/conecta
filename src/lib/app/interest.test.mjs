@@ -15,6 +15,8 @@ import {
   OFFER_TYPES,
   OFFER_TYPE_LABELS,
   OPPORTUNITY_ROLES,
+  POTENTIAL_PARTNERS_MAX,
+  POTENTIAL_PARTNERS_STATUSES,
   UFS,
   buildOpportunityQuery,
   canFilterOpportunities,
@@ -41,6 +43,8 @@ test("listas e rótulos iguais aos do post-service", () => {
   assert.deepEqual(INTEREST_OPEN_STATUSES, server.INTEREST_OPEN_STATUSES);
   assert.deepEqual(INTEREST_EVENT_TYPES, server.INTEREST_EVENT_TYPES);
   assert.deepEqual(OPPORTUNITY_ROLES, server.OPPORTUNITY_ROLES);
+  assert.deepEqual(POTENTIAL_PARTNERS_STATUSES, server.POTENTIAL_PARTNERS_STATUSES);
+  assert.equal(POTENTIAL_PARTNERS_MAX, server.POTENTIAL_PARTNERS_MAX);
   assert.deepEqual(COMPATIBILITY_LEVEL_LABELS, server.COMPATIBILITY_LEVEL_LABELS);
   assert.deepEqual({ ...COMPATIBILITY_WEIGHTS }, server.COMPATIBILITY_WEIGHTS);
   for (const role of Object.keys(INTEREST_KINDS_BY_ROLE)) {

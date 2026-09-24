@@ -74,6 +74,9 @@ export const OPPORTUNITY_ROLES: UserRole[] = ["partner", "government"];
 
 /** Estados da demanda que recebem manifestação e conexão. */
 export const INTEREST_OPEN_STATUSES: DemandStatus[] = ["publicada", "em_busca_de_parceiro", "conectada", "em_execucao"];
+/** Potenciais parceiros para o Agente (T30): enquanto a demanda recebe interesse. */
+export const POTENTIAL_PARTNERS_STATUSES: DemandStatus[] = INTEREST_OPEN_STATUSES;
+export const POTENTIAL_PARTNERS_MAX = 50;
 
 export const INTEREST_EVENT_TYPES = ["interesse_registrado", "interesse_retirado", "conexao_solicitada", "conexao_aceita"];
 

@@ -40,7 +40,11 @@ function createUserServiceCaller({
   };
 }
 
-/** Perfil de apoio da conta; `get(req)` resolve o perfil ou `null`. */
+/**
+ * Perfil de apoio da conta; `get(req)` resolve o perfil ou `null`.
+ * `match(req, criteria)` (T30) lista os perfis de apoio que cruzam os critérios
+ * da demanda (`GET /partner-profiles/match`), com o token do Agente.
+ */
 function createPartnerProfileClient(options = {}) {
   const call = options.call ?? createUserServiceCaller(options);
   return {
@@ -51,6 +55,29 @@ function createPartnerProfileClient(options = {}) {
         throw new Error(`user-service respondeu ${res.status}`);
       }
       return res.body.exists === false ? null : res.body;
+    },
+    async match(req, criteria = {}) {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(criteria)) {
+        if (Array.isArray(value)) { if (value.length) query.set(key, value.join(',')); }
+        else if (typeof value === 'string' && value.trim()) query.set(key, value.trim());
+        else if (typeof value === 'number') query.set(key, String(value));
+      }
+      const qs = query.toString();
+      try {
+        const res = await call(req, 'GET', `/partner-profiles/match${qs ? `?${qs}` : ''}`);
+        if (res.status !== 200 || !res.body || !Array.isArray(res.body.candidates)) {
+          throw new Error(`user-service respondeu ${res.status}`);
+        }
+        return res.body.candidates;
+      } catch (err) {
+        if (err instanceof HttpError) throw err;
+        console.error(`[interests] user-service match: ${err?.message ?? err}`);
+        throw new HttpError(503, {
+          error: 'Não foi possível consultar os perfis de apoio agora. Tente de novo.',
+          code: 'partner_profile_unavailable',
+        });
+      }
     },
   };
 }

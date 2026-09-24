@@ -1831,6 +1831,26 @@ export interface Compatibility {
   reasons: CompatibilityReason[];
 }
 
+/** Potencial parceiro ou instituição para a demanda do Agente (T30, §6 etapa 3). */
+export interface PotentialPartner {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  role: UserRole | null;
+  profileType: ProfileType | null;
+  city: string | null;
+  state: string | null;
+  compatibility: Compatibility;
+  /** já manifestou interesse nesta demanda (aba de interessados) */
+  alreadyInterested: boolean;
+}
+
+export interface PotentialPartnersResponse {
+  available: boolean;
+  reason?: "demanda_nao_publicada";
+  candidates: PotentialPartner[];
+}
+
 export interface DemandInterestContext {
   interests: DemandInterest[];
   allowedKinds: InterestKind[];

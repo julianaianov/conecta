@@ -57,7 +57,7 @@ import type {
 import { buildInstitutionalQuery } from "./institutional";
 import type {
   AgentDemandInterest, DemandInterest, DemandInterestContext, InterestInput, InterestSummary, MyInterestItem,
-  OpportunityFilter, OpportunityPage, PartnerProfile, PartnerProfileInput,
+  OpportunityFilter, OpportunityPage, PartnerProfile, PartnerProfileInput, PotentialPartnersResponse,
 } from "./types";
 import { buildOpportunityQuery } from "./interest";
 import type {
@@ -1261,6 +1261,13 @@ export const api = {
   /** Agente autor: quem se interessou. */
   agentDemandInterests(id: string): Promise<{ interests: AgentDemandInterest[]; summary: InterestSummary }> {
     return demandRequired(`/mine/${encodeURIComponent(id)}/interests`);
+  },
+
+  // ── POTENCIAIS PARCEIROS (T30) ───────────────────────────
+  /** Perfis de apoio compatíveis com a demanda do Agente, pontuados; `available: false` antes da publicação. */
+  potentialPartners(id: string): Promise<PotentialPartnersResponse> {
+    return demandRequired<PotentialPartnersResponse>(`/mine/${encodeURIComponent(id)}/potential-partners`)
+      .then((body) => ({ ...body, candidates: Array.isArray(body.candidates) ? body.candidates : [] }));
   },
 
   /** Agente autor aceita a conexão vinculada à demanda; a demanda vai para `conectada`. */

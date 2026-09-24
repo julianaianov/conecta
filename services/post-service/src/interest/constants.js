@@ -60,6 +60,11 @@ const OPPORTUNITY_DEFAULT_STATUSES = ['publicada', 'em_busca_de_parceiro'];
 // A conexão aceita leva a demanda a `conectada` só a partir destes estados.
 const CONNECTABLE_STATUSES = ['publicada', 'em_busca_de_parceiro'];
 
+// Potenciais parceiros para o Agente (T30): identificados enquanto a demanda
+// ainda recebe interesse; teto de candidatos devolvidos.
+const POTENTIAL_PARTNERS_STATUSES = INTEREST_OPEN_STATUSES;
+const POTENTIAL_PARTNERS_MAX = 50;
+
 // Linha do tempo (triggers da migração 012). Os públicos expõem só
 // payload->'public' (tipo, categoria da conta e ofertas).
 const INTEREST_EVENT_TYPES = [
@@ -105,6 +110,8 @@ module.exports = {
   INTEREST_OPEN_STATUSES,
   OPPORTUNITY_DEFAULT_STATUSES,
   CONNECTABLE_STATUSES,
+  POTENTIAL_PARTNERS_STATUSES,
+  POTENTIAL_PARTNERS_MAX,
   INTEREST_EVENT_TYPES,
   PRIVATE_INTEREST_EVENT_TYPES,
   COMPATIBILITY_WEIGHTS,

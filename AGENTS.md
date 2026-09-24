@@ -1399,6 +1399,41 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Testes: `test/media-domain.test.js`, `test/media-routes.test.js`,
   `test/privacy-routes.test.js` e `src/lib/app/media.test.mjs`.
 
+## Potenciais parceiros e instituições para o Agente (T30)
+
+- Fonte: Arquitetura de Perfis §6, etapa 3 ("CONEXÃO — O DM Conecta identifica
+  potenciais parceiros, instituições e outros atores que podem contribuir") e
+  §3.1 ("Receber solicitações de conexão", "Informar necessidades de apoio");
+  Modelo de Conexão §07. A T15 mostrava a compatibilidade só do lado do
+  apoiador (`/opportunities`); a T30 mostra ao Agente quem é compatível com a
+  demanda dele. Sem migração.
+- user-service: `GET /partner-profiles/match` (`routes/partner-profile.js`,
+  token de qualquer conta; `uf`, `municipality`, `territory`, `district`,
+  `category`, `resources` com vírgula, `limit` ≤ 50; 422 por campo) devolve os
+  `partner_profiles` que cruzam **qualquer** critério (país inteiro, UF,
+  Município/UF, território/bairro, categoria, recursos), juntando a
+  identificação pública do perfil (nome, avatar, categoria, subperfil,
+  cidade/UF), sem anonimizados e sem o solicitante — nunca contato.
+  `matchQuery` é exportada e testada.
+- post-service: `partnerProfile.match(req, criteria)` em
+  `src/interest/user-service.js` (503 `partner_profile_unavailable` em falha);
+  rota do Agente autor `GET /demands/mine/:id/potential-partners`
+  (`routes/interests.js`): com a demanda em `POTENTIAL_PARTNERS_STATUSES`
+  (os mesmos de interesse aberto), monta os critérios da demanda (UF,
+  município, território, bairro, categoria e recursos necessários), chama o
+  user-service, calcula `computeCompatibility` para cada candidato, descarta
+  pontuação 0, marca `alreadyInterested` (interesse em aberto na demanda),
+  ordena pela pontuação e devolve até 50; antes da publicação,
+  `{ available: false, reason: 'demanda_nao_publicada' }`.
+- Frontend: `PotentialPartner`/`PotentialPartnersResponse` em `types.ts`,
+  `api.potentialPartners`, `POTENTIAL_PARTNERS_*` em `interest.ts`;
+  `PotentialPartnersPanel` (compatibilidade com os motivos, "Solicitar
+  conexão" com tipo e mensagem → `api.createConnection` com `demandId` e
+  `postId`) na aba "Interessados e conexões" de Minhas demandas.
+- Testes: `services/user-service/test/partner-profile.test.js`,
+  `services/post-service/test/interests-routes.test.js` e
+  `src/lib/app/interest.test.mjs`.
+
 ## Segurança dos serviços
 
 - `JWT_SECRET` é obrigatório e forte (32+ caracteres, sem valores de exemplo)

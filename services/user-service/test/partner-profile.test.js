@@ -167,3 +167,54 @@ test('POST /connections guarda a demanda de origem e a devolve como demandId', a
     assert.equal((await res.json()).demandId, DEMAND_ID);
   });
 });
+
+// ── Potenciais parceiros (T30): GET /partner-profiles/match ────────────────
+
+const { matchQuery } = require('../src/routes/partner-profile');
+
+test('match: a consulta cruza qualquer critério, exclui o solicitante e anonimizados', () => {
+  const built = matchQuery({ uf: 'rj', municipality: 'Niterói', territory: 'Centro', category: 'problema_urbano', resources: 'materiais,servicos' }, AGENT_ID);
+  assert.equal(built.errors, undefined);
+  assert.match(built.sql, /pp\.user_id <> \$1 AND p\.anonymized_at IS NULL/);
+  assert.match(built.sql, /pp\.nationwide = true/);
+  assert.match(built.sql, /ANY\(pp\.ufs\)/);
+  assert.match(built.sql, /unnest\(pp\.municipalities\)/);
+  assert.match(built.sql, /unnest\(pp\.territories\)/);
+  assert.match(built.sql, /ANY\(pp\.interest_categories\)/);
+  assert.match(built.sql, /pp\.offered_resources && /);
+  assert.equal(built.params[0], AGENT_ID);
+  assert.ok(built.params.includes('RJ'));
+  assert.ok(built.params.includes('niterói/rj'));
+  assert.deepEqual(built.params.find((p) => Array.isArray(p) && p.includes('materiais')), ['materiais', 'servicos']);
+  assert.equal(built.params.at(-1), 50);
+  assert.doesNotMatch(built.sql, /phone|email/);
+});
+
+test('match: filtros inválidos respondem 422 por campo; resposta leva só identificação pública e o perfil de apoio', async () => {
+  const pool = {
+    async query(text) {
+      if (text.includes('FROM partner_profiles pp')) {
+        return { rows: [{
+          user_id: USER_ID, name: 'Construtora Horizonte', avatar_url: null, role: 'partner', profile_type: 'empresa',
+          city: 'Niterói', state: 'RJ', nationwide: false, ufs: ['RJ'], municipalities: ['Niterói/RJ'], territories: [],
+          interest_categories: ['problema_urbano'], offered_resources: ['materiais'], updated_at: new Date('2026-09-24T10:00:00Z'),
+        }] };
+      }
+      throw new Error(`Unexpected query: ${text}`);
+    },
+  };
+  await withServer(pool, async (base) => {
+    const headers = { authorization: `Bearer ${jwt.sign({ userId: AGENT_ID, role: 'agent', profileType: 'ong' }, SECRET)}` };
+    const bad = await fetch(`${base}/partner-profiles/match?uf=Rio&category=x&resources=ouro&limit=999`, { headers });
+    assert.equal(bad.status, 422);
+    assert.deepEqual(Object.keys((await bad.json()).fields).sort(), ['category', 'limit', 'resources', 'uf']);
+    const res = await fetch(`${base}/partner-profiles/match?uf=RJ&municipality=Niter%C3%B3i&category=problema_urbano&resources=materiais`, { headers });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.candidates.length, 1);
+    assert.deepEqual(Object.keys(body.candidates[0]).sort(), ['avatarUrl', 'city', 'name', 'profile', 'profileType', 'role', 'state', 'userId']);
+    assert.deepEqual(body.candidates[0].profile.offeredResources, ['materiais']);
+    assert.equal(body.candidates[0].profile.exists, undefined);
+    assert.equal((await fetch(`${base}/partner-profiles/match`)).status, 401);
+  });
+});
