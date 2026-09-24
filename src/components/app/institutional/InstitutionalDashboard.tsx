@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
+import { useEffectiveRole } from "../institution/useInstitutionAccess";
 import { DEMAND_CATEGORIES, DEMAND_PRIORITIES } from "@/lib/app/demand";
 import { GOVERNMENT_ACTIONS_PATH, GOVERNMENT_INDICATORS_PATH } from "@/lib/app/government";
 import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
@@ -21,7 +22,6 @@ import {
   DEMAND_PRIORITY_LABELS,
   DEMAND_PUBLIC_STATUSES,
   DEMAND_STATUS_LABELS,
-  normalizeRole,
   type DemandCategory,
   type DemandPriority,
   type DemandStatus,
@@ -109,7 +109,9 @@ function DemandListItem({ demand }: { demand: InstitutionalDemandSummary }) {
  */
 export function InstitutionalDashboard() {
   const { user, status } = useAuth();
-  const isGovernment = Boolean(user && normalizeRole(user.role, user.profileType) === "government");
+  // Papel efetivo (T29): a própria categoria ou a que o vínculo empresta.
+  const { role: effective, resolving: roleResolving } = useEffectiveRole();
+  const isGovernment = effective === "government";
   const [ctx, setCtx] = useState<InstitutionalContext | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS);
@@ -186,6 +188,7 @@ export function InstitutionalDashboard() {
       </div>
     );
   }
+  if (roleResolving) return <div className="flex justify-center py-24"><span className="app-spinner" aria-label="Carregando" /></div>;
   if (!isGovernment) {
     return (
       <div className="mx-auto max-w-xl">

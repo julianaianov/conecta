@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
+import { useEffectiveRole } from "../institution/useInstitutionAccess";
 import {
   DEMAND_CATEGORIES,
   DEMAND_PRIORITIES,
@@ -36,7 +37,6 @@ import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution
 import {
   DEMAND_CATEGORY_LABELS,
   DEMAND_PRIORITY_LABELS,
-  normalizeRole,
   type Demand,
   type DemandFieldErrors,
   type DemandReview,
@@ -87,7 +87,9 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
   const search = useSearchParams();
   const { user, status: authStatus } = useAuth();
   const { access, loading: accessLoading } = useInstitutionAccess();
-  const isAgent = Boolean(user && normalizeRole(user.role, user.profileType) === "agent");
+  // Papel efetivo (T29): a própria categoria ou a que o vínculo empresta.
+  const { role: effective, resolving: roleResolving } = useEffectiveRole();
+  const isAgent = effective === "agent";
 
   const [demand, setDemand] = useState<Demand | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "missing" | "error">(demandId ? "loading" : "ready");
@@ -316,6 +318,7 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
       </Centered>
     );
   }
+  if (roleResolving) return <div className="flex justify-center py-24"><span className="app-spinner" aria-label="Carregando" /></div>;
   if (!isAgent) {
     return (
       <Centered>

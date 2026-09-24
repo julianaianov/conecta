@@ -40,6 +40,7 @@
 const express = require('express');
 const { isUuid } = require('../security');
 const { normalizeRole } = require('../roles');
+const { requireEffectiveRole, hasDelegatedPermission } = require('../delegation');
 const demandStore = require('../demand/store');
 const {
   KINDS, KIND_LABELS, STATUSES, STATUS_LABELS, PUBLIC_STATUSES, PRICING, PRICING_LABELS,
@@ -184,15 +185,22 @@ module.exports = ({ pool, auth, institutionStatus = null, governmentGate = null 
     }
   };
 
-  function requireOrganizer(req, res, next) {
-    if (!ORGANIZER_ROLES.includes(roleOf(req))) {
+  // Agente e Poder Público, ou conta que age por delegação com
+  // `publicar_eventos` (T29). Anota `req.effectiveRole` para a categoria do organizador.
+  const requireOrganizerRole = requireEffectiveRole(institutionStatus, ORGANIZER_ROLES, {
+    error: 'Publicar eventos é uma ação de Agentes de Transformação e do Poder Público',
+    code: 'event_organizer_not_allowed',
+  });
+  const requireOrganizer = (req, res, next) => requireOrganizerRole(req, res, () => {
+    if (req.institutionAccess && !hasDelegatedPermission(req.institutionAccess, 'publicar_eventos')) {
       return res.status(403).json({
-        error: 'Publicar eventos é uma ação de Agentes de Transformação e do Poder Público',
+        error: 'Seu vínculo com a instituição não inclui publicar eventos',
         code: 'event_organizer_not_allowed',
       });
     }
     return next();
-  }
+  });
+  const organizerRole = (req) => req.effectiveRole ?? roleOf(req);
 
   function requireSignupRole(req, res, next) {
     if (!SIGNUP_ROLES.includes(roleOf(req))) {
@@ -206,7 +214,7 @@ module.exports = ({ pool, auth, institutionStatus = null, governmentGate = null 
 
   /** Poder Público só age com o cadastro institucional validado (T04/T06a). */
   const governmentOnly = (req, res, next) => {
-    if (roleOf(req) !== 'government' || typeof governmentGate !== 'function') return next();
+    if (organizerRole(req) !== 'government' || typeof governmentGate !== 'function') return next();
     return governmentGate(req, res, next);
   };
 
@@ -392,7 +400,7 @@ module.exports = ({ pool, auth, institutionStatus = null, governmentGate = null 
     const columns = ['demand_id', 'organizer_id', 'organizer_name', 'organizer_avatar',
       'organizer_category', 'organizer_profile_type', 'organization_id'];
     const values = [demandId, req.user.userId, req.user.name || req.user.email || null,
-      req.user.avatarUrl || null, ROLE_ORGANIZER_CATEGORY[roleOf(req)], req.user.profileType || null,
+      req.user.avatarUrl || null, ROLE_ORGANIZER_CATEGORY[organizerRole(req)], req.user.profileType || null,
       organizationId];
     for (const [key, column] of Object.entries(store.SCALAR_COLUMNS)) {
       if (!has(body, key) || value[key] === undefined) continue;

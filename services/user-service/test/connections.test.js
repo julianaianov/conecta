@@ -265,6 +265,7 @@ test('GET /notifications avisa mensagem não lida na conversa da conexão', asyn
       if (text.includes('FROM connection_messages m')) {
         return { rows: [{ id: CX_ID, last_message_at: '2026-09-24T10:00:00.000Z', other_name: 'Associação Bairro Verde', unread: 2 }] };
       }
+      if (text.includes('FROM organization_members m')) return { rows: [] };
       if (text.includes('FROM scraps s')) return { rows: [] };
       throw new Error(`Unexpected query: ${text}`);
     },

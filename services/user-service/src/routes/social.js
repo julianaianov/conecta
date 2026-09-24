@@ -1,4 +1,5 @@
 const express = require('express');
+const { LEVEL_LABELS: MEMBER_LEVEL_LABELS } = require('../organization-members');
 const { ensureProfile, isForeignKeyViolation } = require('../profile-provision');
 const { isUuid } = require('../security');
 
@@ -260,6 +261,30 @@ module.exports = (pool, auth, operation) => {
           icon: 'message',
           href: `/conexoes/${r.id}`,
           createdAt: r.last_message_at,
+        });
+      }
+
+      // Convite para atuar em nome de uma instituição (T29), em aberto.
+      const invites = await pool.query(
+        `SELECT m.id, m.level, m.invited_at,
+                coalesce(nullif(o.trade_name, ''), nullif(o.legal_name, ''), o.org_name) AS organization_name
+           FROM organization_members m
+           JOIN organizations o ON o.id = m.organization_id
+          WHERE m.user_id = $1 AND m.status = 'convidado'
+          ORDER BY m.invited_at DESC LIMIT 10`,
+        [userId]
+      );
+      for (const r of invites.rows) {
+        notifs.push({
+          id: `n-mem-${r.id}`,
+          kind: 'membership',
+          actorName: r.organization_name || 'Uma instituição',
+          postId: '',
+          postTitle: 'Convite',
+          summary: `convidou você para atuar como ${MEMBER_LEVEL_LABELS[r.level] ?? r.level}`,
+          icon: 'building',
+          href: '/vinculos',
+          createdAt: r.invited_at,
         });
       }
 

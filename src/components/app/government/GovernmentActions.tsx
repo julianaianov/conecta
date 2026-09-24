@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/app/auth";
+import { useEffectiveRole } from "../institution/useInstitutionAccess";
 import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
 import { INSTITUTIONAL_AREA_PATH } from "@/lib/app/institutional";
 import {
@@ -15,7 +16,7 @@ import {
   type GovernmentActionKind,
 } from "@/lib/app/government";
 import { GovernmentError, governmentApi } from "@/lib/app/government-client";
-import { normalizeRole, type InstitutionValidationStatus } from "@/lib/app/types";
+import type { InstitutionValidationStatus } from "@/lib/app/types";
 import { AuthPrompt } from "../AuthPrompt";
 import { Button } from "../Button";
 import { Card, EmptyState, SectionTitle } from "../ui";
@@ -96,7 +97,9 @@ function ActionItem({ action }: { action: GovernmentAction }) {
  */
 export function GovernmentActions() {
   const { user, status } = useAuth();
-  const isGovernment = Boolean(user && normalizeRole(user.role, user.profileType) === "government");
+  // Papel efetivo (T29): a própria categoria ou a que o vínculo empresta.
+  const { role: effective, resolving: roleResolving } = useEffectiveRole();
+  const isGovernment = effective === "government";
   const [actions, setActions] = useState<GovernmentAction[] | null>(null);
   const [form, setForm] = useState<Form>(EMPTY_FORM);
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -165,6 +168,7 @@ export function GovernmentActions() {
       </div>
     );
   }
+  if (roleResolving) return <div className="flex justify-center py-24"><span className="app-spinner" aria-label="Carregando" /></div>;
   if (!isGovernment) {
     return (
       <div className="mx-auto max-w-xl">

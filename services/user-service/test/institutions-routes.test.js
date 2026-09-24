@@ -45,6 +45,8 @@ function createPool({ orgs = [], failStatus = false } = {}) {
     if (sql.startsWith('SELECT id, institution_kind, validation_status FROM organizations')) {
       return { rows: state.orgs.filter((o) => o.profile_id === params[0] && o.institution_kind) };
     }
+    // Vínculo ativo (T29): nenhum nas fixturas deste arquivo.
+    if (sql.startsWith('SELECT m.id AS member_id')) return { rows: [] };
     if (sql.startsWith('SELECT o.institution_kind, o.validation_status')) {
       if (failStatus) throw new Error('banco indisponível');
       const org = byUser(params[0]);
@@ -107,6 +109,7 @@ function createPool({ orgs = [], failStatus = false } = {}) {
       return { rows: list.map(project) };
     }
     if (sql.startsWith(`SELECT ${PUBLIC_ORG_COLUMNS.map((c) => `o.${c}`).join(', ')}`)) {
+      if (sql.includes('FROM organization_members m')) return { rows: [] };
       const org = byUser(params[0]);
       if (!org || org.validation_status !== 'validada' || !sql.includes("validation_status = 'validada'")) return { rows: [] };
       return { rows: [Object.fromEntries(PUBLIC_ORG_COLUMNS.map((c) => [c, org[c] ?? null]))] };
@@ -226,6 +229,8 @@ test('Poder Público: cadastro com esfera, território, competência e represent
     const status = await (await fetch(`${base}/me/institution/status`, { headers: h })).json();
     assert.deepEqual(status, {
       kind: 'poder_publico', status: 'pendente', requiredKind: 'poder_publico', canActInstitutionally: false, organizationId: body.id,
+      // Sem vínculo (T29): a delegação vem nula.
+      delegation: null,
     });
   });
 });

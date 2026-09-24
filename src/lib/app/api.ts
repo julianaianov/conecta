@@ -9,6 +9,7 @@ import {
   type Connection, type ConnectionEvent, type ConnectionParty, type ConnectionStatus, type ConnectionType,
   type ConnectionMessage, type ConnectionMessagePage,
   type AgendaCandidate, type MediaAgendaItem, type MediaAgendaItemUpdate,
+  type OrganizationTeam, type OrganizationMember, type MemberCandidate, type MyMemberships, type Membership,
   type AdminSnapshot,
 } from "./types";
 import { buildRanking, type RankingMetrics, type RankingUser } from "./ranking";
@@ -995,7 +996,46 @@ export const api = {
 
   async myInstitutionAccess(): Promise<InstitutionAccess> {
     const raw = await institutionRequest<InstitutionAccess>("/api/users/me/institution/status");
-    return raw ?? { kind: null, status: null, requiredKind: null, canActInstitutionally: false };
+    if (!raw) return { kind: null, status: null, requiredKind: null, canActInstitutionally: false, delegation: null };
+    const d = raw.delegation;
+    return {
+      ...raw,
+      // Vínculo (T29): permissões delegadas, ou null.
+      delegation: d && typeof d === "object" && Array.isArray(d.permissions)
+        ? { memberId: String(d.memberId ?? ""), level: String(d.level ?? ""), permissions: d.permissions.map(String), organizationName: String(d.organizationName ?? "") }
+        : null,
+    };
+  },
+
+  // ── VÍNCULO A ORGANIZAÇÕES (T29) ─────────────────────────
+  /** Equipe da instituição que a conta administra (titular ou gestor). */
+  organizationTeam(): Promise<OrganizationTeam> {
+    return request<OrganizationTeam>("/api/users/me/organization/members");
+  },
+  memberCandidates(q: string): Promise<MemberCandidate[]> {
+    return request<{ candidates: MemberCandidate[] }>(`/api/users/me/organization/members/candidates?q=${encodeURIComponent(q)}`)
+      .then((body) => (Array.isArray(body.candidates) ? body.candidates : []));
+  },
+  inviteMember(input: { userId: string; level: string }): Promise<OrganizationMember> {
+    return request<{ member: OrganizationMember }>("/api/users/me/organization/members", { method: "POST", body: JSON.stringify(input) })
+      .then((body) => body.member);
+  },
+  changeMemberLevel(id: string, level: string): Promise<OrganizationMember> {
+    return request<{ member: OrganizationMember }>(`/api/users/me/organization/members/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify({ level }) })
+      .then((body) => body.member);
+  },
+  removeMember(id: string): Promise<OrganizationMember> {
+    return request<{ member: OrganizationMember }>(`/api/users/me/organization/members/${encodeURIComponent(id)}/remove`, { method: "POST", body: "{}" })
+      .then((body) => body.member);
+  },
+  /** Convites em aberto e vínculo ativo da própria conta. */
+  myMemberships(): Promise<MyMemberships> {
+    return request<MyMemberships>("/api/users/me/memberships")
+      .then((body) => ({ active: body.active ?? null, invites: Array.isArray(body.invites) ? body.invites : [] }));
+  },
+  respondMembership(id: string, action: "accept" | "decline" | "leave"): Promise<Membership> {
+    return request<{ membership: Membership }>(`/api/users/me/memberships/${encodeURIComponent(id)}/${action}`, { method: "POST", body: "{}" })
+      .then((body) => body.membership);
   },
 
   /** Instituição validada vinculada a um perfil; `null` se não houver. */

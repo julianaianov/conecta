@@ -111,6 +111,13 @@ const RETENTION_RULES = [
     basis: 'LGPD art. 18, IV, e art. 7º, VI',
   },
   {
+    key: 'vinculos',
+    data: 'Vínculo a uma instituição (equipe, nível e convites)',
+    action: 'anonimiza',
+    rule: 'O vínculo ativo é encerrado e os convites abertos são recusados; a linha fica como registro de quem atuou em nome da instituição, sem o nome (o perfil é anonimizado).',
+    basis: 'LGPD art. 18, IV, e art. 7º, VI',
+  },
+  {
     key: 'recados',
     data: 'Recados e depoimentos escritos pelo titular',
     action: 'apaga',

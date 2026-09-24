@@ -92,6 +92,8 @@ function createPool({ anonymized = false } = {}) {
       if (sql.startsWith('UPDATE connections')) return { rows: [{ id: 'c1' }], rowCount: 1 };
       // Conversa da conexão (T27): as mensagens do titular perdem o corpo.
       if (sql.startsWith('UPDATE connection_messages')) return { rows: [{ id: 'm1' }, { id: 'm2' }], rowCount: 2 };
+      // Vínculos (T29): o ativo é encerrado e os convites, recusados.
+      if (sql.startsWith('UPDATE organization_members')) return { rows: [{ id: 'v1' }], rowCount: 1 };
       if (sql.startsWith('UPDATE organization_representatives')) return { rows: [], rowCount: 0 };
       if (sql.startsWith('SELECT')) return { rows: [] };
       throw new Error(`consulta inesperada: ${sql}`);

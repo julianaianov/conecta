@@ -93,6 +93,12 @@ test('gate: só Poder Público com cadastro validado e órgão identificado', ()
   assert.equal(evaluateGovernmentActor(gov, { ...validated, kind: 'agente_transformacao' }).code, 'institution_not_validated');
   assert.equal(evaluateGovernmentActor(gov, { ...validated, organizationId: null }).httpStatus, 503);
   assert.deepEqual(evaluateGovernmentActor(gov, validated), { allowed: true, organizationId: 'org' });
+  // Delegação (T29): vínculo com atuar_institucionalmente num órgão validado age como Poder Público.
+  const member = { role: 'member', profileType: 'morador' };
+  const delegated = { ...validated, delegation: { level: 'publicador', permissions: ['atuar_institucionalmente'], organizationName: 'Prefeitura' } };
+  assert.deepEqual(evaluateGovernmentActor(member, delegated), { allowed: true, organizationId: 'org' });
+  assert.equal(evaluateGovernmentActor(member, { ...delegated, delegation: { level: 'colaborador', permissions: ['ver_documentos'] } }).code, 'not_government');
+  assert.equal(evaluateGovernmentActor(member, { ...delegated, status: 'em_analise', canActInstitutionally: false }).code, 'institution_not_validated');
 });
 
 test('identificação do órgão: projeção pública, só poder_publico, com cache', async () => {

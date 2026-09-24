@@ -33,6 +33,7 @@
 const express = require('express');
 const { isUuid } = require('../security');
 const { normalizeRole } = require('../roles');
+const { requireDemandAuthorRole } = require('../demand/gate');
 const demandStore = require('../demand/store');
 const { PUBLIC_STATUSES } = require('../demand/constants');
 const { findUsableUpload, parseUploadRef, formatUploadRef } = require('../uploads');
@@ -95,7 +96,7 @@ function mapAccountabilityDbError(err) {
   return err;
 }
 
-module.exports = ({ pool, auth, validatedAgent, dossiers = null }) => {
+module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStatus = null }) => {
   if (typeof auth !== 'function' || typeof validatedAgent !== 'function') {
     throw new Error('accountability routes exigem auth e requireValidatedAgent');
   }
@@ -115,15 +116,8 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null }) => {
     }
   };
 
-  function requireAgent(req, res, next) {
-    if (normalizeRole(req.user?.role, req.user?.profileType) !== 'agent') {
-      return res.status(403).json({
-        error: 'Só Agentes de Transformação publicam demandas',
-        code: 'demand_author_not_agent',
-      });
-    }
-    return next();
-  }
+  // Agente, ou conta que age como Agente por delegação (T29).
+  const requireAgent = requireDemandAuthorRole(institutionStatus);
 
   function assertOpen(demand) {
     if (!ACCOUNTABILITY_OPEN_STATUSES.includes(demand.status)) {

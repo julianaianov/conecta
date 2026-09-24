@@ -49,6 +49,7 @@
 const express = require('express');
 const { isUuid } = require('../security');
 const { normalizeRole } = require('../roles');
+const { requireDemandAuthorRole } = require('../demand/gate');
 const {
   CATEGORIES, PRIORITIES, PUBLIC_STATUSES, STATUSES, THEMES,
 } = require('../demand/constants');
@@ -206,15 +207,10 @@ function validateItem(kind, raw) {
   return { item, position };
 }
 
-function requireAgent(req, res, next) {
-  if (normalizeRole(req.user?.role, req.user?.profileType) !== 'agent') {
-    return res.status(403).json({
-      error: 'Só Agentes de Transformação publicam demandas',
-      code: 'demand_author_not_agent',
-    });
-  }
-  return next();
-}
+// Agente de Transformação ou conta que age como Agente por delegação (T29).
+// `institutionStatus` (lookup do user-service) chega pelo createApp; sem ele,
+// vale só o papel da conta.
+const requireAgentFor = (institutionStatus) => requireDemandAuthorRole(institutionStatus);
 
 /**
  * Registro obrigatório do antes e do depois (T17, Fluxo 2 slides 11, 12 e 24):
@@ -360,7 +356,8 @@ function publicListQuery(query) {
   return { sql, params, limit };
 }
 
-module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers = null }) => {
+module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers = null, institutionStatus = null }) => {
+  const requireAgent = requireAgentFor(institutionStatus);
   if (typeof auth !== 'function' || typeof validatedAgent !== 'function') {
     throw new Error('demands routes exigem auth e requireValidatedAgent');
   }

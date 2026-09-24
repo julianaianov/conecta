@@ -9,6 +9,7 @@ import { MY_DEMANDS_PATH } from "@/lib/app/demand";
 import { INSTITUTIONAL_AREA_PATH } from "@/lib/app/institutional";
 import { OPPORTUNITIES_PATH, canFilterOpportunities } from "@/lib/app/interest";
 import { AGENDA_PATH, canIdentifyAgenda } from "@/lib/app/media";
+import { MEMBERSHIPS_PATH, TEAM_PATH, managesTeam } from "@/lib/app/organization";
 import { PRIVACY_PATH } from "@/lib/app/privacy";
 import { normalizeRole } from "@/lib/app/types";
 import { DMLogo, DMMonogram } from "./DMLogo";
@@ -18,6 +19,7 @@ import { NotificationBell } from "./NotificationBell";
 import { SearchButton } from "./SearchButton";
 import { ThemeToggle } from "../ThemeToggle";
 import { InstitutionBanner } from "./institution/InstitutionBanner";
+import { useEffectiveRole } from "./institution/useInstitutionAccess";
 import { ConsentBanner } from "./privacy/ConsentBanner";
 
 type NavItem = { href: string; label: string; icon: IconName };
@@ -50,10 +52,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const isAdmin = isPlatformAdmin(user);
+  // Papel efetivo (T29): a própria categoria ou a que o vínculo empresta.
+  const { role: effective, access } = useEffectiveRole();
   // Agente de Transformação estrutura demandas (T09).
-  const isAgent = Boolean(user && normalizeRole(user.role, user.profileType) === "agent");
+  const isAgent = effective === "agent";
   // Poder Público atua nas demandas do território (T13).
-  const isGovernment = Boolean(user && normalizeRole(user.role, user.profileType) === "government");
+  const isGovernment = effective === "government";
+  // Titular do cadastro institucional ou gestor por vínculo gere a equipe (T29).
+  const managesOrganization = Boolean(user && managesTeam(access));
   // Membro da Comunidade se inscreve em eventos (T25, slide 9).
   const isMember = Boolean(user && normalizeRole(user.role, user.profileType) === "member");
   // Agente e Poder Público publicam eventos do território (T25, slides 8 e 11).
@@ -82,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <AccountMenu
       placement={placement}
       user={user}
-      flags={{ isAgent, isGovernment, isMember, isAdmin, organizesEvents, seesOpportunities, isMedia }}
+      flags={{ isAgent, isGovernment, isMember, isAdmin, organizesEvents, seesOpportunities, isMedia, managesOrganization }}
       onNavigate={(href) => router.push(href)}
       onLogout={handleLogout}
     />
@@ -224,6 +230,7 @@ type AccountFlags = {
   organizesEvents: boolean;
   seesOpportunities: boolean;
   isMedia: boolean;
+  managesOrganization: boolean;
 };
 
 /**
@@ -247,7 +254,7 @@ function AccountMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuId = `app-account-menu-${useId().replace(/:/g, "")}`;
-  const { isAgent, isGovernment, isMember, isAdmin, organizesEvents, seesOpportunities, isMedia } = flags;
+  const { isAgent, isGovernment, isMember, isAdmin, organizesEvents, seesOpportunities, isMedia, managesOrganization } = flags;
   const rail = placement === "rail";
 
   // Esc fecha o menu da conta e devolve o foco ao botão que o abriu.
@@ -322,6 +329,8 @@ function AccountMenu({
                 {organizesEvents && <MenuItem icon="calendar" label="Meus eventos" onClick={() => go("/meus-eventos")} />}
                 {isGovernment && <MenuItem icon="building" label="Atuação institucional" onClick={() => go(INSTITUTIONAL_AREA_PATH)} />}
                 {isMedia && <MenuItem icon="megaphone" label="Pautas" onClick={() => go(AGENDA_PATH)} />}
+                {managesOrganization && <MenuItem icon="users" label="Equipe da instituição" onClick={() => go(TEAM_PATH)} />}
+                <MenuItem icon="link" label="Meus vínculos" onClick={() => go(MEMBERSHIPS_PATH)} />
                 {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => go("/admin")} />}
                 <MenuItem icon="logout" label="Sair" onClick={onLogout} danger />
               </>

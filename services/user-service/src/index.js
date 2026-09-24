@@ -9,6 +9,7 @@ const socialRoutes = require('./routes/social');
 const institutionsRoutes = require('./routes/institutions');
 const partnerProfileRoutes = require('./routes/partner-profile');
 const privacyRoutes = require('./routes/privacy');
+const organizationMembersRoutes = require('./routes/organization-members');
 const { requireInstitutionalAccess } = institutionsRoutes;
 const {
   resolveJwtSecret, createAuth, parseOperationUserIds, requireOperation,
@@ -38,6 +39,9 @@ const createApp = ({
   app.use('/communities', communitiesRoutes(pool));
   app.use('/connections', connectionsRoutes(pool, auth, requireInstitutionalAccess(pool)));
   app.use('/', institutionsRoutes(pool, auth, uploadStorage));
+  // Vínculo de usuários a organizações e permissões delegadas (T29):
+  // /me/organization/members* e /me/memberships*. Antes das rotas com `/:id`.
+  app.use('/', organizationMembersRoutes(pool, auth));
   // Perfil de apoio (T15), antes das rotas com `/:id` do perfil.
   app.use('/', partnerProfileRoutes(pool, auth));
   // Direitos do titular (T24): /me/privacy e as solicitações do art. 18.

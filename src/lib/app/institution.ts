@@ -388,9 +388,11 @@ export function institutionRequirement(
   role: string | null | undefined,
   profileType: string | null | undefined,
   status: InstitutionValidationStatus | null | undefined,
+  /** Vínculo ativo (T29): quem atua por delegação não precisa de cadastro próprio. */
+  delegated = false,
 ): InstitutionRequirement | null {
   const kind = institutionKindFor(role, profileType);
-  if (!kind || status === "validada") return null;
+  if (!kind || status === "validada" || delegated) return null;
   const waiting = status === "em_analise";
   if (kind === "poder_publico") {
     return {
@@ -485,7 +487,7 @@ export function gateStatusFrom(err: unknown): InstitutionValidationStatus | null
 }
 
 /** Acesso vazio (sem sessão, sem cadastro): usado enquanto carrega. */
-export const NO_INSTITUTION_ACCESS: InstitutionAccess = { kind: null, status: null, requiredKind: null, canActInstitutionally: false };
+export const NO_INSTITUTION_ACCESS: InstitutionAccess = { kind: null, status: null, requiredKind: null, canActInstitutionally: false, delegation: null };
 
 // ── Dados públicos ─────────────────────────────────────────
 

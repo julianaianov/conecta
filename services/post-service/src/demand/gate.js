@@ -13,14 +13,17 @@
 // dm-docs/gestao/04-modelagem-de-dados.md §3).
 
 const { normalizeRole } = require('../roles');
+const { effectiveRole, requireEffectiveRole } = require('../delegation');
 
 /**
  * Decide se a conta pode enviar demanda. `access` é o retorno do lookup
- * (`{ kind, status, canActInstitutionally, organizationId }`). Retorna
+ * (`{ kind, status, canActInstitutionally, organizationId, delegation }`). Retorna
  * `{ allowed: true, organizationId }` ou `{ allowed: false, httpStatus, code, error, validationStatus }`.
+ * Conta vinculada a uma instituição de Agente com `publicar_demandas` (T29)
+ * age como Agente: a instituição emprestada precisa estar validada.
  */
 function evaluateDemandAuthor(user, access) {
-  if (normalizeRole(user?.role, user?.profileType) !== 'agent') {
+  if (effectiveRole(user, access) !== 'agent') {
     return {
       allowed: false,
       httpStatus: 403,
@@ -57,10 +60,7 @@ function evaluateDemandAuthor(user, access) {
  */
 function requireValidatedAgent(lookup) {
   return async (req, res, next) => {
-    if (normalizeRole(req.user?.role, req.user?.profileType) !== 'agent') {
-      const denied = evaluateDemandAuthor(req.user, null);
-      return res.status(denied.httpStatus).json({ error: denied.error, code: denied.code });
-    }
+    // Quem não é Agente pode agir por delegação (T29): a consulta decide.
     let access;
     try {
       access = await lookup(req);
@@ -79,4 +79,16 @@ function requireValidatedAgent(lookup) {
   };
 }
 
-module.exports = { evaluateDemandAuthor, requireValidatedAgent };
+/**
+ * Middleware (depois de `auth`) para as rotas do Agente que não exigem a
+ * instituição validada (rascunho, itens, leitura): Agente passa direto; outra
+ * conta passa se a delegação (T29) emprestar o papel. Anota `req.effectiveRole`.
+ */
+function requireDemandAuthorRole(lookup) {
+  return requireEffectiveRole(lookup, 'agent', {
+    error: 'Só Agentes de Transformação publicam demandas',
+    code: 'demand_author_not_agent',
+  });
+}
+
+module.exports = { evaluateDemandAuthor, requireValidatedAgent, requireDemandAuthorRole };

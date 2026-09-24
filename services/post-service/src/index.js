@@ -115,9 +115,9 @@ const createApp = ({
   // Registro de apoio realizado, dupla confirmação e histórico de apoio (T16).
   app.use('/demands', supportsRoutes({ pool, auth, governmentGate: institutional, institutionStatus }));
   // Execução, evidências do antes/depois e acompanhamento (T17).
-  app.use('/demands', executionRoutes({ pool, auth, validatedAgent }));
+  app.use('/demands', executionRoutes({ pool, auth, validatedAgent, institutionStatus }));
   // Prestação de contas e prestação de resultados (T18).
-  app.use('/demands', accountabilityRoutes({ pool, auth, validatedAgent, dossiers }));
+  app.use('/demands', accountabilityRoutes({ pool, auth, validatedAgent, dossiers, institutionStatus }));
   // Mapa inteligente (T20): /demands/map, /demands/map/territories e /demands/map/legend.
   app.use('/demands', mapRoutes({ pool }));
   // Eixos temáticos e inteligência territorial (T26): antes das rotas da
@@ -139,11 +139,11 @@ const createApp = ({
   app.use('/events', eventsRoutes({ pool, auth, institutionStatus, governmentGate: institutional }));
   // Sugestões de inteligência artificial (T23): /ai/status, /demands/:id/ai/*
   // e /government/ai/*. Sempre sugestão revisável; nunca altera dado sozinha.
-  app.use('/', aiRoutes({ pool, auth, ai, governmentActor, governmentProfile }));
+  app.use('/', aiRoutes({ pool, auth, ai, governmentActor, governmentProfile, institutionStatus }));
   // Pautas da Comunicação e divulgação registrada (T28): /media/agenda* e a
   // cobertura pública /demands/:id/coverage. Antes das rotas de demanda.
   app.use('/', mediaRoutes({ pool, auth }));
-  app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
+  app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers, institutionStatus }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 
   app.locals.ai = ai;

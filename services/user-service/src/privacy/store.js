@@ -106,7 +106,7 @@ async function exportUserData(db, userId) {
   const q = async (text, params = [userId]) => (await db.query(text, params)).rows;
 
   const [perfil, instituicao, representante, perfilDeApoio, conexoes, recadosEscritos,
-    depoimentosEscritos, mensagensDeConexao, arquivos, solicitacoes, anonimizacoes] = await Promise.all([
+    depoimentosEscritos, mensagensDeConexao, vinculosInstitucionais, arquivos, solicitacoes, anonimizacoes] = await Promise.all([
     q(`SELECT user_id, name, bio, avatar_url, cover_url, status, neighborhood, phone, website,
               city, state, role, profile_type, member_since, friend_count, created_at, updated_at,
               anonymized_at
@@ -136,6 +136,9 @@ async function exportUserData(db, userId) {
     q(`SELECT id, target_user_id, content, created_at FROM testimonials WHERE author_id = $1 ORDER BY created_at`),
     // Conversa da conexão (T27): só o que o titular escreveu.
     q(`SELECT id, connection_id, body, created_at FROM connection_messages WHERE author_id = $1 ORDER BY created_at`),
+    // Vínculos a instituições (T29).
+    q(`SELECT id, organization_id, level, status, invited_at, responded_at, ended_at, created_at
+         FROM organization_members WHERE user_id = $1 ORDER BY created_at`),
     q(`SELECT id, purpose, status, content_type, size_bytes, original_name, organization_id,
               created_at, confirmed_at
          FROM uploads WHERE owner_id = $1 ORDER BY created_at`),
@@ -154,6 +157,7 @@ async function exportUserData(db, userId) {
     recadosEscritos,
     depoimentosEscritos,
     mensagensDeConexao,
+    vinculosInstitucionais,
     arquivos,
     solicitacoesLgpd: solicitacoes,
     anonimizacoes,
@@ -196,6 +200,16 @@ async function anonymizeUserData(db, userId, { requestId = null, protocol = null
     [userId, '[removido a pedido do titular]'],
   );
 
+  // Vínculos a instituições (T29): o ativo é encerrado e os convites abertos,
+  // recusados; a linha fica como trilha de quem atuou em nome da instituição.
+  const vinculos = await db.query(
+    `UPDATE organization_members
+        SET status = CASE status WHEN 'ativo' THEN 'saiu' ELSE 'recusado' END
+      WHERE user_id = $1 AND status IN ('ativo', 'convidado')
+      RETURNING id`,
+    [userId],
+  );
+
   // Representante: os contatos saem enquanto o cadastro não foi enviado nem
   // validado. Cadastro em análise, validado ou revogado guarda a prova de quem
   // representou a instituição (art. 16, I) — a troca é feita pela correção.
@@ -219,6 +233,7 @@ async function anonymizeUserData(db, userId, { requestId = null, protocol = null
     depoimentosRemovidos: count(depoimentos),
     conexoesComMensagemRemovida: count(conexoes),
     mensagensDeConexaoRemovidas: count(mensagens),
+    vinculosEncerrados: count(vinculos),
     representanteAnonimizado: count(representante),
   };
 

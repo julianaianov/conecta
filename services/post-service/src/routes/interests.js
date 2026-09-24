@@ -46,6 +46,7 @@ const {
   OPPORTUNITY_DEFAULT_STATUSES, CONNECTABLE_STATUSES, POTENTIAL_PARTNERS_STATUSES, POTENTIAL_PARTNERS_MAX,
 } = require('../interest/constants');
 const { validateInterest, validateConnectionRequest, connectionTypeFor } = require('../interest/validation');
+const { requireDemandAuthorRole } = require('../demand/gate');
 const { computeCompatibility, profileHasCriteria } = require('../interest/compatibility');
 const store = require('../interest/store');
 const { listHelpers } = require('./demands');
@@ -198,12 +199,8 @@ module.exports = ({
     return next();
   }
 
-  function requireAgent(req, res, next) {
-    if (roleOf(req) !== 'agent') {
-      return res.status(403).json({ error: 'Só Agentes de Transformação publicam demandas', code: 'demand_author_not_agent' });
-    }
-    return next();
-  }
+  // Agente, ou conta que age como Agente por delegação (T29).
+  const requireAgent = requireDemandAuthorRole(institutionStatus);
 
   /** Perfil de apoio; `undefined` quando o user-service não respondeu. */
   async function loadProfile(req) {

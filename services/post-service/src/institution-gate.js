@@ -53,6 +53,14 @@ function createInstitutionStatusClient({
         status: body.status ?? null,
         canActInstitutionally: body.canActInstitutionally,
         organizationId: typeof body.organizationId === 'string' ? body.organizationId : null,
+        // Vínculo a uma organização (T29): permissões delegadas, ou null.
+        delegation: body.delegation && typeof body.delegation === 'object' && Array.isArray(body.delegation.permissions)
+          ? {
+            level: typeof body.delegation.level === 'string' ? body.delegation.level : null,
+            permissions: body.delegation.permissions.filter((v) => typeof v === 'string'),
+            organizationName: typeof body.delegation.organizationName === 'string' ? body.delegation.organizationName : null,
+          }
+          : null,
       };
       if (userId) {
         if (cache.size >= MAX_CACHE_ENTRIES) cache.delete(cache.keys().next().value);
@@ -68,10 +76,15 @@ function createInstitutionStatusClient({
   };
 }
 
-/** Middleware (depois de `auth`): Poder Público só age com cadastro validado. */
+/**
+ * Middleware (depois de `auth`): Poder Público só age com cadastro validado.
+ * Conta que age como Poder Público por delegação (T29, `req.effectiveRole`
+ * anotado por `requireEffectiveRole`) passa pela mesma regra.
+ */
 function requireValidatedGovernment(lookup) {
   return async (req, res, next) => {
-    if (normalizeRole(req.user?.role, req.user?.profileType) !== 'government') return next();
+    const role = req.effectiveRole ?? normalizeRole(req.user?.role, req.user?.profileType);
+    if (role !== 'government') return next();
     let access;
     try {
       access = await lookup(req);

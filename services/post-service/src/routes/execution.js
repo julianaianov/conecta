@@ -32,6 +32,7 @@
 const express = require('express');
 const { isUuid } = require('../security');
 const { normalizeRole } = require('../roles');
+const { requireDemandAuthorRole } = require('../demand/gate');
 const demandStore = require('../demand/store');
 const { PUBLIC_STATUSES } = require('../demand/constants');
 const { findUsableUpload, parseUploadRef, formatUploadRef } = require('../uploads');
@@ -78,7 +79,7 @@ function mapExecutionDbError(err) {
   return err;
 }
 
-module.exports = ({ pool, auth, validatedAgent }) => {
+module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
   if (typeof auth !== 'function' || typeof validatedAgent !== 'function') {
     throw new Error('execution routes exigem auth e requireValidatedAgent');
   }
@@ -96,15 +97,8 @@ module.exports = ({ pool, auth, validatedAgent }) => {
     }
   };
 
-  function requireAgent(req, res, next) {
-    if (normalizeRole(req.user?.role, req.user?.profileType) !== 'agent') {
-      return res.status(403).json({
-        error: 'Só Agentes de Transformação publicam demandas',
-        code: 'demand_author_not_agent',
-      });
-    }
-    return next();
-  }
+  // Agente, ou conta que age como Agente por delegação (T29).
+  const requireAgent = requireDemandAuthorRole(institutionStatus);
 
   /** Demanda pública (publicada em diante, fora `arquivada`). */
   async function loadPublicDemand(db, demandId) {

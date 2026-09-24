@@ -7,11 +7,15 @@
 // `requireValidatedGovernment`, que deixa passar as demais categorias, aqui a
 // categoria também é exigida.
 
-const { normalizeRole } = require('../roles');
+const { effectiveRole } = require('../delegation');
 
-/** Decide o acesso: `{ allowed: true, organizationId }` ou `{ allowed: false, httpStatus, code, error }`. */
+/**
+ * Decide o acesso: `{ allowed: true, organizationId }` ou `{ allowed: false, httpStatus, code, error }`.
+ * Conta vinculada a um órgão com `atuar_institucionalmente` (T29) age como
+ * Poder Público; o órgão emprestado precisa estar validado.
+ */
 function evaluateGovernmentActor(user, access) {
-  if (normalizeRole(user?.role, user?.profileType) !== 'government') {
+  if (effectiveRole(user, access) !== 'government') {
     return {
       allowed: false,
       httpStatus: 403,
@@ -44,10 +48,7 @@ function evaluateGovernmentActor(user, access) {
 /** Middleware (depois de `auth`). Em sucesso, `req.government = { organizationId }`. */
 function requireGovernmentActor(lookup) {
   return async (req, res, next) => {
-    if (normalizeRole(req.user?.role, req.user?.profileType) !== 'government') {
-      const denied = evaluateGovernmentActor(req.user, null);
-      return res.status(denied.httpStatus).json({ error: denied.error, code: denied.code });
-    }
+    // Quem não é Poder Público pode agir por delegação (T29): a consulta decide.
     let access;
     try {
       access = await lookup(req);
@@ -62,6 +63,7 @@ function requireGovernmentActor(lookup) {
       return res.status(result.httpStatus).json(body);
     }
     req.government = { organizationId: result.organizationId };
+    req.effectiveRole = 'government';
     return next();
   };
 }

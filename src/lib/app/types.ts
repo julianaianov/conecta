@@ -671,7 +671,7 @@ export interface DemandCoverage {
 }
 
 // ── Notificações ───────────────────────────────────────────
-export type NotificationKind = "comment" | "support" | "reaction" | "connection" | "forwarding" | "message";
+export type NotificationKind = "comment" | "support" | "reaction" | "connection" | "forwarding" | "message" | "membership";
 
 export interface AppNotification {
   id: string;
@@ -886,14 +886,74 @@ export interface PublicInstitution {
   validatedAt: string | null;
 }
 
+/** Vínculo ativo (T29): a conta age em nome da instituição com as permissões do nível. */
+export interface InstitutionDelegation {
+  memberId: string;
+  level: string;
+  permissions: string[];
+  organizationName: string;
+}
+
 export interface InstitutionAccess {
   kind: InstitutionKind | null;
   status: InstitutionValidationStatus | null;
   /** Tipo de cadastro que a categoria do perfil exige (null: não se aplica). */
   requiredKind: InstitutionKind | null;
   canActInstitutionally: boolean;
-  /** Id da instituição (user_db.organizations), quando há cadastro. */
+  /** Id da instituição (user_db.organizations), quando há cadastro (próprio ou por vínculo). */
   organizationId?: string | null;
+  /** Permissões delegadas por vínculo (T29); `null` com cadastro próprio ou sem vínculo. */
+  delegation?: InstitutionDelegation | null;
+}
+
+// ── Vínculo a organizações (T29) ───────────────────────────
+// Espelho de services/user-service/src/routes/organization-members.js; vocabulário em lib/app/organization.ts.
+export interface OrganizationMember {
+  id: string;
+  organizationId: string;
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  role: UserRole | null;
+  profileType: ProfileType | null;
+  level: string;
+  permissions: string[];
+  status: string;
+  invitedAt: string;
+  respondedAt: string | null;
+  endedAt: string | null;
+  updatedAt: string;
+}
+
+export interface OrganizationTeam {
+  organization: { id: string; name: string; kind: InstitutionKind; validationStatus: InstitutionValidationStatus };
+  managerRole: "titular" | "gestor";
+  members: OrganizationMember[];
+}
+
+export interface Membership {
+  id: string;
+  level: string;
+  permissions: string[];
+  status: string;
+  organization: { id: string; name: string; kind: InstitutionKind; validationStatus: InstitutionValidationStatus };
+  invitedAt: string;
+  respondedAt: string | null;
+  endedAt: string | null;
+  updatedAt: string;
+}
+
+export interface MyMemberships {
+  active: Membership | null;
+  invites: Membership[];
+}
+
+export interface MemberCandidate {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  role: UserRole;
+  profileType: ProfileType | null;
 }
 
 export interface InstitutionFieldErrors {

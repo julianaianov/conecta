@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { NO_INSTITUTION_ACCESS } from "@/lib/app/institution";
-import { institutionKindFor, type InstitutionAccess } from "@/lib/app/types";
+import { effectiveRole } from "@/lib/app/organization";
+import type { InstitutionAccess, UserRole } from "@/lib/app/types";
 
 const TTL_MS = 60_000;
 let cache: { userId: string; access: InstitutionAccess; at: number } | null = null;
@@ -18,12 +19,13 @@ export function invalidateInstitutionAccess(next?: { userId: string; access: Ins
 
 /**
  * Estado institucional da conta logada (GET /api/users/me/institution/status).
- * Só consulta para Agente de Transformação e Poder Público; as demais
- * categorias não têm cadastro institucional.
+ * Vale para toda conta logada: Agente e Poder Público têm cadastro próprio; as
+ * demais categorias podem agir por vínculo a uma instituição (T29,
+ * `access.delegation`). Uma consulta barata, com cache de 60 s.
  */
 export function useInstitutionAccess(): { access: InstitutionAccess; loading: boolean; applicable: boolean } {
   const { user } = useAuth();
-  const applicable = Boolean(user && institutionKindFor(user.role, user.profileType));
+  const applicable = Boolean(user);
   const userId = user?.id ?? null;
   const [state, setState] = useState<{ userId: string | null; access: InstitutionAccess | null }>(() => ({
     userId,
@@ -60,4 +62,19 @@ export function useInstitutionAccess(): { access: InstitutionAccess; loading: bo
   if (!applicable) return { access: NO_INSTITUTION_ACCESS, loading: false, applicable: false };
   const access = state.userId === userId ? state.access : null;
   return { access: access ?? NO_INSTITUTION_ACCESS, loading: access === null, applicable: true };
+}
+
+/**
+ * Papel efetivo da conta (T29): o próprio para Agente e Poder Público; para as
+ * demais categorias, o que o vínculo empresta (`publicar_demandas` → Agente,
+ * `atuar_institucionalmente` → Poder Público). `resolving` enquanto a
+ * delegação ainda não foi lida — as telas de Agente/Poder Público esperam
+ * antes de dizer que a área não é da conta.
+ */
+export function useEffectiveRole(): { role: UserRole | null; resolving: boolean; access: InstitutionAccess } {
+  const { user } = useAuth();
+  const { access, loading } = useInstitutionAccess();
+  const role = effectiveRole(user, access);
+  const ownIsInstitutional = role === "agent" || role === "government";
+  return { role, resolving: Boolean(user) && loading && !ownIsInstitutional && !access.delegation, access };
 }

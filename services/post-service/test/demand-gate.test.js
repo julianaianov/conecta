@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { evaluateDemandAuthor, requireValidatedAgent } = require('../src/demand/gate');
+const { evaluateDemandAuthor, requireValidatedAgent, requireDemandAuthorRole } = require('../src/demand/gate');
 const { createInstitutionStatusClient } = require('../src/institution-gate');
 
 const ORG = 'cccccccc-0000-0000-0000-000000000001';
@@ -67,15 +67,40 @@ test('middleware: libera e anota a instituição; recusa com 403 e código', asy
   assert.equal(denied.body.validationStatus, 'em_analise');
 });
 
-test('middleware: falha fechada (503) e sem consulta para quem não é Agente', async () => {
+test('middleware: falha fechada (503); quem não é Agente passa pela consulta e só entra por delegação (T29)', async () => {
   const down = await run(requireValidatedAgent(async () => { throw new Error('timeout'); }), AGENT);
   assert.equal(down.status, 503);
 
   let lookups = 0;
-  const member = await run(requireValidatedAgent(async () => { lookups += 1; return validated; }), { role: 'member', profileType: 'morador' });
+  const member = await run(requireValidatedAgent(async () => { lookups += 1; return { ...validated, delegation: null }; }), { role: 'member', profileType: 'morador' });
   assert.equal(member.status, 403);
   assert.equal(member.body.code, 'demand_author_not_agent');
-  assert.equal(lookups, 0);
+  assert.equal(lookups, 1);
+});
+
+test('delegação (T29): vínculo com publicar_demandas numa instituição de Agente validada age como Agente', async () => {
+  const member = { userId: 'u3', role: 'member', profileType: 'morador' };
+  const delegated = { ...validated, delegation: { level: 'publicador', permissions: ['publicar_demandas', 'publicar_eventos'], organizationName: 'Bairro Verde' } };
+  assert.deepEqual(evaluateDemandAuthor(member, delegated), { allowed: true, organizationId: ORG });
+  // Colaborador (só ver documentos) não publica.
+  const viewer = { ...delegated, delegation: { level: 'colaborador', permissions: ['ver_documentos'], organizationName: 'Bairro Verde' } };
+  assert.equal(evaluateDemandAuthor(member, viewer).code, 'demand_author_not_agent');
+  // Vínculo num órgão do Poder Público não publica demanda.
+  assert.equal(evaluateDemandAuthor(member, { ...delegated, kind: 'poder_publico' }).code, 'demand_author_not_agent');
+  // A instituição emprestada precisa estar validada.
+  assert.equal(evaluateDemandAuthor(member, { ...delegated, status: 'em_analise', canActInstitutionally: false }).code, 'institution_not_validated');
+
+  const ok = await run(requireValidatedAgent(async () => delegated), member);
+  assert.equal(ok.status, 'next');
+  assert.deepEqual(ok.req.demandAuthor, { organizationId: ORG });
+
+  const draft = await run(requireDemandAuthorRole(async () => delegated), member);
+  assert.equal(draft.status, 'next');
+  assert.equal(draft.req.effectiveRole, 'agent');
+  const noLookup = await run(requireDemandAuthorRole(null), member);
+  assert.equal(noLookup.status, 403);
+  const direct = await run(requireDemandAuthorRole(async () => { throw new Error('não deveria consultar'); }), AGENT);
+  assert.equal(direct.status, 'next');
 });
 
 test('o cliente do user-service repassa o id da instituição', async () => {

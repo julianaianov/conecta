@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/app/auth";
 import { INSTITUTION_HUB_PATH, institutionRequirement } from "@/lib/app/institution";
+import { MEMBERSHIPS_PATH, MEMBER_LEVEL_LABELS, type OrganizationMemberLevel } from "@/lib/app/organization";
 import { Icon } from "../Icon";
 import { useInstitutionAccess } from "./useInstitutionAccess";
 
@@ -35,11 +36,22 @@ export function InstitutionBanner({ dismissible = true, className = "" }: { dism
   }, [key, dismissible]);
 
   if (!user || !applicable || loading) return null;
-  const requirement = institutionRequirement(user.role, user.profileType, access.status);
+  // Vínculo (T29): quem atua por delegação vê de quem é a instituição, sem
+  // pedido de cadastro próprio.
+  const delegation = access.delegation ?? null;
+  const requirement = delegation
+    ? {
+      kind: access.kind ?? "agente_transformacao",
+      blocking: false,
+      title: `Você atua em nome de ${delegation.organizationName}`,
+      message: `Vínculo como ${MEMBER_LEVEL_LABELS[delegation.level as OrganizationMemberLevel] ?? delegation.level}${access.status === "validada" ? "" : " (instituição ainda não validada)"}. Veja e encerre o vínculo em Meus vínculos.`,
+    }
+    : institutionRequirement(user.role, user.profileType, access.status);
   if (!requirement || (dismissible && dismissedKey === key)) return null;
 
   const accent = requirement.blocking ? "#2e7ba8" : "#f4841a";
-  const cta = access.status === "em_analise" ? "Acompanhar cadastro" : access.status ? "Revisar cadastro" : "Fazer cadastro institucional";
+  const cta = delegation ? "Meus vínculos" : access.status === "em_analise" ? "Acompanhar cadastro" : access.status ? "Revisar cadastro" : "Fazer cadastro institucional";
+  const href = delegation ? MEMBERSHIPS_PATH : INSTITUTION_HUB_PATH;
 
   function dismiss() {
     if (!key) return;
@@ -61,7 +73,7 @@ export function InstitutionBanner({ dismissible = true, className = "" }: { dism
         <p className="mt-0.5 text-sm" style={{ color: "var(--th-muted)" }}>{requirement.message}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Link href={INSTITUTION_HUB_PATH} className="inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-semibold text-white" style={{ background: "linear-gradient(135deg,#0d2d42,#1b4f72)" }}>
+        <Link href={href} className="inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-semibold text-white" style={{ background: "linear-gradient(135deg,#0d2d42,#1b4f72)" }}>
           {cta}
         </Link>
         {dismissible && (

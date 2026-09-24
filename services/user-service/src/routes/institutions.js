@@ -18,6 +18,7 @@ const {
   LINKED_AGENT_PROFILES, CNAE_REFERENCE, COMPETENCE_AREA_SUGGESTIONS,
   kindForUser, validateInstitution, canActInstitutionally,
 } = require('../institution');
+const { permissionsFor, PUBLIC_ACTING_LEVELS } = require('../organization-members');
 
 const ORG_DATA_COLUMNS = [
   'cnpj', 'legal_name', 'trade_name', 'cnae_primary', 'cnae_primary_description', 'cnae_secondary',
@@ -126,6 +127,20 @@ const STATUS_SQL = `SELECT o.institution_kind, o.validation_status, o.id AS orga
 
 const NOT_FOUND = { error: 'Cadastro institucional não encontrado' };
 
+// Delegação (T29): conta sem cadastro próprio, mas com vínculo ativo numa
+// instituição, age em nome dela com as permissões do nível (migração 013).
+const DELEGATION_SQL = `SELECT m.id AS member_id, m.level, o.id AS organization_id, o.institution_kind, o.validation_status,
+                               coalesce(nullif(o.trade_name, ''), nullif(o.legal_name, ''), o.org_name) AS organization_name
+                          FROM organization_members m
+                          JOIN organizations o ON o.id = m.organization_id
+                         WHERE m.user_id = $1 AND m.status = 'ativo' AND o.institution_kind IS NOT NULL`;
+
+/** Vínculo ativo da conta (`null` sem vínculo). */
+async function activeDelegation(db, userId) {
+  const { rows } = await db.query(DELEGATION_SQL, [userId]);
+  return rows[0] ?? null;
+}
+
 function formatAddress(org) {
   const parts = [
     [org.street, org.address_number].filter(Boolean).join(', '),
@@ -162,16 +177,37 @@ async function loadOwn(db, userId, uploadStorage = null) {
 /** Estado institucional da conta: usado pela interface e pelo gate dos serviços. */
 async function institutionStatus(db, user) {
   const { rows } = await db.query(STATUS_SQL, [user.userId]);
-  const kind = rows[0]?.institution_kind ?? null;
-  const status = rows[0]?.validation_status ?? null;
+  if (rows.length) {
+    const kind = rows[0].institution_kind ?? null;
+    const status = rows[0].validation_status ?? null;
+    return {
+      kind,
+      status,
+      requiredKind: kindForUser(user),
+      canActInstitutionally: canActInstitutionally(kind, status),
+      // Id da instituição (user_db.organizations): o post-service o grava na
+      // demanda no envio para análise (T06a). Não é dado sensível: é o próprio cadastro.
+      organizationId: rows[0].organization_id ?? null,
+      delegation: null,
+    };
+  }
+  // Sem cadastro próprio: o vínculo ativo (T29) empresta a instituição e as
+  // permissões do nível; os gates do post-service decidem com `delegation`.
+  const delegated = await activeDelegation(db, user.userId);
+  const kind = delegated?.institution_kind ?? null;
+  const status = delegated?.validation_status ?? null;
   return {
     kind,
     status,
     requiredKind: kindForUser(user),
     canActInstitutionally: canActInstitutionally(kind, status),
-    // Id da instituição (user_db.organizations): o post-service o grava na
-    // demanda no envio para análise (T06a). Não é dado sensível: é o próprio cadastro.
-    organizationId: rows[0]?.organization_id ?? null,
+    organizationId: delegated?.organization_id ?? null,
+    delegation: delegated ? {
+      memberId: delegated.member_id,
+      level: delegated.level,
+      permissions: permissionsFor(delegated.level),
+      organizationName: delegated.organization_name || 'Instituição',
+    } : null,
   };
 }
 
@@ -454,8 +490,19 @@ function routes(pool, auth, uploadStorage = null) {
           WHERE p.user_id = $1 AND o.institution_kind IS NOT NULL AND o.validation_status = 'validada'`,
         [req.params.userId],
       );
-      if (!rows.length) return res.status(404).json(NOT_FOUND);
-      res.json(rows[0]);
+      if (rows.length) return res.json(rows[0]);
+      // Quem age publicamente em nome da instituição por vínculo (T29):
+      // gestor e publicador; colaborador não é exposto.
+      const { rows: delegated } = await pool.query(
+        `SELECT ${cols(PUBLIC_ORG_COLUMNS)}
+           FROM organization_members m
+           JOIN organizations o ON o.id = m.organization_id
+          WHERE m.user_id = $1 AND m.status = 'ativo' AND m.level = ANY($2::text[])
+            AND o.institution_kind IS NOT NULL AND o.validation_status = 'validada'`,
+        [req.params.userId, PUBLIC_ACTING_LEVELS],
+      );
+      if (!delegated.length) return res.status(404).json(NOT_FOUND);
+      res.json(delegated[0]);
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });
@@ -468,6 +515,7 @@ function routes(pool, auth, uploadStorage = null) {
 module.exports = routes;
 module.exports.requireInstitutionalAccess = requireInstitutionalAccess;
 module.exports.institutionStatus = institutionStatus;
+module.exports.activeDelegation = activeDelegation;
 module.exports.OWNER_ORG_COLUMNS = OWNER_ORG_COLUMNS;
 module.exports.PUBLIC_ORG_COLUMNS = PUBLIC_ORG_COLUMNS;
 module.exports.REPRESENTATIVE_COLUMNS = REPRESENTATIVE_COLUMNS;

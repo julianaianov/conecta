@@ -157,6 +157,13 @@ export const RETENTION_RULES: RetentionRule[] = [
     basis: "LGPD art. 18, IV, e art. 7º, VI",
   },
   {
+    key: "vinculos",
+    data: "Vínculo a uma instituição (equipe, nível e convites)",
+    action: "anonimiza",
+    rule: "O vínculo ativo é encerrado e os convites abertos são recusados; a linha fica como registro de quem atuou em nome da instituição, sem o nome (o perfil é anonimizado).",
+    basis: "LGPD art. 18, IV, e art. 7º, VI",
+  },
+  {
     key: "recados",
     data: "Recados e depoimentos escritos pelo titular",
     action: "apaga",
@@ -283,9 +290,9 @@ export const DATA_INVENTORY: DataInventoryEntry[] = [
     optional: true,
   },
   {
-    source: "user_db.connections, connection_messages, scraps, testimonials, partner_profiles",
+    source: "user_db.connections, connection_messages, scraps, testimonials, partner_profiles, organization_members",
     group: "Conexões e rede",
-    fields: ["mensagem de contato", "mensagens da conversa da conexão e data da última leitura", "estado e desfecho", "recados e depoimentos", "perfil de apoio: territórios, categorias e recursos de interesse"],
+    fields: ["mensagem de contato", "mensagens da conversa da conexão e data da última leitura", "estado e desfecho", "recados e depoimentos", "perfil de apoio: territórios, categorias e recursos de interesse", "vínculo a uma instituição: nível, convites e datas"],
     purpose: "Aproximar quem pede e quem apoia.",
     visibility: "privado",
   },

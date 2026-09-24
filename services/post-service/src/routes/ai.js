@@ -36,6 +36,7 @@
 const express = require('express');
 const { isUuid } = require('../security');
 const { normalizeRole } = require('../roles');
+const { requireEffectiveRole } = require('../delegation');
 const demandStore = require('../demand/store');
 const { listHelpers } = require('./demands');
 const interestStore = require('../interest/store');
@@ -73,7 +74,7 @@ function resourceMatch(neededResources, offerTypes) {
   };
 }
 
-module.exports = ({ pool, auth, ai, governmentActor, governmentProfile }) => {
+module.exports = ({ pool, auth, ai, governmentActor, governmentProfile, institutionStatus = null }) => {
   if (typeof auth !== 'function') throw new Error('as rotas de IA exigem auth');
   if (!ai || typeof ai.suggest !== 'function') throw new Error('as rotas de IA exigem o serviço de IA');
   const router = express.Router();
@@ -89,15 +90,11 @@ module.exports = ({ pool, auth, ai, governmentActor, governmentProfile }) => {
     }
   };
 
-  const requireAgent = (req, res, next) => {
-    if (normalizeRole(req.user?.role, req.user?.profileType) !== 'agent') {
-      return res.status(403).json({
-        error: 'As sugestões de IA da demanda são do Agente de Transformação autor',
-        code: 'demand_author_not_agent',
-      });
-    }
-    return next();
-  };
+  // Agente, ou conta que age como Agente por delegação (T29).
+  const requireAgent = requireEffectiveRole(institutionStatus, 'agent', {
+    error: 'As sugestões de IA da demanda são do Agente de Transformação autor',
+    code: 'demand_author_not_agent',
+  });
 
   /** Envelope comum: a marca de sugestão de IA acompanha toda resposta. */
   const envelope = (kind, extra) => ({

@@ -226,7 +226,7 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
     if (!user) return;
     invalidateInstitutionAccess({
       userId: user.id,
-      access: { kind: saved.kind, status: saved.status, requiredKind: saved.kind, canActInstitutionally: saved.status === "validada" },
+      access: { kind: saved.kind, status: saved.status, requiredKind: saved.kind, canActInstitutionally: saved.status === "validada", organizationId: saved.id, delegation: null },
     });
   }
 

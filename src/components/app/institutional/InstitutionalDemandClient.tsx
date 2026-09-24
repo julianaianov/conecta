@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, DemandRequestError } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
+import { useEffectiveRole } from "../institution/useInstitutionAccess";
 import { demandPublicPath } from "@/lib/app/demand";
 import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
 import {
@@ -21,7 +22,6 @@ import {
 import { timelineEventLabel } from "@/lib/app/demand";
 import { formatDate } from "@/lib/app/format";
 import {
-  normalizeRole,
   type ConnectionType,
   type DemandTimelineEvent,
   type Forwarding,
@@ -350,7 +350,9 @@ function OfferForm({ view, onSaved }: { view: InstitutionalDemandView; onSaved: 
 /** Análise e atuação do órgão numa demanda (T13; Fluxo 3, etapas 03 a 07) e encaminhamentos (T14). */
 export function InstitutionalDemandClient({ id }: { id: string }) {
   const { user, status } = useAuth();
-  const isGovernment = Boolean(user && normalizeRole(user.role, user.profileType) === "government");
+  // Papel efetivo (T29): a própria categoria ou a que o vínculo empresta.
+  const { role: effective, resolving: roleResolving } = useEffectiveRole();
+  const isGovernment = effective === "government";
   const [view, setView] = useState<InstitutionalDemandView | null | undefined>(undefined);
   const [timeline, setTimeline] = useState<DemandTimelineEvent[]>([]);
   const [opening, setOpening] = useState(false);
@@ -394,6 +396,7 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
   }
 
   if (status === "unknown") return <div className="flex justify-center py-24"><span className="app-spinner" aria-label="Carregando" /></div>;
+  if (roleResolving) return <div className="flex justify-center py-24"><span className="app-spinner" aria-label="Carregando" /></div>;
   if (!user || !isGovernment) {
     return (
       <div className="mx-auto max-w-xl">

@@ -83,7 +83,8 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - `user_db.organizations` (migração user 008) guarda o cadastro institucional:
   `institution_kind` `agente_transformacao` (CNPJ + CNAE, endereço com CEP,
   contatos, responsável) ou `poder_publico` (órgão, CNPJ, esfera, município/UF,
-  território, secretaria, competências, representante). Um cadastro por perfil;
+  território, secretaria, competências, representante). Um cadastro por perfil
+  (outras contas atuam em nome da instituição por vínculo, T29);
   Líder Comunitário e Representante de Bairro vinculam o perfil a uma
   instituição com CNPJ (decisão 3). Representante em
   `organization_representatives` (contatos privados).
@@ -1433,6 +1434,77 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Testes: `services/user-service/test/partner-profile.test.js`,
   `services/post-service/test/interests-routes.test.js` e
   `src/lib/app/interest.test.mjs`.
+
+## Vínculo de usuários a organizações e permissões delegadas (T29)
+
+- Fonte: Arquitetura de Perfis §4 ("Membros da Comunidade não publicam
+  demandas ou projetos em nome de uma organização sem vínculo/autorização.
+  No futuro, o sistema pode permitir vínculo de usuários a organizações com
+  diferentes níveis de permissão") e §5 ("usuários individuais poderão estar
+  vinculados a organizações e receber permissões delegadas"); Modelo de
+  Conexão §32 (vários usuários por instituição). O vínculo existe desde já.
+- Migração user 013 (`013-organization-members.sql`): `organization_members`
+  (instituição com cadastro institucional × conta; `level` `gestor` |
+  `publicador` | `colaborador`; `status` `convidado` → `ativo` | `recusado`,
+  `ativo` → `removido` | `saiu`; quem convidou e datas). Um vínculo `ativo`
+  por conta e um convite em aberto por par (índices parciais). Trigger
+  `organization_members_guard`: nasce como convite, só instituição com
+  `institution_kind`, transições fixas, identidade imutável, nível só em
+  convite/ativo, `gestao_app` só lê, nada é excluído.
+- Domínio `services/user-service/src/organization-members.js` (espelho em
+  `src/lib/app/organization.ts`, comparado em `organization.test.mjs`):
+  `gestor` = gerir vínculos + tudo do publicador; `publicador` = publicar
+  demandas e eventos, atuar institucionalmente, atualizar resultados, ver
+  documentos; `colaborador` = ver documentos.
+- Rotas (`routes/organization-members.js`): titular do cadastro ou gestor —
+  `GET /me/organization/members`, `GET .../candidates?q=` (contas sem
+  cadastro próprio nem vínculo ativo, sem anonimizadas), `POST` (`{ userId,
+  level }`; 409 `member_has_own_institution` / `member_already_linked` /
+  `member_invite_exists` / `member_is_self`), `PUT /:id` (`{ level }`),
+  `POST /:id/remove`; a própria conta — `GET /me/memberships`,
+  `POST /me/memberships/:id/accept | decline | leave`. 403
+  `not_organization_manager` para quem não administra instituição.
+- **Delegação**: `GET /me/institution/status` devolve, para conta sem
+  cadastro próprio com vínculo ativo, `kind`/`status`/`organizationId`/
+  `canActInstitutionally` da instituição vinculada e `delegation: { memberId,
+  level, permissions, organizationName }` (senão `delegation: null`).
+  `GET /:userId/institution` (projeção pública) resolve também pelo vínculo
+  ativo de gestor/publicador, então o selo do perfil e o órgão do
+  post-service (T13) valem para quem atua por delegação. Sino:
+  `kind: 'membership'` para convite em aberto (`href: /vinculos`).
+- post-service (`src/delegation.js`): `effectiveRole(user, access)` — conta
+  com `publicar_demandas` numa instituição `agente_transformacao` age como
+  Agente; com `atuar_institucionalmente` num `poder_publico`, como Poder
+  Público. `requireEffectiveRole(lookup, roles, denied)` aceita o papel
+  próprio sem consulta e o delegado depois do lookup (503 se falhar).
+  `demand/gate.js` (`evaluateDemandAuthor`, `requireValidatedAgent`,
+  `requireDemandAuthorRole`), `institutional/gate.js`
+  (`evaluateGovernmentActor`, `requireGovernmentActor`), `institution-gate.js`
+  (`requireValidatedGovernment` lê `req.effectiveRole`), as rotas de demanda,
+  execução, prestação de contas, interesses, IA e eventos (organizador
+  delegado com `publicar_eventos`) passam pela delegação; a instituição
+  emprestada precisa estar validada, como sempre. Os posts do feed
+  (`routes/posts.js`) continuam pela categoria da conta.
+- LGPD: exportação leva `vinculosInstitucionais`; a eliminação encerra o
+  vínculo ativo (`saiu`) e recusa convites; regra `vinculos` em
+  `RETENTION_RULES` e `/privacidade`.
+- Frontend: `InstitutionAccess.delegation`, tipos `OrganizationMember`,
+  `Membership` etc. em `types.ts`; bloco "VÍNCULO A ORGANIZAÇÕES (T29)" em
+  `api.ts`; `useInstitutionAccess` vale para toda conta logada e
+  `useEffectiveRole()` dá o papel efetivo (`resolving` enquanto a delegação
+  não foi lida) — usado no `AppShell` (atalhos de Agente/Poder Público),
+  Minhas demandas, assistente da demanda, área institucional, análise da
+  demanda, indicadores e ações do governo. `InstitutionBanner` mostra "Você
+  atua em nome de …" em vez de pedir cadastro. Páginas `/vinculos`
+  (`MembershipsClient`: convites, vínculo ativo com as permissões em texto,
+  sair) e `/cadastro-institucional/equipe` (`TeamClient`: níveis, busca e
+  convite, mudar nível, remover, histórico); menu da conta com "Meus
+  vínculos" (todos) e "Equipe da instituição" (titular ou gestor);
+  `robots.ts` e `PRIVATE_PATH_PREFIXES` com `/vinculos`.
+- Testes: `services/user-service/test/organization-members.test.js`,
+  `institutions-routes.test.js`, `privacy.test.js`;
+  `services/post-service/test/demand-gate.test.js`,
+  `institutional-domain.test.js`; `src/lib/app/organization.test.mjs`.
 
 ## Segurança dos serviços
 

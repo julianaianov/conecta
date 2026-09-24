@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
+import { useEffectiveRole } from "../institution/useInstitutionAccess";
 import {
   DEMAND_ACTION_LABELS,
   DEMAND_ACTION_TARGET,
@@ -19,7 +20,6 @@ import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution
 import {
   DEMAND_PUBLIC_STATUSES,
   DEMAND_STATUS_LABELS,
-  normalizeRole,
   type Demand,
   type DemandAgentAction,
   type InstitutionValidationStatus,
@@ -267,7 +267,9 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
 /** "Minhas demandas" (T09): as demandas do Agente em qualquer estado. */
 export function MyDemandsClient() {
   const { user, status } = useAuth();
-  const isAgent = Boolean(user && normalizeRole(user.role, user.profileType) === "agent");
+  // Papel efetivo (T29): a própria categoria ou a que o vínculo empresta.
+  const { role: effective, resolving: roleResolving } = useEffectiveRole();
+  const isAgent = effective === "agent";
   const [demands, setDemands] = useState<Demand[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
@@ -292,6 +294,7 @@ export function MyDemandsClient() {
       </div>
     );
   }
+  if (roleResolving) return <div className="flex justify-center py-24"><span className="app-spinner" aria-label="Carregando" /></div>;
   if (!isAgent) {
     return (
       <div className="mx-auto max-w-xl">
