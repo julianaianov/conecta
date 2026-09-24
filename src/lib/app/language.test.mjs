@@ -98,21 +98,13 @@ test("Agenda e Impacto ficam a um toque da barra inferior no mobile", () => {
   assert.match(source, /event\.key !== "Escape"/);
 });
 
-test("no desktop, um trilho lateral leva os rótulos do produto e o registro de sinal", () => {
+test("no desktop, a barra superior leva os rótulos do produto e o registro de sinal", () => {
   const source = fs.readFileSync(path.join(root, "src/components/app/AppShell.tsx"), "utf8");
 
-  // O trilho existe só a partir de lg e é fixo à esquerda.
-  const railStart = source.indexOf('aria-label="Trilho lateral"');
-  assert.ok(railStart > 0, "trilho lateral ausente");
-  const railEnd = source.indexOf("</aside>", railStart);
-  const rail = source.slice(railStart, railEnd);
-  assert.match(source.slice(source.lastIndexOf("<aside", railStart), railStart + 200), /fixed inset-y-0 left-0[^"]*hidden[^"]*lg:flex/);
-
-  // Um único <nav> com rótulo no trilho, percorrendo NAV (os seis rótulos) e os atalhos por perfil.
-  assert.equal((rail.match(/<nav /g) ?? []).length, 1);
-  assert.match(rail, /<nav aria-label="Navegação principal"/);
-  assert.match(rail, /NAV\.map\(/);
-  assert.match(rail, /profileNav\.map\(/);
+  // Barra superior (header) leva a navegação principal no desktop.
+  assert.match(source, /<nav\s+aria-label="Navegação principal"\s+className="hidden items-center[^"]*lg:flex/);
+  assert.match(source, /NAV\.map\(/);
+  assert.match(source, /profileNav\.map\(/);
   assert.match(source, /isAgent \? \[AGENT_NAV\]/);
   assert.match(source, /isGovernment \? \[GOVERNMENT_NAV\]/);
   assert.match(source, /isAdmin \? \[ADMIN_NAV\]/);
@@ -120,17 +112,18 @@ test("no desktop, um trilho lateral leva os rótulos do produto e o registro de 
     assert.match(source, new RegExp(`label: "${label}"`));
   }
 
-  // Registrar sinal em destaque, conta e tema no pé do trilho.
-  assert.match(rail, /href="\/criar"[\s\S]*Registrar sinal/);
-  assert.match(rail, /accountMenu\("rail"\)/);
-  assert.match(rail, /<ThemeToggle \/>/);
+  // Registrar sinal em destaque, busca, notificações, tema e conta na barra superior.
+  assert.match(source, /href="\/criar"[\s\S]*Registrar sinal/);
+  assert.match(source, /<SearchButton \/>/);
+  assert.match(source, /<NotificationBell/);
+  assert.match(source, /<ThemeToggle \/>/);
+  assert.match(source, /accountMenu\("header"\)/);
 
   // Item ativo anunciado ao leitor de tela.
   assert.match(source, /aria-current=\{active \? "page" : undefined\}/);
 
-  // O conteúdo desloca pela largura do trilho e a barra inferior segue só no mobile.
-  assert.match(source, /lg:pl-\[5\.5rem\] xl:pl-60/);
-  assert.match(source, /<nav\s+aria-label="Navegação principal"\s+className="nav-blur fixed inset-x-0 bottom-0[^"]*lg:hidden/);
+  // A barra inferior segue no mobile (estilo app embaixo).
+  assert.match(source, /<nav\s+aria-label="Navegação principal móvel"\s+className="nav-blur fixed inset-x-0 bottom-0[^"]*lg:hidden/);
 });
 
 // Card de sinal ("Sinal do bairro", design/identidade-visual-sinal-do-bairro.md):

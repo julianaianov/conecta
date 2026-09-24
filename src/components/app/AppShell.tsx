@@ -12,7 +12,7 @@ import { AGENDA_PATH, canIdentifyAgenda } from "@/lib/app/media";
 import { MEMBERSHIPS_PATH, TEAM_PATH, managesTeam } from "@/lib/app/organization";
 import { PRIVACY_PATH } from "@/lib/app/privacy";
 import { normalizeRole } from "@/lib/app/types";
-import { DMLogo, DMMonogram } from "./DMLogo";
+import { DMLogo } from "./DMLogo";
 import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./Avatar";
 import { NotificationBell } from "./NotificationBell";
@@ -30,13 +30,13 @@ const NAV: NavItem[] = [
   { href: "/conexoes", label: "Conexões", icon: "link" },
   { href: "/perfil", label: "Meu sinal", icon: "person" },
   // A barra inferior do mobile usa NAV[0..3] por índice; itens a partir daqui
-  // aparecem só no trilho lateral (desktop) e no dropdown da conta (mobile).
+  // aparecem na barra superior (desktop) e no menu da conta (mobile).
   { href: "/ranking", label: "Impacto", icon: "trophy" },
   // Agenda do território (T25): eventos, oficinas, mutirões, ações e aulas.
   { href: "/eventos", label: "Agenda", icon: "calendar" },
 ];
 
-/** Atalhos por perfil que o trilho lateral mostra no desktop (no mobile ficam no menu da conta). */
+/** Atalhos por perfil que a barra superior mostra no desktop (no mobile ficam no menu da conta). */
 const AGENT_NAV: NavItem = { href: MY_DEMANDS_PATH, label: "Minhas demandas", icon: "inventory" };
 const GOVERNMENT_NAV: NavItem = { href: INSTITUTIONAL_AREA_PATH, label: "Atuação institucional", icon: "building" };
 /** Comunicação identifica pautas e registra divulgação (T28, §3.5). */
@@ -84,7 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.push("/login");
   }
 
-  const accountMenu = (placement: "header" | "rail") => (
+  const accountMenu = (placement: "header" | "rail" = "header") => (
     <AccountMenu
       placement={placement}
       user={user}
@@ -95,123 +95,106 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="app-mesh min-h-dvh">
-      {/* ── Trilho lateral (desktop, a partir de lg) ─────────
-          Em lg (1024px) é estreito, com ícone e rótulo curto empilhados; em xl
-          (1280px+) abre com ícone e rótulo em linha. Abaixo de lg quem navega é
-          a barra inferior. */}
-      <aside
-        aria-label="Trilho lateral"
-        className="app-rail fixed inset-y-0 left-0 z-40 hidden w-[5.5rem] flex-col border-r lg:flex xl:w-60"
-      >
-        <div className="flex h-16 shrink-0 items-center justify-center px-3 xl:justify-start xl:px-5">
-          <Link href="/feed" className={`flex items-center rounded-lg ${FOCUS_RING}`} style={{ color: "var(--th-text)" }}>
-            <span className="xl:hidden"><DMMonogram size={30} tone="plain" /><span className="sr-only">DM Conecta — O pulso</span></span>
-            <span className="hidden xl:inline-flex"><DMLogo size={30} tone="plain" /></span>
-          </Link>
-        </div>
-
-        {/* Ação primária em destaque: petróleo (base da marca) com o sinal em laranja cívico. */}
-        <div className="shrink-0 px-2.5 pb-3 xl:px-4">
-          <Link
-            href="/criar"
-            className={`rail-primary flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2.5 text-center text-[11px] font-semibold leading-tight text-white shadow-sm xl:flex-row xl:gap-2 xl:px-4 xl:py-3 xl:text-sm ${FOCUS_RING}`}
-          >
-            <Icon name="plus" size={20} className="text-[#f4841a]" strokeWidth={2.6} />
-            Registrar sinal
-          </Link>
-        </div>
-
-        <nav aria-label="Navegação principal" className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 xl:px-3">
-          <ul className="flex flex-col gap-0.5">
-            {NAV.map((item) => (
-              <li key={item.href}><RailItem item={item} active={isActive(item.href)} /></li>
-            ))}
-          </ul>
-          {profileNav.length > 0 && (
-            <>
-              <p className="mt-4 mb-1 hidden px-3 text-[11px] font-semibold uppercase tracking-wide xl:block" style={{ color: "var(--th-muted)" }}>
-                Sua atuação
-              </p>
-              <hr className="mx-3 my-3 xl:hidden" style={{ borderColor: "var(--th-border)" }} />
-              <ul className="flex flex-col gap-0.5">
-                {profileNav.map((item) => (
-                  <li key={item.href}><RailItem item={item} active={isActive(item.href)} /></li>
-                ))}
-              </ul>
-            </>
-          )}
-        </nav>
-
-        {/* Conta e tema, no pé do trilho. */}
-        <div className="flex shrink-0 flex-col gap-2 border-t px-2 py-3 xl:px-4" style={{ borderColor: "var(--th-border)" }}>
-          {!user && (
+    <div className="app-mesh flex min-h-dvh flex-col">
+      {/* ── Barra superior (Menu Desktop + Header Mobile) ───── */}
+      <header className="nav-blur sticky top-0 z-30 w-full border-b transition-colors">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:px-4 lg:gap-4 lg:px-6">
+          {/* Esquerda: Marca e Logo */}
+          <div className="flex shrink-0 items-center">
             <Link
-              href="/login?next=%2Fcriar"
-              className={`rounded-lg border px-2 py-1.5 text-center text-xs font-semibold xl:text-sm ${FOCUS_RING}`}
-              style={{ color: "var(--th-text)", borderColor: "var(--th-border)" }}
+              href="/feed"
+              className={`flex items-center rounded-lg transition-opacity hover:opacity-90 ${FOCUS_RING}`}
+              style={{ color: "var(--th-text)" }}
             >
-              Entrar
+              <span className="hidden sm:inline-flex">
+                <DMLogo size={32} tone="plain" />
+              </span>
+              <span className="sm:hidden">
+                <DMLogo size={28} tone="plain" />
+              </span>
+              <span className="sr-only">DM Conecta — O pulso</span>
             </Link>
-          )}
-          <div className="flex flex-col items-center gap-2 xl:flex-row">
-            <div className="xl:min-w-0 xl:flex-1">{accountMenu("rail")}</div>
+          </div>
+
+          {/* Centro: Menu na Barra Superior (Desktop) */}
+          <nav aria-label="Navegação principal" className="hidden items-center gap-1 lg:flex xl:gap-1.5">
+            {NAV.map((item) => (
+              <TopNavItem key={item.href} item={item} active={isActive(item.href)} />
+            ))}
+            {profileNav.length > 0 && (
+              <>
+                <span className="mx-1 h-5 w-px bg-[var(--th-border)]" aria-hidden="true" />
+                {profileNav.map((item) => (
+                  <TopNavItem key={item.href} item={item} active={isActive(item.href)} />
+                ))}
+              </>
+            )}
+          </nav>
+
+          {/* Direita: Ação primária, utilitários, tema e conta */}
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-3">
+            {/* Botão Registrar sinal — Ação primária em destaque */}
+            <Link
+              href="/criar"
+              className={`hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#f4841a] to-[#f89b45] px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-95 lg:text-sm ${FOCUS_RING}`}
+              style={{ boxShadow: "0 2px 8px rgba(244,132,26,0.25)" }}
+            >
+              <Icon name="plus" size={17} strokeWidth={2.6} />
+              <span>Registrar sinal</span>
+            </Link>
+
+            <span className="hidden h-5 w-px bg-[var(--th-border)] sm:block" aria-hidden="true" />
+
+            <SearchButton />
+            <NotificationBell userId={user?.id ?? null} government={isGovernment} />
             <ThemeToggle />
+
+            {!user && (
+              <Link
+                href="/login?next=%2Fcriar"
+                className={`hidden sm:inline-flex rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--th-card-alt)] lg:text-sm ${FOCUS_RING}`}
+                style={{ color: "var(--th-text)", borderColor: "var(--th-border)" }}
+              >
+                Entrar
+              </Link>
+            )}
+
+            {accountMenu("header")}
           </div>
         </div>
-      </aside>
+      </header>
 
-      {/* ── Coluna de conteúdo (desloca pela largura do trilho) ── */}
-      <div className="lg:pl-[5.5rem] xl:pl-60">
-        {/* Header: no mobile tem marca, busca, tema, sino e conta; no desktop
-            vira uma barra fina com busca e sino (o resto está no trilho). */}
-        <header className="nav-blur sticky top-0 z-30 border-b">
-          <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 lg:h-14">
-            <Link href="/feed" className="flex shrink-0 items-center lg:hidden" style={{ color: "var(--th-text)" }}>
-              <DMLogo size={30} tone="plain" />
-            </Link>
+      {/* ── Conteúdo Principal ───────────────────────────────── */}
+      <main className="mx-auto w-full max-w-7xl flex-1 px-3 pb-28 pt-4 sm:px-4 sm:pt-6 lg:px-6 lg:pb-12">
+        {/* Requisito institucional (decisões 2 e 3); a própria ficha e o /criar têm aviso próprio. */}
+        {!pathname.startsWith("/cadastro-institucional") && pathname !== "/criar" && <InstitutionBanner className="mb-4" />}
+        {/* Aceite de versão nova dos Termos e da Política (T24). */}
+        <ConsentBanner className="mb-4" />
+        {children}
+      </main>
 
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <SearchButton />
-              <div className="lg:hidden"><ThemeToggle /></div>
-              <NotificationBell userId={user?.id ?? null} government={isGovernment} />
-              {/* No mobile, Agenda e Impacto não cabem na barra inferior
-                  (NAV[4..]); o menu da conta — e o do visitante — é o caminho
-                  até eles, a um toque além da barra. */}
-              <div className="lg:hidden">{accountMenu("header")}</div>
-            </div>
-          </div>
-        </header>
-
-        {/* ── Conteúdo ─────────────────────────────────────── */}
-        <main className="mx-auto max-w-6xl px-3 pb-28 pt-5 sm:px-4 lg:px-6 lg:pb-10">
-          {/* Requisito institucional (decisões 2 e 3); a própria ficha e o /criar têm aviso próprio. */}
-          {!pathname.startsWith("/cadastro-institucional") && pathname !== "/criar" && <InstitutionBanner className="mb-4" />}
-          {/* Aceite de versão nova dos Termos e da Política (T24). */}
-          <ConsentBanner className="mb-4" />
-          {children}
-        </main>
-      </div>
-
-      {/* ── Bottom nav (mobile) ──────────────────────────── */}
+      {/* ── Barra inferior estilo app (mobile) ──────────────── */}
       <nav
-        aria-label="Navegação principal"
-        className="nav-blur fixed inset-x-0 bottom-0 z-40 border-t lg:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        aria-label="Navegação principal móvel"
+        className="nav-blur fixed inset-x-0 bottom-0 z-40 border-t shadow-[0_-4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.3)] lg:hidden"
+        style={{ paddingBottom: "max(0.6rem, env(safe-area-inset-bottom))" }}
       >
-        <div className="relative mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
+        <div className="relative mx-auto grid h-16 max-w-md grid-cols-5 items-center px-1">
           <BottomItem item={NAV[0]} active={isActive(NAV[0].href)} />
           <BottomItem item={NAV[1]} active={isActive(NAV[1].href)} />
-            {/* FAB de registro — visível para todos os perfis; /criar explica a
-              restrição a quem não pode registrar sinais */}
+          {/* FAB de registro central estilo app */}
           <div className="flex justify-center">
             <Link
               href="/criar"
-              className="-mt-8 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
-              style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)", boxShadow: "0 8px 20px rgba(244,132,26,0.4)" }}
+              className="-mt-7 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-90"
+              style={{
+                background: "linear-gradient(135deg, #f4841a, #f89b45)",
+                boxShadow: "0 8px 24px rgba(244, 132, 26, 0.45)",
+                border: "3.5px solid var(--th-bg)",
+              }}
               aria-label="Registrar sinal"
             >
-              <Icon name="plus" size={26} />
+              <Icon name="plus" size={26} strokeWidth={2.8} />
             </Link>
           </div>
           <BottomItem item={NAV[2]} active={isActive(NAV[2].href)} />
@@ -234,18 +217,16 @@ type AccountFlags = {
 };
 
 /**
- * Botão de conta + menu. Aparece no header do mobile (abre para baixo) e no pé
- * do trilho lateral do desktop (abre para cima). Só um dos dois fica visível
- * por largura de tela.
+ * Botão de conta + menu suspenso. Abre no canto superior direito a partir do avatar.
  */
 function AccountMenu({
-  placement,
+  placement = "header",
   user,
   flags,
   onNavigate,
   onLogout,
 }: {
-  placement: "header" | "rail";
+  placement?: "header" | "rail";
   user: ReturnType<typeof useAuth>["user"];
   flags: AccountFlags;
   onNavigate: (href: string) => void;
@@ -284,23 +265,11 @@ function AccountMenu({
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         aria-controls={menuId}
-        className={
-          rail
-            ? `flex items-center gap-2.5 rounded-full xl:w-full xl:rounded-xl xl:p-1 xl:pr-2 xl:hover:bg-[var(--th-card-alt)] ${FOCUS_RING}`
-            : `rounded-full ${FOCUS_RING}`
-        }
+        className={`rounded-full transition-all duration-150 hover:ring-2 hover:ring-[#f4841a]/40 ${FOCUS_RING}`}
       >
         {user
           ? <Avatar name={user.name} src={user.avatarUrl} email={user.email} id={user.id} size={36} />
           : <Avatar name="Visitante" size={36} />}
-        {rail && (
-          <span className="hidden min-w-0 text-left xl:block">
-            <span className="block truncate text-sm font-semibold" style={{ color: "var(--th-text)" }}>
-              {user ? user.name : "Visitante"}
-            </span>
-            <span className="block truncate text-xs" style={{ color: "var(--th-muted)" }}>Conta</span>
-          </span>
-        )}
       </button>
       {menuOpen && (
         <>
@@ -309,7 +278,9 @@ function AccountMenu({
             id={menuId}
             role="menu"
             aria-label={user ? "Conta" : "Visitante"}
-            className={`absolute z-50 w-56 overflow-hidden rounded-xl border shadow-xl ${rail ? "bottom-full left-0 mb-2" : "right-0 top-12"}`}
+            className={`absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border shadow-2xl ${
+              rail ? "bottom-full left-0 mb-2 top-auto" : ""
+            }`}
             style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}
           >
             {user ? (
@@ -349,17 +320,25 @@ function AccountMenu({
   );
 }
 
-function RailItem({ item, active }: { item: NavItem; active: boolean }) {
+function TopNavItem({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`rail-item relative flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-center text-[11px] leading-tight transition-colors xl:flex-row xl:gap-3 xl:px-3 xl:py-2.5 xl:text-left xl:text-sm ${active ? "font-bold" : "font-medium"} ${FOCUS_RING}`}
+      className={`relative flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-all xl:gap-2 xl:px-3.5 xl:py-2 xl:text-sm ${FOCUS_RING} ${
+        active
+          ? "bg-[var(--th-card-alt)] font-bold text-[#f4841a] shadow-xs ring-1 ring-[#f4841a]/20"
+          : "text-[var(--th-muted)] hover:bg-[var(--th-card-alt)] hover:text-[var(--th-text)]"
+      }`}
     >
-      {/* Indicador do item ativo: laranja cívico como apoio visual, não como cor do texto. */}
-      {active && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-1 rounded-full bg-[#f4841a]" />}
-      <Icon name={item.icon} size={20} strokeWidth={active ? 2.4 : 1.9} />
+      <Icon name={item.icon} size={17} strokeWidth={active ? 2.4 : 1.8} />
       <span>{item.label}</span>
+      {active && (
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-3 -bottom-0.5 h-[2px] rounded-full bg-[#f4841a]"
+        />
+      )}
     </Link>
   );
 }
@@ -381,9 +360,25 @@ function MenuItem({ icon, label, onClick, danger }: { icon: IconName; label: str
 
 function BottomItem({ item, active }: { item: { href: string; label: string; icon: IconName }; active: boolean }) {
   return (
-    <Link href={item.href} className="flex flex-col items-center justify-center gap-0.5" style={{ color: active ? "#f4841a" : "var(--th-muted)" }}>
-      <Icon name={item.icon} size={22} strokeWidth={active ? 2.4 : 1.8} />
-      <span className="text-[10px] font-semibold">{item.label}</span>
+    <Link
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className={`relative flex flex-col items-center justify-center gap-0.5 py-1 text-center transition-all ${FOCUS_RING} ${
+        active ? "text-[#f4841a]" : "text-[var(--th-muted)] hover:text-[var(--th-text)]"
+      }`}
+    >
+      <div className={`transition-transform duration-150 ${active ? "scale-110" : ""}`}>
+        <Icon name={item.icon} size={22} strokeWidth={active ? 2.5 : 1.8} />
+      </div>
+      <span className={`text-[10px] tracking-tight ${active ? "font-bold text-[#f4841a]" : "font-medium"}`}>
+        {item.label}
+      </span>
+      {active && (
+        <span
+          aria-hidden="true"
+          className="absolute -bottom-1 h-1 w-4 rounded-full bg-[#f4841a]"
+        />
+      )}
     </Link>
   );
 }

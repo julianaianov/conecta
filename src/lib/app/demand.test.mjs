@@ -74,8 +74,8 @@ function completeDemand(overrides = {}) {
     district: "Centro",
     municipality: "Rio de Janeiro",
     uf: "RJ",
-    latitude: null,
-    longitude: null,
+    latitude: -22.9068,
+    longitude: -43.1729,
     territory: "Centro",
     hasPhysicalExecution: true,
     budgetItems: [
