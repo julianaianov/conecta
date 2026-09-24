@@ -8,6 +8,7 @@ import {
   type AppNotification, type RankCategory, type RankEntry,
   type Connection, type ConnectionEvent, type ConnectionParty, type ConnectionStatus, type ConnectionType,
   type ConnectionMessage, type ConnectionMessagePage,
+  type AgendaCandidate, type MediaAgendaItem, type MediaAgendaItemUpdate,
   type AdminSnapshot,
 } from "./types";
 import { buildRanking, type RankingMetrics, type RankingUser } from "./ranking";
@@ -120,6 +121,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string | null = null,
     readonly validationStatus: string | null = null,
+    /** Erros por campo (422 `validation_failed`), quando o serviço os devolve. */
+    readonly fields: Record<string, string> = {},
   ) {
     super(message);
   }
@@ -140,8 +143,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       },
     });
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string; validationStatus?: string };
-      throw new ApiError(body.error ?? `Erro ${res.status}`, res.status, body.code ?? null, body.validationStatus ?? null);
+      const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string; validationStatus?: string; fields?: Record<string, string> };
+      throw new ApiError(
+        body.error ?? `Erro ${res.status}`, res.status, body.code ?? null, body.validationStatus ?? null,
+        body.fields && typeof body.fields === "object" ? body.fields : {},
+      );
     }
     return (await res.json()) as T;
   } catch (err) {
@@ -904,6 +910,30 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ body }),
     }).then(mapConnectionMessage);
+  },
+
+  // ── PAUTAS DA COMUNICAÇÃO (T28) ──────────────────────────
+  /** Pautas sugeridas pelos sinais do território (só Comunicação). */
+  discoverAgenda(): Promise<AgendaCandidate[]> {
+    return request<{ candidates: AgendaCandidate[] }>("/api/posts/media/agenda/discover")
+      .then((body) => (Array.isArray(body.candidates) ? body.candidates : []));
+  },
+  myAgenda(status?: MediaAgendaItem["status"]): Promise<MediaAgendaItem[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    return request<{ items: MediaAgendaItem[] }>(`/api/posts/media/agenda${query}`)
+      .then((body) => (Array.isArray(body.items) ? body.items : []));
+  },
+  createAgendaItem(input: { targetKind: "demanda" | "evento"; targetId: string; angle?: string | null }): Promise<MediaAgendaItem> {
+    return request<{ item: MediaAgendaItem }>("/api/posts/media/agenda", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }).then((body) => body.item);
+  },
+  updateAgendaItem(id: string, input: MediaAgendaItemUpdate): Promise<MediaAgendaItem> {
+    return request<{ item: MediaAgendaItem }>(`/api/posts/media/agenda/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }).then((body) => body.item);
   },
 
   /** Base bruta do painel administrativo, agregada pelos serviços persistentes. */

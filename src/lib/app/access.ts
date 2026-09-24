@@ -18,6 +18,7 @@ export const PRIVATE_PATH_PREFIXES = [
   "/conexoes/nova",
   "/conexoes/",
   "/cadastro-institucional",
+  "/pautas",
 ] as const;
 
 /** Rotas de sessão e de ação que nunca devem entrar no índice. */

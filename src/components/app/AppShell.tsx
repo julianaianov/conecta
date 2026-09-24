@@ -8,6 +8,7 @@ import { isPlatformAdmin } from "@/lib/app/admin-access";
 import { MY_DEMANDS_PATH } from "@/lib/app/demand";
 import { INSTITUTIONAL_AREA_PATH } from "@/lib/app/institutional";
 import { OPPORTUNITIES_PATH, canFilterOpportunities } from "@/lib/app/interest";
+import { AGENDA_PATH, canIdentifyAgenda } from "@/lib/app/media";
 import { PRIVACY_PATH } from "@/lib/app/privacy";
 import { normalizeRole } from "@/lib/app/types";
 import { DMLogo, DMMonogram } from "./DMLogo";
@@ -36,6 +37,8 @@ const NAV: NavItem[] = [
 /** Atalhos por perfil que o trilho lateral mostra no desktop (no mobile ficam no menu da conta). */
 const AGENT_NAV: NavItem = { href: MY_DEMANDS_PATH, label: "Minhas demandas", icon: "inventory" };
 const GOVERNMENT_NAV: NavItem = { href: INSTITUTIONAL_AREA_PATH, label: "Atuação institucional", icon: "building" };
+/** Comunicação identifica pautas e registra divulgação (T28, §3.5). */
+const MEDIA_NAV: NavItem = { href: AGENDA_PATH, label: "Pautas", icon: "megaphone" };
 /** Só para contas da operação (ver lib/app/admin-access.ts). */
 const ADMIN_NAV: NavItem = { href: "/admin", label: "Painel", icon: "shield" };
 
@@ -57,10 +60,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const organizesEvents = isAgent || isGovernment;
   // Parceiros e Poder Público filtram oportunidades de apoio (T15).
   const seesOpportunities = Boolean(user && canFilterOpportunities(user.role, user.profileType));
+  // Comunicação identifica pautas e registra divulgação (T28).
+  const isMedia = Boolean(user && canIdentifyAgenda(user.role, user.profileType));
 
   const profileNav: NavItem[] = [
     ...(isAgent ? [AGENT_NAV] : []),
     ...(isGovernment ? [GOVERNMENT_NAV] : []),
+    ...(isMedia ? [MEDIA_NAV] : []),
     ...(isAdmin ? [ADMIN_NAV] : []),
   ];
 
@@ -76,7 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <AccountMenu
       placement={placement}
       user={user}
-      flags={{ isAgent, isGovernment, isMember, isAdmin, organizesEvents, seesOpportunities }}
+      flags={{ isAgent, isGovernment, isMember, isAdmin, organizesEvents, seesOpportunities, isMedia }}
       onNavigate={(href) => router.push(href)}
       onLogout={handleLogout}
     />
@@ -217,6 +223,7 @@ type AccountFlags = {
   isAdmin: boolean;
   organizesEvents: boolean;
   seesOpportunities: boolean;
+  isMedia: boolean;
 };
 
 /**
@@ -240,7 +247,7 @@ function AccountMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuId = `app-account-menu-${useId().replace(/:/g, "")}`;
-  const { isAgent, isGovernment, isMember, isAdmin, organizesEvents, seesOpportunities } = flags;
+  const { isAgent, isGovernment, isMember, isAdmin, organizesEvents, seesOpportunities, isMedia } = flags;
   const rail = placement === "rail";
 
   // Esc fecha o menu da conta e devolve o foco ao botão que o abriu.
@@ -314,6 +321,7 @@ function AccountMenu({
                 {isMember && <MenuItem icon="calendar" label="Minhas inscrições" onClick={() => go("/minhas-inscricoes")} />}
                 {organizesEvents && <MenuItem icon="calendar" label="Meus eventos" onClick={() => go("/meus-eventos")} />}
                 {isGovernment && <MenuItem icon="building" label="Atuação institucional" onClick={() => go(INSTITUTIONAL_AREA_PATH)} />}
+                {isMedia && <MenuItem icon="megaphone" label="Pautas" onClick={() => go(AGENDA_PATH)} />}
                 {isAdmin && <MenuItem icon="shield" label="Painel da operação" onClick={() => go("/admin")} />}
                 <MenuItem icon="logout" label="Sair" onClick={onLogout} danger />
               </>

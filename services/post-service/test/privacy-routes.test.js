@@ -108,6 +108,7 @@ test('a anonimização troca o retrato de identidade e revoga os consentimentos 
     assert.deepEqual(body.summary, {
       publicacoes: 1,
       comentarios: 2,
+      pautas: 0,
       apoiosComExibicaoRevogada: 0,
       consentimentoDeRankingRevogado: true,
     });
@@ -115,7 +116,7 @@ test('a anonimização troca o retrato de identidade e revoga os consentimentos 
 
   const written = pool.queries.filter((q) => /^(UPDATE|INSERT|DELETE)/.test(q.text.trim()));
   const tocadas = written.map((q) => q.text.trim().split(/\s+/)[q.text.trim().startsWith('INSERT') ? 2 : 1]);
-  assert.deepEqual(new Set(tocadas), new Set(['posts', 'comments', 'supports', 'ranking_consents', 'anonymized_users']));
+  assert.deepEqual(new Set(tocadas), new Set(['posts', 'comments', 'supports', 'ranking_consents', 'media_agenda_items', 'anonymized_users']));
   // A trilha imutável não é tocada.
   for (const proibida of ['demands', 'demand_events', 'demand_interests', 'content_shares',
     'content_reports', 'demand_evidences', 'demand_accountability', 'demand_dossiers']) {

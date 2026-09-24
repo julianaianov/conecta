@@ -7,6 +7,7 @@ import {
   type PublicDemandInstitutional,
   type PublicDemandAccountabilityView,
   type PublicDossierInfo,
+  type DemandCoverage,
 } from "@/lib/app/types";
 import { DOSSIER_TITLE, formatBytesShort, publicDossierDownloadPath, shortHash } from "@/lib/app/dossier";
 import { resolveMediaUrl } from "@/lib/app/uploads";
@@ -24,6 +25,8 @@ import { interestTimelineDetail } from "@/lib/app/interest";
 import { supportTimelineDetail } from "@/lib/app/support";
 import { executionTimelineDetail } from "@/lib/app/execution";
 import { accountabilityTimelineDetail } from "@/lib/app/accountability";
+import { mediaTimelineDetail } from "@/lib/app/media";
+import { DemandCoverageSection } from "../media/DemandCoverageSection";
 import { DemandExecutionSection } from "../execution/DemandExecutionSection";
 import { DemandAccountabilitySection } from "../accountability/DemandAccountabilitySection";
 import { DemandInterestPanel } from "../interest/DemandInterestPanel";
@@ -97,7 +100,7 @@ function PublicDossierSection({ demandId, dossier }: { demandId: string; dossier
 }
 
 export function PublicDemandView({
-  demand, timeline, dossier = null, institutional = null, execution = null, accountability = null,
+  demand, timeline, dossier = null, institutional = null, execution = null, accountability = null, coverage = [],
 }: {
   demand: PublicDemand;
   timeline: DemandTimelineEvent[];
@@ -108,6 +111,8 @@ export function PublicDemandView({
   execution?: PublicDemandExecution | null;
   /** Resultados e prestação de contas, quando concluída (T18/T19). */
   accountability?: PublicDemandAccountabilityView | null;
+  /** Divulgações publicadas pela Comunicação (T28). */
+  coverage?: DemandCoverage[];
 }) {
   const place = [demand.territory, demand.district !== demand.territory ? demand.district : null, [demand.municipality, demand.uf].filter(Boolean).join("/")]
     .filter(Boolean).join(" · ");
@@ -240,6 +245,9 @@ export function PublicDemandView({
       {/* Resultados e prestação de contas (T18, slide 24; transparência T19). */}
       <DemandAccountabilitySection data={accountability} />
 
+      {/* Amplificação: divulgações publicadas pela Comunicação (T28). */}
+      <DemandCoverageSection coverage={coverage} />
+
       <ReadSection title="Linha do tempo" icon="clock">
         {timeline.length ? (
           <ol className="space-y-3 border-l-2 pl-4" style={{ borderColor: "var(--th-border)" }}>
@@ -247,9 +255,9 @@ export function PublicDemandView({
               <li key={event.id} className="relative">
                 <span aria-hidden className="absolute -left-[1.4rem] top-1 h-3 w-3 rounded-full border-2" style={{ borderColor: "#f4841a", background: "var(--th-card)" }} />
                 <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>{timelineEventLabel(event)}</p>
-                {(institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event) ?? accountabilityTimelineDetail(event)) && (
+                {(institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event) ?? accountabilityTimelineDetail(event) ?? mediaTimelineDetail(event)) && (
                   <p className="mt-0.5 line-clamp-2 text-xs" style={{ color: "var(--th-text)" }}>
-                    {institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event) ?? accountabilityTimelineDetail(event)}
+                    {institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event) ?? accountabilityTimelineDetail(event) ?? mediaTimelineDetail(event)}
                   </p>
                 )}
                 <p className="text-xs font-numeric" style={{ color: "var(--th-muted)" }}>{formatDate(event.createdAt)}</p>

@@ -32,6 +32,7 @@ const privacyRoutes = require('./routes/privacy');
 const profilesRoutes = require('./routes/profiles');
 const eventsRoutes = require('./routes/events');
 const aiRoutes = require('./routes/ai');
+const mediaRoutes = require('./routes/media');
 const { createAiService } = require('./ai/service');
 const { createRankingService } = require('./ranking/service');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
@@ -139,6 +140,9 @@ const createApp = ({
   // Sugestões de inteligência artificial (T23): /ai/status, /demands/:id/ai/*
   // e /government/ai/*. Sempre sugestão revisável; nunca altera dado sozinha.
   app.use('/', aiRoutes({ pool, auth, ai, governmentActor, governmentProfile }));
+  // Pautas da Comunicação e divulgação registrada (T28): /media/agenda* e a
+  // cobertura pública /demands/:id/coverage. Antes das rotas de demanda.
+  app.use('/', mediaRoutes({ pool, auth }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 

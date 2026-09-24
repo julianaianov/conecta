@@ -21,6 +21,7 @@ const PRIVATE_PATHS = [
   "/perfil/privacidade",
   "/meus-eventos",
   "/minhas-inscricoes",
+  "/pautas",
 ];
 
 export default function robots(): MetadataRoute.Robots {

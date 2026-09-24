@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicDemandView } from "@/components/app/demand/PublicDemandView";
 import {
-  getPublicDemand, getPublicDemandAccountability, getPublicDemandExecution,
+  getPublicDemand, getPublicDemandAccountability, getPublicDemandCoverage, getPublicDemandExecution,
   getPublicDemandInstitutional, getPublicDemandTimeline, getPublicDossierInfo,
 } from "@/lib/server/public-data";
 import { DEMAND_CATEGORY_LABELS } from "@/lib/app/types";
@@ -35,9 +35,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PublicDemandPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [demand, timeline, dossier, institutional, execution, accountability] = await Promise.all([
+  const [demand, timeline, dossier, institutional, execution, accountability, coverage] = await Promise.all([
     getPublicDemand(id), getPublicDemandTimeline(id), getPublicDossierInfo(id), getPublicDemandInstitutional(id),
-    getPublicDemandExecution(id), getPublicDemandAccountability(id),
+    getPublicDemandExecution(id), getPublicDemandAccountability(id), getPublicDemandCoverage(id),
   ]);
   if (!demand) notFound();
   const url = absoluteUrl(`/demandas/${encodeURIComponent(demand.id)}`);
@@ -50,6 +50,7 @@ export default async function PublicDemandPage({ params }: { params: Promise<{ i
         institutional={institutional}
         execution={execution}
         accountability={accountability}
+        coverage={coverage}
       />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(demandJsonLd(demand, url)).replace(/</g, "\\u003c") }} />
     </>

@@ -55,3 +55,4 @@ post_db post-service/migrations/021-events.sql
 post_db post-service/migrations/022-ai-suggestions.sql
 post_db post-service/migrations/023-demand-themes.sql
 post_db post-service/migrations/024-post-photos.sql
+post_db post-service/migrations/025-media-agenda.sql

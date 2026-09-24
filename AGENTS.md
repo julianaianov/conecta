@@ -1357,6 +1357,48 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   404 de terceiro, 409 encerrada, 400 corpo, notificação) e
   `test/privacy.test.js` (anonimização das mensagens).
 
+## Pautas da Comunicação e divulgação (T28)
+
+- Fonte: Arquitetura de Perfis §3.5 (Comunicação: "Identificar pautas",
+  "Compartilhar iniciativas", "Divulgar projetos e resultados", "Acompanhar
+  informações públicas do território") e §6, etapa 6 (AMPLIFICAÇÃO).
+- Migração post 025 (`025-media-agenda.sql`): `media_agenda_items` — a pauta
+  de uma conta da Comunicação sobre uma demanda ou um evento público (retrato
+  do título; ângulo ≤ 1000; estado `identificada` → `em_apuracao` →
+  `publicada` | `descartada`; em `publicada`, veículo, URL https e data
+  obrigatórios). Uma pauta por (conta, alvo); sem FK para o alvo. Trigger
+  `media_agenda_items_guard`: `gestao_app` só lê, nada é excluído, conta e
+  alvo imutáveis, `publicada` é final. `media_agenda_record_event`
+  (`SECURITY DEFINER`) grava `divulgacao_registrada` (público, ator
+  `comunicacao`, novo no CHECK de `demand_events`) com veículo, URL e data —
+  nunca nome nem id da conta.
+- Domínio em `services/post-service/src/media/` (`constants.js`,
+  `validation.js`, `store.js`). Descoberta de pautas: seis consultas com
+  LIMIT (urgentes dos últimos 30 dias, execução com par antes/depois,
+  prestação de contas concluída, mais apoiadas, eventos dos próximos 30 dias e
+  as pautas da própria conta), alvos repetidos unidos com todos os sinais.
+- Rotas (`src/routes/media.js`, montada em `/` antes das de demanda; gate
+  `requireMedia` → 403 `not_media`): `GET /media/agenda/discover`,
+  `GET /media/agenda[?status=]`, `POST /media/agenda` (404 `target_not_found`
+  se o alvo não é público; 409 `agenda_item_exists`), `PUT /media/agenda/:id`
+  (422 por campo; 409 `agenda_item_closed` depois de publicada) e, pública,
+  `GET /demands/:id/coverage`. `divulgacao_registrada` está em
+  `DETAILED_EVENT_TYPES` de `routes/demands.js`.
+- LGPD: a exportação leva `pautas`; a anonimização troca `user_name` das
+  pautas pelo rótulo (a pauta fica: é registro de divulgação).
+- Frontend: `src/lib/app/media.ts` (espelho comparado em `media.test.mjs`),
+  permissão `agenda` em `ROLE_PERMISSIONS.media`, bloco em `api.ts` e tipos
+  em `types.ts`; página `/pautas` (`noindex`, no `robots.ts` e em
+  `PRIVATE_PATH_PREFIXES`; item "Pautas" no trilho e no menu da conta da
+  Comunicação) com `MediaAgendaClient` (pautas sugeridas com os sinais e
+  "Identificar pauta"; minhas pautas com apuração, registro da divulgação e
+  descarte); seção "Divulgação" na página pública da demanda
+  (`DemandCoverageSection`, SSR por `getPublicDemandCoverage`) e o evento na
+  linha do tempo (`mediaTimelineLabel`/`mediaTimelineDetail`).
+- Grant dm-infra `024-gestao-app-post-media.sql` (só SELECT).
+- Testes: `test/media-domain.test.js`, `test/media-routes.test.js`,
+  `test/privacy-routes.test.js` e `src/lib/app/media.test.mjs`.
+
 ## Segurança dos serviços
 
 - `JWT_SECRET` é obrigatório e forte (32+ caracteres, sem valores de exemplo)

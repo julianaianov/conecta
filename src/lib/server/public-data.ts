@@ -9,6 +9,7 @@ import {
   type PublicDemand,
   type PublicDemandSummary,
   type DemandTimelineEvent,
+  type DemandCoverage,
   type PublicDemandInstitutional,
   type PublicDemandExecution,
   type PublicDemandAccountabilityView,
@@ -254,6 +255,12 @@ export async function getPublicDemand(id: string): Promise<PublicDemand | null> 
 export async function getPublicDemandTimeline(id: string): Promise<DemandTimelineEvent[]> {
   const data = await fetchPublicJson<{ events?: DemandTimelineEvent[] }>("posts", `/demands/${encodeURIComponent(id)}/timeline`);
   return Array.isArray(data?.events) ? data.events : [];
+}
+
+/** Divulgações publicadas pela Comunicação (T28): veículo, endereço e data; `[]` sem cobertura ou sem serviço. */
+export async function getPublicDemandCoverage(id: string): Promise<DemandCoverage[]> {
+  const data = await fetchPublicJson<{ coverages?: DemandCoverage[] }>("posts", `/demands/${encodeURIComponent(id)}/coverage`);
+  return Array.isArray(data?.coverages) ? data.coverages : [];
 }
 
 /** Respostas institucionais, status por órgão (T13) e tramitação (T14); `null` se a demanda não é pública. */

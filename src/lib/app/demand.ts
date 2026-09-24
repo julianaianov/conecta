@@ -37,6 +37,7 @@ import { interestTimelineLabel } from "./interest.ts";
 import { supportTimelineLabel } from "./support.ts";
 import { executionTimelineLabel } from "./execution.ts";
 import { accountabilityTimelineLabel } from "./accountability.ts";
+import { mediaTimelineLabel } from "./media.ts";
 
 // ── Rotas ──────────────────────────────────────────────────
 
@@ -860,6 +861,12 @@ export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "to
     details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
   });
   if (accountability) return accountability;
+  // Divulgação registrada pela Comunicação (T28).
+  const media = mediaTimelineLabel({
+    type: event.type,
+    details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
+  });
+  if (media) return media;
   switch (event.type) {
     case "criada": return "Rascunho criado";
     case "enviada_para_analise": return event.payload?.reenvio === true ? "Reenviada para análise" : "Enviada para análise";

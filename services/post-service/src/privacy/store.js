@@ -20,7 +20,7 @@ async function exportUserData(db, userId) {
 
   const [
     publicacoes, comentarios, reacoes, demandas, apoios, interesses,
-    compartilhamentos, denuncias, consentimentoRanking, selos, arquivos,
+    compartilhamentos, denuncias, consentimentoRanking, selos, arquivos, pautas,
   ] = await Promise.all([
     q(`SELECT id, type, title, description, status, visibility, neighborhood, city, state,
               zipcode, latitude, longitude, tags, images, videos, demand_id, created_at
@@ -50,6 +50,10 @@ async function exportUserData(db, userId) {
     q('SELECT badge, awarded_at, evidence_count FROM profile_badges WHERE user_id = $1 ORDER BY awarded_at'),
     q(`SELECT id, purpose, status, content_type, size_bytes, original_name, demand_id, created_at, confirmed_at
          FROM uploads WHERE owner_id = $1 ORDER BY created_at`),
+    // Pautas da Comunicação (T28).
+    q(`SELECT id, target_kind, target_id, target_title, angle, status, outlet_name, published_url,
+              published_on, created_at, updated_at
+         FROM media_agenda_items WHERE user_id = $1 ORDER BY created_at`),
   ]);
 
   return {
@@ -64,6 +68,7 @@ async function exportUserData(db, userId) {
     consentimentoDeRanking: consentimentoRanking[0] ?? { consent: false, updated_at: null },
     selosDeImpacto: selos,
     arquivos,
+    pautas,
   };
 }
 
@@ -118,10 +123,19 @@ async function anonymizeUser(db, userId, { protocol = null } = {}) {
      RETURNING user_id`,
     [userId],
   );
+  // Pautas da Comunicação (T28): o retrato do nome sai; a pauta fica, porque é
+  // registro de divulgação (a cobertura pública nunca mostrou o nome).
+  const agenda = await db.query(
+    `UPDATE media_agenda_items SET user_name = $2
+      WHERE user_id = $1 AND user_name IS DISTINCT FROM $2
+      RETURNING id`,
+    [userId, ANONYMOUS_NAME],
+  );
 
   const summary = {
     publicacoes: posts.rowCount ?? posts.rows.length,
     comentarios: comments.rowCount ?? comments.rows.length,
+    pautas: agenda.rowCount ?? agenda.rows.length,
     apoiosComExibicaoRevogada: supports.rowCount ?? supports.rows.length,
     consentimentoDeRankingRevogado: (ranking.rowCount ?? ranking.rows.length) > 0,
   };

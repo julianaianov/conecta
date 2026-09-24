@@ -171,7 +171,8 @@ export type Permission =
   | "express_interest"        // demonstrar interesse
   | "support"                 // apoiar projetos / oferecer recursos, produtos ou serviços
   | "volunteer"               // oferecer voluntariado, inscrever-se em eventos
-  | "ranking";                // aparecer no ranking de apoiadores e impacto
+  | "ranking"                 // aparecer no ranking de apoiadores e impacto
+  | "agenda";                 // identificar pautas e registrar divulgação (Comunicação, T28)
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   agent: ["publish", "update_results", "interact", "share", "connect"],
@@ -180,8 +181,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   // Sem "ranking": o Poder Público é medido por indicadores de atuação,
   // não por um ranking competitivo de apoiadores (neutralidade institucional).
   government: ["institutional_response", "interact", "share", "connect", "express_interest", "support"],
-// TODO(fonte-da-verdade): Arquitetura de Perfis §3.5 — "Identificar pautas" não tem funcionalidade própria (Fase 2).
-  media: ["interact", "share", "connect"],
+  // "Identificar pautas" e "Divulgar projetos e resultados" são as pautas da T28.
+  media: ["interact", "share", "connect", "agenda"],
 };
 
 export function can(role: string | null | undefined, permission: Permission, profileType?: string | null): boolean {
@@ -211,7 +212,7 @@ export function allowedPostTypes(role: string | null | undefined, profileType?: 
  * Perfis §3.1–3.5 (fonte da verdade).
  */
 export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
-// TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 / Modelo de Conexão §12 — "Conversar com parceiros": não há mensagens dentro da conexão, só a mensagem inicial.
+  // "Conversar com parceiros" é a conversa dentro da conexão (T27, ConnectionMessage).
   agent: [
     "Criar e gerenciar perfil", "Publicar demandas", "Publicar projetos",
     "Publicar eventos e ações", "Adicionar fotos, documentos e informações",
@@ -608,6 +609,66 @@ export interface ConnectionMessagePage {
 }
 
 export const CONNECTION_MESSAGE_MAX_LENGTH = 2000;
+
+// ── Pautas da Comunicação (T28) ────────────────────────────
+// Espelho de services/post-service/src/routes/media.js; vocabulário em lib/app/media.ts.
+export interface AgendaSignalHit {
+  signal: string;
+  label: string;
+  detail: string | null;
+}
+
+/** Candidato a pauta na descoberta: só o que a rota pública já expõe. */
+export interface AgendaCandidate {
+  targetKind: "demanda" | "evento";
+  targetId: string;
+  title: string;
+  category: string | null;
+  categoryLabel: string | null;
+  priority: string | null;
+  status: string;
+  district: string | null;
+  municipality: string | null;
+  uf: string | null;
+  territory: string | null;
+  publishedAt: string | null;
+  startsAt: string | null;
+  signals: AgendaSignalHit[];
+  /** A pauta que esta conta já identificou para o alvo, se houver. */
+  agendaItem: { id: string; status: string } | null;
+}
+
+export interface MediaAgendaItem {
+  id: string;
+  targetKind: "demanda" | "evento";
+  targetId: string;
+  targetTitle: string | null;
+  angle: string | null;
+  status: "identificada" | "em_apuracao" | "publicada" | "descartada";
+  outletName: string | null;
+  publishedUrl: string | null;
+  /** AAAA-MM-DD */
+  publishedOn: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaAgendaItemUpdate {
+  status?: MediaAgendaItem["status"];
+  angle?: string | null;
+  outletName?: string;
+  publishedUrl?: string;
+  publishedOn?: string;
+}
+
+/** Divulgação publicada, na projeção pública da demanda: sem nome nem id da conta. */
+export interface DemandCoverage {
+  id: string;
+  outletName: string;
+  publishedUrl: string;
+  publishedOn: string;
+  profileType: ProfileType | null;
+}
 
 // ── Notificações ───────────────────────────────────────────
 export type NotificationKind = "comment" | "support" | "reaction" | "connection" | "forwarding" | "message";
@@ -1276,6 +1337,10 @@ export interface DemandTimelineDetails {
   goalsTotal?: number | null;
   goalsAchieved?: number | null;
   impactIndicators?: string | null;
+  /** Divulgação registrada pela Comunicação (T28, migração post 025). */
+  outletName?: string | null;
+  publishedUrl?: string | null;
+  publishedOn?: string | null;
 }
 
 /** Evento da linha do tempo completa, visto pelo autor. */
