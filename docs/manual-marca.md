@@ -90,14 +90,14 @@ Sempre via variáveis, nunca hex fixo: `--th-bg`, `--th-bg-alt`, `--th-surface`,
 Usadas para papéis, tipos de publicação, status e pinos do mapa. **A landing e o
 app usam as mesmas** — não criar paletas paralelas.
 
-**Papéis do usuário**
-| Papel | Hex |
+**Categorias de perfil** (`ROLE_COLORS`)
+| Categoria | Hex |
 |-------|-----|
-| Cidadão / Morador | `#2E7BA8` |
-| ONG | `#5A9BC4` |
-| Associação | `#1B4F72` |
-| Governo / Prefeitura | `#0D2D42` |
-| Empresa / Patrocinador | `#F4841A` |
+| Agente de Transformação | `#1B4F72` |
+| Membro da Comunidade | `#2E7BA8` |
+| Parceiro | `#F4841A` |
+| Poder Público | `#0D2D42` |
+| Comunicação | `#2E9E5B` |
 
 **Tipos de publicação**
 | Tipo | Hex |

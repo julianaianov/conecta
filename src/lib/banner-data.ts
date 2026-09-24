@@ -1,3 +1,4 @@
+import { ROLE_ECOSYSTEM_ROLES } from "./app/types";
 import { BANNER_PHOTOS } from "./banner-photos";
 
 /** 4 pilares — textos e cores do banner de features */
@@ -28,43 +29,40 @@ export const BANNER_FEATURES = [
   },
 ] as const;
 
-/** 6 stakeholders — fotos + textos do banner */
+/**
+ * As 5 categorias do ecossistema — título e papel da Arquitetura de Perfis §2
+ * (fonte da verdade), com as fotos do banner.
+ */
 export const STAKEHOLDERS = [
   {
-    title: "Associações de bairro",
+    title: "Agentes de Transformação",
     titleColor: "#F4841A",
-    description: "Fortaleça seu bairro e conquiste melhorias coletivas.",
+    description: ROLE_ECOSYSTEM_ROLES.agent,
     image: BANNER_PHOTOS.stakeholderAssociacoes,
   },
   {
-    title: "Projetos e coletivos",
+    title: "Membros da Comunidade",
     titleColor: "#F4841A",
-    description: "Divulgue suas ações e amplie seu impacto nas suas conexões.",
-    image: BANNER_PHOTOS.stakeholderProjetos,
+    description: ROLE_ECOSYSTEM_ROLES.member,
+    image: BANNER_PHOTOS.stakeholderVoluntarios,
   },
   {
-    title: "Imprensa e mídia",
+    title: "Parceiros",
     titleColor: "#F4841A",
-    description: "Cubra e amplifique as histórias do seu bairro.",
-    image: BANNER_PHOTOS.stakeholderOngs,
-  },
-  {
-    title: "Prefeituras e governo",
-    titleColor: "#F4841A",
-    description: "Gestão participativa e comunicação direta com a população.",
-    image: BANNER_PHOTOS.stakeholderPrefeitura,
-  },
-  {
-    title: "Empresas parceiras",
-    titleColor: "#F4841A",
-    description: "Invista em projetos, gere impacto e valorize sua marca.",
+    description: ROLE_ECOSYSTEM_ROLES.partner,
     image: BANNER_PHOTOS.stakeholderEmpresas,
   },
   {
-    title: "Moradores e voluntários",
+    title: "Poder Público",
     titleColor: "#F4841A",
-    description: "Participe, colabore e faça a diferença no seu bairro.",
-    image: BANNER_PHOTOS.stakeholderVoluntarios,
+    description: ROLE_ECOSYSTEM_ROLES.government,
+    image: BANNER_PHOTOS.stakeholderPrefeitura,
+  },
+  {
+    title: "Comunicação",
+    titleColor: "#F4841A",
+    description: ROLE_ECOSYSTEM_ROLES.media,
+    image: BANNER_PHOTOS.stakeholderOngs,
   },
 ] as const;
 

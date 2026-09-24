@@ -23,23 +23,31 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   media: "Comunicação",
 };
 
-/** O papel da categoria no ecossistema, em uma palavra. */
+/** A função da categoria no ecossistema (Arquitetura de Perfis §3). */
 export const ROLE_FUNCTIONS: Record<UserRole, string> = {
-// TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 — a função do Agente de Transformação na fonte é "Publicadores", não "Iniciadores".
-  agent: "Iniciadores",
+  agent: "Publicadores",
   member: "Participantes",
   partner: "Apoiadores",
   government: "Articulação",
   media: "Amplificação",
 };
 
+/** O papel da categoria na tabela do ecossistema (Arquitetura de Perfis §2). */
+export const ROLE_ECOSYSTEM_ROLES: Record<UserRole, string> = {
+  agent: "Identificam demandas e publicam projetos",
+  member: "Participam, apoiam e fortalecem iniciativas",
+  partner: "Apoiam, financiam ou viabilizam soluções",
+  government: "Apoiam, financiam ou viabilizam soluções; articulam, respondem e acompanham demandas",
+  media: "Amplificam iniciativas, demandas e resultados",
+};
+
+/** A função detalhada de cada categoria (Arquitetura de Perfis §3). */
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   agent: "Identificam necessidades no território e transformam demandas em projetos e ações.",
   member: "Participam, acompanham, apoiam e fortalecem iniciativas do território.",
-  partner: "Oferecem recursos, produtos, serviços, conhecimento, estrutura ou investimento para demandas e projetos.",
-// TODO(fonte-da-verdade): Arquitetura de Perfis §3.4 — descrição do Poder Público sem "podendo disponibilizar recursos, serviços, infraestrutura, programas, conhecimento técnico e parcerias".
-  government: "Acompanham demandas, respondem institucionalmente e encaminham ou viabilizam soluções dentro de sua competência.",
-  media: "Amplificam demandas, projetos e resultados, aumentando a visibilidade e o potencial de conexão.",
+  partner: "Possuem recursos, produtos, serviços, conhecimento, estrutura ou investimento para apoiar uma demanda ou projeto.",
+  government: "Acompanham demandas, respondem institucionalmente, articulam órgãos e políticas públicas e encaminham ou viabilizam soluções dentro de sua competência, podendo disponibilizar recursos, serviços, infraestrutura, programas, conhecimento técnico e parcerias.",
+  media: "Amplificam demandas, projetos e resultados, aumentando a visibilidade e o potencial de conexão com parceiros e comunidade.",
 };
 
 export const ROLE_COLORS: Record<UserRole, string> = {
@@ -198,21 +206,22 @@ export function allowedPostTypes(role: string | null | undefined, profileType?: 
   return ROLE_POST_TYPES[normalizeRole(role, profileType)];
 }
 
-/** Texto exibido no cadastro — espelha a especificação de perfis. */
+/**
+ * Permissões principais exibidas no cadastro — texto literal da Arquitetura de
+ * Perfis §3.1–3.5 (fonte da verdade).
+ */
 export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
-// TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 — a fonte usa os verbos "Publicar demandas/projetos/eventos e ações" (aqui "Registrar …").
 // TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 / Modelo de Conexão §12 — "Conversar com parceiros": não há mensagens dentro da conexão, só a mensagem inicial.
   agent: [
-    "Criar e gerenciar perfil", "Registrar demandas", "Registrar projetos",
-    "Registrar eventos e ações", "Adicionar fotos, documentos e informações",
+    "Criar e gerenciar perfil", "Publicar demandas", "Publicar projetos",
+    "Publicar eventos e ações", "Adicionar fotos, documentos e informações",
     "Receber solicitações de conexão", "Conversar com parceiros",
     "Atualizar o andamento dos projetos", "Registrar resultados e impactos",
     "Informar necessidades de apoio", "Participar de indicadores de impacto",
   ],
-// TODO(fonte-da-verdade): Arquitetura de Perfis §3.2 — a fonte lista "Curtir/apoiar", "Comentar" e "Compartilhar"; language.test.mjs proíbe "curtir" (decisão de produto).
   member: [
-    "Criar perfil", "Visualizar demandas e projetos", "Apoiar iniciativas",
-    "Registrar atualizações", "Divulgar iniciativas", "Solicitar conexão",
+    "Criar perfil", "Visualizar demandas e projetos", "Curtir/apoiar",
+    "Comentar", "Compartilhar", "Solicitar conexão",
     "Demonstrar interesse em participar", "Inscrever-se em eventos",
     "Oferecer voluntariado", "Apoiar projetos",
   ],
@@ -223,30 +232,29 @@ export const ROLE_PERMISSION_LABELS: Record<UserRole, string[]> = {
     "Registrar apoio realizado", "Acompanhar resultados",
     "Participar do ranking de apoiadores",
   ],
-// TODO(fonte-da-verdade): Arquitetura de Perfis §3.4 — faltam os rótulos "Publicar respostas institucionais" e "Compartilhar iniciativas".
   government: [
     "Criar perfil institucional", "Visualizar mapa de demandas e projetos",
     "Acompanhar iniciativas do território", "Solicitar conexão",
     "Responder demandas relacionadas à sua atuação",
-    "Registrar respostas institucionais",
-    "Informar programas, serviços ou oportunidades", "Divulgar iniciativas",
+    "Publicar respostas institucionais",
+    "Informar programas, serviços ou oportunidades", "Compartilhar iniciativas",
     "Acompanhar indicadores e resultados", "Filtrar oportunidades de apoio",
     "Demonstrar interesse", "Oferecer recursos", "Apoiar projetos",
   ],
   media: [
-    "Criar perfil profissional ou institucional",
+    "Criar perfil profissional/institucional",
     "Visualizar demandas, projetos e resultados", "Solicitar conexão",
-    "Identificar pautas", "Divulgar iniciativas",
+    "Identificar pautas", "Compartilhar iniciativas",
     "Divulgar projetos e resultados",
     "Acompanhar informações públicas do território",
   ],
 };
 
 export const ROLE_RESTRICTIONS: Partial<Record<UserRole, string>> = {
-  member: "Não registra demandas ou projetos em nome de uma organização ou comunidade sem vínculo ou autorização.",
-  partner: "Apoia, oferece recursos e se conecta — demandas e projetos são iniciados pelos Agentes de Transformação.",
-  government: "Registra respostas institucionais e programas; não participa do ranking competitivo de apoiadores.",
-  media: "Amplifica e divulga iniciativas — demandas e projetos são iniciados pelos Agentes de Transformação.",
+  member: "Não publica demandas ou projetos em nome de uma organização ou comunidade sem vínculo ou autorização.",
+  partner: "Apoia, oferece recursos e se conecta — demandas e projetos são publicados pelos Agentes de Transformação.",
+  government: "Publica respostas institucionais e programas; não entra no ranking competitivo de apoiadores — é acompanhado por indicadores de atuação, respostas, encaminhamentos e resultados.",
+  media: "Amplifica e divulga iniciativas — demandas e projetos são publicados pelos Agentes de Transformação.",
 };
 
 export interface User {

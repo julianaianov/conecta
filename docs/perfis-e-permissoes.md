@@ -1,10 +1,15 @@
 # Perfis e permissões — DM Conecta
 
-**Atualizado em:** 17 de setembro de 2026
+**Atualizado em:** 24 de setembro de 2026
+
+**Fonte da verdade:** `dm-docs/fonte-da-verdade/DM_Conecta_Arquitetura_de_Perfis_e_Fluxo_do_Ecossistema.html`.
+Os textos exibidos (função, papel, descrição e permissões principais) são
+cópia literal da fonte em `src/lib/app/types.ts`.
 
 Os perfis do DM Conecta são organizados pela **função** que cada participante
 exerce no ecossistema. O código-fonte da regra está em `src/lib/app/types.ts`
-(`ROLES`, `ROLE_PROFILES`, `ROLE_PERMISSIONS`, `ROLE_POST_TYPES`) e é espelhado
+(`ROLES`, `ROLE_PROFILES`, `ROLE_FUNCTIONS`, `ROLE_ECOSYSTEM_ROLES`,
+`ROLE_DESCRIPTIONS`, `ROLE_PERMISSION_LABELS`, `ROLE_PERMISSIONS`, `ROLE_POST_TYPES`) e é espelhado
 em `services/auth-service/src/routes/auth.js` (cadastro) e
 `services/post-service/src/roles.js` (checagem no servidor).
 
@@ -16,21 +21,18 @@ em `services/auth-service/src/routes/auth.js` (cadastro) e
 DEMANDA → PROJETO → CONEXÃO → APOIO → ARTICULAÇÃO → AMPLIFICAÇÃO → EXECUÇÃO →
 RESULTADO → IMPACTO
 
-Agentes de Transformação publicam · Parceiros e Poder Público viabilizam e
+Agentes de Transformação publicam · Poder Público e Parceiros viabilizam e
 articulam · Comunicação amplifica · Membros da Comunidade participam.
 
 ## Categorias
 
-| Chave (`role`) | Categoria | Função | Subperfis (`profile_type`) |
-| --- | --- | --- | --- |
-| `agent` | Agentes de Transformação | Publicadores | `associacao`, `ong`, `instituto`, `projeto_social`, `coletivo`, `lider_comunitario`, `representante_bairro` |
-| `member` | Membros da Comunidade | Participantes | `morador`, `voluntario`, `jovem`, `participante` |
-| `partner` | Parceiros | Apoiadores | `empresa`, `marca`, `comercio_local`, `patrocinador` |
-| `government` | Poder Público | Articulação | `prefeitura`, `secretaria`, `orgao_publico`, `representante_poder_publico`, `politico` |
-| `media` | Comunicação | Amplificação | `imprensa`, `veiculo_comunicacao`, `jornalista` |
-
-> TODO(fonte-da-verdade): Arquitetura de Perfis §3.1 — a função "Publicadores" desta tabela diverge
-> de `ROLE_FUNCTIONS.agent` em `src/lib/app/types.ts` ("Iniciadores").
+| Chave (`role`) | Categoria | Função | Papel (§2) | Subperfis (`profile_type`) |
+| --- | --- | --- | --- | --- |
+| `agent` | Agentes de Transformação | Publicadores | Identificam demandas e publicam projetos | `associacao`, `ong`, `instituto`, `projeto_social`, `coletivo`, `lider_comunitario`, `representante_bairro` |
+| `member` | Membros da Comunidade | Participantes | Participam, apoiam e fortalecem iniciativas | `morador`, `voluntario`, `jovem`, `participante` |
+| `partner` | Parceiros | Apoiadores | Apoiam, financiam ou viabilizam soluções | `empresa`, `marca`, `comercio_local`, `patrocinador` |
+| `government` | Poder Público | Articulação | Apoiam, financiam ou viabilizam soluções; articulam, respondem e acompanham demandas | `prefeitura`, `secretaria`, `orgao_publico`, `representante_poder_publico`, `politico` |
+| `media` | Comunicação | Amplificação | Amplificam iniciativas, demandas e resultados | `imprensa`, `veiculo_comunicacao`, `jornalista` |
 
 Previstos para versões futuras: investidores e financiadores (Parceiros) e
 criadores de conteúdo (Comunicação).
@@ -53,8 +55,9 @@ para todos os perfis.
 | `volunteer` — voluntariado e inscrição em eventos | | ✓ | | | |
 | `ranking` — ranking de apoiadores e impacto | | ✓ | ✓ | | |
 
-> TODO(fonte-da-verdade): Arquitetura de Perfis §3.2 — `interact` = comentar e curtir/apoiar na fonte;
-> a interface proíbe "curtir" (`src/lib/app/language.test.mjs`), decisão de produto.
+O cadastro lista "Curtir/apoiar" como na fonte (§3.2). No produto, essa ação é
+a marcação de apoio do card de sinal, sem ícone de coração ou polegar; as telas
+do produto continuam sem a palavra "curtida" (`src/lib/app/language.test.mjs`).
 
 Os Agentes de Transformação aparecem no ranking de impacto pelos projetos que
 publicam e pelos apoios que recebem.

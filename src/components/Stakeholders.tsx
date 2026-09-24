@@ -22,7 +22,7 @@ export function Stakeholders() {
           </div>
         </Reveal>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {STAKEHOLDERS.map((item, i) => (
             <Reveal key={item.title} delay={i * 60} className="h-full">
               <div
@@ -36,7 +36,7 @@ export function Stakeholders() {
                     alt={item.title}
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 200px"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 </div>
@@ -48,7 +48,7 @@ export function Stakeholders() {
                   >
                     {item.title}
                   </h3>
-                  <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed" style={{ color: "var(--th-muted)" }}>
+                  <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: "var(--th-muted)" }}>
                     {item.description}
                   </p>
                   <button

@@ -49,7 +49,8 @@ const forbiddenProductLanguage = [
   /deixe um recado/i,
   /mural/i,
   /\bcurtidas?\b/i,
-  // TODO(fonte-da-verdade): Arquitetura de Perfis §3.2 — a fonte lista "Curtir/apoiar" entre as ações do Membro; manter a proibição é decisão de produto (ver TODO em src/lib/app/types.ts).
+  // A Arquitetura de Perfis §3.2 lista "Curtir/apoiar": o cadastro mostra o texto da fonte
+  // (ROLE_PERMISSION_LABELS em types.ts); nas telas do produto a ação é a marcação de apoio.
   /\bcurtir\b/i,
 ];
 
