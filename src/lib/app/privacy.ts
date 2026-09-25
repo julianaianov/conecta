@@ -144,7 +144,7 @@ export const RETENTION_RULES: RetentionRule[] = [
   },
   {
     key: "perfil_de_apoio",
-    data: "Perfil de apoio (territórios, categorias e recursos de interesse)",
+    data: "Perfil de apoio (territórios, categorias e recursos de interesse) e perfil empresarial ou da Comunicação declarado",
     action: "apaga",
     rule: "É preferência de atuação, sem valor de prova: o registro é removido.",
     basis: "LGPD art. 18, VI",
@@ -290,9 +290,9 @@ export const DATA_INVENTORY: DataInventoryEntry[] = [
     optional: true,
   },
   {
-    source: "user_db.connections, connection_messages, scraps, testimonials, partner_profiles, organization_members",
+    source: "user_db.connections, connection_messages, scraps, testimonials, partner_profiles, business_profiles, media_profiles, organization_members",
     group: "Conexões e rede",
-    fields: ["mensagem de contato", "mensagens da conversa da conexão e data da última leitura", "estado e desfecho", "recados e depoimentos", "perfil de apoio: territórios, categorias e recursos de interesse", "vínculo a uma instituição: nível, convites e datas"],
+    fields: ["mensagem de contato", "mensagens da conversa da conexão e data da última leitura", "estado e desfecho", "recados e depoimentos", "perfil de apoio: territórios, categorias e recursos de interesse", "perfil empresarial ou da Comunicação declarado: nome, CNPJ, segmento ou área de cobertura, registro profissional, descrição e site", "vínculo a uma instituição: nível, convites e datas"],
     purpose: "Aproximar quem pede e quem apoia.",
     visibility: "privado",
   },

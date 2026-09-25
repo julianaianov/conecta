@@ -87,6 +87,8 @@ function createPool({ anonymized = false } = {}) {
       }
       if (sql.startsWith('UPDATE profiles')) return { rows: [{ id: 'perfil' }], rowCount: 1 };
       if (sql.startsWith('DELETE FROM partner_profiles')) return { rows: [{ user_id: USER }], rowCount: 1 };
+      if (sql.startsWith('DELETE FROM business_profiles')) return { rows: [{ user_id: USER }], rowCount: 1 };
+      if (sql.startsWith('DELETE FROM media_profiles')) return { rows: [], rowCount: 0 };
       if (sql.startsWith('DELETE FROM scraps')) return { rows: [{ id: 's1' }], rowCount: 1 };
       if (sql.startsWith('DELETE FROM testimonials')) return { rows: [], rowCount: 0 };
       if (sql.startsWith('UPDATE connections')) return { rows: [{ id: 'c1' }], rowCount: 1 };
@@ -280,12 +282,14 @@ test('a eliminação anonimiza conteúdo, perfil e conta, nessa ordem, e registr
   assert.ok(/phone = NULL/.test(perfil.text) && /bio = NULL/.test(perfil.text));
   // Nada de DELETE em tabela de trilha ou de conteúdo público.
   for (const q of pool.queries.filter((x) => x.text.trim().startsWith('DELETE'))) {
-    assert.match(q.text, /partner_profiles|scraps|testimonials/);
+    assert.match(q.text, /partner_profiles|business_profiles|media_profiles|scraps|testimonials/);
   }
   // A conversa da conexão (T27) é anonimizada, nunca excluída, com o mesmo rótulo do pedido.
   const mensagens = pool.queries.find((q) => q.text.trim().startsWith('UPDATE connection_messages'));
   assert.equal(mensagens.params[1], '[removido a pedido do titular]');
   assert.equal(pool.trail.find((t) => t.scope === 'perfil').summary.mensagensDeConexaoRemovidas, 2);
+  // Perfis declarados (T-04-03) são apagados.
+  assert.equal(pool.trail.find((t) => t.scope === 'perfil').summary.perfisDeclaradosRemovidos, 1);
 });
 
 test('conta já anonimizada não é anonimizada de novo', async () => {

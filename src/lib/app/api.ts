@@ -27,6 +27,7 @@ import type {
   CnaeEntry, Institution, InstitutionAccess, InstitutionFieldErrors, InstitutionInput,
   InstitutionKind, InstitutionValidationEvent, InstitutionValidationStatus, GovernmentSphere,
   PublicInstitution, InstitutionDocument, InstitutionDocumentKind, OrganizationType,
+  BusinessProfile, MediaProfile, DeclaredProfileKind, PublicDeclaredProfile,
 } from "./types";
 import type {
   Demand, DemandAgentAction, DemandComposition, DemandEvent, DemandFieldErrors, DemandInput,
@@ -1179,6 +1180,28 @@ export const api = {
     } finally {
       clearTimeout(timer);
     }
+  },
+
+  // ── PERFIS DECLARADOS (T-04-03) ──────────────────────────
+  // Perfil empresarial (Parceiro) e da Comunicação: 422 traz `fields`
+  // (InstitutionRequestError), 403 para outra categoria.
+  async getMyDeclaredProfile(kind: DeclaredProfileKind): Promise<BusinessProfile | MediaProfile | null> {
+    const raw = await institutionRequest<{ profile: BusinessProfile | MediaProfile | null }>(
+      kind === "empresarial" ? "/api/users/me/business-profile" : "/api/users/me/media-profile",
+    );
+    return raw?.profile ?? null;
+  },
+  async saveMyDeclaredProfile(kind: DeclaredProfileKind, input: Record<string, string | null>): Promise<BusinessProfile | MediaProfile> {
+    const raw = await institutionRequest<{ profile: BusinessProfile | MediaProfile }>(
+      kind === "empresarial" ? "/api/users/me/business-profile" : "/api/users/me/media-profile",
+      { method: "PUT", body: JSON.stringify(input) },
+    );
+    if (!raw?.profile) throw new InstitutionRequestError("Perfil não encontrado", 404);
+    return raw.profile;
+  },
+  /** Perfil declarado público de uma conta; `null` se não houver. */
+  getPublicDeclaredProfile(userId: string): Promise<PublicDeclaredProfile | null> {
+    return institutionRequest<PublicDeclaredProfile>(`/api/users/profiles/${encodeURIComponent(userId)}/declared`);
   },
 
   async institutionReference(): Promise<InstitutionReference> {

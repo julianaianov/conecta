@@ -32,6 +32,7 @@ user_db user-service/migrations/012-connection-messages.sql
 user_db user-service/migrations/013-organization-members.sql
 user_db user-service/migrations/015-partner-categories.sql
 user_db user-service/migrations/016-notifications.sql
+user_db user-service/migrations/017-partner-media-profiles.sql
 user_db user-service/migrations/018-organization-documents.sql
 
 post_db post-service/init.sql

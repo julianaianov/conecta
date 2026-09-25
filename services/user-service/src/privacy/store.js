@@ -106,7 +106,8 @@ async function exportUserData(db, userId) {
   const q = async (text, params = [userId]) => (await db.query(text, params)).rows;
 
   const [perfil, instituicao, representante, perfilDeApoio, conexoes, recadosEscritos,
-    depoimentosEscritos, mensagensDeConexao, vinculosInstitucionais, arquivos, solicitacoes, anonimizacoes] = await Promise.all([
+    depoimentosEscritos, mensagensDeConexao, vinculosInstitucionais, arquivos, solicitacoes, anonimizacoes,
+    perfilEmpresarial, perfilDaComunicacao] = await Promise.all([
     q(`SELECT user_id, name, bio, avatar_url, cover_url, status, neighborhood, phone, website,
               city, state, role, profile_type, member_since, friend_count, created_at, updated_at,
               anonymized_at
@@ -146,6 +147,11 @@ async function exportUserData(db, userId) {
          FROM data_subject_requests WHERE subject_user_id = $1 ORDER BY received_at`),
     q(`SELECT protocol, scope, summary, executed_at
          FROM account_anonymizations WHERE user_id = $1 ORDER BY executed_at`),
+    // Perfis declarados (T-04-03).
+    q(`SELECT company_name, cnpj, segment, description, website, created_at, updated_at
+         FROM business_profiles WHERE user_id = $1`),
+    q(`SELECT outlet_name, professional_registry, coverage_area, description, website, created_at, updated_at
+         FROM media_profiles WHERE user_id = $1`),
   ]);
 
   return {
@@ -153,6 +159,8 @@ async function exportUserData(db, userId) {
     cadastroInstitucional: instituicao[0] ?? null,
     representanteInstitucional: representante,
     perfilDeApoio: perfilDeApoio[0] ?? null,
+    perfilEmpresarial: perfilEmpresarial[0] ?? null,
+    perfilDaComunicacao: perfilDaComunicacao[0] ?? null,
     conexoes,
     recadosEscritos,
     depoimentosEscritos,
@@ -182,6 +190,9 @@ async function anonymizeUserData(db, userId, { requestId = null, protocol = null
   );
 
   const perfilDeApoio = await db.query('DELETE FROM partner_profiles WHERE user_id = $1 RETURNING user_id', [userId]);
+  // Perfis declarados (T-04-03): preferência de apresentação, sem valor de prova.
+  const perfilEmpresarial = await db.query('DELETE FROM business_profiles WHERE user_id = $1 RETURNING user_id', [userId]);
+  const perfilDaComunicacao = await db.query('DELETE FROM media_profiles WHERE user_id = $1 RETURNING user_id', [userId]);
   const recados = await db.query('DELETE FROM scraps WHERE author_id = $1 RETURNING id', [userId]);
   const depoimentos = await db.query('DELETE FROM testimonials WHERE author_id = $1 RETURNING id', [userId]);
 
@@ -229,6 +240,7 @@ async function anonymizeUserData(db, userId, { requestId = null, protocol = null
   const summary = {
     perfil: count(perfil),
     perfilDeApoioRemovido: count(perfilDeApoio),
+    perfisDeclaradosRemovidos: count(perfilEmpresarial) + count(perfilDaComunicacao),
     recadosRemovidos: count(recados),
     depoimentosRemovidos: count(depoimentos),
     conexoesComMensagemRemovida: count(conexoes),

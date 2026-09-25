@@ -956,6 +956,27 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Testes: `test/ranking-domain.test.js`, `test/rankings-routes.test.js`,
   `test/engagement-e2e.test.js` (no `test:e2e`) e `src/lib/app/ranking.test.mjs`.
 
+## Perfis declarados do Parceiro e da Comunicação (T-04-03)
+
+- Arquitetura de Perfis §3.3 e §3.5; decisão 18 (sem validação da gestão, sem
+  selo, aviso "informado pela própria conta"). Migração user 017:
+  `business_profiles` (Parceiro: `company_name`, `cnpj` opcional com dígitos
+  conferidos, `segment`, `description`, `website`) e `media_profiles`
+  (Comunicação: `outlet_name`, `professional_registry` privado,
+  `coverage_area`, `description`, `website`), uma linha por conta.
+- Rotas (`routes/declared-profiles.js`, domínio `src/declared-profiles.js`):
+  `GET|PUT /me/business-profile` (PUT só Parceiro, 403
+  `business_profile_forbidden`), `GET|PUT /me/media-profile` (PUT só
+  Comunicação, 403 `media_profile_forbidden`), 422 por campo, e pública
+  `GET /profiles/:userId/declared` (nome, CNPJ formatado, segmento ou área de
+  cobertura, descrição, site; nunca registro profissional nem contato; 404
+  para conta anonimizada).
+- LGPD: exportação (`perfilEmpresarial`, `perfilDaComunicacao`) e eliminação
+  (apaga as duas linhas). Gestão só lê (grant dm-infra `033`).
+- Frontend: `src/lib/app/declared-profile.ts` (espelho, `declared-profile.test.mjs`)
+  e `DeclaredProfileSection` no `ProfileView` (edição no próprio perfil,
+  leitura no perfil de outra conta).
+
 ## Perfil de atuação territorial ("Meu sinal")
 
 - Identidade visual "Sinal do bairro", "O que muda na experiência", item 4: o

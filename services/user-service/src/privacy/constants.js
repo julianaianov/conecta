@@ -98,7 +98,7 @@ const RETENTION_RULES = [
   },
   {
     key: 'perfil_de_apoio',
-    data: 'Perfil de apoio (territórios, categorias e recursos de interesse)',
+    data: 'Perfil de apoio (territórios, categorias e recursos de interesse) e perfil empresarial ou da Comunicação declarado',
     action: 'apaga',
     rule: 'É preferência de atuação, sem valor de prova: o registro é removido.',
     basis: 'LGPD art. 18, VI',

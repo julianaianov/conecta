@@ -68,6 +68,19 @@ pautas" e "Divulgar projetos e resultados" são as pautas da Comunicação (T28)
 "o DM Conecta identifica potenciais parceiros" vale para o apoiador (T15) e
 para o Agente (T30).
 
+### Perfil empresarial e perfil da Comunicação (T-04-03)
+
+"Criar perfil empresarial" (Parceiros, §3.3) e "Criar perfil
+profissional/institucional" (Comunicação, §3.5) são perfis **declarados**
+(decisão 18): a própria conta informa, no `/perfil`, nome da empresa ou razão
+social, CNPJ opcional, segmento, descrição e site (Parceiro) ou veículo,
+registro profissional, área de cobertura, descrição e site (Comunicação). Não
+passam pela validação da gestão e não ganham selo; o perfil público mostra os
+dados com o aviso "informado pela própria conta", sem o registro profissional
+nem contato. Tabelas `business_profiles` e `media_profiles` (migração user
+017); rotas `GET|PUT /me/business-profile`, `GET|PUT /me/media-profile` e
+`GET /profiles/:userId/declared` (pública).
+
 ### Tipos de publicação por categoria
 
 | Categoria | Tipos permitidos |

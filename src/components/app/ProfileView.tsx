@@ -36,6 +36,7 @@ import { InstitutionSeal, PublicInstitutionCard } from "./institution/PublicInst
 import { InstitutionStatusBadge } from "./institution/InstitutionStatus";
 import { useInstitutionAccess } from "./institution/useInstitutionAccess";
 import { ImpactBadges } from "./ImpactBadges";
+import { DeclaredProfileSection } from "./DeclaredProfileSection";
 import { ReportButton } from "./ReportButton";
 import { AuthPrompt } from "./AuthPrompt";
 import { Avatar } from "./Avatar";
@@ -136,6 +137,7 @@ export function ProfileView({ userId, initial }: { userId: string; initial?: Pro
             ownInstitution={isOwn && ownApplicable && !ownAccessLoading ? ownAccess.status ?? null : undefined}
           />
           {institution && <PublicInstitutionCard institution={institution} />}
+          <DeclaredProfileSection userId={userId} role={role} isOwn={isOwn} />
           <ImpactBadges userId={userId} initial={initial?.impact ?? null} own={isOwn} />
           {isOwn && <OwnShortcuts role={role} />}
         </div>

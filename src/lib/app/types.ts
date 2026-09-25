@@ -947,6 +947,46 @@ export interface PublicInstitution {
   organizationType: OrganizationType | null;
 }
 
+// ── Perfis declarados (T-04-03; decisão 18) ───────────────
+// Perfil empresarial do Parceiro (§3.3) e perfil profissional/institucional da
+// Comunicação (§3.5): informados pela própria conta, sem validação nem selo.
+export type DeclaredProfileKind = "empresarial" | "comunicacao";
+
+export interface BusinessProfile {
+  kind: "empresarial";
+  companyName: string;
+  cnpj: string | null;
+  segment: string | null;
+  description: string | null;
+  website: string | null;
+  updatedAt: string | null;
+  declaration: string;
+}
+
+export interface MediaProfile {
+  kind: "comunicacao";
+  outletName: string;
+  /** Privado: só a própria conta e a gestão. */
+  professionalRegistry: string | null;
+  coverageArea: string | null;
+  description: string | null;
+  website: string | null;
+  updatedAt: string | null;
+  declaration: string;
+}
+
+/** Projeção pública (GET /api/users/profiles/:id/declared). */
+export interface PublicDeclaredProfile {
+  kind: DeclaredProfileKind;
+  name: string;
+  cnpj?: string | null;
+  segment?: string | null;
+  coverageArea?: string | null;
+  description: string | null;
+  website: string | null;
+  declaration: string;
+}
+
 /** Vínculo ativo (T29): a conta age em nome da instituição com as permissões do nível. */
 export interface InstitutionDelegation {
   memberId: string;
