@@ -107,6 +107,17 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   publicar, editar, comentar ou apoiar (post-service, `src/institution-gate.js`,
   que consulta `DM_INTERNAL_USER_API_URL` com o token do usuário, cache curto e
   falha fechada) e ao solicitar conexão (user-service).
+- Tipo de organização e documentação institucional (T-05-19, Modelo de
+  Conexão §02, migração user 018): `organizations.organization_type`
+  (obrigatório no Agente; a ficha pré-preenche pelo subperfil),
+  `additional_information` (privada) e `organization_documents` (estatuto ou
+  ato constitutivo, ata de eleição, cartão CNPJ, comprovante de endereço,
+  alvará, outro), cada um um upload `institution_document` confirmado. Rotas
+  `GET|POST /me/institution/documents` e `DELETE .../:id`, só com a ficha
+  editável (409 `institution_not_editable`). O envio do Agente sem tipo ou sem
+  estatuto responde 422 `institution_incomplete` (`fields.organizationType`,
+  `fields.documents`). A projeção pública traz só `organization_type`; a
+  gestão exige o estatuto para validar (grant dm-infra `034`).
 
 ## Cadastro institucional na interface (T05)
 
