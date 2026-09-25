@@ -460,13 +460,20 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `src/institutional/competence.js` (`COMPETENCE_THEME_MAP`, comparação sem
   acento nem caixa; sem correspondência, lista vazia). O `/governo` tem o
   filtro "Eixo temático" (vários) e o atalho "Demandas da minha competência".
+- Composição 4% + 6% (decisão 14): o órgão vê só o orçamento original —
+  `/governo/demandas/[id]` (`BudgetOnlyLine`), a página pública para a conta do
+  Poder Público (`ViewerComposition`, própria ou por vínculo T29) e
+  `/oportunidades` ("Orçamento"; o filtro de valor do Poder Público usa
+  `budget_amount_cents`). Os demais continuam vendo a composição.
 - Neutralidade: ordem cronológica, sem pontuação, ranking ou comparação entre
   órgãos. O público vê o órgão, nunca o representante nem o responsável.
 - Frontend: `/governo` (painel com fila "Recebidas", filtros, lista e mapa;
   `noindex`, bloqueado no `robots.ts`, menu da conta do Poder Público) e
   `/governo/demandas/[id]` (análise, registro de recebimento, mudança de
   status, responsável, resposta, oferta de apoio com pedido de conexão pelas
-  rotas de conexões do user-service); seção "Respostas institucionais" e
+  rotas de conexões do user-service; T-03-02: execução e prestação de contas
+  com `DemandExecutionSection`/`DemandAccountabilitySection`, as mesmas
+  projeções públicas, com falha isolada); seção "Respostas institucionais" e
   eventos institucionais na linha do tempo de `/demandas/[id]`
   (`src/components/app/institutional/`).
 - Testes: `test/institutional-domain.test.js`, `test/institutional-routes.test.js`,
