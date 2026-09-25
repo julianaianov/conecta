@@ -292,6 +292,31 @@ export function errorsByStep(fields: DemandFieldErrors): Partial<Record<DemandSt
   return out;
 }
 
+/** Aviso do envio ("sempre que possível", slide 14; decisões 17 e T26). */
+export interface DemandWarning {
+  key: string;
+  label: string;
+  message: string;
+  /** Etapa onde o Agente resolve; null quando o assistente ainda não tem o campo. */
+  step: DemandStepId | null;
+}
+
+/**
+ * Avisos de `POST /:id/validate` (`warnings`) na ordem das etapas, com o
+ * rótulo humano e a etapa de correção. Não bloqueiam o envio (T-02-05).
+ * Chave sem etapa no assistente (ex.: `themes`, até a interface da T26) fica
+ * sem link.
+ */
+export function demandWarnings(warnings: DemandFieldErrors | null | undefined): DemandWarning[] {
+  const order = (step: DemandStepId | null) => (step ? demandStep(step).number : Number.MAX_SAFE_INTEGER);
+  return Object.entries(warnings ?? {})
+    .map(([key, message]) => {
+      const step = stepForErrorKey(key);
+      return { key, label: demandFieldLabel(key), message, step: step === "revisao" ? null : step };
+    })
+    .sort((a, b) => order(a.step) - order(b.step));
+}
+
 export const DEMAND_FIELD_LABELS: Record<string, string> = {
   category: "Categoria",
   title: "Título",
@@ -313,6 +338,7 @@ export const DEMAND_FIELD_LABELS: Record<string, string> = {
   justification: "Justificativa",
   priority: "Nível de prioridade",
   priorityCriteria: "Critérios de prioridade",
+  themes: "Eixos temáticos",
   hasPhysicalExecution: "Execução física",
   budgetItems: "Orçamento detalhado",
   audiovisualRecord: "Registro fotográfico e audiovisual",

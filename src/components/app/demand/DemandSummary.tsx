@@ -87,7 +87,7 @@ export function DemandSummary({ demand, onEdit }: { demand: Demand; onEdit?: (st
         <p className="mb-3 text-sm" style={{ color: "var(--th-text)" }}>
           Execução física ou intervenção com registro do antes e do depois: <strong>{demand.hasPhysicalExecution ? "sim" : "não"}</strong>
         </p>
-        <BudgetTable items={demand.budgetItems ?? []} />
+        <BudgetTable items={demand.budgetItems ?? []} markUnlinked={(demand.scheduleItems ?? []).length > 0} />
         <div className="mt-4"><CompositionCard composition={demand.composition} /></div>
       </ReadSection>
 

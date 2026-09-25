@@ -316,6 +316,13 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   bloqueia). O envio grava prioridade e critérios no payload de
   `enviada_para_analise`; a revisão, a página pública e a análise do
   dm-gestao mostram os critérios; o prompt de urgência da IA cita os mesmos.
+- Avisos do envio (T-02-05, slide 14 "sempre que possível"): a revisão
+  (etapa 9) lista os `warnings` do `validate` no bloco "Recomendações antes de
+  enviar" (`demandWarnings` em `demand.ts`: rótulo humano, etapa de correção,
+  ordem das etapas), com atalho para a etapa; o envio continua permitido. A
+  tabela do orçamento do `DemandSummary` marca os itens sem etapa vinculada.
+  Aviso sem campo no assistente (`themes`, até a interface da T26) aparece sem
+  atalho; quem fizer a T26 mapeia a chave para a etapa.
 - Instituição responsável (T-02-02, slides 4 e 19): `/demandas/[id]` lê
   `getPublicInstitution(demand.authorId)` (projeção pública do user-service,
   só validada, sem contato do representante; resolve o vínculo da T29) e

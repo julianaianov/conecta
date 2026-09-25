@@ -143,10 +143,12 @@ export function CompositionCard({ composition, preview = false, pending = false,
   );
 }
 
-export function BudgetTable({ items, actions, caption = "Orçamento detalhado" }: {
+export function BudgetTable({ items, actions, caption = "Orçamento detalhado", markUnlinked = false }: {
   items: DemandBudgetItem[];
   actions?: (item: DemandBudgetItem) => ReactNode;
   caption?: string;
+  /** Marca os itens sem etapa do cronograma (físico-financeiro, slide 14; T-02-05). */
+  markUnlinked?: boolean;
 }) {
   if (!items.length) return <p className="text-sm" style={{ color: "var(--th-muted)" }}>Nenhum item no orçamento.</p>;
   return (
@@ -171,6 +173,11 @@ export function BudgetTable({ items, actions, caption = "Orçamento detalhado" }
                 {item.isAudiovisualRecord && (
                   <span className="mt-1 flex items-center gap-1 text-[11px] font-bold" style={{ color: "#2e7ba8" }}>
                     <Icon name="eye" size={12} /> Registro fotográfico e audiovisual
+                  </span>
+                )}
+                {markUnlinked && !item.scheduleItemId && (
+                  <span className="mt-1 flex items-center gap-1 text-[11px] font-bold" style={{ color: "#b35c00" }}>
+                    <Icon name="info" size={12} /> Sem etapa do cronograma vinculada
                   </span>
                 )}
               </td>

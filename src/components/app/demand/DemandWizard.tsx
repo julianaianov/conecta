@@ -23,6 +23,7 @@ import {
   demandPublicPath,
   demandStep,
   demandStepStates,
+  demandWarnings,
   emptyDemandForm,
   errorsByStep,
   fieldErrorsOf,
@@ -665,7 +666,7 @@ function ReviewStep({
   onGo: (step: DemandStepId) => void;
 }) {
   const grouped = validation ? errorsByStep(validation.fields) : {};
-  const warningList = validation ? Object.entries(validation.warnings) : [];
+  const warningList = demandWarnings(validation?.warnings);
   const ready = validation?.valid === true;
 
   return (
@@ -700,17 +701,32 @@ function ReviewStep({
             })}
           </ul>
         )}
-        {warningList.length > 0 && (
-          <ul className="mt-3 space-y-1">
-            {warningList.map(([key, message]) => (
-              <li key={key} className="flex items-start gap-1.5 text-sm" style={{ color: "var(--th-text)" }}>
-                <Icon name="info" size={14} className="mt-0.5 shrink-0" style={{ color: "#2e7ba8" }} />
-                <span>{message}</span>
+      </section>
+
+      {/* Avisos do envio (T-02-05): o que a fonte pede "sempre que possível". Não bloqueiam. */}
+      {warningList.length > 0 && (
+        <section aria-labelledby="warnings-title" className="rounded-2xl border p-4" style={{ borderColor: "rgba(46,123,168,0.35)", background: "rgba(46,123,168,0.05)" }}>
+          <h2 id="warnings-title" className="text-sm font-bold" style={{ color: "var(--th-text)" }}>Recomendações antes de enviar</h2>
+          <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
+            A fonte pede estes pontos sempre que possível. O envio continua permitido; completar ajuda a análise.
+          </p>
+          <ul className="mt-3 space-y-2" role="list">
+            {warningList.map((w) => (
+              <li key={w.key} className="flex flex-wrap items-start justify-between gap-2">
+                <span className="flex items-start gap-1.5 text-sm" style={{ color: "var(--th-text)" }}>
+                  <Icon name="info" size={14} className="mt-0.5 shrink-0" style={{ color: "#2e7ba8" }} />
+                  <span><strong>{w.label}:</strong> {w.message}</span>
+                </span>
+                {w.step && demand.editable && (
+                  <Button type="button" size="sm" variant="ghost" iconRight="chevronRight" onClick={() => onGo(w.step!)}>
+                    Ir para a etapa {demandStep(w.step).number}
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      )}
 
       <DemandSummary demand={demand} onEdit={onGo} />
 

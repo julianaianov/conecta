@@ -347,3 +347,35 @@ test("critérios: formulário ↔ API na ordem da plataforma, sem repetição", 
   assert.deepEqual(formFromDemand({ priorityCriteria: ["pessoas_afetadas"] }).priorityCriteria, ["pessoas_afetadas"]);
   assert.deepEqual(formFromDemand({}).priorityCriteria, []);
 });
+
+// ── Avisos do envio na revisão (T-02-05) ───────────────────────────────────
+import { demandWarnings } from "./demand.ts";
+
+test("avisos do envio: rótulo humano, etapa de correção e ordem das etapas", () => {
+  const list = demandWarnings({
+    themes: "Marque os eixos",
+    physicalFinancial: "Vincule cada item",
+    priorityCriteria: "Indique o critério",
+    recordMilestones: "Considere o acompanhamento",
+  });
+  assert.deepEqual(list.map((w) => [w.key, w.step]), [
+    ["priorityCriteria", "publico"],
+    ["physicalFinancial", "cronograma"],
+    ["recordMilestones", "cronograma"],
+    ["themes", null],
+  ]);
+  assert.equal(list[1].label, "Cronograma físico-financeiro");
+  assert.equal(list[3].label, "Eixos temáticos");
+  assert.deepEqual(demandWarnings({}), []);
+  assert.deepEqual(demandWarnings(undefined), []);
+  // Toda chave de aviso do post-service tem rótulo e etapa conhecidos.
+  const { validateDemand } = createRequire(import.meta.url)("../../../services/post-service/src/demand/validation.js");
+  const { warnings } = validateDemand({
+    priority: "urgente",
+    hasPhysicalExecution: true,
+    scheduleItems: [{ id: "11111111-1111-4111-8111-111111111111", stage: "Etapa", activities: "a", startsOn: "2026-10-01", endsOn: "2026-10-10", recordMilestones: ["antes", "depois"] }],
+    budgetItems: [{ description: "Item", quantity: "1", unit: "un", unitPriceCents: 100 }],
+  }, { forSubmission: true });
+  assert.ok(warnings.physicalFinancial);
+  for (const w of demandWarnings(warnings)) assert.notEqual(w.label, w.key, w.key);
+});
