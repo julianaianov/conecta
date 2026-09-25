@@ -49,6 +49,9 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   locais nem coloque segredos em `NEXT_PUBLIC_*`.
 - Deploy: o único remoto da aplicação é `origin` → `DmConnecta/dm-web`;
   `git push origin develop` basta.
+- Publicação automática: push em `develop`/`master` publica sozinho: `develop` → homologação, `master` → produção, depois do CI
+  verde (job `publicar` do `.github/workflows/ci.yml`, secret
+  `DEPLOY_DISPATCH_TOKEN`; ver `dm-docs/arquitetura.md` §6).
 - Schema: fonte única em `services/migrations.manifest` (ordem de `init.sql`,
   `migrate_*.sql` e `services/*/migrations/`). A infra não guarda SQL da
   aplicação: `dmconecta-infra/db/init/10-load-application-schemas.sh` aplica o
