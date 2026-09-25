@@ -16,6 +16,8 @@ function complete(overrides = {}) {
     beneficiariesEstimate: 300,
     beneficiariesProfile: 'Crianças e famílias do entorno',
     priority: 'alta',
+    // Prioridade alta com critério declarado (decisão 17): sem aviso.
+    priorityCriteria: ['pessoas_afetadas'],
     photoRef: 'https://exemplo.org/praca.jpg',
     cep: '20040-002',
     street: 'Rua Exemplo',
