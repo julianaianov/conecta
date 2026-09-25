@@ -98,8 +98,7 @@ export const INSTITUTIONAL_TRANSITIONS: Record<InstitutionalStatus, Institutiona
 export const RESPONSE_TYPES: InstitutionalResponseType[] = [
   "recebimento", "analise_em_andamento", "orgao_ou_setor_responsavel", "encaminhamento_realizado",
   "programa_publico_relacionado", "acao_prevista", "informacoes_adicionais",
-  "impossibilidade_com_encaminhamento", "solicitacao_de_documentos", "solicitacao_de_reuniao",
-  "solicitacao_de_analise_tecnica", "recusa_com_motivo",
+  "impossibilidade_com_encaminhamento",
 ];
 
 export const RESPONSE_TYPE_LABELS: Record<InstitutionalResponseType, string> = {
@@ -111,14 +110,7 @@ export const RESPONSE_TYPE_LABELS: Record<InstitutionalResponseType, string> = {
   acao_prevista: "Ação prevista",
   informacoes_adicionais: "Necessidade de informações adicionais",
   impossibilidade_com_encaminhamento: "Impossibilidade de atendimento nesta competência",
-  solicitacao_de_documentos: "Solicitação de documentos",
-  solicitacao_de_reuniao: "Solicitação de reunião",
-  solicitacao_de_analise_tecnica: "Solicitação de análise técnica",
-  recusa_com_motivo: "Recusa da demanda com motivo",
 };
-
-/** Formato da reunião solicitada (Modelo de Conexão §10, T-05-05). */
-export const MEETING_MODE_LABELS: Record<"presencial" | "online", string> = { presencial: "Presencial", online: "On-line" };
 
 /** Status sugerido junto de cada tipo de resposta (o órgão pode trocar ou manter). */
 export const RESPONSE_SUGGESTED_STATUS: Partial<Record<InstitutionalResponseType, InstitutionalStatus>> = {

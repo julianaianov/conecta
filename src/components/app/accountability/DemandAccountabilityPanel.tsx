@@ -229,7 +229,7 @@ export function DemandAccountabilityPanel({ demandId, onChanged }: {
     <div className="space-y-4">
       {error && <FormAlert message={error} />}
 
-      {data.status !== "prestacao_de_contas" && (
+      {data.status !== "prestacao_de_contas" && data.status !== "encerrada" && (
         <FormAlert
           tone="info"
           message='A prestação de contas abre quando a demanda entra em "Prestação de contas". Conclua a execução e use a ação "Iniciar prestação de contas".'

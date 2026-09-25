@@ -24,7 +24,6 @@ import type {
   ProcessDetail, ProcessResponsibleInput, ProcessStatus, ProcessSummary, PublicProcess,
 } from "./process";
 import type { DeadlineInput, PendingItem } from "./deadlines";
-import type { AnalysisRequest, AnalysisRequestInput } from "./analysis";
 import {
   buildNotificationQuery, completePreferences, groupIdsBySource, mergeNotificationFeeds,
 } from "./notifications";
@@ -1050,26 +1049,6 @@ export const api = {
     return request<{ pending: PendingItem[] }>("/api/posts/processes/pending")
       .then((body) => (Array.isArray(body.pending) ? body.pending : []));
   },
-  // Respostas à análise (T-05-05, Modelo de Conexão §10): erros com `fields` (DemandRequestError).
-  createAnalysisRequest(demandId: string, input: AnalysisRequestInput): Promise<AnalysisRequest> {
-    return demandRequired<{ request: AnalysisRequest }>(`/${encodeURIComponent(demandId)}/analysis-requests`, {
-      method: "POST", body: JSON.stringify(input),
-    }).then((body) => body.request);
-  },
-  myAnalysisRequests(demandId: string): Promise<AnalysisRequest[]> {
-    return demandRequest<{ requests: AnalysisRequest[] }>(`/${encodeURIComponent(demandId)}/analysis-requests/mine`)
-      .then((body) => body?.requests ?? []);
-  },
-  receivedAnalysisRequests(demandId: string): Promise<AnalysisRequest[]> {
-    return demandRequest<{ requests: AnalysisRequest[] }>(`/mine/${encodeURIComponent(demandId)}/analysis-requests`)
-      .then((body) => body?.requests ?? []);
-  },
-  answerAnalysisRequest(demandId: string, requestId: string, input: { body: string; documentIds: string[] }): Promise<AnalysisRequest> {
-    return demandRequired<{ request: AnalysisRequest }>(
-      `/mine/${encodeURIComponent(demandId)}/analysis-requests/${encodeURIComponent(requestId)}/answer`,
-      { method: "POST", body: JSON.stringify(input) },
-    ).then((body) => body.request);
-  },
   demandProcesses(demandId: string): Promise<PublicProcess[]> {
     return request<{ processes: PublicProcess[] }>(`/api/posts/demands/${encodeURIComponent(demandId)}/processes`)
       .then((body) => (Array.isArray(body.processes) ? body.processes : []));
@@ -1427,8 +1406,12 @@ export const api = {
     return demandRequired<Demand>(`/${encodeURIComponent(id)}/submit`, { method: "POST", body: "{}" });
   },
 
-  transitionDemand(id: string, action: DemandAgentAction): Promise<Demand> {
-    return demandRequired<Demand>(`/${encodeURIComponent(id)}/transitions`, { method: "POST", ...json({ action }) });
+  transitionDemand(
+    id: string, action: DemandAgentAction,
+    closing?: { closingSummary: string; closingResponsibles: string },
+  ): Promise<Demand> {
+    // `encerrar` (Modelo §22, T-05-14) leva o registro final e os responsáveis.
+    return demandRequired<Demand>(`/${encodeURIComponent(id)}/transitions`, { method: "POST", ...json({ action, ...(closing ?? {}) }) });
   },
 
   // ── ATUAÇÃO INSTITUCIONAL DO PODER PÚBLICO (T13) ─────────

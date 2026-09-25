@@ -86,7 +86,7 @@ export function PriorityBadge({ priority }: { priority: DemandPriority | null })
 
 /** Fluxo canônico (Fluxo 2, slide 21) com o status atual destacado. */
 export function StatusTrack({ status }: { status: DemandStatus }) {
-  const order: DemandStatus[] = ["em_analise", "publicada", "em_busca_de_parceiro", "conectada", "em_execucao", "concluida", "prestacao_de_contas"];
+  const order: DemandStatus[] = ["em_analise", "publicada", "em_busca_de_parceiro", "conectada", "em_execucao", "concluida", "prestacao_de_contas", "encerrada"];
   const current = order.indexOf(status);
   return (
     <ol className="flex flex-wrap gap-1.5" aria-label="Etapas do status da demanda">

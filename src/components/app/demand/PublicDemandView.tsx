@@ -13,7 +13,7 @@ import {
 import { DOSSIER_TITLE, formatBytesShort, publicDossierDownloadPath, shortHash } from "@/lib/app/dossier";
 import { resolveMediaUrl } from "@/lib/app/uploads";
 import { runtime } from "@/lib/app/runtime";
-import { DEMAND_PRIORITY_CRITERION_LABELS, formatIsoDate, timelineEventLabel } from "@/lib/app/demand";
+import { DEMAND_PRIORITY_CRITERION_LABELS, closureTimelineDetail, formatIsoDate, timelineEventLabel } from "@/lib/app/demand";
 import { formatDate } from "@/lib/app/format";
 import { ShareButton } from "../ShareButton";
 import { ReportButton } from "../ReportButton";
@@ -33,7 +33,6 @@ import { DemandProcessesSection } from "../process/ProcessParts";
 import { DemandExecutionSection } from "../execution/DemandExecutionSection";
 import { DemandAccountabilitySection } from "../accountability/DemandAccountabilitySection";
 import { DemandInterestPanel } from "../interest/DemandInterestPanel";
-import { AnalysisRequestPanel } from "../analysis/AnalysisRequestPanel";
 import { DemandSupportBlock } from "../support/DemandSupportPanel";
 import { ViewerComposition } from "../institutional/ViewerComposition";
 import { DemandDocumentsAccessPanel } from "./DemandDocumentsAccessPanel";
@@ -212,9 +211,6 @@ export function PublicDemandView({
 
       <DemandInterestPanel demandId={demand.id} authorId={demand.authorId} postId={demand.postId} />
 
-      {/* Respostas à análise de Parceiros e do Poder Público (T-05-05, Modelo §10). */}
-      <AnalysisRequestPanel demandId={demand.id} authorId={demand.authorId} />
-
       {/* Registro de apoio realizado e histórico de apoio (T16, slides 20 e 21). */}
       <DemandSupportBlock demandId={demand.id} authorId={demand.authorId} />
 
@@ -282,6 +278,19 @@ export function PublicDemandView({
       {/* Resultados e prestação de contas (T18, slide 24; transparência T19). */}
       <DemandAccountabilitySection data={accountability} />
 
+      {/* Encerramento (Modelo §22, T-05-14): data de conclusão e registro final. */}
+      {demand.status === "encerrada" && demand.closingSummary && (
+        <ReadSection title="Encerramento" icon="check">
+          <p className="text-sm font-semibold" style={{ color: "#1f7a45" }}>
+            Concluído — encerrado{demand.closedAt ? ` em ${formatDate(demand.closedAt)}` : ""}
+          </p>
+          <div className="mt-3"><TextBlock label="Registro final">{demand.closingSummary}</TextBlock></div>
+          <p className="mt-3 text-xs" style={{ color: "var(--th-muted)" }}>
+            A demanda permanece disponível no histórico, com o dossiê, a execução e a prestação de contas.
+          </p>
+        </ReadSection>
+      )}
+
       {/* Amplificação: divulgações publicadas pela Comunicação (T28). */}
       <DemandCoverageSection coverage={coverage} />
 
@@ -292,9 +301,9 @@ export function PublicDemandView({
               <li key={event.id} className="relative">
                 <span aria-hidden className="absolute -left-[1.4rem] top-1 h-3 w-3 rounded-full border-2" style={{ borderColor: "#f4841a", background: "var(--th-card)" }} />
                 <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>{timelineEventLabel(event)}</p>
-                {(institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event) ?? accountabilityTimelineDetail(event) ?? mediaTimelineDetail(event)) && (
+                {(institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event) ?? accountabilityTimelineDetail(event) ?? mediaTimelineDetail(event) ?? closureTimelineDetail(event)) && (
                   <p className="mt-0.5 line-clamp-2 text-xs" style={{ color: "var(--th-text)" }}>
-                    {institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event) ?? accountabilityTimelineDetail(event) ?? mediaTimelineDetail(event)}
+                    {institutionalTimelineDetail(event) ?? interestTimelineDetail(event) ?? supportTimelineDetail(event) ?? executionTimelineDetail(event) ?? accountabilityTimelineDetail(event) ?? mediaTimelineDetail(event) ?? closureTimelineDetail(event)}
                   </p>
                 )}
                 <p className="text-xs font-numeric" style={{ color: "var(--th-muted)" }}>{formatDate(event.createdAt)}</p>

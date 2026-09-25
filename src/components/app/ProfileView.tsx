@@ -312,7 +312,9 @@ function DemandsPanel({ role, activity, failed, isOwn, firstName }: { role: User
                   </p>
                   {hasResult && (
                     <p className="mt-1 text-xs font-semibold" style={{ color: "#2e9e5b" }}>
-                      {demand.status === "prestacao_de_contas" ? "Prestação de contas publicada" : "Concluída · resultado na página da demanda"}
+                      {demand.status === "encerrada"
+                        ? "Concluído — encerrado · registro final na página da demanda"
+                        : demand.status === "prestacao_de_contas" ? "Prestação de contas publicada" : "Concluída · resultado na página da demanda"}
                     </p>
                   )}
                 </Link>

@@ -1133,7 +1133,9 @@ export type DemandMapClass =
 
 export type DemandStatus =
   | "em_analise" | "publicada" | "em_busca_de_parceiro" | "conectada"
-  | "em_execucao" | "concluida" | "prestacao_de_contas" | "arquivada";
+  | "em_execucao" | "concluida" | "prestacao_de_contas" | "arquivada"
+  /** Estado final depois da prestação de contas concluída (Modelo §22, decisão 16). */
+  | "encerrada";
 
 export const DEMAND_STATUS_LABELS: Record<DemandStatus, string> = {
   em_analise: "Em análise",
@@ -1144,11 +1146,13 @@ export const DEMAND_STATUS_LABELS: Record<DemandStatus, string> = {
   concluida: "Concluída",
   prestacao_de_contas: "Prestação de contas",
   arquivada: "Arquivada",
+  encerrada: "Concluído — encerrado",
 };
 
-/** Status visíveis em rota pública (da publicação em diante). */
+/** Status visíveis em rota pública (da publicação em diante; a encerrada fica no histórico). */
 export const DEMAND_PUBLIC_STATUSES: DemandStatus[] = [
   "publicada", "em_busca_de_parceiro", "conectada", "em_execucao", "concluida", "prestacao_de_contas",
+  "encerrada",
 ];
 
 export type DemandReviewState = "rascunho" | "aguardando_analise" | "devolvida" | "aprovada";
@@ -1243,7 +1247,15 @@ export interface DemandModuleDetails {
 
 /** Ações do Agente depois da publicação (POST /demands/:id/transitions). */
 export type DemandAgentAction =
-  | "buscar_parceiro" | "conectar" | "iniciar_execucao" | "concluir" | "prestar_contas";
+  | "buscar_parceiro" | "conectar" | "iniciar_execucao" | "concluir" | "prestar_contas"
+  /** Encerramento (Modelo §22): exige `closingSummary` e `closingResponsibles`. */
+  | "encerrar";
+
+/** Registro final do encerramento (POST /demands/:id/transitions com `encerrar`). */
+export interface DemandClosingInput {
+  closingSummary: string;
+  closingResponsibles: string;
+}
 
 /** `enviar` aparece em `availableActions` e usa POST /demands/:id/submit. */
 export type DemandAction = "enviar" | DemandAgentAction;
@@ -1436,6 +1448,10 @@ export interface Demand extends Required<DemandInput> {
   publishedAt: string | null;
   archiveReason: string | null;
   archivedAt: string | null;
+  /** Encerramento (Modelo §22, T-05-14): data de conclusão, registro final e responsáveis. */
+  closedAt?: string | null;
+  closingSummary?: string | null;
+  closingResponsibles?: string | null;
   createdAt: string;
   updatedAt: string;
   /** Post-vitrine no feed, depois da publicação. */
@@ -1493,6 +1509,9 @@ export interface PublicDemand {
   postId: string | null;
   /** Compartilhamentos registrados (T21). */
   sharesCount: number;
+  /** Encerramento (Modelo §22, T-05-14): data e registro final; os responsáveis ficam com o autor. */
+  closedAt?: string | null;
+  closingSummary?: string | null;
   budgetItems: DemandBudgetItem[];
   scheduleItems: Omit<DemandScheduleItem, "responsible">[];
   goals: DemandGoal[];
@@ -1573,6 +1592,9 @@ export interface DemandTimelineDetails {
   excerpt?: string | null;
   note?: string | null;
   supportTypes?: string[] | null;
+  /** Encerramento da demanda (T-05-14, migração post 037): data e registro final. */
+  closedAt?: string | null;
+  closingSummary?: string | null;
   /** Encaminhamentos (T14, migração post 011). */
   destinationKind?: string | null;
   destinationOrganizationName?: string | null;
@@ -1711,7 +1733,9 @@ export type DemandDossierTrigger =
   | "publicacao"
   | "conclusao"
   /** Prestação de contas concluída (T18). */
-  | "prestacao_de_contas";
+  | "prestacao_de_contas"
+  /** Encerramento da demanda (Modelo §22, T-05-14). */
+  | "encerramento";
 export type DemandDossierStatus = "pendente" | "gerado" | "falhou" | "indisponivel";
 
 /** Versão do dossiê vista pelo autor (ou pela operação). */
@@ -1794,9 +1818,7 @@ export type InstitutionalStatus =
 export type InstitutionalResponseType =
   | "recebimento" | "analise_em_andamento" | "orgao_ou_setor_responsavel" | "encaminhamento_realizado"
   | "programa_publico_relacionado" | "acao_prevista" | "informacoes_adicionais"
-  | "impossibilidade_com_encaminhamento"
-  // Respostas à análise (Modelo de Conexão §10, T-05-05).
-  | "solicitacao_de_documentos" | "solicitacao_de_reuniao" | "solicitacao_de_analise_tecnica" | "recusa_com_motivo";
+  | "impossibilidade_com_encaminhamento";
 
 export type InstitutionalSupportType =
   | "recursos_publicos" | "servicos_publicos" | "programas_e_politicas_publicas" | "infraestrutura"
@@ -1857,11 +1879,6 @@ export interface InstitutionalResponse {
   programUrl: string | null;
   plannedFor: string | null;
   institutionalStatus: InstitutionalStatus;
-  /** Respostas à análise (T-05-05): documentos pedidos, reunião e motivo da recusa. */
-  requestedDocumentTypes?: DemandDocumentType[];
-  meetingMode?: "presencial" | "online" | null;
-  meetingProposedAt?: string | null;
-  refusalReason?: string | null;
   createdAt: string;
   /** Só na visão do próprio órgão. */
   authorId?: string;
@@ -1953,10 +1970,6 @@ export interface InstitutionalResponseInput {
   plannedFor?: string | null;
   status?: InstitutionalStatus | null;
   statusNote?: string | null;
-  requestedDocumentTypes?: DemandDocumentType[];
-  meetingProposedAt?: string | null;
-  meetingMode?: "presencial" | "online" | null;
-  refusalReason?: string | null;
 }
 
 export interface InstitutionalOfferInput {

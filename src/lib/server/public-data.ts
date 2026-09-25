@@ -360,7 +360,7 @@ const EMPTY_MAP_VIEW: MapView = {
     priority: { baixa: 0, media: 0, alta: 0, urgente: 0 },
     status: {
       em_analise: 0, publicada: 0, em_busca_de_parceiro: 0, conectada: 0,
-      em_execucao: 0, concluida: 0, prestacao_de_contas: 0, arquivada: 0,
+      em_execucao: 0, concluida: 0, prestacao_de_contas: 0, arquivada: 0, encerrada: 0,
     },
   },
   points: [],

@@ -117,7 +117,7 @@ const AUDIENCES = [
     filter: {
       category: [],
       priority: [],
-      status: ['publicada', 'em_execucao', 'concluida', 'prestacao_de_contas'],
+      status: ['publicada', 'em_execucao', 'concluida', 'prestacao_de_contas', 'encerrada'],
     },
     layers: { demands: true, feed: true },
   },

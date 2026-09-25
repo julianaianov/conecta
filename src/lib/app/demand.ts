@@ -43,7 +43,6 @@ import { executionTimelineLabel } from "./execution.ts";
 import { accountabilityTimelineLabel } from "./accountability.ts";
 import { mediaTimelineLabel } from "./media.ts";
 import { processTimelineLabel } from "./process.ts";
-import { analysisTimelineLabel } from "./analysis.ts";
 
 // ── Rotas ──────────────────────────────────────────────────
 
@@ -999,6 +998,7 @@ export const DEMAND_STATUS_COLORS: Record<DemandStatus, string> = {
   concluida: "#2e9e5b",
   prestacao_de_contas: "#2e9e5b",
   arquivada: "#868e96",
+  encerrada: "#1f7a45",
 };
 
 export const DEMAND_REVIEW_STATE_COLORS: Record<DemandReviewState, string> = {
@@ -1023,6 +1023,7 @@ export const DEMAND_ACTION_LABELS: Record<DemandAction, string> = {
   iniciar_execucao: "Iniciar execução",
   concluir: "Concluir",
   prestar_contas: "Iniciar prestação de contas",
+  encerrar: "Encerrar a demanda",
 };
 
 /** Status de destino de cada ação do Agente. */
@@ -1032,10 +1033,41 @@ export const DEMAND_ACTION_TARGET: Record<DemandAgentAction, DemandStatus> = {
   iniciar_execucao: "em_execucao",
   concluir: "concluida",
   prestar_contas: "prestacao_de_contas",
+  encerrar: "encerrada",
 };
 
 export function isAgentTransition(action: DemandAction): action is DemandAgentAction {
   return action !== "enviar";
+}
+
+/**
+ * Status que contam como "concluída" nos indicadores e no perfil (espelho de
+ * CONCLUDED_STATUSES em services/post-service/src/demand/constants.js).
+ */
+export const DEMAND_CONCLUDED_STATUSES: DemandStatus[] = ["concluida", "prestacao_de_contas", "encerrada"];
+
+/** Encerramento (Modelo §22, T-05-14): limites do registro final (CHECK da migração 037). */
+export const CLOSING_SUMMARY_MAX = 8000;
+export const CLOSING_RESPONSIBLES_MAX = 2000;
+
+/** Detalhe do evento `demanda_encerrada`: o registro final (até 280 caracteres). */
+export function closureTimelineDetail(event: Pick<DemandTimelineEvent, "type" | "details">): string | null {
+  if (event.type !== "demanda_encerrada") return null;
+  const summary = event.details?.closingSummary?.trim();
+  if (!summary) return null;
+  return summary.length > 280 ? `${summary.slice(0, 279)}…` : summary;
+}
+
+/** Erros do formulário de encerramento, com as mesmas mensagens da rota. */
+export function validateClosing(input: { closingSummary: string; closingResponsibles: string }): Partial<Record<"closingSummary" | "closingResponsibles", string>> {
+  const errors: Partial<Record<"closingSummary" | "closingResponsibles", string>> = {};
+  const summary = input.closingSummary.trim();
+  const responsibles = input.closingResponsibles.trim();
+  if (!summary) errors.closingSummary = "Informe o registro final do encerramento";
+  else if (summary.length > CLOSING_SUMMARY_MAX) errors.closingSummary = `Até ${CLOSING_SUMMARY_MAX} caracteres`;
+  if (!responsibles) errors.closingResponsibles = "Informe os responsáveis pelo encerramento";
+  else if (responsibles.length > CLOSING_RESPONSIBLES_MAX) errors.closingResponsibles = `Até ${CLOSING_RESPONSIBLES_MAX} caracteres`;
+  return errors;
 }
 
 /** Status canônico para exibir; em análise, com a etapa da análise. */
@@ -1067,7 +1099,8 @@ export function demandGuidance(demand: { status: DemandStatus; reviewState?: Dem
     case "conectada": return "Conectada a um parceiro. Quando a execução começar, registre o início.";
     case "em_execucao": return "Em execução. Ao terminar, marque a demanda como concluída.";
     case "concluida": return "Concluída. Registre os resultados e as evidências na prestação de contas.";
-    case "prestacao_de_contas": return "Em prestação de contas: resultados, evidências e comprovantes.";
+    case "prestacao_de_contas": return "Em prestação de contas: resultados, evidências e comprovantes. Concluída a prestação, encerre a demanda com o registro final.";
+    case "encerrada": return "Concluído — encerrado. A demanda permanece disponível no histórico, com o registro final.";
     case "arquivada": return "Arquivada pela moderação e fora do fluxo público.";
     default: return "";
   }
@@ -1118,18 +1151,14 @@ export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "to
     details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
   });
   if (process) return process;
-  // Respostas à análise: solicitação registrada e respondida (T-05-05).
-  const analysis = analysisTimelineLabel({
-    type: event.type,
-    details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
-  });
-  if (analysis) return analysis;
   switch (event.type) {
     case "criada": return "Rascunho criado";
     case "enviada_para_analise": return event.payload?.reenvio === true ? "Reenviada para análise" : "Enviada para análise";
     case "devolvida_para_ajustes": return "Devolvida para ajustes";
     case "publicada": return "Demanda publicada";
     case "arquivada": return "Arquivada";
+    // Encerramento (Modelo §22, T-05-14): o registro final vai no detalhe.
+    case "demanda_encerrada": return "Concluído — encerrado: demanda encerrada com o registro final";
     case "dossie_gerado": {
       const version = typeof event.payload?.version === "number" ? ` (versão ${event.payload.version})` : "";
       return `Dossiê da Demanda gerado${version}`;

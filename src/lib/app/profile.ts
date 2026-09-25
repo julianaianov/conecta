@@ -50,7 +50,7 @@ export interface ProfileActivity {
 }
 
 /** Status em que a demanda já tem resultado ou prestação de contas publicada. */
-export const RESULT_STATUSES: DemandStatus[] = ["concluida", "prestacao_de_contas"];
+export const RESULT_STATUSES: DemandStatus[] = ["concluida", "prestacao_de_contas", "encerrada"];
 
 /** Resposta vazia: nada registrado. Nunca é preenchida com exemplo. */
 export function emptyProfileActivity(userId: string): ProfileActivity {

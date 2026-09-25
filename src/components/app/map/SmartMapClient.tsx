@@ -43,6 +43,7 @@ const SmartMapView = dynamic(() => import("./SmartMapView"), {
 /** Status públicos da demanda, na ordem do fluxo (decisão 4). */
 const PUBLIC_STATUSES: DemandStatus[] = [
   "publicada", "em_busca_de_parceiro", "conectada", "em_execucao", "concluida", "prestacao_de_contas",
+  "encerrada",
 ];
 const PRIORITIES: DemandPriority[] = ["urgente", "alta", "media", "baixa"];
 

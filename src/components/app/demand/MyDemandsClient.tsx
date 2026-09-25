@@ -15,7 +15,11 @@ import {
   demandPublicPath,
   formatCents,
   isAgentTransition,
+  CLOSING_RESPONSIBLES_MAX,
+  CLOSING_SUMMARY_MAX,
+  validateClosing,
 } from "@/lib/app/demand";
+import { DemandRequestError } from "@/lib/app/api";
 import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
 import {
   DEMAND_PUBLIC_STATUSES,
@@ -38,8 +42,7 @@ import { DemandExecutionPanel } from "../execution/DemandExecutionPanel";
 import { DemandAccountabilityPanel } from "../accountability/DemandAccountabilityPanel";
 import { AiSuggestionPanel } from "../ai/AiSuggestionPanel";
 import { PendingDeadlines } from "../process/ProcessDeadlines";
-import { AnalysisRequestsInbox } from "../analysis/AnalysisRequestsInbox";
-import { FormAlert } from "./fields";
+import { FormAlert, TextArea } from "./fields";
 import type { IconName } from "../Icon";
 
 function dateTime(iso: string | null | undefined): string {
@@ -67,6 +70,8 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gate, setGate] = useState<{ status: InstitutionValidationStatus | null } | null>(null);
+  const [closing, setClosing] = useState({ closingSummary: "", closingResponsibles: "" });
+  const [closingErrors, setClosingErrors] = useState<Record<string, string>>({});
   // Abas do detalhe da demanda: interessados (T15), apoios (T16), execução
   // (T17) e dossiê (T10). Uma de cada vez, `null` fechado.
   const [panel, setPanel] = useState<DemandPanel | null>(null);
@@ -77,17 +82,26 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
   const title = demand.title || "Rascunho sem título";
 
   async function run(action: DemandAgentAction) {
+    // Encerramento (Modelo §22, T-05-14): registro final e responsáveis.
+    if (action === "encerrar") {
+      const errors = validateClosing(closing);
+      setClosingErrors(errors);
+      if (Object.keys(errors).length) return;
+    }
     setBusy(true);
     setError(null);
     setGate(null);
     try {
-      const updated = await api.transitionDemand(demand.id, action);
+      const updated = await api.transitionDemand(demand.id, action, action === "encerrar" ? closing : undefined);
       // A resposta traz a visão completa; a lista mantém a foto já assinada.
       onUpdated({ ...updated, photoUrl: updated.photoUrl ?? demand.photoUrl });
       setConfirming(null);
     } catch (err) {
       if (isInstitutionNotValidated(err)) setGate({ status: gateStatusFrom(err) });
-      else setError(demandErrorMessage(err, "Não foi possível atualizar o andamento agora."));
+      else {
+        if (action === "encerrar" && err instanceof DemandRequestError) setClosingErrors(err.fields);
+        setError(demandErrorMessage(err, "Não foi possível atualizar o andamento agora."));
+      }
     } finally {
       setBusy(false);
     }
@@ -132,6 +146,18 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
           </div>
         )}
 
+        {demand.status === "encerrada" && demand.closingSummary && (
+          <div className="mx-4 mb-4 rounded-xl border p-3 sm:mx-5" style={{ borderColor: "rgba(31,122,69,0.45)", background: "rgba(46,158,91,0.08)" }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "#1f7a45" }}>
+              Registro final{demand.closedAt ? ` · encerrada em ${dateTime(demand.closedAt)}` : ""}
+            </p>
+            <p className="mt-1 whitespace-pre-line text-sm" style={{ color: "var(--th-text)" }}>{demand.closingSummary}</p>
+            {demand.closingResponsibles && (
+              <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>Responsáveis: {demand.closingResponsibles}</p>
+            )}
+          </div>
+        )}
+
         {isPublic && <div className="px-4 pb-3 sm:px-5"><StatusTrack status={demand.status} /></div>}
 
         <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
@@ -149,7 +175,8 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
             {PANELS.filter(([key]) => {
               if (key === "dossie") return hasDossier;
               // A prestação de contas só faz sentido no último status (T18).
-              if (key === "prestacao") return demand.status === "prestacao_de_contas";
+              // Depois do encerramento (T-05-14) fica a leitura da prestação concluída.
+              if (key === "prestacao") return demand.status === "prestacao_de_contas" || demand.status === "encerrada";
               // A IA sugere desde o rascunho: é ajuda de preenchimento.
               if (key === "ia") return true;
               return isPublic;
@@ -188,8 +215,6 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
 
         {panel === "interessados" && (
           <div id={`dm-${demand.id}-interessados`} role="tabpanel" className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
-            {/* Solicitações de análise e recusas de Parceiros e do Poder Público (T-05-05, Modelo §10). */}
-            <AnalysisRequestsInbox demandId={demand.id} />
             <DemandInterestsInbox
               demandId={demand.id}
               onStatus={(status) => {
@@ -259,6 +284,37 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
               {DEMAND_ACTION_LABELS[confirming]}: o status passa de <strong>{DEMAND_STATUS_LABELS[demand.status]}</strong> para{" "}
               <strong>{DEMAND_STATUS_LABELS[DEMAND_ACTION_TARGET[confirming]]}</strong> e o registro entra na linha do tempo pública.
             </p>
+            {confirming === "encerrar" && (
+              <div className="mt-3 space-y-3">
+                <p className="text-xs" style={{ color: "var(--th-muted)" }}>
+                  O encerramento exige a prestação de contas concluída. A data de conclusão é registrada automaticamente;
+                  os processos de conexão ainda abertos são encerrados junto, as partes são avisadas e o dossiê ganha a versão
+                  de encerramento. A demanda permanece no histórico público.
+                </p>
+                <TextArea
+                  name={`closingSummary-${demand.id}`}
+                  label="Registro final"
+                  required
+                  rows={4}
+                  maxLength={CLOSING_SUMMARY_MAX}
+                  hint="O que foi entregue e como o processo termina. Aparece na página pública."
+                  value={closing.closingSummary}
+                  onValue={(v) => setClosing((c) => ({ ...c, closingSummary: v }))}
+                  error={closingErrors.closingSummary}
+                />
+                <TextArea
+                  name={`closingResponsibles-${demand.id}`}
+                  label="Responsáveis pelo encerramento"
+                  required
+                  rows={2}
+                  maxLength={CLOSING_RESPONSIBLES_MAX}
+                  hint="Instituição e pessoas responsáveis. Fica no dossiê integral, fora da página pública."
+                  value={closing.closingResponsibles}
+                  onValue={(v) => setClosing((c) => ({ ...c, closingResponsibles: v }))}
+                  error={closingErrors.closingResponsibles}
+                />
+              </div>
+            )}
             <div className="mt-2 flex gap-2">
               <Button type="button" size="sm" icon="check" loading={busy} onClick={() => void run(confirming)}>Confirmar</Button>
               <Button type="button" size="sm" variant="ghost" onClick={() => setConfirming(null)} disabled={busy}>Cancelar</Button>
