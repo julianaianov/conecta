@@ -11,6 +11,7 @@
 
 import {
   DOCUMENT_KIND_LABELS,
+  RESULT_QUESTIONS,
   beneficiariesDelta,
   formatAccountabilityDate,
   formatCents,
@@ -29,21 +30,34 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-function Block({ label, children }: { label: string; children: string }) {
-  return (
-    <div>
-      <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>{label}</p>
-      <p className="mt-1 whitespace-pre-line text-sm" style={{ color: "var(--th-text)" }}>{children}</p>
-    </div>
-  );
-}
-
 export function DemandAccountabilitySection({ data }: { data: PublicDemandAccountabilityView | null }) {
   const accountability = data?.accountability ?? null;
   // Só a prestação concluída é publicada.
   if (!data || !accountability || accountability.status !== "concluida") return null;
 
   const delta = beneficiariesDelta(accountability.beneficiariesReached, accountability.beneficiariesEstimate);
+  const join = (...parts: (string | null | undefined)[]) => parts.filter((p) => p && p.trim()).join("\n\n");
+  const period = [accountability.executedFrom, accountability.executedTo]
+    .filter((d): d is string => Boolean(d)).map(formatAccountabilityDate).join(" a ");
+  const evidenceCount = data.documents.length + (data.executionDocuments ?? []).length;
+  const answers: Record<string, string> = {
+    what: join(accountability.executionReport, accountability.actionsRecord,
+      accountability.scheduleSummary ? `Cronograma executado: ${accountability.scheduleSummary}` : null),
+    where: accountability.locationSummary ?? "No local da demanda, indicado no mapa.",
+    when: period,
+    who: accountability.participants ?? "",
+    howMany: join(accountability.beneficiariesReached !== null
+      ? `${accountability.beneficiariesReached.toLocaleString("pt-BR")} pessoas alcançadas` : null,
+    accountability.beneficiariesNote),
+    goals: goalsSummaryLabel(data.summary.goalsAchieved, data.summary.goalsTotal),
+    indicators: accountability.impactIndicators ?? "",
+    resources: join(accountability.executedAmountCents !== null
+      ? `Executado declarado: ${formatCents(accountability.executedAmountCents)}` : null,
+    accountability.financialSupport ? accountability.financialSummary : null),
+    evidence: join("Fotos e vídeos do antes e do depois na galeria da execução.",
+      evidenceCount > 0 ? `${evidenceCount} documento(s) listado(s) abaixo, sem o arquivo.` : null),
+    finalResult: accountability.finalResult ?? "",
+  };
 
   return (
     <ReadSection title="Resultados e prestação de contas" icon="trophy">
@@ -78,26 +92,19 @@ export function DemandAccountabilitySection({ data }: { data: PublicDemandAccoun
         />
       </dl>
 
-      <div className="space-y-4">
-        {accountability.executionReport && (
-          <Block label="Relatório de execução">{accountability.executionReport}</Block>
-        )}
-        {accountability.actionsRecord && (
-          <Block label="Ações realizadas">{accountability.actionsRecord}</Block>
-        )}
-        {accountability.scheduleSummary && (
-          <Block label="Cronograma executado">{accountability.scheduleSummary}</Block>
-        )}
-        {accountability.beneficiariesNote && (
-          <Block label="Perfil das pessoas alcançadas">{accountability.beneficiariesNote}</Block>
-        )}
-        {accountability.impactIndicators && (
-          <Block label="Indicadores de impacto">{accountability.impactIndicators}</Block>
-        )}
-        {accountability.financialSupport && accountability.financialSummary && (
-          <Block label="Aplicação do apoio financeiro">{accountability.financialSummary}</Block>
-        )}
-      </div>
+      {/* Registro de resultados: as dez perguntas do Modelo de Conexão §21. */}
+      <dl className="space-y-4">
+        {RESULT_QUESTIONS.map(({ key, question }) => {
+          const answer = answers[key];
+          if (!answer) return null;
+          return (
+            <div key={key}>
+              <dt className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>{question}</dt>
+              <dd className="mt-1 whitespace-pre-line text-sm" style={{ color: "var(--th-text)" }}>{answer}</dd>
+            </div>
+          );
+        })}
+      </dl>
 
       {data.results.length > 0 && (
         <div className="mt-4">

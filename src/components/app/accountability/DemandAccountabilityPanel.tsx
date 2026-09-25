@@ -63,6 +63,12 @@ export function DemandAccountabilityPanel({ demandId, onChanged }: {
   const [financialSupport, setFinancialSupport] = useState(false);
   const [financialSummary, setFinancialSummary] = useState("");
   const [executedAmount, setExecutedAmount] = useState("");
+  // Registro de resultados (Modelo de Conexão §21, T-05-13)
+  const [participants, setParticipants] = useState("");
+  const [executedFrom, setExecutedFrom] = useState("");
+  const [executedTo, setExecutedTo] = useState("");
+  const [locationSummary, setLocationSummary] = useState("");
+  const [finalResult, setFinalResult] = useState("");
   const [loaded, setLoaded] = useState(false);
 
   // Resultado por meta (um formulário por meta, aberto sob demanda)
@@ -91,6 +97,11 @@ export function DemandAccountabilityPanel({ demandId, onChanged }: {
     setFinancialSummary(a?.financialSummary ?? "");
     setExecutedAmount(a?.executedAmountCents === null || a?.executedAmountCents === undefined
       ? "" : (a.executedAmountCents / 100).toFixed(2).replace(".", ","));
+    setParticipants(a?.participants ?? "");
+    setExecutedFrom(a?.executedFrom ?? "");
+    setExecutedTo(a?.executedTo ?? "");
+    setLocationSummary(a?.locationSummary ?? "");
+    setFinalResult(a?.finalResult ?? "");
   }, []);
 
   const load = useCallback(async () => {
@@ -159,6 +170,11 @@ export function DemandAccountabilityPanel({ demandId, onChanged }: {
       financialSupport,
       financialSummary: financialSummary.trim() || null,
       executedAmountCents: cents,
+      participants: participants.trim() || null,
+      executedFrom: executedFrom || null,
+      executedTo: executedTo || null,
+      locationSummary: locationSummary.trim() || null,
+      finalResult: finalResult.trim() || null,
     });
   });
 
@@ -334,6 +350,50 @@ export function DemandAccountabilityPanel({ demandId, onChanged }: {
             onValue={setImpactIndicators}
             rows={4}
             error={fields.impactIndicators}
+          />
+          <TextArea
+            name={fieldName("participants")}
+            label="Quem participou?"
+            hint="Equipes, parceiros, voluntários e órgãos envolvidos. Aparece na página pública."
+            value={participants}
+            onValue={setParticipants}
+            rows={3}
+            error={fields.participants}
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextInput
+              name={fieldName("from")}
+              label="Quando? Início da execução"
+              type="date"
+              value={executedFrom}
+              onValue={setExecutedFrom}
+              error={fields.executedFrom}
+            />
+            <TextInput
+              name={fieldName("to")}
+              label="Fim da execução"
+              type="date"
+              value={executedTo}
+              onValue={setExecutedTo}
+              error={fields.executedTo}
+            />
+          </div>
+          <TextArea
+            name={fieldName("where")}
+            label="Onde? (opcional)"
+            hint="Os locais em que a ação aconteceu, além do endereço da demanda."
+            value={locationSummary}
+            onValue={setLocationSummary}
+            rows={2}
+            error={fields.locationSummary}
+          />
+          <TextArea
+            name={fieldName("final")}
+            label="Qual foi o resultado final?"
+            value={finalResult}
+            onValue={setFinalResult}
+            rows={4}
+            error={fields.finalResult}
           />
           <Checkbox
             name={fieldName("financial")}

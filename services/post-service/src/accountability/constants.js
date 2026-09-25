@@ -73,6 +73,9 @@ const REQUIREMENTS = [
   { key: 'schedule_summary', condition: 'sempre', label: 'Atualização final do cronograma' },
   { key: 'beneficiaries_reached', condition: 'sempre', label: 'Número de beneficiários alcançados' },
   { key: 'impact_indicators', condition: 'sempre', label: 'Indicadores de impacto' },
+  // Modelo de Conexão §21 (T-05-13, migração 036).
+  { key: 'participants', condition: 'sempre', label: 'Quem participou' },
+  { key: 'final_result', condition: 'sempre', label: 'Resultado final' },
   { key: 'results', condition: 'sempre', label: 'Resultado alcançado de cada meta declarada' },
   { key: 'evidence_antes', condition: 'execucao_fisica', label: 'Registro do "antes" (foto ou filmagem)' },
   { key: 'evidence_depois', condition: 'execucao_fisica', label: 'Registro do "depois" (foto ou filmagem)' },
@@ -94,6 +97,24 @@ const MAX_SCHEDULE_SUMMARY = 8000;
 const MAX_IMPACT_INDICATORS = 8000;
 const MAX_FINANCIAL_SUMMARY = 8000;
 const MAX_BENEFICIARIES_NOTE = 4000;
+const MAX_PARTICIPANTS = 4000;
+const MAX_LOCATION_SUMMARY = 2000;
+const MAX_FINAL_RESULT = 8000;
+
+// As dez perguntas do registro de resultados (Modelo de Conexão §21), com o
+// campo que responde cada uma na prestação de contas.
+const RESULT_QUESTIONS = [
+  { key: 'what', question: 'O que foi realizado?' },
+  { key: 'where', question: 'Onde?' },
+  { key: 'when', question: 'Quando?' },
+  { key: 'who', question: 'Quem participou?' },
+  { key: 'howMany', question: 'Quantas pessoas?' },
+  { key: 'goals', question: 'Quais metas?' },
+  { key: 'indicators', question: 'Quais indicadores?' },
+  { key: 'resources', question: 'Quais recursos?' },
+  { key: 'evidence', question: 'Quais evidências?' },
+  { key: 'finalResult', question: 'Qual foi o resultado final?' },
+];
 const MAX_RESULT_NOTE = 4000;
 const MAX_MEASURED_VALUE = 500;
 const MAX_MEASUREMENT_METHOD = 2000;
@@ -121,6 +142,10 @@ module.exports = {
   MAX_IMPACT_INDICATORS,
   MAX_FINANCIAL_SUMMARY,
   MAX_BENEFICIARIES_NOTE,
+  MAX_PARTICIPANTS,
+  MAX_LOCATION_SUMMARY,
+  MAX_FINAL_RESULT,
+  RESULT_QUESTIONS,
   MAX_RESULT_NOTE,
   MAX_MEASURED_VALUE,
   MAX_MEASUREMENT_METHOD,

@@ -60,6 +60,11 @@ const DRAFT_COLUMNS = {
   financialSupport: 'financial_support',
   financialSummary: 'financial_summary',
   executedAmountCents: 'executed_amount_cents',
+  participants: 'participants',
+  executedFrom: 'executed_from',
+  executedTo: 'executed_to',
+  locationSummary: 'location_summary',
+  finalResult: 'final_result',
 };
 
 /** Erros dos triggers da migração 015 → HTTP. */

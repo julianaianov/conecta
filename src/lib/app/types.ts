@@ -2631,6 +2631,12 @@ export interface PublicDemandAccountability {
   financialSupport: boolean;
   financialSummary: string | null;
   executedAmountCents: number | null;
+  /** Modelo de Conexão §21 (T-05-13): quem participou, quando, onde, resultado final. */
+  participants?: string | null;
+  executedFrom?: string | null;
+  executedTo?: string | null;
+  locationSummary?: string | null;
+  finalResult?: string | null;
   concludedAt: string | null;
 }
 
@@ -2736,6 +2742,11 @@ export interface DemandAccountabilityInput {
   financialSupport?: boolean | null;
   financialSummary?: string | null;
   executedAmountCents?: number | null;
+  participants?: string | null;
+  executedFrom?: string | null;
+  executedTo?: string | null;
+  locationSummary?: string | null;
+  finalResult?: string | null;
 }
 
 export interface DemandAccountabilityResultInput {

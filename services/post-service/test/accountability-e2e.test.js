@@ -226,6 +226,9 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
       assert.ok(incompleta.body.fields.executionReport);
       assert.ok(incompleta.body.fields.beneficiariesReached);
       assert.ok(incompleta.body.fields.results);
+      // Modelo de Conexão §21 (T-05-13): quem participou e o resultado final.
+      assert.ok(incompleta.body.fields.participants);
+      assert.ok(incompleta.body.fields.finalResult);
 
       // ── Registro final ────────────────────────────────────────────────────
       const rascunho = await call('PUT', `/demands/mine/${demand.id}/accountability`, {
@@ -237,11 +240,23 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
           beneficiariesNote: 'Moradores do entorno e escolas da região.',
           impactIndicators: 'Uso diário do espaço passou de 20 para 150 pessoas.',
           executedAmountCents: 930000,
+          participants: 'Associação de moradores, escola municipal e 25 voluntários.',
+          executedFrom: '2026-08-01',
+          executedTo: '2026-09-10',
+          locationSummary: 'Praça e calçadas do entorno.',
+          finalResult: 'Praça revitalizada e em uso diário pela comunidade.',
         },
       });
       assert.equal(rascunho.status, 200, JSON.stringify(rascunho.body));
       assert.equal(rascunho.body.accountability.status, 'rascunho');
       assert.equal(rascunho.body.accountability.beneficiariesReached, 340);
+      assert.equal(rascunho.body.accountability.executedFrom, '2026-08-01');
+      assert.match(rascunho.body.accountability.participants, /25 voluntários/);
+      const fimAntes = await call('PUT', `/demands/mine/${demand.id}/accountability`, {
+        body: { executedFrom: '2026-09-10', executedTo: '2026-08-01' },
+      });
+      assert.equal(fimAntes.status, 422);
+      assert.ok(fimAntes.body.fields.executedTo);
       assert.equal(rascunho.body.canConclude, false, 'faltam os resultados por meta');
 
       // ── Resultado alcançado por meta (slide 15) ───────────────────────────
@@ -399,6 +414,8 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
       assert.equal(publica.body.accountability.beneficiariesReached, 340);
       assert.equal(publica.body.accountability.beneficiariesEstimate, 200);
       assert.match(publica.body.accountability.impactIndicators, /150 pessoas/);
+      assert.match(publica.body.accountability.finalResult, /em uso diário/);
+      assert.match(publica.body.accountability.participants, /escola municipal/);
       assert.equal(publica.body.summary.goalsTotal, 2);
       assert.equal(publica.body.summary.goalsAchieved, 1);
       assert.equal(publica.body.results.length, 2);
@@ -414,6 +431,8 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
       // ── Linha do tempo pública ────────────────────────────────────────────
       const timeline = await call('GET', `/demands/${demand.id}/timeline`, { auth: false });
       const evento = timeline.body.events.find((e) => e.type === 'prestacao_de_contas_concluida');
+      assert.match(evento.details.finalResult, /em uso diário/);
+      assert.equal(evento.details.executedTo, '2026-09-10');
       assert.ok(evento, 'a conclusão entra na linha do tempo pública');
       assert.equal(evento.details.beneficiariesReached, 340);
       assert.equal(evento.details.goalsTotal, 2);
@@ -450,6 +469,8 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
           scheduleSummary: 'Todas as etapas cumpridas no prazo.',
           beneficiariesReached: 40,
           impactIndicators: 'Empréstimo de livros dobrou na biblioteca do bairro.',
+          participants: 'Mediadores de leitura voluntários.',
+          finalResult: 'Clube de leitura mantido pelos participantes.',
         },
       })).status, 200);
       for (const goalId of social.goals) {

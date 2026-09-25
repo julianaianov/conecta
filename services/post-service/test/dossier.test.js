@@ -252,6 +252,11 @@ const ACCOUNTABILITY = {
     financialSupport: true,
     financialSummary: 'R$ 9.000,00 aplicados em madeira e terra.',
     executedAmountCents: 900000,
+    participants: 'Associação de moradores, duas escolas e 12 voluntários.',
+    executedFrom: '2026-10-01',
+    executedTo: '2026-12-10',
+    locationSummary: 'Praça central e pátio da escola municipal.',
+    finalResult: 'Horta produzindo e cuidada pela comunidade.',
     concludedAt: '2026-12-20T12:00:00.000Z',
   },
   results: [{
@@ -272,6 +277,10 @@ const ACCOUNTABILITY = {
 test('prestação de contas concluída entra no dossiê, integral e público (T18)', async () => {
   const snapshot = content.demandSnapshot(ROW, ITEMS, { accountability: ACCOUNTABILITY });
   assert.equal(snapshot.accountability.beneficiariesReached, 310);
+  // Registro de resultados do Modelo de Conexão §21 (T-05-13).
+  assert.match(snapshot.accountability.participants, /12 voluntários/);
+  assert.equal(snapshot.accountability.executedFrom, '2026-10-01');
+  assert.match(snapshot.accountability.finalResult, /Horta produzindo/);
   assert.equal(snapshot.accountability.results[0].measuredValue, '20 canteiros ativos');
   assert.equal(snapshot.accountability.documents[0].amountCents, 500000);
 

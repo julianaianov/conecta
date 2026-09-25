@@ -13,7 +13,7 @@ const {
   DOCUMENT_KINDS, REQUIREMENTS, MAX_EXECUTION_REPORT, MAX_ACTIONS_RECORD, MAX_SCHEDULE_SUMMARY,
   MAX_IMPACT_INDICATORS, MAX_FINANCIAL_SUMMARY, MAX_BENEFICIARIES_NOTE, MAX_RESULT_NOTE,
   MAX_MEASURED_VALUE, MAX_MEASUREMENT_METHOD, MAX_DOCUMENT_TITLE, MAX_DOCUMENT_DESCRIPTION,
-  MAX_BENEFICIARIES, MAX_AMOUNT_CENTS,
+  MAX_BENEFICIARIES, MAX_AMOUNT_CENTS, MAX_PARTICIPANTS, MAX_LOCATION_SUMMARY, MAX_FINAL_RESULT,
 } = require('./constants');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -107,7 +107,19 @@ function validateAccountabilityDraft(input) {
     financialSummary: optionalText(body, 'financialSummary', errors, MAX_FINANCIAL_SUMMARY),
     executedAmountCents: optionalInteger(body, 'executedAmountCents', errors, MAX_AMOUNT_CENTS,
       'Valor em centavos inteiros, não negativo'),
+    // Modelo de Conexão §21 (T-05-13): quem participou, quando, onde e o resultado final.
+    participants: optionalText(body, 'participants', errors, MAX_PARTICIPANTS),
+    executedFrom: optionalDate(body, 'executedFrom', errors, { future: false }),
+    executedTo: optionalDate(body, 'executedTo', errors, { future: false }),
+    locationSummary: optionalText(body, 'locationSummary', errors, MAX_LOCATION_SUMMARY),
+    finalResult: optionalText(body, 'finalResult', errors, MAX_FINAL_RESULT),
   };
+  if (value.executedFrom && value.executedTo && value.executedFrom > value.executedTo && !errors.executedTo) {
+    errors.executedTo = 'O fim da execução vem depois do início';
+  }
+  for (const field of ['executedFrom', 'executedTo']) {
+    if (errors[field] === 'A data do comprovante não fica no futuro') errors[field] = 'A data da execução não fica no futuro';
+  }
   const sent = {};
   for (const field of Object.keys(value)) sent[field] = body[field] !== undefined;
   return { value, sent, errors };
@@ -188,6 +200,8 @@ function checkRequirements(state = {}) {
     schedule_summary: has(a.scheduleSummary),
     beneficiaries_reached: Number.isInteger(a.beneficiariesReached) && a.beneficiariesReached >= 0,
     impact_indicators: has(a.impactIndicators),
+    participants: has(a.participants),
+    final_result: has(a.finalResult),
     results: Number(state.goalsTotal ?? 0) > 0
       ? Number(state.resultsTotal ?? 0) >= Number(state.goalsTotal ?? 0)
       : true,
@@ -237,6 +251,8 @@ const REQUIREMENT_FIELD = {
   schedule_summary: 'scheduleSummary',
   beneficiaries_reached: 'beneficiariesReached',
   impact_indicators: 'impactIndicators',
+  participants: 'participants',
+  final_result: 'finalResult',
   results: 'results',
   evidence_antes: 'evidences.antes',
   evidence_depois: 'evidences.depois',
@@ -251,6 +267,8 @@ const REQUIREMENT_MESSAGE = {
   schedule_summary: 'Atualize o cronograma com o que foi de fato executado',
   beneficiaries_reached: 'Informe quantas pessoas foram alcançadas',
   impact_indicators: 'Informe os indicadores de impacto',
+  participants: 'Diga quem participou (equipes, parceiros, voluntários, órgãos)',
+  final_result: 'Descreva o resultado final',
   results: 'Informe o resultado alcançado de cada meta declarada',
   evidence_antes: 'Registre a foto ou a filmagem do "antes" (aba Execução)',
   evidence_depois: 'Registre a foto ou a filmagem do "depois" (aba Execução)',

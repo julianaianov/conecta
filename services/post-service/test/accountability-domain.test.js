@@ -102,6 +102,8 @@ const completeState = (extra = {}) => ({
     scheduleSummary: 'Cronograma',
     beneficiariesReached: 300,
     impactIndicators: 'Impacto',
+    participants: 'Moradores e voluntários',
+    finalResult: 'Praça entregue',
     financialSupport: false,
     financialSummary: null,
   },
@@ -117,7 +119,7 @@ const completeState = (extra = {}) => ({
 test('o obrigatório sempre não depende de execução física nem de apoio financeiro', () => {
   const requirements = A.checkRequirements(completeState());
   const always = requirements.filter((r) => r.condition === 'sempre');
-  assert.equal(always.length, 6);
+  assert.equal(always.length, 8);
   assert.ok(always.every((r) => r.applies && r.satisfied));
   // Sem execução física e sem apoio financeiro, o condicional não se aplica.
   assert.ok(requirements.filter((r) => r.condition !== 'sempre').every((r) => !r.applies));
@@ -207,7 +209,7 @@ test('acompanhamento previsto no cronograma é exigência informativa, nunca blo
   const complete = {
     accountability: {
       executionReport: 'r', actionsRecord: 'a', scheduleSummary: 's', beneficiariesReached: 10,
-      impactIndicators: 'i', financialSupport: false,
+      impactIndicators: 'i', participants: 'p', finalResult: 'f', financialSupport: false,
     },
     hasPhysicalExecution: false,
     milestones: { antes: 0, acompanhamento: 0, depois: 0 },
@@ -231,4 +233,30 @@ test('acompanhamento previsto no cronograma é exigência informativa, nunca blo
   assert.equal(notPlanned.applies, false);
   assert.ok(A.checkRequirements(complete).filter((r) => r.key !== 'evidence_acompanhamento')
     .every((r) => r.informative === false));
+});
+
+test('registro de resultados do §21: quem participou e resultado final são obrigatórios (T-05-13)', () => {
+  const missing = A.conclusionErrors(completeState({
+    accountability: { ...completeState().accountability, participants: null, finalResult: ' ' },
+  }));
+  assert.match(missing.participants, /quem participou/i);
+  assert.match(missing.finalResult, /resultado final/i);
+
+  const draft = A.validateAccountabilityDraft({
+    participants: ' Equipe e voluntários ', executedFrom: '2026-08-01', executedTo: '2026-07-01',
+    locationSummary: 'Praça', finalResult: 'Entregue',
+  });
+  assert.match(draft.errors.executedTo, /depois do início/);
+  assert.equal(draft.value.participants, 'Equipe e voluntários');
+  assert.equal(draft.sent.finalResult, true);
+  const future = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  assert.match(A.validateAccountabilityDraft({ executedTo: future }).errors.executedTo, /execução não fica no futuro/);
+
+  assert.deepEqual(A.RESULT_QUESTIONS.map((q) => q.question), [
+    'O que foi realizado?', 'Onde?', 'Quando?', 'Quem participou?', 'Quantas pessoas?', 'Quais metas?',
+    'Quais indicadores?', 'Quais recursos?', 'Quais evidências?', 'Qual foi o resultado final?',
+  ]);
+  const sql036 = fs.readFileSync(path.join(__dirname, '../migrations/036-accountability-fields.sql'), 'utf8');
+  assert.match(sql036, /AND participants IS NOT NULL\s+AND final_result IS NOT NULL/);
+  assert.match(sql036, /'resultados_registrados'/);
 });

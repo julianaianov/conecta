@@ -939,6 +939,16 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   e o documento aceitam `diagnostico`, `intervencao` e `monitoramento` quando a
   categoria é do módulo ambiental (`evidenceMilestonesFor`, 422 no campo
   `milestone` nos demais); a visão do autor traz `allowedMilestones`.
+- Registro de resultados (T-05-13; Modelo de Conexão §21–22): migração post
+  036 acrescenta a `demand_accountability` `participants`, `executed_from`,
+  `executed_to`, `location_summary` e `final_result`; "quem participou" e
+  "resultado final" entram no obrigatório da conclusão (CHECK
+  `demand_accountability_concluded` recriado `NOT VALID`, `requirements` e 422
+  `accountability_incomplete`). A conclusão grava `resultados_registrados` na
+  linha do tempo de cada Processo de Conexão da demanda e o evento público leva
+  período e resultado final. A seção pública responde às dez perguntas
+  literais do §21 (`RESULT_QUESTIONS`); o dossiê imprime quando, onde, quem
+  participou e o resultado final.
 
 ## Mapa inteligente (T20)
 

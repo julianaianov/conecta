@@ -220,6 +220,12 @@ function accountabilitySnapshot(view) {
     financialSupport: a.financialSupport === true,
     financialSummary: a.financialSummary,
     executedAmountCents: a.executedAmountCents,
+    // Modelo de Conexão §21 (T-05-13).
+    participants: a.participants ?? null,
+    executedFrom: a.executedFrom ?? null,
+    executedTo: a.executedTo ?? null,
+    locationSummary: a.locationSummary ?? null,
+    finalResult: a.finalResult ?? null,
     results: (view.results ?? []).map((r) => ({
       goal: r.goal,
       indicator: r.indicator,

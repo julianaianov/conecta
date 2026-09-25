@@ -66,6 +66,7 @@ post_db post-service/migrations/031-demand-categories.sql
 post_db post-service/migrations/032-demand-modules.sql
 post_db post-service/migrations/034-execution-status.sql
 post_db post-service/migrations/035-execution-documents.sql
+post_db post-service/migrations/036-accountability-fields.sql
 post_db post-service/migrations/039-notifications.sql
 post_db post-service/migrations/041-member-support.sql
 post_db post-service/migrations/042-priority-criteria.sql

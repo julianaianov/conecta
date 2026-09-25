@@ -13,7 +13,8 @@ const ACCOUNTABILITY_SQL = `
   a.id, a.demand_id, a.author_id, a.author_name, a.status::text AS status,
   a.execution_report, a.actions_record, a.schedule_summary, a.beneficiaries_reached,
   a.beneficiaries_estimate, a.beneficiaries_note, a.impact_indicators, a.financial_support,
-  a.financial_summary, a.executed_amount_cents, a.concluded_at, a.created_at, a.updated_at`;
+  a.financial_summary, a.executed_amount_cents, a.concluded_at, a.created_at, a.updated_at,
+  a.participants, a.executed_from, a.executed_to, a.location_summary, a.final_result`;
 
 const RESULT_SQL = `
   r.id, r.accountability_id, r.demand_id, r.goal_id, r.position, r.goal_snapshot,
@@ -47,6 +48,11 @@ function serializeAccountability(row) {
     financialSupport: row.financial_support === true,
     financialSummary: row.financial_summary ?? null,
     executedAmountCents: toInt(row.executed_amount_cents),
+    participants: row.participants ?? null,
+    executedFrom: toDate(row.executed_from),
+    executedTo: toDate(row.executed_to),
+    locationSummary: row.location_summary ?? null,
+    finalResult: row.final_result ?? null,
     concludedAt: toIso(row.concluded_at),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -68,6 +74,12 @@ function serializePublicAccountability(row) {
     financialSupport: row.financial_support === true,
     financialSummary: row.financial_summary ?? null,
     executedAmountCents: toInt(row.executed_amount_cents),
+    // Modelo de Conexão §21: quem participou, quando, onde e o resultado final.
+    participants: row.participants ?? null,
+    executedFrom: toDate(row.executed_from),
+    executedTo: toDate(row.executed_to),
+    locationSummary: row.location_summary ?? null,
+    finalResult: row.final_result ?? null,
     concludedAt: toIso(row.concluded_at),
   };
 }

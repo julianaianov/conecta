@@ -27,6 +27,10 @@ import {
   MAX_RESULT_NOTE,
   MAX_SCHEDULE_SUMMARY,
   REQUIREMENTS,
+  RESULT_QUESTIONS,
+  MAX_PARTICIPANTS,
+  MAX_LOCATION_SUMMARY,
+  MAX_FINAL_RESULT,
   REQUIREMENT_CONDITION_LABELS,
   REQUIREMENT_KEYS,
   accountabilityErrorMessage,
@@ -59,7 +63,7 @@ test("estados, tipos de anexo, exigências e limites seguem o post-service", () 
     MAX_EXECUTION_REPORT, MAX_ACTIONS_RECORD, MAX_SCHEDULE_SUMMARY, MAX_IMPACT_INDICATORS,
     MAX_FINANCIAL_SUMMARY, MAX_BENEFICIARIES_NOTE, MAX_RESULT_NOTE, MAX_MEASURED_VALUE,
     MAX_MEASUREMENT_METHOD, MAX_DOCUMENT_TITLE, MAX_DOCUMENT_DESCRIPTION, MAX_DOCUMENTS,
-    MAX_BENEFICIARIES, MAX_AMOUNT_CENTS,
+    MAX_BENEFICIARIES, MAX_AMOUNT_CENTS, MAX_PARTICIPANTS, MAX_LOCATION_SUMMARY, MAX_FINAL_RESULT,
   })) {
     assert.equal(value, server[key], key);
   }
@@ -129,4 +133,8 @@ test("os códigos de erro das rotas viram texto de tela", () => {
   assert.match(accountabilityErrorMessage(withCode("evidence_required")), /"antes"/);
   assert.match(accountabilityErrorMessage(withCode("demand_not_open")), /prestação de contas/);
   assert.match(accountabilityErrorMessage(new Error("network")), /Sem conexão/);
+});
+
+test("as dez perguntas do §21 são as do post-service (T-05-13)", () => {
+  assert.deepEqual(RESULT_QUESTIONS, server.RESULT_QUESTIONS);
 });
