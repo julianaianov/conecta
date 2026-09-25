@@ -22,7 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_uploads_post ON uploads(post_id) WHERE post_id IS
 ALTER TABLE uploads DROP CONSTRAINT IF EXISTS uploads_purpose_check;
 ALTER TABLE uploads ADD CONSTRAINT uploads_purpose_check CHECK (purpose IN (
   'demand_photo', 'demand_evidence_photo', 'demand_evidence_video', 'demand_document',
-  'demand_dossier', 'demand_accountability_document', 'post_photo'));
+  'demand_dossier', 'demand_accountability_document', 'post_photo')) NOT VALID; -- NOT VALID: ver 009
 
 ALTER TABLE uploads DROP CONSTRAINT IF EXISTS uploads_confirmed_complete;
 ALTER TABLE uploads ADD CONSTRAINT uploads_confirmed_complete CHECK (

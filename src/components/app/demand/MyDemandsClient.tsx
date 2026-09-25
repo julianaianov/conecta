@@ -42,6 +42,7 @@ import { DemandExecutionPanel } from "../execution/DemandExecutionPanel";
 import { DemandAccountabilityPanel } from "../accountability/DemandAccountabilityPanel";
 import { AiSuggestionPanel } from "../ai/AiSuggestionPanel";
 import { PendingDeadlines } from "../process/ProcessDeadlines";
+import { AnalysisRequestsInbox } from "../analysis/AnalysisRequestsInbox";
 import { FormAlert, TextArea } from "./fields";
 import type { IconName } from "../Icon";
 
@@ -215,6 +216,8 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
 
         {panel === "interessados" && (
           <div id={`dm-${demand.id}-interessados`} role="tabpanel" className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
+            {/* Solicitações de análise e recusas de Parceiros e do Poder Público (T-05-05, Modelo §10). */}
+            <AnalysisRequestsInbox demandId={demand.id} />
             <DemandInterestsInbox
               demandId={demand.id}
               onStatus={(status) => {

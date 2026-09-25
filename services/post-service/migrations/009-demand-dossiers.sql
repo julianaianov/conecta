@@ -28,8 +28,11 @@
 -- Arquivo gerado pelo servidor também fica em `uploads` (a gestão já assina a
 -- leitura de `object_key` por ali). Não há URL de envio para esta finalidade.
 ALTER TABLE uploads DROP CONSTRAINT IF EXISTS uploads_purpose_check;
+-- NOT VALID: o deploy reaplica o manifesto inteiro e migrações posteriores
+-- acrescentam finalidades (024, 027, 029, 035…); validar aqui recusaria as
+-- linhas delas. A regra vale para toda linha nova ou alterada.
 ALTER TABLE uploads ADD CONSTRAINT uploads_purpose_check CHECK (purpose IN (
-  'demand_photo', 'demand_evidence_photo', 'demand_evidence_video', 'demand_document', 'demand_dossier'));
+  'demand_photo', 'demand_evidence_photo', 'demand_evidence_video', 'demand_document', 'demand_dossier')) NOT VALID;
 
 -- Número do dossiê (DMC-<ano>-<sequência>): um por demanda, repetido nas versões.
 CREATE SEQUENCE IF NOT EXISTS demand_dossier_number_seq;

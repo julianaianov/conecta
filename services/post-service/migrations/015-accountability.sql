@@ -68,7 +68,7 @@ END $$;
 ALTER TABLE uploads DROP CONSTRAINT IF EXISTS uploads_purpose_check;
 ALTER TABLE uploads ADD CONSTRAINT uploads_purpose_check CHECK (purpose IN (
   'demand_photo', 'demand_evidence_photo', 'demand_evidence_video', 'demand_document',
-  'demand_dossier', 'demand_accountability_document'));
+  'demand_dossier', 'demand_accountability_document')) NOT VALID; -- NOT VALID: ver 009
 
 -- ── Registro final da demanda ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS demand_accountability (

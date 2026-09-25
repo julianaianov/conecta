@@ -52,7 +52,9 @@ BEGIN
     FROM regexp_matches(coalesce(def, ''), '''([a-z_]+)''', 'g') AS m;
   vals := array_append(vals, 'process_attachment');
   ALTER TABLE uploads DROP CONSTRAINT IF EXISTS uploads_purpose_check;
-  EXECUTE format('ALTER TABLE uploads ADD CONSTRAINT uploads_purpose_check CHECK (purpose IN (%s))',
+  -- NOT VALID: o deploy reaplica o manifesto e as finalidades de migrações
+  -- posteriores ainda não estão na lista neste ponto (ver 009).
+  EXECUTE format('ALTER TABLE uploads ADD CONSTRAINT uploads_purpose_check CHECK (purpose IN (%s)) NOT VALID',
                  (SELECT string_agg(quote_literal(v), ', ' ORDER BY v) FROM unnest(vals) v));
 END $$;
 

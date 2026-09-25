@@ -49,7 +49,7 @@ BEGIN
     FROM regexp_matches(coalesce(def, ''), '''([a-z_]+)''', 'g') AS m;
   values := array_append(values, 'demand_execution_document');
   ALTER TABLE uploads DROP CONSTRAINT IF EXISTS uploads_purpose_check;
-  EXECUTE format('ALTER TABLE uploads ADD CONSTRAINT uploads_purpose_check CHECK (purpose IN (%s))',
+  EXECUTE format('ALTER TABLE uploads ADD CONSTRAINT uploads_purpose_check CHECK (purpose IN (%s)) NOT VALID',
                  (SELECT string_agg(quote_literal(v), ', ' ORDER BY v) FROM unnest(values) v));
 END $$;
 
