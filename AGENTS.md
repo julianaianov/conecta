@@ -408,9 +408,11 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `idx_demands_place`, `idx_demands_territory`, `idx_demand_events_type_created`,
   `idx_supports_post_confirmed`).
 - Status: `recebida` → `em_analise` → `encaminhada` → `em_articulacao` →
-  `acao_programada` → `em_execucao` → `concluida` (final), mais
+  `aprovada_para_execucao` → `em_execucao` → `concluida` (final), mais
   `nao_e_de_competencia` e `encaminhada_ao_orgao_responsavel` (exigem
-  justificativa; voltam a `em_analise`). Regra no banco
+  justificativa; voltam a `em_analise`) e, desde a decisão 16,
+  `solicitacao_de_informacoes`, `aguardando_documentacao`, `nao_aprovada`,
+  `suspensa` e `cancelada` (ver "Processo de Conexão"). Regra no banco
   (`institutional_status_transition_allowed`, trigger
   `institutional_tracks_guard`) e espelho em
   `services/post-service/src/institutional/state-machine.js` e
@@ -577,6 +579,62 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `test/interest-e2e.test.js` (no `test:e2e`),
   `services/user-service/test/partner-profile.test.js` e
   `src/lib/app/interest.test.mjs`.
+
+## Processo de Conexão (T-05-01)
+
+- Fonte: Modelo de Conexão §11 (protocolo), §14 (responsável atual), §16
+  (status), §28 (vários processos por demanda) e §35 (linha do tempo por
+  conexão); decisões 13 e 16. Camada 3 sobre `demand_interests` +
+  `user_db.connections` (Camada 2) e `demand_institutional_tracks` (análise do
+  órgão), sem substituí-los.
+- Migração post 026 (`026-connection-processes.sql`): `connection_processes`
+  (protocolo `DM-AAAA-NNNNNN` por `next_connection_protocol()`, contador anual
+  em `connection_protocol_counters`; `sequence_in_demand` = CONEXÃO 01, 02…;
+  parte `party_kind` conta ou órgão com retrato do nome; `fee_applies`
+  gerado; origem interesse/oferta/acompanhamento; contribuição; status do §16
+  com `previous_status` nas pausas; responsável atual com setor e data limite;
+  um processo em aberto por parte × demanda). Triggers:
+  `connection_processes_guard` (gestão só lê, nada excluído, protocolo/partes/
+  origem imutáveis, máquina de estados, motivo em `nao_*`/`suspensa`/
+  `cancelada`, `nao_e_de_competencia` só do órgão, encerrado não muda) e
+  `connection_processes_after` (eventos `processo_formalizado` e
+  `processo_status_alterado` públicos, `responsavel_do_processo_definido`
+  privado; espelho do status no acompanhamento do órgão por
+  `dm.process_mirror`). `process_id` em `demand_events` (preenchido também a
+  partir de `track_id`/`forwarding_id` do payload), em
+  `demand_institutional_tracks` e em `demand_forwardings` (herdado da origem).
+- Status institucional alinhado (decisão 16): `acao_programada` virou
+  `aprovada_para_execucao` e entraram `solicitacao_de_informacoes`,
+  `aguardando_documentacao`, `nao_aprovada`, `suspensa`, `cancelada` (RENAME e
+  ADD VALUE na 026; a 010 compara texto porque é reaplicada antes). Com
+  processo, `POST /institutional/demands/:id/status` muda o processo.
+- Nascimento: aceite da conexão de apoio (`POST /demands/mine/:id/connections/:cid/accept`,
+  interesse de apoio ou oferta do órgão com `connectionId`, na mesma
+  transação; participação/voluntariado da comunidade não geram processo),
+  formalização pelo órgão (`POST /institutional/demands/:id/formalize`) ou
+  pelo Agente (`POST /demands/mine/:id/processes` com `interestId`/`offerId`).
+  A demanda vai a `conectada` no primeiro processo.
+- Rotas (`src/routes/processes.js`, domínio em `src/process/`): Agente autor ou
+  parte — `GET /processes/mine`, `GET /processes/by-connection/:cid`,
+  `GET /processes/:ref` (id ou protocolo; linha do tempo completa),
+  `POST /processes/:ref/status` (Agente: execução, conclusão, prestação de
+  contas; parte: análise e recusa; ambos: pausas, cancelamento e retomada;
+  403 `forbidden_status`), `PUT /processes/:ref/responsible`,
+  `PUT /processes/:ref/contribution`; Agente — `GET /demands/mine/:id/processes`;
+  público — `GET /demands/:id/processes` e `GET /processes/:ref/timeline`
+  (protocolo, tipo de parte, contribuição, status; o nome só do órgão). 404
+  para terceiros.
+- Portal: `src/lib/app/process.ts` (tipos e espelho, `process.test.mjs`),
+  bloco em `api.ts`, `/processos` e `/processos/[protocolo]` (`noindex`,
+  `robots.ts`, `PRIVATE_PATH_PREFIXES`, menu da conta), seção "Processos de
+  conexão" na página da demanda, link "Processo DM-…" em `/conexoes/[id]` e
+  "Processo de conexão" (formalizar) em `/governo/demandas/[id]`.
+- Grant dm-infra `025-gestao-app-post-processes.sql` (SELECT). Mensagens,
+  prazos, documentos, respostas à análise, taxas e telas da gestão são as
+  T-05-02 a T-05-06 e T-05-21.
+- Testes: `test/process-domain.test.js`, `test/processes-routes.test.js`,
+  `test/process-e2e.test.js` (suíte `process` do `test:e2e`) e
+  `src/lib/app/process.test.mjs`.
 
 ## Apoio à demanda: modalidades, registro e transparência (T16)
 
