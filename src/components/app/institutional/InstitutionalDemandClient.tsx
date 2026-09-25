@@ -37,6 +37,7 @@ import {
 import { DemandExecutionSection } from "../execution/DemandExecutionSection";
 import { DemandAccountabilitySection } from "../accountability/DemandAccountabilitySection";
 import { BudgetOnlyLine } from "./ViewerComposition";
+import { DemandDocumentsAccessPanel } from "../demand/DemandDocumentsAccessPanel";
 import { AuthPrompt } from "../AuthPrompt";
 import { Button } from "../Button";
 import { Card } from "../ui";
@@ -46,7 +47,6 @@ import {
   BudgetTable,
   CategoryBadge,
   DemandStatusBadge,
-  DocumentsSummary,
   GoalsList,
   PriorityBadge,
   ReadSection,
@@ -599,9 +599,10 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
       </ReadSection>
       <ReadSection title="Metas e indicadores" icon="trophy"><GoalsList goals={demand.goals} /></ReadSection>
       <ReadSection title="Recursos necessários" icon="inventory"><ResourcesSummary resources={demand.resources} /></ReadSection>
-      {demand.documents.length > 0 && (
-        <ReadSection title="Documentação" icon="shield"><DocumentsSummary documents={demand.documents} /></ReadSection>
-      )}
+      {/* Nível Institucional (T-05-18): com acompanhamento aberto, o órgão abre os documentos e o dossiê integral. */}
+      <ReadSection title="Documentação e dossiê integral" icon="shield">
+        <DemandDocumentsAccessPanel demandId={demand.id} documents={demand.documents} />
+      </ReadSection>
       <ReadSection title="Histórico da demanda" icon="clock">
         {timeline.length ? (
           <ol className="space-y-3 border-l-2 pl-4" style={{ borderColor: "var(--th-border)" }}>

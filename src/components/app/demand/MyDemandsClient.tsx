@@ -30,6 +30,7 @@ import { Card, EmptyState } from "../ui";
 import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import { CategoryBadge, DemandStatusBadge, StatusTrack } from "./DemandParts";
 import { DossierPanel } from "./DossierPanel";
+import { DemandDocumentsAccessPanel } from "./DemandDocumentsAccessPanel";
 import { DemandInterestsInbox } from "../interest/DemandInterestsInbox";
 import { PotentialPartnersPanel } from "../interest/PotentialPartnersPanel";
 import { DemandSupportsInbox } from "../support/DemandSupportsInbox";
@@ -239,6 +240,13 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
         {panel === "dossie" && (
           <div id={`dm-${demand.id}-dossie`} role="tabpanel" className="border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--th-border)" }}>
             <DossierPanel demandId={demand.id} compact />
+            {/* Nível de acesso de cada documento (T-05-18, Modelo de Conexão §33). */}
+            {(demand.documents?.length ?? 0) > 0 && (
+              <div className="mt-4">
+                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Documentos e acesso</h3>
+                <DemandDocumentsAccessPanel demandId={demand.id} documents={demand.documents ?? []} />
+              </div>
+            )}
           </div>
         )}
 

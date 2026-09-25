@@ -686,6 +686,40 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `test/process-e2e.test.js` (suíte `process` do `test:e2e`) e
   `src/lib/app/process.test.mjs`.
 
+## Nível de visibilidade Institucional (T-05-18)
+
+- Fonte: Modelo de Conexão §33 (público, institucional, restrito), §09 e §31;
+  Fluxo 3, slide 8 ("Documentação"); decisão 13.
+- "Envolvido no processo" (`services/post-service/src/access/process-party.js`,
+  `demandPartyRole`): `autor`, `operacao`, `delegado` (vínculo T29 com a
+  instituição autora), `parte` (conta ou órgão de um Processo de Conexão fora
+  de cancelado/não aprovado/não é competência), `orgao` (acompanhamento aberto)
+  e `interessado` (conexão aceita). Partes, órgãos e interessados só com a
+  demanda publicada; falha na consulta ao user-service nega o acesso.
+- Migração post 043: `demand_document_access` (nível por documento; sem
+  registro vale `institucional`; `restricted_to` com as contas do `restrito`).
+  Tabela própria porque os itens da demanda só mudam em rascunho.
+- `uploads.js` (as duas cópias): `demand_document` tem `visibility:
+  'institutional'` e `createUploadRoutes` aceita `institutionalAccess`
+  (`src/access/documents.js`): `publico` com a demanda publicada abre para
+  todos (também `/content`); os demais exigem papel; `restrito` só autor,
+  delegados, operação e a lista.
+- Rotas (`src/routes/document-access.js`, em `/demands`, antes do `/:id`):
+  `GET /:id/documents` (nível, `hasFile`, dossiê integral disponível; 404 sem
+  papel), `GET /:id/documents/:documentId/open` (URL assinada de 5 min),
+  `GET /:id/dossie-integral` (última versão integral, 60 s; não regenera) e
+  `PUT /:id/documents/:documentId/access` (autor ou delegado). Cada abertura
+  por quem não é autor nem operação grava `documento_consultado` ou
+  `dossie_integral_consultado` (privados, com o órgão no payload).
+- Portal: `DemandDocumentsAccessPanel` ("Abrir", "Dossiê integral" e, para o
+  autor, o seletor do nível) na análise do órgão, na página pública (só para
+  quem tem papel) e na aba Dossiê de Minhas demandas;
+  `src/lib/app/document-access.ts`.
+- Fora: `process_document`/`process_attachment` continuam `private` (T-05-04).
+- Testes: `test/document-access-routes.test.js`, `test/uploads.test.js`,
+  segundo teste de `test/institutional-e2e.test.js` e
+  `src/lib/app/document-access.test.mjs`.
+
 ## Apoio à demanda: modalidades, registro e transparência (T16)
 
 - Fonte: Apresentação, slide 20 (as 6 modalidades do "Sistema de apoio"),

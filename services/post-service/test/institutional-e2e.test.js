@@ -371,3 +371,178 @@ test('Poder Público: fila, acompanhamento, respostas, status, oferta de apoio e
       await pool.end();
     }
   });
+
+// ── Nível Institucional (T-05-18) ───────────────────────────────────────────
+
+/** S3 em memória (o bastante para upload, confirmação e dossiê). */
+function memoryStorage() {
+  const objects = new Map();
+  return {
+    objects,
+    async presignPut({ key, contentType }) { return { url: `https://s3.test/${key}`, headers: { 'Content-Type': contentType }, expiresIn: 900 }; },
+    async presignGet({ key, expiresIn }) { return `https://s3.test/${key}?exp=${expiresIn}`; },
+    async head(key) {
+      const o = objects.get(key);
+      return o ? { size: o.bytes.length, contentType: o.contentType, checksumSha256: null } : null;
+    },
+    async readPrefix(key, length) { return objects.get(key).bytes.slice(0, length); },
+    async get(key) {
+      const o = objects.get(key);
+      if (!o) throw Object.assign(new Error('NoSuchKey'), { name: 'NoSuchKey' });
+      return Buffer.from(o.bytes);
+    },
+    async put({ key, body, contentType }) { objects.set(key, { bytes: Uint8Array.from(body), contentType }); },
+    async copy(from, to) { objects.set(to, objects.get(from)); },
+    async remove(key) { objects.delete(key); },
+  };
+}
+
+test('nível Institucional: órgão com acompanhamento aberto abre documento e dossiê integral; sem relação é 404; restrito fica fora',
+  { skip: !DATABASE_URL && 'defina DM_E2E_DATABASE_URL (npm run test:e2e)' }, async () => {
+    const { createDossierService } = require('../src/dossier/service');
+    const pool = new Pool({ connectionString: DATABASE_URL });
+    for (const file of postDbFiles()) await pool.query(fs.readFileSync(file, 'utf8'));
+    await pool.query(`DO $$ BEGIN CREATE ROLE gestao_app LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+    await pool.query('GRANT SELECT ON demands TO gestao_app');
+    await pool.query(`GRANT UPDATE (status, review_state, review_note, reviewed_by, archive_reason, updated_at)
+                        ON demands TO gestao_app`);
+    const gestaoUrl = new URL(DATABASE_URL);
+    gestaoUrl.username = 'gestao_app';
+    gestaoUrl.password = '';
+    const gestao = new Pool({ connectionString: gestaoUrl.toString() });
+
+    const storage = memoryStorage();
+    const fetchInstitution = async (userId) => (userId === AGENT ? {
+      institution_kind: 'agente_transformacao', cnpj: '11222333000181', legal_name: 'Associação de Teste', trade_name: null,
+      cnae_primary: '9430800', cnae_primary_description: 'Atividades de associações de defesa de direitos sociais',
+      cnae_secondary: [], municipality: 'Rio de Janeiro', uf: 'RJ', validation_status: 'validada',
+    } : null);
+    const dossiers = createDossierService({
+      pool, storage, fetchInstitution, siteUrl: 'https://homologacao.dmconecta.org', logger: { error() {} }, backoffSeconds: 0,
+    });
+    const server = createApp({
+      pool, secret: SECRET, institutionStatus, governmentProfile, operationUserIds: new Set(),
+      uploadStorage: storage, dossierService: dossiers,
+    }).listen(0);
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const call = async (method, url, { as = GOV, body, auth = true } = {}) => {
+      const headers = { 'content-type': 'application/json' };
+      if (auth) headers.authorization = `Bearer ${token(as)}`;
+      const res = await fetch(`${base}${url}`, {
+        method, headers, body: body === undefined ? undefined : JSON.stringify(body), redirect: 'manual',
+      });
+      return { status: res.status, headers: res.headers, body: await res.json().catch(() => null) };
+    };
+
+    try {
+      // Demanda com um documento enviado ao bucket, publicada.
+      const created = await call('POST', '/demands', {
+        as: AGENT,
+        body: {
+          category: 'projeto_ambiental', title: 'Horta da escola', description: 'Canteiros no pátio.',
+          objective: 'Produzir alimentos.', justification: 'Pátio sem uso.', beneficiariesEstimate: 80,
+          beneficiariesProfile: 'Estudantes', priority: 'media', photoRef: 'https://example.org/foto.jpg',
+          cep: '22790-000', street: 'Rua B', addressNumber: '5', district: 'Recreio', municipality: 'Rio de Janeiro',
+          uf: 'RJ', latitude: -23.01, longitude: -43.44, territory: 'Recreio dos Bandeirantes',
+          problemIdentified: 'Pátio da escola sem uso.', coverageArea: 'Escola e quadras vizinhas',
+        },
+      });
+      assert.equal(created.status, 201, JSON.stringify(created.body));
+      const id = created.body.id;
+      assert.equal((await call('POST', `/demands/${id}/schedule-items`, {
+        as: AGENT, body: { stage: 'Plantio', activities: 'Canteiros', startsOn: '2026-10-01', endsOn: '2026-11-30', recordMilestones: ['antes', 'depois'] },
+      })).status, 201);
+      assert.equal((await call('POST', `/demands/${id}/budget-items`, {
+        as: AGENT, body: { description: 'Fotografia e filmagem', quantity: 1, unit: 'serviço', unitPriceCents: 40000, isAudiovisualRecord: true },
+      })).status, 201);
+      assert.equal((await call('POST', `/demands/${id}/goals`, {
+        as: AGENT, body: { goal: 'Canteiros', expectedResult: 'Produção', indicator: 'Canteiros ativos', measurementMethod: 'Contagem' },
+      })).status, 201);
+      const pdf = Buffer.from('%PDF-1.7\n%âãÏÓ\n1 0 obj', 'latin1');
+      const ticket = await call('POST', '/uploads/presign', {
+        as: AGENT, body: { purpose: 'demand_document', contentType: 'application/pdf', size: pdf.length, fileName: 'orcamento.pdf' },
+      });
+      assert.equal(ticket.status, 201, JSON.stringify(ticket.body));
+      storage.objects.set(`tmp/${ticket.body.uploadId}`, { bytes: Uint8Array.from(pdf), contentType: 'application/pdf' });
+      const upload = await call('POST', `/uploads/${ticket.body.uploadId}/confirm`, { as: AGENT, body: { demandId: id } });
+      assert.equal(upload.status, 200, JSON.stringify(upload.body));
+      const doc = await call('POST', `/demands/${id}/documents`, {
+        as: AGENT, body: { type: 'orcamentos_e_cotacoes', title: 'Orçamento da horta', reference: upload.body.id },
+      });
+      assert.equal(doc.status, 201, JSON.stringify(doc.body));
+      const docId = doc.body.item.id;
+      const submitted = await call('POST', `/demands/${id}/submit`, { as: AGENT });
+      assert.equal(submitted.status, 200, JSON.stringify(submitted.body));
+      await gestao.query("UPDATE demands SET status = 'publicada', reviewed_by = 'Equipe DM', updated_at = NOW() WHERE id = $1", [id]);
+      const regenerated = await call('POST', `/demands/${id}/dossiers/regenerate`, { as: AGENT });
+      assert.equal(regenerated.status, 200, JSON.stringify(regenerated.body));
+
+      // Sem acompanhamento aberto, o órgão não é envolvido: 404.
+      assert.equal((await call('GET', `/demands/${id}/documents`)).status, 404);
+      assert.equal((await call('GET', `/uploads/${upload.body.id}`)).status, 404);
+      assert.equal((await call('GET', `/demands/${id}/dossie-integral`)).status, 404);
+      assert.equal((await call('POST', `/institutional/demands/${id}/track`)).status, 201);
+
+      // ── Órgão com acompanhamento aberto ─────────────────────────────────
+      const list = await call('GET', `/demands/${id}/documents`);
+      assert.equal(list.status, 200, JSON.stringify(list.body));
+      assert.equal(list.body.role, 'orgao');
+      assert.deepEqual(list.body.documents.map((d) => [d.id, d.accessLevel, d.hasFile]), [[docId, 'institucional', true]]);
+      assert.ok(list.body.dossier && list.body.dossier.version >= 1);
+      const open = await call('GET', `/demands/${id}/documents/${docId}/open`);
+      assert.equal(open.status, 200);
+      assert.match(open.body.url, new RegExp(`^https://s3.test/demands/${id}/documents/${upload.body.id}\\.pdf\\?exp=300$`));
+      assert.equal((await call('GET', `/uploads/${upload.body.id}`)).status, 200);
+      const integral = await call('GET', `/demands/${id}/dossie-integral`);
+      assert.equal(integral.status, 200, JSON.stringify(integral.body));
+      assert.match(integral.body.url, /dossie\/v\d+\.pdf\?exp=60$/);
+      assert.doesNotMatch(integral.body.url, /publica/);
+      // Registro privado, com o órgão, fora da linha do tempo pública.
+      const { rows: consulted } = await pool.query(
+        `SELECT event_type, actor_type, is_public, payload->>'organization_id' AS org FROM demand_events
+          WHERE demand_id = $1 AND event_type IN ('documento_consultado', 'dossie_integral_consultado') ORDER BY created_at`,
+        [id],
+      );
+      assert.deepEqual(consulted.map((e) => e.event_type), ['documento_consultado', 'documento_consultado', 'dossie_integral_consultado']);
+      assert.ok(consulted.every((e) => e.actor_type === 'poder_publico' && e.is_public === false && e.org === ORG_GOV));
+      const timeline = await call('GET', `/demands/${id}/timeline`, { auth: false });
+      assert.ok(!timeline.body.events.some((e) => /consultado/.test(e.type)));
+
+      // ── Sem relação: 404 ────────────────────────────────────────────────
+      for (const as of [MEMBER, GOV_STATE]) {
+        assert.equal((await call('GET', `/demands/${id}/documents`, { as })).status, 404);
+        assert.equal((await call('GET', `/demands/${id}/documents/${docId}/open`, { as })).status, 404);
+        assert.equal((await call('GET', `/demands/${id}/dossie-integral`, { as })).status, 404);
+        assert.equal((await call('GET', `/uploads/${upload.body.id}`, { as })).status, 404);
+      }
+      assert.equal((await call('GET', `/uploads/${upload.body.id}/content`, { auth: false })).status, 404);
+
+      // ── O autor define o nível ──────────────────────────────────────────
+      assert.equal((await call('PUT', `/demands/${id}/documents/${docId}/access`, { body: { accessLevel: 'publico' } })).status, 403);
+      const restricted = await call('PUT', `/demands/${id}/documents/${docId}/access`, { as: AGENT, body: { accessLevel: 'restrito' } });
+      assert.equal(restricted.status, 200, JSON.stringify(restricted.body));
+      assert.equal(restricted.body.document.accessLevel, 'restrito');
+      assert.deepEqual((await call('GET', `/demands/${id}/documents`)).body.documents, []);
+      assert.equal((await call('GET', `/demands/${id}/documents/${docId}/open`)).status, 404);
+      assert.equal((await call('GET', `/uploads/${upload.body.id}`)).status, 404);
+      assert.equal((await call('PUT', `/demands/${id}/documents/${docId}/access`, {
+        as: AGENT, body: { accessLevel: 'restrito', restrictedTo: [GOV] },
+      })).status, 200);
+      assert.equal((await call('GET', `/uploads/${upload.body.id}`)).status, 200, 'conta autorizada no restrito');
+      assert.equal((await call('PUT', `/demands/${id}/documents/${docId}/access`, { as: AGENT, body: { accessLevel: 'publico' } })).status, 200);
+      const publicContent = await call('GET', `/uploads/${upload.body.id}/content`, { auth: false });
+      assert.equal(publicContent.status, 302);
+      // O autor segue vendo tudo, sem registro de consulta.
+      const own = await call('GET', `/demands/${id}/documents`, { as: AGENT });
+      assert.equal(own.body.canManage, true);
+      assert.equal((await call('GET', `/demands/${id}/dossie-integral`, { as: AGENT })).status, 200);
+      const { rows: [{ n }] } = await pool.query(
+        "SELECT count(*)::int AS n FROM demand_events WHERE demand_id = $1 AND actor = $2 AND event_type LIKE '%consultado'", [id, AGENT],
+      );
+      assert.equal(n, 0);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      await gestao.end();
+      await pool.end();
+    }
+  });

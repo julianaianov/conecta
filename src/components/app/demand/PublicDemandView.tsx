@@ -35,12 +35,12 @@ import { DemandAccountabilitySection } from "../accountability/DemandAccountabil
 import { DemandInterestPanel } from "../interest/DemandInterestPanel";
 import { DemandSupportBlock } from "../support/DemandSupportPanel";
 import { ViewerComposition } from "../institutional/ViewerComposition";
+import { DemandDocumentsAccessPanel } from "./DemandDocumentsAccessPanel";
 import {
   BudgetTable,
   CategoryBadge,
   ModuleDetailsBlock,
   DemandStatusBadge,
-  DocumentsSummary,
   GoalsList,
   PriorityBadge,
   ReadSection,
@@ -259,8 +259,9 @@ export function PublicDemandView({
 
       {demand.documents.length > 0 && (
         <ReadSection title="Documentação comprobatória" icon="shield">
-          <p className="mb-3 text-xs" style={{ color: "var(--th-muted)" }}>Os arquivos ficam disponíveis para a análise da plataforma; aqui aparecem o tipo e o nome.</p>
-          <DocumentsSummary documents={demand.documents} />
+          <p className="mb-3 text-xs" style={{ color: "var(--th-muted)" }}>Aqui aparecem o tipo e o nome. Os arquivos ficam com a análise da plataforma e com quem é envolvido no processo da demanda.</p>
+          {/* Nível Institucional (T-05-18): partes, órgãos e conexões aceitas abrem os arquivos. */}
+          <DemandDocumentsAccessPanel demandId={demand.id} documents={demand.documents} />
         </ReadSection>
       )}
 

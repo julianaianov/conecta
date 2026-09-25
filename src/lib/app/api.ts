@@ -49,6 +49,7 @@ import {
   type ShareChannel, type ShareTargetKind,
 } from "./ranking";
 import type { DemandDossierDownload, DemandDossierList, DossierVerification, PublicDossierInfo } from "./types";
+import type { DemandAccessDocument, DemandDocumentsAccess, DocumentAccessLevel, SignedFileLink } from "./document-access";
 import type { MyReport, ReportContext, ReportInput, ReportTargetKind } from "./report";
 import type {
   AiEditalMatch, AiGovernmentReportData, AiPartnerMatch, AiResult, AiStatus, AiSuggestion,
@@ -1507,6 +1508,31 @@ export const api = {
     return demandRequired(`/${encodeURIComponent(id)}/dossiers/regenerate`, { method: "POST", body: "{}" });
   },
 
+  // ── NÍVEL INSTITUCIONAL: DOCUMENTOS E DOSSIÊ INTEGRAL (T-05-18) ───────────
+  /** Documentos com o nível de acesso para quem é envolvido no processo; `null` para os demais. */
+  demandDocumentsAccess(id: string): Promise<DemandDocumentsAccess | null> {
+    return demandRequest<DemandDocumentsAccess>(`/${encodeURIComponent(id)}/documents`);
+  },
+
+  /** URL assinada de 5 min do documento (a abertura fica registrada). */
+  openDemandDocument(id: string, documentId: string): Promise<SignedFileLink> {
+    return demandRequired<SignedFileLink>(`/${encodeURIComponent(id)}/documents/${encodeURIComponent(documentId)}/open`);
+  },
+
+  /** URL assinada de 60 s da última versão integral do dossiê (parte, órgão ou autor). */
+  demandIntegralDossier(id: string): Promise<SignedFileLink> {
+    return demandRequired<SignedFileLink>(`/${encodeURIComponent(id)}/dossie-integral`);
+  },
+
+  /** Autor ou delegado: nível de acesso do documento. */
+  async setDemandDocumentAccess(
+    id: string, documentId: string, input: { accessLevel: DocumentAccessLevel; restrictedTo?: string[] },
+  ): Promise<DemandAccessDocument> {
+    return (await demandRequired<{ document: DemandAccessDocument }>(
+      `/${encodeURIComponent(id)}/documents/${encodeURIComponent(documentId)}/access`, { method: "PUT", ...json(input) },
+    )).document;
+  },
+
   /** Versão pública da publicação; `null` se a demanda não é pública. */
   publicDossierInfo(id: string): Promise<PublicDossierInfo | null> {
     return demandRequest<PublicDossierInfo>(`/${encodeURIComponent(id)}/dossie-publico/info`);
@@ -1634,8 +1660,18 @@ export const api = {
 
   // ── EXECUÇÃO, EVIDÊNCIAS E ACOMPANHAMENTO (T17) ──────────────────────────
   /** Histórico visual e acompanhamento públicos da execução. */
-  publicDemandExecution(id: string): Promise<PublicDemandExecution | null> {
-    return demandRequest<PublicDemandExecution>(`/${encodeURIComponent(id)}/execution`);
+  async publicDemandExecution(id: string): Promise<PublicDemandExecution | null> {
+    const data = await demandRequest<PublicDemandExecution>(`/${encodeURIComponent(id)}/execution`);
+    if (!data) return null;
+    // Mídia em `/api/posts/...` com a base da API, como no SSR (tela do órgão, T-03-02).
+    const withUrl = <T extends { url: string | null }>(e: T): T => ({ ...e, url: e.url ? resolveMediaUrl(e.url, BASE) : null });
+    return {
+      ...data,
+      evidences: (data.evidences ?? []).map(withUrl),
+      pairs: (data.pairs ?? []).map((pair) => ({ ...pair, before: withUrl(pair.before), after: withUrl(pair.after) })),
+      progress: data.progress ?? [],
+      schedule: data.schedule ?? [],
+    };
   },
 
   /** Agente autor: evidências, andamento, execução orçamentária e pendências. */
