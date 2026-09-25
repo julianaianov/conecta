@@ -22,8 +22,11 @@ import {
 import { timelineEventLabel } from "@/lib/app/demand";
 import { formatDate } from "@/lib/app/format";
 import { formatDay } from "@/lib/app/deadlines";
+import { MEETING_MODE_LABELS } from "@/lib/app/institutional";
+import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS } from "@/lib/app/demand";
 import {
   type ConnectionType,
+  type DemandDocumentType,
   type DemandTimelineEvent,
   type Forwarding,
   type InstitutionalDemandView,
@@ -189,6 +192,10 @@ function ResponseForm({ view, onSaved }: { view: InstitutionalDemandView; onSave
   const [plannedFor, setPlannedFor] = useState("");
   const [status, setStatus] = useState<InstitutionalStatus | "">("");
   const [statusNote, setStatusNote] = useState("");
+  // Respostas à análise (Modelo de Conexão §10, T-05-05).
+  const [documents, setDocuments] = useState<DemandDocumentType[]>([]);
+  const [meetingAt, setMeetingAt] = useState("");
+  const [meetingMode, setMeetingMode] = useState<"presencial" | "online" | "">("");
   const [busy, setBusy] = useState(false);
   const errors = useApiErrors();
   const [done, setDone] = useState(false);
@@ -213,12 +220,17 @@ function ResponseForm({ view, onSaved }: { view: InstitutionalDemandView; onSave
         programName: programName.trim() || null,
         programUrl: programUrl.trim() || null,
         plannedFor: plannedFor || null,
-        status: status || null,
+        status: type === "recusa_com_motivo" ? null : status || null,
         statusNote: statusNote.trim() || null,
+        requestedDocumentTypes: type === "solicitacao_de_documentos" ? documents : [],
+        meetingProposedAt: type === "solicitacao_de_reuniao" && meetingAt ? meetingAt : null,
+        meetingMode: type === "solicitacao_de_reuniao" && meetingMode ? meetingMode : null,
+        refusalReason: type === "recusa_com_motivo" ? body.trim() || null : null,
       });
       onSaved(next);
       setDone(true);
       setType(""); setBody(""); setSector(""); setProgramName(""); setProgramUrl(""); setPlannedFor(""); setStatus(""); setStatusNote("");
+      setDocuments([]); setMeetingAt(""); setMeetingMode("");
     } catch (err) {
       errors.capture(err, "Não foi possível registrar a resposta agora.");
     } finally {
@@ -238,10 +250,33 @@ function ResponseForm({ view, onSaved }: { view: InstitutionalDemandView; onSave
         error={errors.fields.type}
       />
       <TextArea
-        name="response-body" label="Resposta" required value={body} onValue={setBody} rows={5} maxLength={5000}
-        hint="Texto público, assinado pelo órgão (o nome do representante não aparece na página pública)."
-        error={errors.fields.body}
+        name="response-body" label={type === "recusa_com_motivo" ? "Motivo da recusa" : "Resposta"} required value={body}
+        onValue={setBody} rows={5} maxLength={type === "recusa_com_motivo" ? 3000 : 5000}
+        hint={type === "recusa_com_motivo"
+          ? "Obrigatório. O acompanhamento passa a Não aprovada e o Agente é avisado."
+          : "Texto público, assinado pelo órgão (o nome do representante não aparece na página pública)."}
+        error={errors.fields.body ?? errors.fields.refusalReason}
       />
+      {type === "solicitacao_de_documentos" && (
+        <fieldset className="grid gap-1 sm:grid-cols-2">
+          <legend className="mb-1 text-xs font-semibold" style={{ color: "var(--th-muted)" }}>Documentos solicitados ao Agente</legend>
+          {DOCUMENT_TYPES.map((t) => (
+            <Checkbox key={t} name={`response-doc-${t}`} label={DOCUMENT_TYPE_LABELS[t]} checked={documents.includes(t)}
+              onChecked={(on) => setDocuments((list) => (on ? [...list, t] : list.filter((x) => x !== t)))} />
+          ))}
+          {errors.fields.requestedDocumentTypes && <FormAlert message={errors.fields.requestedDocumentTypes} />}
+        </fieldset>
+      )}
+      {type === "solicitacao_de_reuniao" && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextInput name="response-meeting-at" label="Data e hora sugeridas" type="datetime-local" value={meetingAt}
+            onValue={setMeetingAt} error={errors.fields.meetingProposedAt} />
+          <SelectInput name="response-meeting-mode" label="Formato" value={meetingMode} placeholder="A combinar"
+            onValue={(v) => setMeetingMode(v as "presencial" | "online" | "")}
+            options={(["presencial", "online"] as const).map((m) => ({ value: m, label: MEETING_MODE_LABELS[m] }))}
+            error={errors.fields.meetingMode} />
+        </div>
+      )}
       {showSector && (
         <TextInput
           name="response-sector" label="Órgão ou setor responsável" required={type === "orgao_ou_setor_responsavel"}
@@ -257,7 +292,7 @@ function ResponseForm({ view, onSaved }: { view: InstitutionalDemandView; onSave
       {type === "acao_prevista" && (
         <TextInput name="response-planned" label="Data prevista" type="date" value={plannedFor} onValue={setPlannedFor} error={errors.fields.plannedFor} className="max-w-xs" />
       )}
-      {available.length > 0 && (
+      {available.length > 0 && type !== "recusa_com_motivo" && (
         <SelectInput
           name="response-status"
           label={`Atualizar o status junto (atual: ${INSTITUTIONAL_STATUS_LABELS[current]})`}

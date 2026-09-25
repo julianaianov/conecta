@@ -1794,7 +1794,9 @@ export type InstitutionalStatus =
 export type InstitutionalResponseType =
   | "recebimento" | "analise_em_andamento" | "orgao_ou_setor_responsavel" | "encaminhamento_realizado"
   | "programa_publico_relacionado" | "acao_prevista" | "informacoes_adicionais"
-  | "impossibilidade_com_encaminhamento";
+  | "impossibilidade_com_encaminhamento"
+  // Respostas à análise (Modelo de Conexão §10, T-05-05).
+  | "solicitacao_de_documentos" | "solicitacao_de_reuniao" | "solicitacao_de_analise_tecnica" | "recusa_com_motivo";
 
 export type InstitutionalSupportType =
   | "recursos_publicos" | "servicos_publicos" | "programas_e_politicas_publicas" | "infraestrutura"
@@ -1855,6 +1857,11 @@ export interface InstitutionalResponse {
   programUrl: string | null;
   plannedFor: string | null;
   institutionalStatus: InstitutionalStatus;
+  /** Respostas à análise (T-05-05): documentos pedidos, reunião e motivo da recusa. */
+  requestedDocumentTypes?: DemandDocumentType[];
+  meetingMode?: "presencial" | "online" | null;
+  meetingProposedAt?: string | null;
+  refusalReason?: string | null;
   createdAt: string;
   /** Só na visão do próprio órgão. */
   authorId?: string;
@@ -1946,6 +1953,10 @@ export interface InstitutionalResponseInput {
   plannedFor?: string | null;
   status?: InstitutionalStatus | null;
   statusNote?: string | null;
+  requestedDocumentTypes?: DemandDocumentType[];
+  meetingProposedAt?: string | null;
+  meetingMode?: "presencial" | "online" | null;
+  refusalReason?: string | null;
 }
 
 export interface InstitutionalOfferInput {

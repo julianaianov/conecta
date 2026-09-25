@@ -43,6 +43,7 @@ import { executionTimelineLabel } from "./execution.ts";
 import { accountabilityTimelineLabel } from "./accountability.ts";
 import { mediaTimelineLabel } from "./media.ts";
 import { processTimelineLabel } from "./process.ts";
+import { analysisTimelineLabel } from "./analysis.ts";
 
 // ── Rotas ──────────────────────────────────────────────────
 
@@ -1117,6 +1118,12 @@ export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "to
     details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
   });
   if (process) return process;
+  // Respostas à análise: solicitação registrada e respondida (T-05-05).
+  const analysis = analysisTimelineLabel({
+    type: event.type,
+    details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
+  });
+  if (analysis) return analysis;
   switch (event.type) {
     case "criada": return "Rascunho criado";
     case "enviada_para_analise": return event.payload?.reenvio === true ? "Reenviada para análise" : "Enviada para análise";
