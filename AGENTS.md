@@ -378,8 +378,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   enviar" (`demandWarnings` em `demand.ts`: rótulo humano, etapa de correção,
   ordem das etapas), com atalho para a etapa; o envio continua permitido. A
   tabela do orçamento do `DemandSummary` marca os itens sem etapa vinculada.
-  Aviso sem campo no assistente (`themes`, até a interface da T26) aparece sem
-  atalho; quem fizer a T26 mapeia a chave para a etapa.
+  O aviso `themes` leva à etapa 1, onde os eixos são marcados (T-01-04).
 - Instituição responsável (T-02-02, slides 4 e 19): `/demandas/[id]` lê
   `getPublicInstitution(demand.authorId)` (projeção pública do user-service,
   só validada, sem contato do representante; resolve o vínculo da T29) e
@@ -1639,8 +1638,20 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Rotas públicas (`src/routes/themes.js`, montada em `/demands`):
   `GET /themes` (vocabulário) e `GET /themes/intelligence` (eixo × território,
   uma consulta agregada, sem dado pessoal, teto de 500 linhas).
-- Pendências: grant `SELECT` em `demand_themes` para `gestao_app` no dm-infra
-  e a interface do portal (marcar eixos na ficha da demanda e filtro no mapa).
+- Grant `SELECT` em `demand_themes` para `gestao_app`: dm-infra
+  `023-gestao-app-post-themes.sql`.
+- Interface (T-01-04): a etapa 1 do assistente marca os eixos (`themes` em
+  `STEP_FIELDS.classificacao`; `sortThemes`/`toggleTheme` em `demand.ts`); a
+  página pública, a revisão e `DemandParts` mostram `ThemeChips` (link para
+  `/mapa?theme=<eixo>`). O mapa tem o filtro "Eixo temático"
+  (`MAP_THEME_FILTERS` em `map.ts`, espelho de `THEME_FILTERS`; contagem
+  `counts.theme` e `counts.themed`), aceita `?theme=` no SSR (`parseMapThemes`)
+  e mostra a seção "Inteligência territorial por eixo temático"
+  (`ThemeIntelligence`, lendo `GET /demands/themes/intelligence` com o recorte do
+  mapa; também em `/mapa/<territorio>`). `/governo/indicadores` tem o filtro por
+  eixo (`IndicatorFilter.theme`) e a "Priorização por eixo temático"
+  (`priority.themes`). Testes: `demand.test.mjs`, `map.test.mjs`,
+  `government.test.mjs`.
 - Testes: `test/themes-routes.test.js`, `test/demand-validation.test.js`,
   `test/ai-domain.test.js` e `test/ai-routes.test.js`.
 
