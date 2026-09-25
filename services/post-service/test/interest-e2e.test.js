@@ -374,7 +374,7 @@ test('interesse, conexão com o Agente, demanda conectada e oportunidades com co
       await assert.rejects(pool.query("UPDATE demand_interests SET message = 'x' WHERE id = $1", [pid]), /não mudam/);
       await assert.rejects(pool.query("UPDATE demand_interests SET kind = 'voluntariado' WHERE id = $1", [pid]), /não mudam/);
       await assert.rejects(pool.query('DELETE FROM demand_interests WHERE id = $1', [pid]), /não são excluídos/);
-      await assert.rejects(pool.query('TRUNCATE demand_interests'), /não é apagada/);
+      await assert.rejects(pool.query('TRUNCATE demand_interests CASCADE'), /não é apagada/);
       await assert.rejects(pool.query("UPDATE demand_interests SET connection_status = 'recusada' WHERE id = $1", [pid]), /pedido pendente/);
       await assert.rejects(pool.query('UPDATE demand_interests SET connection_id = NULL, connection_status = NULL WHERE id = $1', [pid]), /não é desfeita|connection/);
       await assert.rejects(pool.query(

@@ -70,6 +70,7 @@ const {
 
 const { DEMAND_EVENT_TYPES: EVENT_EVENT_TYPES } = require('../event/constants');
 const { EVENT_TYPES: MEDIA_EVENT_TYPES } = require('../media/constants');
+const { PROCESS_EVENT_TYPES } = require('../process/constants');
 
 // Eventos com payload->'public' exposto como `details` (T13, encaminhamentos da
 // T14, interesse/conexão da T15, apoio da T16, execução da T17, prestação de
@@ -81,6 +82,8 @@ const DETAILED_EVENT_TYPES = [
   ...GOVERNMENT_EVENT_TYPES, ...EVENT_EVENT_TYPES,
   // Divulgação registrada pela Comunicação (T28).
   ...MEDIA_EVENT_TYPES,
+  // Processo de Conexão formalizado e mudanças de status (T-05-01).
+  ...PROCESS_EVENT_TYPES,
 ];
 const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
 const { parseUploadRef, describeUploads } = require('../uploads');

@@ -28,7 +28,10 @@
 // Agente autor:
 //   GET  /mine/:id/interests            quem se interessou, oferta e conexão
 //   POST /mine/:id/connections/:cid/accept   aceita no user-service; a demanda
-//                                            vai para `conectada` como `sistema`
+//                                            vai para `conectada` como `sistema` e,
+//                                            quando a conexão é de apoio (interesse
+//                                            de apoio ou oferta do órgão), nasce o
+//                                            Processo de Conexão (T-05-01)
 //   POST /mine/:id/connections/:cid/decline  recusa no user-service
 //
 // A conexão continua sendo a do user-service (routes/connections.js), com
@@ -49,6 +52,7 @@ const { validateInterest, validateConnectionRequest, connectionTypeFor } = requi
 const { requireDemandAuthorRole } = require('../demand/gate');
 const { computeCompatibility, profileHasCriteria } = require('../interest/compatibility');
 const store = require('../interest/store');
+const processStore = require('../process/store');
 const { listHelpers } = require('./demands');
 
 const { HttpError, withTransaction, sendError } = demandStore;
@@ -175,7 +179,7 @@ module.exports = ({
     try {
       await fn(req, res);
     } catch (err) {
-      sendError(res, mapInterestDbError(err));
+      sendError(res, processStore.mapProcessSpecific(err) ?? mapInterestDbError(err));
     }
   };
 
@@ -508,18 +512,29 @@ module.exports = ({
         await demandStore.transitionDemand(client, row, 'conectar', { actor: 'sistema', actorRef: `conexao:${connection.id}` });
         transitioned = true;
       }
+      // Formalização (Modelo de Conexão §11, decisão 13): conexão de apoio
+      // aceita gera o Processo de Conexão com protocolo, na mesma transação.
+      const formalized = await processStore.formalizeFromConnection(client, {
+        demandId: req.params.id, connectionId: connection.id, formalizedBy: req.user.userId,
+      });
       const { rows: [current] } = await client.query('SELECT status::text AS status FROM demands WHERE id = $1', [req.params.id]);
       const { rows: interests } = await client.query(
         `SELECT ${store.INTEREST_SQL} FROM demand_interests i WHERE i.demand_id = $1 AND i.connection_id = $2`,
         [req.params.id, connection.id],
       );
-      return { status: current.status, transitioned, interest: interests[0] ? store.serializeAgentInterest(interests[0]) : null };
+      return {
+        status: current.status,
+        transitioned,
+        interest: interests[0] ? store.serializeAgentInterest(interests[0]) : null,
+        process: formalized ? processStore.serializeSummary(formalized.row) : null,
+      };
     });
     res.json({
       demand: { id: req.params.id, status: result.status },
       transitioned: result.transitioned,
       connection,
       interest: result.interest,
+      process: result.process,
     });
   }));
 

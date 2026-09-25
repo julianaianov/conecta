@@ -21,6 +21,7 @@ const { requireGovernmentActor } = require('./institutional/gate');
 const { createGovernmentProfileClient } = require('./institutional/store');
 const { createGovernmentDirectoryClient } = require('./institutional/directory');
 const interestsRoutes = require('./routes/interests');
+const processesRoutes = require('./routes/processes');
 const supportsRoutes = require('./routes/supports');
 const executionRoutes = require('./routes/execution');
 const accountabilityRoutes = require('./routes/accountability');
@@ -115,6 +116,9 @@ const createApp = ({
   app.use('/demands', interestsRoutes({
     pool, auth, validatedAgent, governmentGate: institutional, institutionStatus, partnerProfile, connections,
   }));
+  // Processo de Conexão com protocolo DM-AAAA-NNNNNN (T-05-01): /processes/* e
+  // /demands[/mine]/:id/processes. Antes das rotas da demanda.
+  app.use('/', processesRoutes({ pool, auth, validatedAgent, institutionStatus }));
   // Registro de apoio realizado, dupla confirmação e histórico de apoio (T16).
   app.use('/demands', supportsRoutes({ pool, auth, governmentGate: institutional, institutionStatus }));
   // Execução, evidências do antes/depois e acompanhamento (T17).

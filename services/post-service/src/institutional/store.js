@@ -47,7 +47,7 @@ const TRACK_SQL = `
   t.id, t.demand_id, t.organization_id, t.organization_name, t.government_sphere, t.department,
   t.municipality, t.uf, t.opened_by, t.opened_by_name, t.status, t.status_note, t.status_changed_by,
   t.responsible_name, t.responsible_role, t.received_at, t.status_changed_at, t.concluded_at,
-  t.created_at, t.updated_at`;
+  t.created_at, t.updated_at, t.process_id`;
 
 // Visão pública: órgão, status e datas (sem representante, responsável nem ids de conta).
 const PUBLIC_TRACK_SQL = `
@@ -85,6 +85,8 @@ function serializeTrack(row) {
     concludedAt: toIso(row.concluded_at),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
+    // Processo de Conexão do órgão (T-05-01), quando formalizado.
+    processId: row.process_id ?? null,
     availableStatuses: nextStatuses(row.status),
   };
 }

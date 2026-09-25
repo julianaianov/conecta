@@ -19,6 +19,12 @@
 //   POST /institutional/demands/:id/responses    { type, body, responsibleSector, programName,
 //                                                programUrl, plannedFor, status?, statusNote? }
 //   POST /institutional/demands/:id/offers       { supportTypes[], description, connectionId? }
+//   POST /institutional/demands/:id/formalize    formaliza o Processo de Conexão do órgão
+//                                                (T-05-01; { contributionKinds?, contributionDescription?,
+//                                                contributionAmountCents? }); 201 ou 200 se já está aberto
+//
+// Com o processo formalizado, a mudança de status do acompanhamento vira mudança
+// de status do processo (o trigger da migração 026 espelha no acompanhamento).
 //
 // Encaminhamentos (T14): routes/forwardings.js, registrado neste router
 // (diretório de órgãos, encaminhar, caixa recebidos/enviados, status e
@@ -49,6 +55,8 @@ const {
 } = require('../institutional');
 const store = require('../institutional/store');
 const forwardingStore = require('../institutional/forwarding-store');
+const processStore = require('../process/store');
+const { PROCESS_STATUSES, checkTransition: checkProcessTransition, validateContribution } = require('../process');
 const { registerForwardingRoutes } = require('./forwardings');
 
 const { HttpError, withTransaction } = demandStore;
@@ -186,7 +194,7 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
     try {
       await fn(req, res);
     } catch (err) {
-      const mapped = forwardingStore.mapForwardingError(err);
+      const mapped = processStore.mapProcessSpecific(err) ?? forwardingStore.mapForwardingError(err);
       if (mapped) return res.status(mapped.status).json(mapped.body);
       console.error(err);
       return res.status(500).json({ error: 'Erro interno' });
@@ -229,9 +237,11 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
       [demandId, organizationId],
     );
     const forwardings = await forwardingStore.loadDemandForwardings(db, demandId, { organizationId });
+    const process = track?.process_id ? await processStore.findProcess(db, track.process_id) : null;
     return {
       demand: demandStore.serializePublicDemand(rows[0], items),
       track: track ? store.serializeTrack(track) : null,
+      process: process ? processStore.serializeProcess(process, { viewerRole: 'parte' }) : null,
       responses: own.responses.map((r) => store.serializeResponse(r)),
       offers: own.offers.map((o) => store.serializeOffer(o)),
       otherOrganizations: others.map(store.serializePublicTrack),
@@ -336,6 +346,27 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
   }
 
   async function changeStatus(client, track, status, note, userId) {
+    // Com processo aberto, o status é do processo (decisão 16); o trigger espelha aqui.
+    const process = track.process_id ? await processStore.findProcess(client, track.process_id, { forUpdate: true }) : null;
+    if (process && !process.closed_at && PROCESS_STATUSES.includes(status)) {
+      const check = checkProcessTransition(
+        { status: process.status, previousStatus: process.previous_status, partyKind: process.party_kind }, status, note, 'parte',
+      );
+      if (!check.ok) {
+        if (check.code === 'invalid_transition' || check.code === 'forbidden_status') {
+          throw new HttpError(409, { error: check.error, code: 'invalid_transition' });
+        }
+        throw transitionError({ code: check.code, error: check.error });
+      }
+      await client.query("SELECT set_config('dm.process_actor_kind', 'parte', true)");
+      await client.query(
+        `UPDATE connection_processes
+            SET status = $2, status_note = $3, status_changed_by = $4, status_changed_by_kind = 'parte'
+          WHERE id = $1`,
+        [process.id, status, note, userId],
+      );
+      return;
+    }
     const check = checkTransition(track.status, status, note);
     if (!check.ok) throw transitionError(check);
     await client.query(
@@ -415,6 +446,35 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
       );
     });
     res.status(201).json(view);
+  }));
+
+  // Formalização pelo órgão (Modelo de Conexão §11, decisão 13): o
+  // acompanhamento vira Processo de Conexão com protocolo; a contribuição vem
+  // do corpo ou, sem ela, da oferta mais recente do órgão nesta demanda.
+  router.post('/institutional/demands/:id/formalize', ...gov, handle(async (req, res) => {
+    const { value, errors } = validateContribution(req.body ?? {}, { partial: true });
+    if (Object.keys(errors).length) throw validationError(errors);
+    const profile = await profileOf(req);
+    let created = false;
+    const { view } = await withTrack(req, profile, async (client, track) => {
+      if (processStore.TRACK_CLOSED.includes(track.status)) {
+        throw new HttpError(409, { error: 'O acompanhamento deste órgão foi encerrado', code: 'track_closed' });
+      }
+      const { rows: offers } = await client.query(
+        `SELECT o.id, o.author_id, o.description, o.support_types::text[] AS support_types
+           FROM demand_institutional_offers o WHERE o.track_id = $1 ORDER BY o.created_at DESC LIMIT 1`,
+        [track.id],
+      );
+      const result = await processStore.formalize(client, {
+        demandId: track.demand_id,
+        source: processStore.fromTrack(track, offers[0] ?? null, req.user.userId),
+        contribution: value,
+        formalizedBy: req.user.userId,
+        formalizedByKind: 'parte',
+      });
+      created = result.created;
+    });
+    res.status(created ? 201 : 200).json(view);
   }));
 
   // ── Encaminhamentos (T14) ─────────────────────────────────────────────────
