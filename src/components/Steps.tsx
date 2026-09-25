@@ -69,7 +69,7 @@ export function Steps() {
           <div className="mt-14 flex flex-col items-center gap-3 text-center">
             <p className="text-sm" style={{ color: "var(--th-muted)" }}>Pronto para começar?</p>
             <div className="flex flex-wrap justify-center gap-3">
-              {["Gratuito para sempre", "Sem anúncios", "Web · Android · iOS"].map((label) => (
+              {["Gratuito para sempre", "Sem anúncios", "Web · Android"].map((label) => (
                 <span
                   key={label}
                   style={{ borderColor: "var(--th-border)", background: "var(--th-surface)", color: "var(--th-muted)" }}

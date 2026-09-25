@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { APP_URL } from "@/lib/constants";
+import { InDevelopment } from "./app/InDevelopment";
 import { Reveal } from "./Reveal";
 
 export function CTABanner() {
@@ -34,7 +35,7 @@ export function CTABanner() {
                 </h2>
 
                 <p className="mt-5 text-lg" style={{ color: "var(--th-muted)" }}>
-                  Gratuito · Sem anúncios · Web, Android e iOS
+                  Gratuito · Sem anúncios · Web e Android
                 </p>
 
                 <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -53,10 +54,13 @@ export function CTABanner() {
                   </Link>
                 </div>
 
-                <div className="mt-8 flex justify-center gap-6 text-sm" style={{ color: "var(--th-muted)" }}>
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm" style={{ color: "var(--th-muted)" }}>
                   <span>🌐 Web</span>
                   <span>📱 Android</span>
-                  <span>🍎 iOS</span>
+                  {/* Slide 25: iOS ainda não publicado — identificado como em desenvolvimento. */}
+                  <span className="inline-flex items-center gap-2">
+                    iOS <InDevelopment as="inline" />
+                  </span>
                 </div>
               </div>
             </div>

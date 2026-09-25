@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { APP_URL } from "@/lib/constants";
 import { DMLogo } from "./app/DMLogo";
+import { InDevelopment } from "./app/InDevelopment";
+
+/** Ficha pública do app Android na Google Play. */
+const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=org.dmconecta.app";
 
 export function Footer() {
   return (
@@ -32,8 +36,7 @@ export function Footer() {
             links={[
               { href: "/politica-de-privacidade", label: "Política de privacidade" },
               { href: "/seguranca-infantil", label: "Segurança infantil" },
-              { href: "#", label: "Termos de uso" },
-              { href: "#", label: "Cookies" },
+              { href: "/termos-de-uso", label: "Termos de uso" },
             ]}
           />
 
@@ -54,20 +57,25 @@ export function Footer() {
               Baixar o app
             </h4>
             <div className="flex flex-col gap-2">
-              {[
-                { label: "Google Play", icon: <GooglePlayIcon /> },
-                { label: "App Store", icon: <AppleIcon /> },
-              ].map(({ label, icon }) => (
-                <a
-                  key={label}
-                  href="#"
-                  style={{ borderColor: "var(--th-border)", background: "var(--th-surface)", color: "var(--th-muted)" }}
-                  className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm transition-all hover:border-orange/30 hover:text-orange"
-                >
-                  {icon}
-                  {label}
-                </a>
-              ))}
+              <a
+                href={GOOGLE_PLAY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ borderColor: "var(--th-border)", background: "var(--th-surface)", color: "var(--th-muted)" }}
+                className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm transition-all hover:border-orange/30 hover:text-orange"
+              >
+                <GooglePlayIcon />
+                Google Play
+              </a>
+              {/* Slide 25: o app iOS ainda não existe; aparece identificado como em desenvolvimento, sem link. */}
+              <div
+                style={{ borderColor: "var(--th-border)", background: "var(--th-surface)", color: "var(--th-muted)" }}
+                className="flex flex-wrap items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm"
+              >
+                <AppleIcon />
+                iOS
+                <InDevelopment as="inline" />
+              </div>
             </div>
           </div>
         </div>
