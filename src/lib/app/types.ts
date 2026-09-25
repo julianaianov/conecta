@@ -1091,6 +1091,14 @@ export const DEMAND_REVIEW_STATE_LABELS: Record<DemandReviewState, string> = {
 
 export type DemandPriority = "baixa" | "media" | "alta" | "urgente";
 
+/**
+ * Critérios de prioridade definidos pela plataforma (Fluxo 2, slide 8;
+ * decisão 17). Rótulos e textos em `src/lib/app/demand.ts`
+ * (`DEMAND_PRIORITY_CRITERIA`, espelho de `post-service/src/demand/priority.js`).
+ */
+export type DemandPriorityCriterion =
+  | "risco_vida_seguranca" | "pessoas_afetadas" | "prazo_sazonalidade" | "recurso_disponivel";
+
 export const DEMAND_PRIORITY_LABELS: Record<DemandPriority, string> = {
   baixa: "Baixa",
   media: "Média",
@@ -1257,6 +1265,8 @@ export interface DemandInput {
   beneficiariesEstimate?: number | null;
   beneficiariesProfile?: string | null;
   priority?: DemandPriority | null;
+  /** Critérios que justificam a prioridade (decisão 17); lista vazia quando não declarados. */
+  priorityCriteria?: DemandPriorityCriterion[] | null;
   photoRef?: string | null;
   cep?: string | null;
   street?: string | null;
@@ -1319,6 +1329,8 @@ export interface PublicDemand {
   beneficiariesEstimate: number;
   beneficiariesProfile: string;
   priority: DemandPriority;
+  /** Critérios declarados pelo Agente para a prioridade (decisão 17). */
+  priorityCriteria?: DemandPriorityCriterion[];
   photoRef: string | null;
   /** Endereço público estável da foto (`/api/posts/uploads/<id>/content`) ou link. */
   photoUrl: string | null;

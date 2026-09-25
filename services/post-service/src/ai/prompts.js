@@ -14,6 +14,7 @@
 const {
   CATEGORIES, CATEGORY_LABELS, PRIORITIES, THEMES, THEME_LABELS,
 } = require('../demand/constants');
+const { priorityCriteriaText } = require('../demand/priority');
 
 const CONFIDENCE = ['baixa', 'media', 'alta'];
 
@@ -58,7 +59,7 @@ const PROMPTS = {
   deteccao_de_urgencia: {
     system: `${BASE_SYSTEM} Sua tarefa é detectar urgência: sugerir um nível de prioridade entre `
       + `${PRIORITIES.join(', ')} e explicar por quê, apontando os sinais do próprio texto da demanda `
-      + '(risco a pessoas, dano em curso, prazo, serviço essencial interrompido). '
+      + `segundo os quatro critérios definidos pela plataforma: ${priorityCriteriaText()}. `
       + 'Prioridade não é decisão de atendimento: a plataforma só a registra como sugestão.',
     instruction: 'Sugira o nível de prioridade desta demanda e a justificativa.',
     schema: schema({

@@ -319,3 +319,31 @@ test("página pública da demanda mostra a instituição responsável, sem conta
   const keys = Object.keys(projected).join(",");
   assert.doesNotMatch(keys, /email|phone|telefone|representative/i);
 });
+
+// ── Critérios de prioridade da plataforma (T-02-01, decisão 17) ─────────────
+import {
+  DEMAND_PRIORITY_CRITERIA,
+  PRIORITIES_EXPECTING_CRITERIA,
+  sortPriorityCriteria,
+  togglePriorityCriterion,
+} from "./demand.ts";
+
+test("critérios de prioridade iguais aos do post-service, com texto único", () => {
+  const server = createRequire(import.meta.url)("../../../services/post-service/src/demand/priority.js");
+  assert.deepEqual(DEMAND_PRIORITY_CRITERIA, server.PRIORITY_CRITERIA);
+  assert.deepEqual(PRIORITIES_EXPECTING_CRITERIA, server.PRIORITIES_EXPECTING_CRITERIA);
+  assert.equal(new Set(DEMAND_PRIORITY_CRITERIA.map((c) => c.description)).size, 4);
+});
+
+test("critérios: formulário ↔ API na ordem da plataforma, sem repetição", () => {
+  assert.deepEqual(sortPriorityCriteria(["prazo_sazonalidade", "inventado", "risco_vida_seguranca", "prazo_sazonalidade"]),
+    ["risco_vida_seguranca", "prazo_sazonalidade"]);
+  assert.deepEqual(togglePriorityCriterion(["pessoas_afetadas"], "risco_vida_seguranca"), ["risco_vida_seguranca", "pessoas_afetadas"]);
+  assert.deepEqual(togglePriorityCriterion(["pessoas_afetadas"], "pessoas_afetadas"), []);
+  const form = { ...emptyDemandForm(), priority: "urgente", priorityCriteria: ["recurso_disponivel", "risco_vida_seguranca"] };
+  const body = stepInput("publico", form);
+  assert.deepEqual(body.priorityCriteria, ["risco_vida_seguranca", "recurso_disponivel"]);
+  assert.equal(stepForErrorKey("priorityCriteria"), "publico");
+  assert.deepEqual(formFromDemand({ priorityCriteria: ["pessoas_afetadas"] }).priorityCriteria, ["pessoas_afetadas"]);
+  assert.deepEqual(formFromDemand({}).priorityCriteria, []);
+});

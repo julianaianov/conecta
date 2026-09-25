@@ -25,6 +25,7 @@ import {
   type DemandInput,
   type DemandMapClass,
   type DemandPriority,
+  type DemandPriorityCriterion,
   type DemandRecordMilestone,
   type DemandResourceType,
   type DemandReviewState,
@@ -148,6 +149,7 @@ export interface DemandFormState {
   objective: string;
   justification: string;
   priority: DemandPriority | "";
+  priorityCriteria: DemandPriorityCriterion[];
   hasPhysicalExecution: boolean;
 }
 
@@ -163,7 +165,7 @@ export const STEP_FIELDS: Record<DemandStepId, DemandFormField[]> = {
     "title", "description", "cep", "street", "addressNumber", "addressComplement", "district",
     "municipality", "uf", "latitude", "longitude", "territory",
   ],
-  publico: ["beneficiariesEstimate", "beneficiariesProfile", "objective", "justification", "priority"],
+  publico: ["beneficiariesEstimate", "beneficiariesProfile", "objective", "justification", "priority", "priorityCriteria"],
   orcamento: ["hasPhysicalExecution"],
   cronograma: [],
   metas: [],
@@ -177,7 +179,7 @@ export function emptyDemandForm(): DemandFormState {
     category: "", title: "", description: "", cep: "", street: "", addressNumber: "",
     addressComplement: "", district: "", municipality: "", uf: "", latitude: null, longitude: null,
     territory: "", beneficiariesEstimate: "", beneficiariesProfile: "", objective: "",
-    justification: "", priority: "", hasPhysicalExecution: true,
+    justification: "", priority: "", priorityCriteria: [], hasPhysicalExecution: true,
   };
 }
 
@@ -208,6 +210,7 @@ export function formFromDemand(demand: Demand): DemandFormState {
     objective: str(demand.objective),
     justification: str(demand.justification),
     priority: demand.priority ?? "",
+    priorityCriteria: sortPriorityCriteria(demand.priorityCriteria ?? []),
     hasPhysicalExecution: demand.hasPhysicalExecution ?? true,
   };
 }
@@ -239,6 +242,8 @@ function fieldValue(form: DemandFormState, field: DemandFormField): unknown {
       return form[field];
     case "beneficiariesEstimate":
       return estimateValue(form.beneficiariesEstimate);
+    case "priorityCriteria":
+      return sortPriorityCriteria(form.priorityCriteria);
     default:
       return blankToNull(form[field] as string);
   }
@@ -264,7 +269,7 @@ const FIELD_STEP: Record<string, DemandStepId> = {
   addressNumber: "descricao", addressComplement: "descricao", district: "descricao", municipality: "descricao",
   uf: "descricao", latitude: "descricao", longitude: "descricao", territory: "descricao",
   beneficiariesEstimate: "publico", beneficiariesProfile: "publico", objective: "publico",
-  justification: "publico", priority: "publico",
+  justification: "publico", priority: "publico", priorityCriteria: "publico",
   hasPhysicalExecution: "orcamento", budgetItems: "orcamento", audiovisualRecord: "orcamento",
   scheduleItems: "cronograma", recordMilestones: "cronograma", physicalFinancial: "cronograma",
   goals: "metas",
@@ -307,6 +312,7 @@ export const DEMAND_FIELD_LABELS: Record<string, string> = {
   objective: "Objetivo",
   justification: "Justificativa",
   priority: "Nível de prioridade",
+  priorityCriteria: "Critérios de prioridade",
   hasPhysicalExecution: "Execução física",
   budgetItems: "Orçamento detalhado",
   audiovisualRecord: "Registro fotográfico e audiovisual",
@@ -774,6 +780,54 @@ export const DEMAND_CATEGORY_HELP: Record<DemandCategory, string> = {
 };
 
 export const DEMAND_PRIORITIES: DemandPriority[] = ["baixa", "media", "alta", "urgente"];
+
+/**
+ * Critérios de prioridade definidos pela plataforma (Fluxo 2, slide 8;
+ * decisão 17). Espelho de `services/post-service/src/demand/priority.js`
+ * (`demand.test.mjs` compara). O Agente declara quais justificam a prioridade;
+ * a análise confere e a IA de urgência usa os mesmos quatro.
+ */
+export const DEMAND_PRIORITY_CRITERIA: { id: DemandPriorityCriterion; label: string; description: string }[] = [
+  {
+    id: "risco_vida_seguranca",
+    label: "Risco à vida ou à segurança",
+    description: "Há risco à vida, à saúde ou à segurança das pessoas, ou um dano em curso.",
+  },
+  {
+    id: "pessoas_afetadas",
+    label: "Número de pessoas afetadas",
+    description: "Quantas pessoas a situação atinge, conforme a estimativa de beneficiados.",
+  },
+  {
+    id: "prazo_sazonalidade",
+    label: "Prazo ou sazonalidade",
+    description: "Existe um prazo ou uma época do ano que torna a ação mais urgente (chuvas, volta às aulas, eventos).",
+  },
+  {
+    id: "recurso_disponivel",
+    label: "Recurso ou parceiro já disponível",
+    description: "Já existe recurso, parceiro ou programa disponível que permite agir agora.",
+  },
+];
+
+/** Níveis em que o envio avisa quando nenhum critério foi declarado. */
+export const PRIORITIES_EXPECTING_CRITERIA: DemandPriority[] = ["alta", "urgente"];
+
+export const DEMAND_PRIORITY_CRITERION_LABELS = Object.fromEntries(
+  DEMAND_PRIORITY_CRITERIA.map((c) => [c.id, c.label]),
+) as Record<DemandPriorityCriterion, string>;
+
+/** Critérios conhecidos, sem repetição, na ordem da plataforma. */
+export function sortPriorityCriteria(values: readonly string[]): DemandPriorityCriterion[] {
+  return DEMAND_PRIORITY_CRITERIA.map((c) => c.id).filter((id) => values.includes(id));
+}
+
+/** Liga ou desliga um critério na lista do formulário. */
+export function togglePriorityCriterion(
+  values: readonly DemandPriorityCriterion[], id: DemandPriorityCriterion,
+): DemandPriorityCriterion[] {
+  return sortPriorityCriteria(values.includes(id) ? values.filter((v) => v !== id) : [...values, id]);
+}
 
 export const UFS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR",

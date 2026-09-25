@@ -11,7 +11,9 @@ import {
   DEMAND_CATEGORIES,
   DEMAND_CATEGORY_HELP,
   DEMAND_PRIORITIES,
+  DEMAND_PRIORITY_CRITERIA,
   MY_DEMANDS_PATH,
+  PRIORITIES_EXPECTING_CRITERIA,
   UFS,
   adjacentStep,
   demandEditPath,
@@ -31,6 +33,7 @@ import {
   maskDemandCep,
   stepForErrorKey,
   stepInput,
+  togglePriorityCriterion,
   type DemandFormState,
   type DemandStepId,
 } from "@/lib/app/demand";
@@ -549,8 +552,33 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
                     );
                   })}
                 </div>
-                <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>Conforme os critérios definidos pela plataforma; a equipe confere na análise.</p>
+                <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>Conforme os critérios definidos pela plataforma, ao lado; a equipe confere na análise.</p>
                 {(stepFields.priority) && <p className="mt-1 text-xs font-semibold" style={{ color: "#e53935" }}>{stepFields.priority}</p>}
+              </fieldset>
+              {/* Critérios de prioridade da plataforma (slide 8; decisão 17). */}
+              <fieldset className="sm:col-span-2" aria-describedby="priority-criteria-help">
+                <legend className="mb-1.5 text-sm font-semibold" style={{ color: "var(--th-text)" }}>Critérios que justificam a prioridade</legend>
+                <p id="priority-criteria-help" className="mb-2 text-xs" style={{ color: "var(--th-muted)" }}>
+                  Marque os critérios da plataforma que valem para esta demanda. Para prioridade alta ou urgente, indique ao menos um.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2" id={demandFieldId("priorityCriteria")}>
+                  {DEMAND_PRIORITY_CRITERIA.map((criterion) => {
+                    const checked = form.priorityCriteria.includes(criterion.id);
+                    return (
+                      <label key={criterion.id} className="flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-[#f4841a]" style={{ borderColor: checked ? "#f4841a" : "var(--th-border)", background: checked ? "rgba(244,132,26,0.08)" : "var(--th-card)", color: "var(--th-text)" }}>
+                        <input type="checkbox" name="priorityCriteria" value={criterion.id} checked={checked} onChange={() => set("priorityCriteria", togglePriorityCriterion(form.priorityCriteria, criterion.id))} className="mt-0.5 accent-[#f4841a]" />
+                        <span>
+                          <span className="block font-semibold">{criterion.label}</span>
+                          <span className="block text-xs" style={{ color: "var(--th-muted)" }}>{criterion.description}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {form.priority && PRIORITIES_EXPECTING_CRITERIA.includes(form.priority) && form.priorityCriteria.length === 0 && (
+                  <p className="mt-1 text-xs font-semibold" style={{ color: "#b35c00" }}>Prioridade {DEMAND_PRIORITY_LABELS[form.priority].toLowerCase()} sem critério marcado: a análise vai pedir a justificativa.</p>
+                )}
+                {(stepFields.priorityCriteria) && <p className="mt-1 text-xs font-semibold" style={{ color: "#e53935" }}>{stepFields.priorityCriteria}</p>}
               </fieldset>
               <TextArea className="sm:col-span-2" name="beneficiariesProfile" label="Perfil dos beneficiários" required rows={3} value={form.beneficiariesProfile} onValue={(v) => set("beneficiariesProfile", v)} error={stepFields.beneficiariesProfile} maxLength={2000} />
               <TextArea className="sm:col-span-2" name="objective" label="Objetivo" required rows={3} value={form.objective} onValue={(v) => set("objective", v)} error={stepFields.objective} maxLength={5000} hint="O que se pretende resolver ou realizar." />

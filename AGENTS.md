@@ -307,6 +307,15 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   parecer da devolução, retomada da edição e as ações de `availableActions`
   (`buscar_parceiro`, `conectar`, `iniciar_execucao`, `concluir`,
   `prestar_contas`) com confirmação.
+- Prioridade (T-02-01, decisão 17): os quatro critérios da plataforma
+  (`services/post-service/src/demand/priority.js`, espelho
+  `DEMAND_PRIORITY_CRITERIA` em `demand.ts`) aparecem na etapa 3 como
+  caixas de marcar; o Agente declara quais justificam a prioridade
+  (`priorityCriteria`, coluna `demands.priority_criteria`, migração post 042).
+  Alta ou urgente sem critério vira `warnings.priorityCriteria` (não
+  bloqueia). O envio grava prioridade e critérios no payload de
+  `enviada_para_analise`; a revisão, a página pública e a análise do
+  dm-gestao mostram os critérios; o prompt de urgência da IA cita os mesmos.
 - Instituição responsável (T-02-02, slides 4 e 19): `/demandas/[id]` lê
   `getPublicInstitution(demand.authorId)` (projeção pública do user-service,
   só validada, sem contato do representante; resolve o vínculo da T29) e

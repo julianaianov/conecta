@@ -13,7 +13,7 @@ import {
 import { DOSSIER_TITLE, formatBytesShort, publicDossierDownloadPath, shortHash } from "@/lib/app/dossier";
 import { resolveMediaUrl } from "@/lib/app/uploads";
 import { runtime } from "@/lib/app/runtime";
-import { formatIsoDate, timelineEventLabel } from "@/lib/app/demand";
+import { DEMAND_PRIORITY_CRITERION_LABELS, formatIsoDate, timelineEventLabel } from "@/lib/app/demand";
 import { formatDate } from "@/lib/app/format";
 import { ShareButton } from "../ShareButton";
 import { ReportButton } from "../ReportButton";
@@ -211,6 +211,11 @@ export function PublicDemandView({
             <p className="font-numeric text-3xl font-bold" style={{ color: "#f4841a" }}>{demand.beneficiariesEstimate.toLocaleString("pt-BR")}</p>
             <p className="text-xs" style={{ color: "var(--th-muted)" }}>pessoas beneficiadas (estimativa)</p>
             <p className="mt-2 text-xs" style={{ color: "var(--th-muted)" }}>Prioridade: <strong style={{ color: "var(--th-text)" }}>{DEMAND_PRIORITY_LABELS[demand.priority]}</strong></p>
+            {demand.priorityCriteria && demand.priorityCriteria.length > 0 && (
+              <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
+                Critérios: {demand.priorityCriteria.map((c) => DEMAND_PRIORITY_CRITERION_LABELS[c] ?? c).join("; ")}
+              </p>
+            )}
           </div>
           <TextBlock label="Perfil dos beneficiários">{demand.beneficiariesProfile}</TextBlock>
         </div>

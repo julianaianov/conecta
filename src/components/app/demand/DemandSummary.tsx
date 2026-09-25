@@ -4,7 +4,7 @@ import {
   DEMAND_PRIORITY_LABELS,
   type Demand,
 } from "@/lib/app/types";
-import type { DemandStepId } from "@/lib/app/demand";
+import { DEMAND_PRIORITY_CRITERION_LABELS, type DemandStepId } from "@/lib/app/demand";
 import { Button } from "../Button";
 import {
   BudgetTable,
@@ -72,6 +72,11 @@ export function DemandSummary({ demand, onEdit }: { demand: Demand; onEdit?: (st
             {demand.beneficiariesEstimate != null ? <span className="font-numeric">{demand.beneficiariesEstimate.toLocaleString("pt-BR")}</span> : <Missing />}
           </TextBlock>
           <TextBlock label="Nível de prioridade">{demand.priority ? DEMAND_PRIORITY_LABELS[demand.priority] : <Missing />}</TextBlock>
+          <TextBlock label="Critérios da prioridade">
+            {demand.priorityCriteria?.length
+              ? demand.priorityCriteria.map((c) => DEMAND_PRIORITY_CRITERION_LABELS[c] ?? c).join("; ")
+              : <span style={{ color: "var(--th-muted)" }}>Nenhum critério marcado</span>}
+          </TextBlock>
           <TextBlock label="Perfil dos beneficiários">{value(demand.beneficiariesProfile)}</TextBlock>
           <TextBlock label="Objetivo">{value(demand.objective)}</TextBlock>
           <TextBlock label="Justificativa">{value(demand.justification)}</TextBlock>

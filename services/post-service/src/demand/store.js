@@ -85,6 +85,7 @@ const SCALAR_COLUMNS = {
   beneficiariesEstimate: 'beneficiaries_estimate',
   beneficiariesProfile: 'beneficiaries_profile',
   priority: 'priority',
+  priorityCriteria: 'priority_criteria',
   photoRef: 'photo_ref',
   cep: 'cep',
   street: 'street',
@@ -103,7 +104,7 @@ const SCALAR_COLUMNS = {
 const OWNER_DEMAND_SQL = `
   d.id, d.author_id, d.organization_id, d.author_name, d.author_avatar,
   d.category, d.title, d.description, d.objective, d.justification,
-  d.beneficiaries_estimate, d.beneficiaries_profile, d.priority, d.photo_ref,
+  d.beneficiaries_estimate, d.beneficiaries_profile, d.priority, d.priority_criteria, d.photo_ref,
   d.cep, d.street, d.address_number, d.address_complement, d.district,
   d.municipality, d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution,
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
@@ -119,7 +120,7 @@ const OWNER_DEMAND_SQL = `
 const PUBLIC_DEMAND_SQL = `
   d.id, d.author_id, d.author_name, d.author_avatar, d.category, d.title,
   d.description, d.objective, d.justification, d.beneficiaries_estimate,
-  d.beneficiaries_profile, d.priority, d.photo_ref, d.district, d.municipality,
+  d.beneficiaries_profile, d.priority, d.priority_criteria, d.photo_ref, d.district, d.municipality,
   d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution,
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
   d.platform_fee_cents, d.total_amount_cents, d.status, d.published_at, d.updated_at,
@@ -230,6 +231,7 @@ function serializeScalars(row) {
     beneficiariesEstimate: toNumber(row.beneficiaries_estimate),
     beneficiariesProfile: row.beneficiaries_profile ?? null,
     priority: row.priority ?? null,
+    priorityCriteria: Array.isArray(row.priority_criteria) ? row.priority_criteria : [],
     photoRef: row.photo_ref ?? null,
     // Endereço de leitura: público e estável; a visão do autor troca por URL
     // assinada (upload-policy.attachOwnerUploads), porque rascunho não é público.

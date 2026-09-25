@@ -13,7 +13,8 @@
 //   regra do registro fotográfico/audiovisual quando houver execução física.
 // - `warnings`: o que a fonte pede "sempre que possível" (vínculo das etapas ao
 //   custo, marco de acompanhamento) e o que ela não exige mas a plataforma
-//   incentiva (os eixos temáticos do slide 26); não bloqueia.
+//   incentiva (os eixos temáticos do slide 26), e os critérios de prioridade
+//   (decisão 17) quando a prioridade é alta ou urgente; não bloqueia.
 // - `composition`: composição financeira calculada dos itens (finance.js).
 //
 // O banco repete as regras estruturais no envio (demand_assert_submittable).
@@ -23,6 +24,7 @@ const {
   THEMES,
 } = require('./constants');
 const { quantityToMilli, lineTotalCents, computeComposition, MAX_BUDGET_CENTS } = require('./finance');
+const { PRIORITY_CRITERIA_IDS, PRIORITIES_EXPECTING_CRITERIA } = require('./priority');
 const { parseUploadRef, formatUploadRef } = require('../uploads');
 
 const UFS = [
@@ -298,6 +300,23 @@ function normalizeThemes(errors, raw) {
   return THEMES.filter((theme) => raw.includes(theme));
 }
 
+/**
+ * Critérios de prioridade declarados (T-02-01, decisão 17): subconjunto dos
+ * quatro da plataforma, na ordem de `priority.js`, sem repetição.
+ */
+function normalizePriorityCriteria(errors, raw) {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    errors.priorityCriteria = 'Lista de critérios inválida';
+    return [];
+  }
+  if (raw.some((c) => typeof c !== 'string' || !PRIORITY_CRITERIA_IDS.includes(c))) {
+    errors.priorityCriteria = 'Critério de prioridade fora dos quatro da plataforma';
+    return [];
+  }
+  return PRIORITY_CRITERIA_IDS.filter((c) => raw.includes(c));
+}
+
 function normalizeCep(errors, raw) {
   if (isBlank(raw)) return null;
   const digits = typeof raw === 'string' || typeof raw === 'number' ? String(raw).replace(/\D/g, '') : '';
@@ -336,6 +355,7 @@ function validateDemand(input, { forSubmission = false } = {}) {
     beneficiariesEstimate: normalizeBeneficiaries(errors, body.beneficiariesEstimate),
     beneficiariesProfile: text(errors, 'beneficiariesProfile', body.beneficiariesProfile, LIMITS.beneficiariesProfile, { multiline: true }),
     priority: oneOf(errors, 'priority', body.priority, PRIORITIES, 'Nível de prioridade inválido'),
+    priorityCriteria: normalizePriorityCriteria(errors, body.priorityCriteria),
     photoRef: reference(errors, 'photoRef', body.photoRef, 'Fotografia'),
     cep: normalizeCep(errors, body.cep),
     street: text(errors, 'street', body.street, LIMITS.street),
@@ -426,6 +446,14 @@ function validateDemand(input, { forSubmission = false } = {}) {
       + 'Esporte, Educação, Mobilidade, Cultura, Meio Ambiente): é assim que ela entra na leitura por tema do território';
   }
 
+  // Prioridade alta ou urgente sem critério declarado (decisão 17): aviso na
+  // revisão, para a análise ter com o que conferir; não bloqueia.
+  if (forSubmission && PRIORITIES_EXPECTING_CRITERIA.includes(value.priority)
+      && value.priorityCriteria.length === 0 && !errors.priorityCriteria) {
+    warnings.priorityCriteria = 'Indique qual critério da plataforma justifica a prioridade alta ou urgente '
+      + '(risco à vida ou à segurança, número de pessoas afetadas, prazo ou sazonalidade, recurso ou parceiro já disponível)';
+  }
+
   // Cronograma físico-financeiro "sempre que possível" (slide 14).
   if (value.budgetItems.length > 0 && value.scheduleItems.length > 0
       && value.budgetItems.some((item) => !item.scheduleItemId)) {
@@ -435,4 +463,6 @@ function validateDemand(input, { forSubmission = false } = {}) {
   return { value, errors, warnings, composition };
 }
 
-module.exports = { validateDemand, normalizeThemes, LIMITS, UFS, MAX_ITEMS };
+module.exports = {
+  validateDemand, normalizeThemes, normalizePriorityCriteria, LIMITS, UFS, MAX_ITEMS,
+};

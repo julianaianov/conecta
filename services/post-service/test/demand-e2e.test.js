@@ -198,8 +198,23 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
       const wrongKind = await call('POST', `/demands/${id}/resources`, { body: { kind: 'contrapartida', type: 'mao_de_obra' } });
       assert.equal(wrongKind.status, 422);
 
+      // Critérios de prioridade (T-02-01, decisão 17): prioridade alta sem
+      // critério declarado vira aviso, nunca erro.
+      const beforeCriteria = await call('POST', `/demands/${id}/validate`);
+      assert.equal(beforeCriteria.body.valid, true, JSON.stringify(beforeCriteria.body.fields));
+      assert.ok(beforeCriteria.body.warnings.priorityCriteria);
+      const badCriteria = await call('PUT', `/demands/${id}`, { body: { priorityCriteria: ['urgencia_politica'] } });
+      assert.equal(badCriteria.status, 422);
+      assert.ok(badCriteria.body.fields.priorityCriteria);
+      const criteria = await call('PUT', `/demands/${id}`, {
+        body: { priorityCriteria: ['pessoas_afetadas', 'risco_vida_seguranca', 'pessoas_afetadas'] },
+      });
+      assert.equal(criteria.status, 200, JSON.stringify(criteria.body));
+      assert.deepEqual(criteria.body.priorityCriteria, ['risco_vida_seguranca', 'pessoas_afetadas']);
+
       const ready = await call('POST', `/demands/${id}/validate`);
       assert.equal(ready.body.valid, true, JSON.stringify(ready.body.fields));
+      assert.equal(ready.body.warnings.priorityCriteria, undefined);
       const submitted = await call('POST', `/demands/${id}/submit`);
       assert.equal(submitted.status, 200, JSON.stringify(submitted.body));
       assert.equal(submitted.body.reviewState, 'aguardando_analise');
@@ -210,6 +225,16 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
       const locked = await call('PUT', `/demands/${id}`, { body: { title: 'Mudança depois do envio' } });
       assert.equal(locked.status, 409);
       assert.equal(locked.body.code, 'demand_not_editable');
+      // O envio registra a prioridade e os critérios declarados na linha do tempo.
+      const sentEvents = await call('GET', `/demands/mine/${id}/events`);
+      const sent = sentEvents.body.events.find((e) => e.type === 'enviada_para_analise');
+      assert.equal(sent.payload.priority, 'alta');
+      assert.deepEqual(sent.payload.priority_criteria, ['risco_vida_seguranca', 'pessoas_afetadas']);
+      assert.equal((await call('PUT', `/demands/${id}`, { body: { priorityCriteria: [] } })).status, 409);
+      await assert.rejects(
+        gestao.query(`UPDATE demands SET priority_criteria = '{}' WHERE id = $1`, [id]),
+        /declarados pelo Agente|permission denied/,
+      );
       assert.equal((await call('POST', `/demands/${id}/goals`, {
         body: { goal: 'a', expectedResult: 'b', indicator: 'c', measurementMethod: 'd' },
       })).status, 409);
