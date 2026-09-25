@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/app/auth";
 import { useEffectiveRole } from "../institution/useInstitutionAccess";
 import {
   DEMAND_CATEGORIES,
+  DEMAND_CATEGORY_HELP,
   DEMAND_PRIORITIES,
   MY_DEMANDS_PATH,
   UFS,
@@ -453,8 +454,11 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: checked ? "#f4841a" : "rgba(46,123,168,0.12)", color: checked ? "#fff" : "#2e7ba8" }}>
                         <Icon name={categoryIcon(category)} size={20} />
                       </span>
-                      <span className="text-sm font-bold" style={{ color: "var(--th-text)" }}>{DEMAND_CATEGORY_LABELS[category]}</span>
-                      {checked && <Icon name="check" size={18} className="ml-auto" style={{ color: "#f4841a" }} />}
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold" style={{ color: "var(--th-text)" }}>{DEMAND_CATEGORY_LABELS[category]}</span>
+                        <span className="block text-xs" style={{ color: "var(--th-muted)" }}>{DEMAND_CATEGORY_HELP[category]}</span>
+                      </span>
+                      {checked && <Icon name="check" size={18} className="ml-auto shrink-0" style={{ color: "#f4841a" }} />}
                     </label>
                   );
                 })}

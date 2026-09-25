@@ -18,10 +18,11 @@ import { api } from "@/lib/app/api";
 import {
   audienceFilter, buildMapQuery, emptyMapFilter, mapLegendFor, matchesAudience,
   MAP_AUDIENCES, MAP_FEED_LAYER, MAP_LEGEND, MAP_POINTS_MAX, toggleValue,
+  countsByLegend, isLegendSelected, toggleLegendClass,
   type MapFilterState,
 } from "@/lib/app/map";
 import {
-  DEMAND_PRIORITY_LABELS, DEMAND_STATUS_LABELS,
+  DEMAND_CATEGORY_LABELS, DEMAND_PRIORITY_LABELS, DEMAND_STATUS_LABELS,
   type DemandPriority, type DemandStatus,
   type MapTerritory, type MapView, type Post,
 } from "@/lib/app/types";
@@ -63,6 +64,7 @@ export function SmartMapClient({
   const base = useMemo(() => initialFilter ?? emptyMapFilter(), [initialFilter]);
   const [filter, setFilter] = useState<MapFilterState>(base);
   const [view, setView] = useState<MapView>(initialView);
+  const legendCounts = countsByLegend(view.counts.category);
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -160,7 +162,7 @@ export function SmartMapClient({
           <legend className="text-xs font-semibold uppercase" style={{ color: "var(--th-muted)" }}>Categoria</legend>
           <ul className="mt-2 flex flex-wrap gap-2">
             {MAP_LEGEND.map((legend) => {
-              const active = filter.category.includes(legend.category);
+              const active = isLegendSelected(filter.category, legend);
               return (
                 <li key={legend.id}>
                   <button
@@ -168,11 +170,12 @@ export function SmartMapClient({
                     className="app-chip inline-flex items-center gap-1.5"
                     data-active={active}
                     aria-pressed={active}
-                    onClick={() => update({ category: toggleValue(filter.category, legend.category) })}
+                    onClick={() => update({ category: toggleLegendClass(filter.category, legend) })}
+                    title={legend.categories.map((c) => DEMAND_CATEGORY_LABELS[c]).join(", ")}
                   >
                     <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: swatchSvg(legend.color, legend.shape, 14) }} />
                     {legend.label}
-                    <span className="font-numeric">({(view.counts.category[legend.category] ?? 0).toLocaleString("pt-BR")})</span>
+                    <span className="font-numeric">({(legendCounts[legend.id] ?? 0).toLocaleString("pt-BR")})</span>
                   </button>
                 </li>
               );
@@ -329,7 +332,7 @@ export function SmartMapClient({
         counts={view.counts.category}
         feedCount={feedCount}
         active={filter.category}
-        onToggle={(category) => update({ category: toggleValue(filter.category, category) })}
+        onToggle={(legend) => update({ category: toggleLegendClass(filter.category, legend) })}
       />
 
       <section className="app-card rounded-2xl p-4" aria-labelledby="map-list-title">

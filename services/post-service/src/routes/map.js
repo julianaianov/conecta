@@ -21,11 +21,11 @@
 const express = require('express');
 const { sendError } = require('../demand/store');
 const {
-  AUDIENCES, CLUSTER_THRESHOLD, FEED_LAYER, LEGEND, THEME_FILTERS, territorySlug,
+  AUDIENCES, CATEGORY_LABELS, CLUSTER_THRESHOLD, FEED_LAYER, LEGEND, THEME_FILTERS, territorySlug,
 } = require('../map/constants');
 const {
   CELLS_MAX, TERRITORIES_MAX, cellSizeDegrees, mapFilter, countsSql, serializeCounts,
-  pointsSql, serializePoint, clustersSql, serializeCluster, territoriesSql,
+  pointsSql, serializePoint, clustersSql, serializeCluster, territoriesSql, categoryAndClassCounts,
 } = require('../map/query');
 
 module.exports = ({ pool }) => {
@@ -40,7 +40,9 @@ module.exports = ({ pool }) => {
 
   router.get('/map/legend', (_req, res) => {
     res.json({
+      // Cinco classes do slide 19, cada uma com as suas categorias (§03).
       legend: LEGEND,
+      categoryLabels: CATEGORY_LABELS,
       feedLayer: FEED_LAYER,
       // Filtro por eixo temático (T26): recorte que se cruza com a legenda.
       themes: THEME_FILTERS,
@@ -65,7 +67,7 @@ module.exports = ({ pool }) => {
         lastPublishedAt: row.last_published_at instanceof Date
           ? row.last_published_at.toISOString()
           : row.last_published_at ?? null,
-        category: Object.fromEntries(LEGEND.map((item) => [item.category, Number(row[`cat_${item.category}`] ?? 0)])),
+        ...categoryAndClassCounts(row),
         theme: Object.fromEntries(THEME_FILTERS.map((item) => [item.id, Number(row[`thm_${item.id}`] ?? 0)])),
       })),
     });

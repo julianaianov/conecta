@@ -2,10 +2,14 @@
 // Os valores são os mesmos dos enums da migração post-service/007-demands.sql;
 // test/demand-schema.test.js confere as duas listas.
 
-// TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda; ver TODO em services/post-service/migrations/007-demands.sql.
+// Os 12 tipos de demanda do Modelo de Conexão §03, na ordem e com o texto da
+// fonte (decisão 15). As 5 primeiras são as da migração 007; as 7 seguintes
+// vêm da migração 031. A categoria é a classificação única da demanda.
 const CATEGORIES = [
   'projeto_social', 'projeto_ambiental', 'necessidade_de_patrocinio',
   'problema_urbano', 'problema_urgente',
+  'obra_ou_melhoria_de_infraestrutura', 'revitalizacao_de_espaco', 'recuperacao_ambiental',
+  'apoio_tecnico', 'apoio_com_servicos', 'apoio_com_materiais', 'outras_demandas_territoriais',
 ];
 
 const CATEGORY_LABELS = {
@@ -14,7 +18,42 @@ const CATEGORY_LABELS = {
   necessidade_de_patrocinio: 'Necessidade de Patrocínio',
   problema_urbano: 'Problema Urbano',
   problema_urgente: 'Problema Urgente',
+  obra_ou_melhoria_de_infraestrutura: 'Obra ou melhoria de infraestrutura',
+  revitalizacao_de_espaco: 'Revitalização de espaço',
+  recuperacao_ambiental: 'Recuperação ambiental',
+  apoio_tecnico: 'Apoio técnico',
+  apoio_com_servicos: 'Apoio com serviços',
+  apoio_com_materiais: 'Apoio com materiais',
+  outras_demandas_territoriais: 'Outras demandas territoriais',
 };
+
+// Classes da legenda do mapa (Apresentação Institucional, slide 19), na ordem
+// do slide. Cada categoria cai em exatamente uma classe; a função SQL
+// `demand_map_class` (migração 031) repete este mapa e
+// test/demand-schema.test.js confere.
+const MAP_CLASSES = [
+  'problemas_urgentes', 'problemas_urbanos', 'projetos_sociais', 'acoes_ambientais', 'necessidades',
+];
+
+const CATEGORY_MAP_CLASS = {
+  problema_urgente: 'problemas_urgentes',
+  problema_urbano: 'problemas_urbanos',
+  obra_ou_melhoria_de_infraestrutura: 'problemas_urbanos',
+  revitalizacao_de_espaco: 'problemas_urbanos',
+  projeto_social: 'projetos_sociais',
+  projeto_ambiental: 'acoes_ambientais',
+  recuperacao_ambiental: 'acoes_ambientais',
+  necessidade_de_patrocinio: 'necessidades',
+  apoio_tecnico: 'necessidades',
+  apoio_com_servicos: 'necessidades',
+  apoio_com_materiais: 'necessidades',
+  outras_demandas_territoriais: 'necessidades',
+};
+
+/** Classe da legenda do mapa de uma categoria (null para valor desconhecido). */
+function mapClassOf(category) {
+  return CATEGORY_MAP_CLASS[category] ?? null;
+}
 
 // Os 7 status canônicos do Agente (decisão 4) + `arquivada` (decisão 7).
 const STATUSES = [
@@ -113,6 +152,9 @@ const ACTORS = ['agente', 'gestao', 'sistema'];
 module.exports = {
   CATEGORIES,
   CATEGORY_LABELS,
+  MAP_CLASSES,
+  CATEGORY_MAP_CLASS,
+  mapClassOf,
   STATUSES,
   STATUS_LABELS,
   PUBLIC_STATUSES,

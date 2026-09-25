@@ -13,8 +13,17 @@ function enumValues(type) {
   return [...match[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 }
 
+// Valores acrescentados depois da 007 por `ALTER TYPE ... ADD VALUE`.
+function addedValues(file, type) {
+  const text = fs.readFileSync(path.join(__dirname, '../migrations', file), 'utf8');
+  return [...text.matchAll(new RegExp(`ALTER TYPE ${type} ADD VALUE IF NOT EXISTS '([a-z_]+)'`, 'g'))].map((m) => m[1]);
+}
+
 test('enums da migração 007 = constantes do domínio', () => {
-  assert.deepEqual(enumValues('demand_category'), C.CATEGORIES);
+  assert.deepEqual(
+    [...enumValues('demand_category'), ...addedValues('031-demand-categories.sql', 'demand_category')],
+    C.CATEGORIES,
+  );
   assert.deepEqual(enumValues('demand_status'), C.STATUSES);
   assert.deepEqual(enumValues('demand_review_state'), C.REVIEW_STATES);
   assert.deepEqual(enumValues('demand_priority'), C.PRIORITIES);
@@ -27,8 +36,36 @@ test('enums da migração 007 = constantes do domínio', () => {
   );
 });
 
-test('fonte: 5 categorias, 7 status canônicos + arquivada, 9 recursos e 8 contrapartidas', () => {
-  assert.equal(C.CATEGORIES.length, 5);
+test('Modelo §03: 12 tipos de demanda, cada um numa das 5 classes do slide 19 (decisão 15)', () => {
+  assert.equal(C.CATEGORIES.length, 12);
+  assert.deepEqual(Object.keys(C.CATEGORY_LABELS), C.CATEGORIES);
+  assert.deepEqual(Object.values(C.CATEGORY_LABELS), [
+    'Projeto Social', 'Projeto Ambiental', 'Necessidade de Patrocínio', 'Problema Urbano', 'Problema Urgente',
+    'Obra ou melhoria de infraestrutura', 'Revitalização de espaço', 'Recuperação ambiental', 'Apoio técnico',
+    'Apoio com serviços', 'Apoio com materiais', 'Outras demandas territoriais',
+  ]);
+  assert.deepEqual(Object.keys(C.CATEGORY_MAP_CLASS).sort(), [...C.CATEGORIES].sort());
+  for (const c of C.CATEGORIES) assert.ok(C.MAP_CLASSES.includes(C.CATEGORY_MAP_CLASS[c]), c);
+  assert.deepEqual(new Set(Object.values(C.CATEGORY_MAP_CLASS)), new Set(C.MAP_CLASSES));
+  assert.equal(C.mapClassOf('recuperacao_ambiental'), 'acoes_ambientais');
+  assert.equal(C.mapClassOf('nao_existe'), null);
+});
+
+test('demand_map_class (migração 031) repete CATEGORY_MAP_CLASS', () => {
+  const text = fs.readFileSync(path.join(__dirname, '../migrations/031-demand-categories.sql'), 'utf8');
+  const body = /FUNCTION demand_map_class[\s\S]*?\$\$([\s\S]*?)\$\$/.exec(text)[1];
+  const pairs = Object.fromEntries([...body.matchAll(/WHEN '([a-z_]+)' THEN '([a-z_]+)'/g)].map((m) => [m[1], m[2]]));
+  assert.deepEqual(pairs, C.CATEGORY_MAP_CLASS);
+  const post = /FUNCTION demand_post_type[\s\S]*?\$\$([\s\S]*?)\$\$/.exec(text)[1];
+  const postType = Object.fromEntries([...post.matchAll(/WHEN '([a-z_]+)' THEN '([a-z_]+)'/g)].map((m) => [m[1], m[2]]));
+  assert.equal(postType.apoio_com_materiais, 'need');
+  assert.equal(postType.outras_demandas_territoriais, 'problem');
+  assert.equal(postType.recuperacao_ambiental, undefined, 'obra, revitalização e recuperação caem no ELSE project');
+  assert.match(post, /ELSE 'project'/);
+  assert.match(text, /BEFORE INSERT ON posts/);
+});
+
+test('fonte: 7 status canônicos + arquivada, 9 recursos e 8 contrapartidas', () => {
   assert.deepEqual(C.STATUSES.slice(0, 7), [
     'em_analise', 'publicada', 'em_busca_de_parceiro', 'conectada', 'em_execucao', 'concluida', 'prestacao_de_contas',
   ]);

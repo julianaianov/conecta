@@ -3,42 +3,53 @@
 // Fonte da verdade: Apresentação Institucional, slide 19 (legenda literal do
 // mapa e "leitura rápida para governo, empresas, mídia e comunidade") e slide
 // 18 (demandas e conteúdos do feed como coisas distintas). As cinco classes da
-// legenda são as cinco categorias da demanda. Cores: docs/manual-marca.md.
+// legenda são as do slide 19; cada uma agrupa categorias da demanda (os 12
+// tipos do Modelo de Conexão §03, decisão 15). Cores: docs/manual-marca.md.
 //
 // `src/lib/app/map.test.mjs` compara este arquivo com o do post-service.
 
-import type { DemandCategory, DemandPriority, DemandStatus } from "./types.ts";
+import type { DemandCategory, DemandMapClass, DemandPriority, DemandStatus } from "./types.ts";
 
-export type MapLegendId =
-  | "problemas_urgentes"
-  | "problemas_urbanos"
-  | "projetos_sociais"
-  | "acoes_ambientais"
-  | "necessidades";
+export type MapLegendId = DemandMapClass;
 
 export type MapShape = "triangulo" | "quadrado" | "circulo" | "losango" | "estrela" | "ponto";
 
 export interface MapLegendClass {
   id: MapLegendId;
   label: string;
-  category: DemandCategory;
   color: string;
   shape: MapShape;
+  /** Categorias da demanda que caem nesta classe, na ordem do §03. */
+  categories: DemandCategory[];
 }
 
-/** Classes da legenda, na ordem do slide 19. */
-// TODO(fonte-da-verdade): Modelo de Conexão §03 — legenda de 1 classe por categoria; faltam 7 tipos de demanda (ver TODO em services/post-service/migrations/007-demands.sql).
+/** Classes da legenda, na ordem do slide 19, com as categorias de cada uma. */
 export const MAP_LEGEND: MapLegendClass[] = [
-  { id: "problemas_urgentes", label: "Problemas urgentes", category: "problema_urgente", color: "#E53935", shape: "triangulo" },
-  { id: "problemas_urbanos", label: "Problemas urbanos", category: "problema_urbano", color: "#1B4F72", shape: "quadrado" },
-  { id: "projetos_sociais", label: "Projetos sociais", category: "projeto_social", color: "#2E9E5B", shape: "circulo" },
-  { id: "acoes_ambientais", label: "Ações ambientais", category: "projeto_ambiental", color: "#2E7BA8", shape: "losango" },
+  {
+    id: "problemas_urgentes", label: "Problemas urgentes", color: "#E53935", shape: "triangulo",
+    categories: ["problema_urgente"],
+  },
+  {
+    id: "problemas_urbanos", label: "Problemas urbanos", color: "#1B4F72", shape: "quadrado",
+    categories: ["problema_urbano", "obra_ou_melhoria_de_infraestrutura", "revitalizacao_de_espaco"],
+  },
+  {
+    id: "projetos_sociais", label: "Projetos sociais", color: "#2E9E5B", shape: "circulo",
+    categories: ["projeto_social"],
+  },
+  {
+    id: "acoes_ambientais", label: "Ações ambientais", color: "#2E7BA8", shape: "losango",
+    categories: ["projeto_ambiental", "recuperacao_ambiental"],
+  },
   {
     id: "necessidades",
     label: "Necessidades (Oportunidades de patrocínio)",
-    category: "necessidade_de_patrocinio",
     color: "#F4841A",
     shape: "estrela",
+    categories: [
+      "necessidade_de_patrocinio", "apoio_tecnico", "apoio_com_servicos", "apoio_com_materiais",
+      "outras_demandas_territoriais",
+    ],
   },
 ];
 
@@ -46,8 +57,14 @@ export const MAP_LEGEND: MapLegendClass[] = [
 export const MAP_FEED_LAYER = { id: "feed", label: "Conteúdos do feed", color: "#5A9BC4", shape: "ponto" as MapShape };
 
 export const MAP_LEGEND_BY_CATEGORY: Record<DemandCategory, MapLegendClass> = Object.fromEntries(
-  MAP_LEGEND.map((item) => [item.category, item]),
+  MAP_LEGEND.flatMap((item) => item.categories.map((category) => [category, item])),
 ) as Record<DemandCategory, MapLegendClass>;
+
+export const MAP_LEGEND_BY_ID: Record<MapLegendId, MapLegendClass> = Object.fromEntries(
+  MAP_LEGEND.map((item) => [item.id, item]),
+) as Record<MapLegendId, MapLegendClass>;
+
+const legendCategories = (...ids: MapLegendId[]): DemandCategory[] => ids.flatMap((id) => MAP_LEGEND_BY_ID[id].categories);
 
 export function mapLegendFor(category: DemandCategory): MapLegendClass {
   return MAP_LEGEND_BY_CATEGORY[category] ?? MAP_LEGEND[0];
@@ -80,7 +97,7 @@ export const MAP_AUDIENCES: MapAudience[] = [
     label: "Governo",
     description: "Problemas urgentes e urbanos de maior prioridade, ainda em aberto.",
     filter: {
-      category: ["problema_urgente", "problema_urbano"],
+      category: legendCategories("problemas_urgentes", "problemas_urbanos"),
       priority: ["alta", "urgente"],
       status: ["publicada", "em_busca_de_parceiro", "conectada", "em_execucao"],
     },
@@ -91,7 +108,7 @@ export const MAP_AUDIENCES: MapAudience[] = [
     label: "Empresas",
     description: "Oportunidades de patrocínio e projetos em busca de parceiro.",
     filter: {
-      category: ["necessidade_de_patrocinio", "projeto_social", "projeto_ambiental"],
+      category: legendCategories("necessidades", "projetos_sociais", "acoes_ambientais"),
       priority: [],
       status: ["publicada", "em_busca_de_parceiro"],
     },
@@ -186,6 +203,30 @@ export function toggleValue<T extends string>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
+/** A classe está ligada no filtro de categorias (vazio = todas ligadas). */
+export function isLegendActive(active: DemandCategory[], item: MapLegendClass): boolean {
+  return active.length === 0 || item.categories.some((category) => active.includes(category));
+}
+
+/** A classe está marcada explicitamente: todas as suas categorias no filtro. */
+export function isLegendSelected(active: DemandCategory[], item: MapLegendClass): boolean {
+  return item.categories.every((category) => active.includes(category));
+}
+
+/** Liga ou desliga no filtro todas as categorias de uma classe da legenda. */
+export function toggleLegendClass(list: DemandCategory[], item: MapLegendClass): DemandCategory[] {
+  return isLegendSelected(list, item)
+    ? list.filter((category) => !item.categories.includes(category))
+    : [...list, ...item.categories.filter((category) => !list.includes(category))];
+}
+
+/** Soma por classe a partir da contagem por categoria. */
+export function countsByLegend(counts: Partial<Record<DemandCategory, number>>): Record<MapLegendId, number> {
+  return Object.fromEntries(
+    MAP_LEGEND.map((item) => [item.id, item.categories.reduce((sum, category) => sum + (counts[category] ?? 0), 0)]),
+  ) as Record<MapLegendId, number>;
+}
+
 export interface MapQueryOptions {
   bbox?: [number, number, number, number] | null;
   zoom?: number | null;
@@ -219,10 +260,11 @@ export function clusterRadius(total: number): number {
 
 /** Classe dominante de um agrupamento, para dar cor ao círculo. */
 export function clusterLegend(counts: Partial<Record<DemandCategory, number>>): MapLegendClass {
+  const byClass = countsByLegend(counts);
   let best = MAP_LEGEND[0];
   let bestTotal = -1;
   for (const item of MAP_LEGEND) {
-    const total = counts[item.category] ?? 0;
+    const total = byClass[item.id];
     if (total > bestTotal) {
       best = item;
       bestTotal = total;

@@ -134,8 +134,8 @@ test('indicadores: os 10 números do slide 14, recorte do órgão e origem de ca
     assert.equal(body.indicators.projetos_apoiados, 5);
     assert.equal(body.indicators.beneficiarios_alcancados, 900);
     assert.equal(body.indicators.resultados_registrados, 7);
-    // As 5 categorias sempre aparecem, mesmo zeradas (tabela alternativa do gráfico).
-    assert.equal(body.byCategory.length, 5);
+    // As 12 categorias (Modelo §03) sempre aparecem, mesmo zeradas (tabela alternativa do gráfico).
+    assert.equal(body.byCategory.length, 12);
     assert.equal(body.byCategory.find((c) => c.category === 'problema_urbano').total, 6);
     assert.equal(body.byTerritory[0].label, 'Centro');
     assert.ok(body.sources.demandas_recebidas);

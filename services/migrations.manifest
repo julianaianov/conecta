@@ -30,7 +30,9 @@ user_db user-service/migrations/010-partner-profiles.sql
 user_db user-service/migrations/011-lgpd-titular.sql
 user_db user-service/migrations/012-connection-messages.sql
 user_db user-service/migrations/013-organization-members.sql
+user_db user-service/migrations/015-partner-categories.sql
 user_db user-service/migrations/016-notifications.sql
+user_db user-service/migrations/018-organization-documents.sql
 
 post_db post-service/init.sql
 post_db post-service/migrate_supports.sql
@@ -58,4 +60,8 @@ post_db post-service/migrations/022-ai-suggestions.sql
 post_db post-service/migrations/023-demand-themes.sql
 post_db post-service/migrations/024-post-photos.sql
 post_db post-service/migrations/025-media-agenda.sql
+post_db post-service/migrations/026-connection-processes.sql
+post_db post-service/migrations/031-demand-categories.sql
+post_db post-service/migrations/034-execution-status.sql
 post_db post-service/migrations/039-notifications.sql
+post_db post-service/migrations/042-priority-criteria.sql

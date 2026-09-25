@@ -8,7 +8,7 @@
 
 const { HttpError } = require('../demand/store');
 const {
-  CATEGORIES, PRIORITIES, PUBLIC_STATUSES, THEMES,
+  CATEGORIES, CATEGORY_MAP_CLASS, MAP_CLASSES, PRIORITIES, PUBLIC_STATUSES, THEMES,
   CELLS_MAX, POINTS_MAX, TERRITORIES_MAX, ZOOM_MAX, ZOOM_MIN, cellSizeDegrees,
 } = require('./constants');
 
@@ -183,13 +183,24 @@ function countsSql(where) {
    WHERE ${where}`;
 }
 
+/**
+ * Contagem por categoria (12, §03) e por classe da legenda (5, slide 19). A
+ * classe é a soma das suas categorias; não precisa de outra consulta.
+ */
+function categoryAndClassCounts(row) {
+  const category = Object.fromEntries(CATEGORIES.map((c) => [c, Number(row?.[`cat_${c}`] ?? 0)]));
+  const mapClass = Object.fromEntries(MAP_CLASSES.map((id) => [id, 0]));
+  for (const c of CATEGORIES) mapClass[CATEGORY_MAP_CLASS[c]] += category[c];
+  return { category, mapClass };
+}
+
 function serializeCounts(row) {
   const pick = (values, prefix) => Object.fromEntries(
     values.map((value) => [value, Number(row?.[`${prefix}_${value}`] ?? 0)]),
   );
   return {
     total: Number(row?.total ?? 0),
-    category: pick(CATEGORIES, 'cat'),
+    ...categoryAndClassCounts(row),
     priority: pick(PRIORITIES, 'pri'),
     status: pick(PUBLIC_STATUSES, 'sta'),
     theme: pick(THEMES, 'thm'),
@@ -216,6 +227,7 @@ function serializePoint(row) {
   return {
     id: row.id,
     category: row.category,
+    mapClass: CATEGORY_MAP_CLASS[row.category] ?? null,
     priority: row.priority,
     status: row.status,
     title: row.title,
@@ -252,7 +264,7 @@ function serializeCluster(row, cellSize) {
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),
     cellSize,
-    category: Object.fromEntries(CATEGORIES.map((c) => [c, Number(row[`cat_${c}`] ?? 0)])),
+    ...categoryAndClassCounts(row),
   };
 }
 
@@ -281,6 +293,7 @@ module.exports = {
   cellSizeDegrees,
   mapFilter,
   countsSql,
+  categoryAndClassCounts,
   serializeCounts,
   pointsSql,
   serializePoint,

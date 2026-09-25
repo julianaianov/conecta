@@ -6,10 +6,13 @@
 
 const { normalizeRole } = require('./roles');
 
-// TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda; ver TODO em services/post-service/migrations/007-demands.sql.
+// Os 12 tipos de demanda do Modelo de Conexão §03 (decisão 15), iguais a
+// post_db demand_category; CHECK na migração user 015.
 const INTEREST_CATEGORIES = [
   'projeto_social', 'projeto_ambiental', 'necessidade_de_patrocinio',
   'problema_urbano', 'problema_urgente',
+  'obra_ou_melhoria_de_infraestrutura', 'revitalizacao_de_espaco', 'recuperacao_ambiental',
+  'apoio_tecnico', 'apoio_com_servicos', 'apoio_com_materiais', 'outras_demandas_territoriais',
 ];
 
 const OFFERED_RESOURCES = [

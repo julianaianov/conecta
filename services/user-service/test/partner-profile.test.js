@@ -33,6 +33,21 @@ test('vocabulários iguais aos da demanda no post-service', () => {
   assert.equal(P.UFS.length, 27);
 });
 
+test('categorias de interesse: os 12 tipos do Modelo §03, iguais ao CHECK da migração 015', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const sql = fs.readFileSync(path.join(__dirname, '../migrations/015-partner-categories.sql'), 'utf8');
+  const block = /partner_profiles_categories CHECK \(interest_categories <@ ARRAY\[([^\]]*)\]/.exec(sql);
+  assert.ok(block);
+  assert.deepEqual([...block[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]), P.INTEREST_CATEGORIES);
+  assert.equal(P.INTEREST_CATEGORIES.length, 12);
+  const { value, errors } = P.validatePartnerProfile({
+    nationwide: true, interestCategories: ['apoio_tecnico', 'recuperacao_ambiental'], offeredResources: [],
+  });
+  assert.deepEqual(errors, {});
+  assert.deepEqual(value.interestCategories, ['apoio_tecnico', 'recuperacao_ambiental']);
+});
+
 test('validatePartnerProfile normaliza e recusa valores fora da lista', () => {
   const { value, errors } = P.validatePartnerProfile({
     nationwide: false,

@@ -11,6 +11,8 @@ const {
 // Vocabulário, validação e compatibilidade do interesse (T15).
 const sql = fs.readFileSync(path.join(__dirname, '../migrations/012-demand-interests.sql'), 'utf8');
 const userSql = fs.readFileSync(path.join(__dirname, '../../user-service/migrations/010-partner-profiles.sql'), 'utf8');
+// A 015 recria o CHECK das categorias com os 12 tipos do Modelo §03 (T-05-07).
+const userCategoriesSql = fs.readFileSync(path.join(__dirname, '../../user-service/migrations/015-partner-categories.sql'), 'utf8');
 
 function enumValues(type) {
   const match = new RegExp(`CREATE TYPE ${type} AS ENUM \\(([^)]*)\\)`).exec(sql);
@@ -46,12 +48,12 @@ test('permissões por categoria seguem os slides 9–11', () => {
 });
 
 test('perfil de apoio no user_db usa os vocabulários da demanda', () => {
-  const list = (name) => {
-    const m = new RegExp(`CONSTRAINT partner_profiles_${name} CHECK \\(\\w+ <@ ARRAY\\[([^\\]]*)\\]`).exec(userSql);
+  const list = (name, text = userSql) => {
+    const m = new RegExp(`CONSTRAINT partner_profiles_${name} CHECK \\(\\w+ <@ ARRAY\\[([^\\]]*)\\]`).exec(text);
     assert.ok(m, name);
     return [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]);
   };
-  assert.deepEqual(list('categories'), CATEGORIES);
+  assert.deepEqual(list('categories', userCategoriesSql), CATEGORIES);
   assert.deepEqual(list('resources'), NEEDED_RESOURCE_TYPES);
   assert.deepEqual(I.PARTNER_INTEREST_CATEGORIES, CATEGORIES);
   assert.deepEqual(I.PARTNER_OFFERED_RESOURCES, NEEDED_RESOURCE_TYPES);

@@ -23,6 +23,7 @@ import {
   type DemandFieldErrors,
   type DemandGoalInput,
   type DemandInput,
+  type DemandMapClass,
   type DemandPriority,
   type DemandRecordMilestone,
   type DemandResourceType,
@@ -732,10 +733,45 @@ export const DOCUMENT_TYPE_LABELS: Record<DemandDocumentType, string> = {
   outros: "Outros documentos",
 };
 
-// TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda; ver TODO em services/post-service/migrations/007-demands.sql.
+// Os 12 tipos de demanda do Modelo de Conexão §03, na ordem da fonte
+// (espelho de services/post-service/src/demand/constants.js).
 export const DEMAND_CATEGORIES: DemandCategory[] = [
   "projeto_social", "projeto_ambiental", "necessidade_de_patrocinio", "problema_urbano", "problema_urgente",
+  "obra_ou_melhoria_de_infraestrutura", "revitalizacao_de_espaco", "recuperacao_ambiental",
+  "apoio_tecnico", "apoio_com_servicos", "apoio_com_materiais", "outras_demandas_territoriais",
 ];
+
+/** Classe da legenda do mapa (slide 19) de cada categoria (decisão 15). */
+export const DEMAND_CATEGORY_MAP_CLASS: Record<DemandCategory, DemandMapClass> = {
+  problema_urgente: "problemas_urgentes",
+  problema_urbano: "problemas_urbanos",
+  obra_ou_melhoria_de_infraestrutura: "problemas_urbanos",
+  revitalizacao_de_espaco: "problemas_urbanos",
+  projeto_social: "projetos_sociais",
+  projeto_ambiental: "acoes_ambientais",
+  recuperacao_ambiental: "acoes_ambientais",
+  necessidade_de_patrocinio: "necessidades",
+  apoio_tecnico: "necessidades",
+  apoio_com_servicos: "necessidades",
+  apoio_com_materiais: "necessidades",
+  outras_demandas_territoriais: "necessidades",
+};
+
+/** Ajuda de uma linha para a escolha da categoria no assistente. */
+export const DEMAND_CATEGORY_HELP: Record<DemandCategory, string> = {
+  projeto_social: "Ação com público, atividades e resultados sociais.",
+  projeto_ambiental: "Ação de cuidado ou educação ambiental no território.",
+  necessidade_de_patrocinio: "Iniciativa que precisa de patrocínio para acontecer.",
+  problema_urbano: "Problema do espaço público que precisa de resposta.",
+  problema_urgente: "Situação que exige atenção imediata.",
+  obra_ou_melhoria_de_infraestrutura: "Obra, reforma ou melhoria em sede, equipamento ou via.",
+  revitalizacao_de_espaco: "Recuperar e dar novo uso a um espaço do território.",
+  recuperacao_ambiental: "Recuperar área degradada, como restinga, mata ou margem.",
+  apoio_tecnico: "Precisa de orientação, projeto ou análise técnica.",
+  apoio_com_servicos: "Precisa de serviços prestados por parceiros.",
+  apoio_com_materiais: "Precisa de materiais, equipamentos ou insumos.",
+  outras_demandas_territoriais: "Outra necessidade do território que não se encaixa acima.",
+};
 
 export const DEMAND_PRIORITIES: DemandPriority[] = ["baixa", "media", "alta", "urgente"];
 

@@ -353,7 +353,10 @@ const EMPTY_MAP_VIEW: MapView = {
     category: {
       projeto_social: 0, projeto_ambiental: 0, necessidade_de_patrocinio: 0,
       problema_urbano: 0, problema_urgente: 0,
+      obra_ou_melhoria_de_infraestrutura: 0, revitalizacao_de_espaco: 0, recuperacao_ambiental: 0,
+      apoio_tecnico: 0, apoio_com_servicos: 0, apoio_com_materiais: 0, outras_demandas_territoriais: 0,
     },
+    mapClass: { problemas_urgentes: 0, problemas_urbanos: 0, projetos_sociais: 0, acoes_ambientais: 0, necessidades: 0 },
     priority: { baixa: 0, media: 0, alta: 0, urgente: 0 },
     status: {
       em_analise: 0, publicada: 0, em_busca_de_parceiro: 0, conectada: 0,

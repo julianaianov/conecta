@@ -52,8 +52,19 @@ test('a legenda tem as cinco classes da fonte e os quatro atalhos de leitura', a
       'Problemas urgentes', 'Problemas urbanos', 'Projetos sociais',
       'Ações ambientais', 'Necessidades (Oportunidades de patrocínio)',
     ]);
-    // Uma classe por categoria da demanda, sem sobra dos dois lados.
-    assert.deepEqual([...body.legend.map((l) => l.category)].sort(), [...CATEGORIES].sort());
+    // As 12 categorias (§03) agrupadas nas 5 classes, sem sobra dos dois lados.
+    assert.deepEqual(body.legend.flatMap((l) => l.categories).sort(), [...CATEGORIES].sort());
+    assert.equal(CATEGORIES.length, 12);
+    const ambientais = body.legend.find((l) => l.id === 'acoes_ambientais');
+    assert.deepEqual(ambientais.categories, ['projeto_ambiental', 'recuperacao_ambiental']);
+    assert.deepEqual(body.legend.find((l) => l.id === 'problemas_urbanos').categories, [
+      'problema_urbano', 'obra_ou_melhoria_de_infraestrutura', 'revitalizacao_de_espaco',
+    ]);
+    assert.deepEqual(body.legend.find((l) => l.id === 'necessidades').categories, [
+      'necessidade_de_patrocinio', 'apoio_tecnico', 'apoio_com_servicos', 'apoio_com_materiais',
+      'outras_demandas_territoriais',
+    ]);
+    assert.equal(body.categoryLabels.recuperacao_ambiental, 'Recuperação ambiental');
     assert.deepEqual(body.audiences.map((a) => a.id), ['governo', 'empresas', 'imprensa', 'comunidade']);
     assert.equal(body.clusterThreshold, CLUSTER_THRESHOLD);
     assert.equal(body.feedLayer.id, 'feed');
@@ -65,20 +76,24 @@ test('o atalho de empresas pré-aplica patrocínio e demandas abertas a parceria
   assert.ok(empresas.filter.category.includes('necessidade_de_patrocinio'));
   assert.deepEqual(empresas.filter.status, ['publicada', 'em_busca_de_parceiro']);
   const governo = AUDIENCES.find((a) => a.id === 'governo');
-  assert.deepEqual(governo.filter.category, ['problema_urgente', 'problema_urbano']);
+  assert.deepEqual(governo.filter.category, [
+    'problema_urgente', 'problema_urbano', 'obra_ou_melhoria_de_infraestrutura', 'revitalizacao_de_espaco',
+  ]);
+  assert.ok(empresas.filter.category.includes('apoio_com_materiais'));
+  assert.ok(empresas.filter.category.includes('recuperacao_ambiental'));
   assert.deepEqual(governo.filter.priority, ['alta', 'urgente']);
 });
 
 test('GET /demands/map devolve pontos sem dado pessoal e com contagens por classe', async () => {
   const pool = fakePool((text) => {
     if (/count\(\*\)::int AS total/.test(text)) {
-      return { rows: [countRow(1, { cat_problema_urgente: 1, sta_publicada: 1 })] };
+      return { rows: [countRow(1, { cat_recuperacao_ambiental: 1, sta_publicada: 1 })] };
     }
     if (/FROM demands d/.test(text)) {
       return {
         rows: [{
           id: DEMAND,
-          category: 'problema_urgente',
+          category: 'recuperacao_ambiental',
           priority: 'urgente',
           status: 'publicada',
           title: 'Poste apagado',
@@ -97,18 +112,22 @@ test('GET /demands/map devolve pontos sem dado pessoal e com contagens por class
     return null;
   });
   await withServer(pool, async (base) => {
-    const res = await get(base, '/demands/map?category=problema_urgente,projeto_social&status=publicada');
+    const res = await get(base, '/demands/map?category=problema_urgente,recuperacao_ambiental&status=publicada');
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.mode, 'points');
     assert.equal(body.counts.total, 1);
-    assert.equal(body.counts.category.problema_urgente, 1);
+    assert.equal(body.counts.category.recuperacao_ambiental, 1);
+    assert.equal(body.counts.mapClass.acoes_ambientais, 1);
+    assert.equal(body.counts.mapClass.problemas_urgentes, 0);
     assert.equal(body.counts.status.publicada, 1);
     assert.equal(body.points.length, 1);
     assert.deepEqual(Object.keys(body.points[0]).sort(), [
-      'category', 'district', 'id', 'latitude', 'longitude', 'municipality',
+      'category', 'district', 'id', 'latitude', 'longitude', 'mapClass', 'municipality',
       'postId', 'priority', 'publishedAt', 'status', 'territory', 'title', 'uf',
     ]);
+    // Recuperação ambiental aparece na classe "Ações ambientais" (decisão 15).
+    assert.equal(body.points[0].mapClass, 'acoes_ambientais');
     assert.equal(body.points[0].latitude, -23.01);
     assert.equal(body.truncated, false);
   });
@@ -139,7 +158,7 @@ test('acima do limiar a resposta vem agrupada em células com a contagem por cla
         rows: [{
           cell_x: -496, cell_y: -263, total: 400, latitude: -23.0, longitude: -43.4,
           cat_problema_urgente: 100, cat_problema_urbano: 100, cat_projeto_social: 100,
-          cat_projeto_ambiental: 50, cat_necessidade_de_patrocinio: 50,
+          cat_projeto_ambiental: 50, cat_necessidade_de_patrocinio: 20, cat_apoio_tecnico: 30,
         }],
       };
     }
@@ -155,6 +174,7 @@ test('acima do limiar a resposta vem agrupada em células com a contagem por cla
     assert.equal(body.cellSize, cellSizeDegrees(12));
     assert.equal(body.clusters[0].total, 400);
     assert.equal(body.clusters[0].category.problema_urgente, 100);
+    assert.equal(body.clusters[0].mapClass.necessidades, 50);
   });
 });
 
@@ -214,6 +234,8 @@ test('a agregação por território devolve slug estável e contagem por classe'
     assert.equal(row.slug, 'vila-kennedy-rio-de-janeiro-rj');
     assert.equal(row.total, 7);
     assert.equal(row.category.problema_urgente, 3);
+    assert.equal(row.mapClass.problemas_urgentes, 3);
+    assert.equal(row.mapClass.problemas_urbanos, 2);
     assert.equal(row.lastPublishedAt, '2026-09-21T12:00:00.000Z');
   });
 });

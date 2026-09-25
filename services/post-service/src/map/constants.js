@@ -5,60 +5,68 @@
 // dos conteúdos do feed (postagens, fotos, atualizações), que aqui são uma
 // camada à parte.
 //
-// As cinco classes da legenda são as cinco categorias da demanda (decisão 1 e
-// migração 007), uma para uma. Cores: manual de marca (docs/manual-marca.md);
+// As cinco classes da legenda são as do slide 19, literais; cada uma agrupa
+// categorias da demanda (os 12 tipos do Modelo de Conexão §03, decisão 15) pelo
+// mapa `CATEGORY_MAP_CLASS` de src/demand/constants.js, que a função SQL
+// `demand_map_class` (migração 031) repete. Cores: manual de marca (docs/manual-marca.md);
 // `shape` existe para o mapa continuar legível sem depender só de cor.
 //
 // `src/lib/app/map.ts` espelha este arquivo no frontend; `src/lib/app/map.test.mjs`
 // compara os dois.
 
 const {
-  CATEGORIES, PRIORITIES, PUBLIC_STATUSES, THEMES, THEME_LABELS,
+  CATEGORIES, CATEGORY_LABELS, CATEGORY_MAP_CLASS, MAP_CLASSES, PRIORITIES, PUBLIC_STATUSES, THEMES, THEME_LABELS,
 } = require('../demand/constants');
 
-/** Classes da legenda, na ordem do slide 19. */
-// TODO(fonte-da-verdade): Modelo de Conexão §03 — a legenda é 1 classe por categoria e faltam 7 tipos de demanda; ver TODO em migrations/007-demands.sql.
-const LEGEND = [
+/** Categorias de uma classe da legenda, na ordem do §03. */
+const categoriesOf = (classId) => CATEGORIES.filter((c) => CATEGORY_MAP_CLASS[c] === classId);
+
+/** Classes da legenda, na ordem do slide 19, com as categorias de cada uma. */
+const LEGEND_BASE = [
   {
     id: 'problemas_urgentes',
     label: 'Problemas urgentes',
-    category: 'problema_urgente',
     color: '#E53935',
     shape: 'triangulo',
   },
   {
     id: 'problemas_urbanos',
     label: 'Problemas urbanos',
-    category: 'problema_urbano',
     color: '#1B4F72',
     shape: 'quadrado',
   },
   {
     id: 'projetos_sociais',
     label: 'Projetos sociais',
-    category: 'projeto_social',
     color: '#2E9E5B',
     shape: 'circulo',
   },
   {
     id: 'acoes_ambientais',
     label: 'Ações ambientais',
-    category: 'projeto_ambiental',
     color: '#2E7BA8',
     shape: 'losango',
   },
   {
     id: 'necessidades',
     label: 'Necessidades (Oportunidades de patrocínio)',
-    category: 'necessidade_de_patrocinio',
     color: '#F4841A',
     shape: 'estrela',
   },
 ];
 
+const LEGEND = LEGEND_BASE.map((item) => ({
+  ...item,
+  categories: categoriesOf(item.id),
+}));
+
+if (LEGEND.map((item) => item.id).join() !== MAP_CLASSES.join()) {
+  throw new Error('legenda do mapa fora da ordem de MAP_CLASSES');
+}
+
 /**
  * Eixos temáticos como filtro do mapa (T26, slide 26). Não são uma sexta classe
- * da legenda: a legenda do slide 19 continua sendo a das cinco categorias. O
+ * da legenda: a legenda do slide 19 continua sendo a das cinco classes. O
  * eixo é um recorte que se cruza com ela — o mapa mostra "Saneamento" dentro
  * das mesmas cinco formas e cores, e a contagem por eixo vem em `counts.theme`.
  * Como o eixo é opcional, `counts.themed` diz quantas demandas do recorte já
@@ -83,7 +91,7 @@ const AUDIENCES = [
     label: 'Governo',
     description: 'Problemas urgentes e urbanos de maior prioridade, ainda em aberto.',
     filter: {
-      category: ['problema_urgente', 'problema_urbano'],
+      category: [...categoriesOf('problemas_urgentes'), ...categoriesOf('problemas_urbanos')],
       priority: ['alta', 'urgente'],
       status: ['publicada', 'em_busca_de_parceiro', 'conectada', 'em_execucao'],
     },
@@ -94,7 +102,9 @@ const AUDIENCES = [
     label: 'Empresas',
     description: 'Oportunidades de patrocínio e projetos em busca de parceiro.',
     filter: {
-      category: ['necessidade_de_patrocinio', 'projeto_social', 'projeto_ambiental'],
+      category: [
+        ...categoriesOf('necessidades'), ...categoriesOf('projetos_sociais'), ...categoriesOf('acoes_ambientais'),
+      ],
       priority: [],
       status: ['publicada', 'em_busca_de_parceiro'],
     },
@@ -155,6 +165,10 @@ module.exports = {
   THEME_LABELS,
   AUDIENCES,
   CATEGORIES,
+  CATEGORY_LABELS,
+  CATEGORY_MAP_CLASS,
+  MAP_CLASSES,
+  categoriesOf,
   PRIORITIES,
   PUBLIC_STATUSES,
   ZOOM_MIN,

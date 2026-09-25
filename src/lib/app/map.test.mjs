@@ -18,19 +18,24 @@ import {
   buildMapQuery,
   clusterLegend,
   clusterRadius,
+  countsByLegend,
   emptyMapFilter,
+  isLegendActive,
+  isLegendSelected,
   mapCellSizeDegrees,
   mapLegendFor,
   matchesAudience,
   territorySlug,
+  toggleLegendClass,
   toggleValue,
 } from "./map.ts";
+import { DEMAND_CATEGORIES, DEMAND_CATEGORY_MAP_CLASS } from "./demand.ts";
 import { DEMAND_CATEGORY_LABELS } from "./types.ts";
 
 const require = createRequire(import.meta.url);
 const server = require("../../../services/post-service/src/map/constants.js");
 
-test("a legenda é a do slide 19, uma classe por categoria da demanda", () => {
+test("a legenda é a do slide 19, com as 12 categorias do §03 agrupadas nas 5 classes", () => {
   assert.deepEqual(MAP_LEGEND.map((l) => l.label), [
     "Problemas urgentes",
     "Problemas urbanos",
@@ -40,9 +45,14 @@ test("a legenda é a do slide 19, uma classe por categoria da demanda", () => {
   ]);
   assert.deepEqual(MAP_LEGEND, server.LEGEND);
   assert.deepEqual(
-    [...MAP_LEGEND.map((l) => l.category)].sort(),
+    MAP_LEGEND.flatMap((l) => l.categories).sort(),
     Object.keys(DEMAND_CATEGORY_LABELS).sort(),
   );
+  assert.equal(DEMAND_CATEGORIES.length, 12);
+  for (const category of DEMAND_CATEGORIES) {
+    assert.equal(MAP_LEGEND_BY_CATEGORY[category].id, DEMAND_CATEGORY_MAP_CLASS[category], category);
+  }
+  assert.deepEqual(DEMAND_CATEGORY_MAP_CLASS, server.CATEGORY_MAP_CLASS);
   assert.deepEqual(MAP_FEED_LAYER, server.FEED_LAYER);
 });
 
@@ -96,6 +106,24 @@ test("o slug do território é o mesmo dos dois lados", () => {
 test("mapLegendFor devolve a classe da categoria", () => {
   assert.equal(mapLegendFor("problema_urgente").color, "#E53935");
   assert.equal(MAP_LEGEND_BY_CATEGORY.projeto_ambiental.label, "Ações ambientais");
+  assert.equal(mapLegendFor("recuperacao_ambiental").label, "Ações ambientais");
+  assert.equal(mapLegendFor("obra_ou_melhoria_de_infraestrutura").id, "problemas_urbanos");
+  assert.equal(mapLegendFor("apoio_com_materiais").id, "necessidades");
+});
+
+test("a legenda liga e desliga todas as categorias da classe de uma vez", () => {
+  const ambientais = MAP_LEGEND.find((l) => l.id === "acoes_ambientais");
+  const on = toggleLegendClass([], ambientais);
+  assert.deepEqual(on, ["projeto_ambiental", "recuperacao_ambiental"]);
+  assert.ok(isLegendSelected(on, ambientais));
+  assert.ok(isLegendActive([], ambientais));
+  assert.ok(!isLegendActive(["problema_urgente"], ambientais));
+  assert.deepEqual(toggleLegendClass(["problema_urgente", ...on], ambientais), ["problema_urgente"]);
+  // Classe parcialmente marcada completa as que faltam.
+  assert.deepEqual(toggleLegendClass(["projeto_ambiental"], ambientais), ["projeto_ambiental", "recuperacao_ambiental"]);
+  assert.deepEqual(countsByLegend({ projeto_ambiental: 2, recuperacao_ambiental: 3, apoio_tecnico: 1 }), {
+    problemas_urgentes: 0, problemas_urbanos: 0, projetos_sociais: 0, acoes_ambientais: 5, necessidades: 1,
+  });
 });
 
 test("buildMapQuery só manda o que foi escolhido", () => {
@@ -135,6 +163,8 @@ test("toggleValue liga e desliga um valor da lista", () => {
 
 test("o agrupamento ganha cor da classe dominante e raio pelo tamanho", () => {
   const counts = { problema_urgente: 2, problema_urbano: 9, projeto_social: 0, projeto_ambiental: 1, necessidade_de_patrocinio: 0 };
-  assert.equal(clusterLegend(counts).category, "problema_urbano");
+  assert.equal(clusterLegend(counts).id, "problemas_urbanos");
+  // A classe soma as categorias: 3 apoios vencem 2 urgentes.
+  assert.equal(clusterLegend({ problema_urgente: 2, apoio_tecnico: 1, apoio_com_servicos: 1, apoio_com_materiais: 1 }).id, "necessidades");
   assert.ok(clusterRadius(900) > clusterRadius(10));
 });

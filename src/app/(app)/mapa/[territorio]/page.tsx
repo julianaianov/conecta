@@ -62,7 +62,7 @@ export default async function TerritoryMapPage({ params }: { params: Promise<{ t
   ]);
   const place = placeName(territory);
   const breakdown = MAP_LEGEND
-    .map((legend) => ({ legend, total: territory.category[legend.category] ?? 0 }))
+    .map((legend) => ({ legend, total: legend.categories.reduce((sum, c) => sum + (territory.category[c] ?? 0), 0) }))
     .filter((item) => item.total > 0)
     .map((item) => `${item.legend.label}: ${item.total}`)
     .join(" · ");

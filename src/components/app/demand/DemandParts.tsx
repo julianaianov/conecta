@@ -41,6 +41,13 @@ const CATEGORY_ICONS: Record<DemandCategory, IconName> = {
   necessidade_de_patrocinio: "payments",
   problema_urbano: "construction",
   problema_urgente: "bolt",
+  obra_ou_melhoria_de_infraestrutura: "home_work",
+  revitalizacao_de_espaco: "map",
+  recuperacao_ambiental: "leaf",
+  apoio_tecnico: "handyman",
+  apoio_com_servicos: "volunteer",
+  apoio_com_materiais: "inventory",
+  outras_demandas_territoriais: "location",
 };
 
 export function categoryIcon(category: DemandCategory): IconName {

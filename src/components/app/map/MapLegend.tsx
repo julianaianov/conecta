@@ -1,12 +1,18 @@
-// Legenda do mapa inteligente (T20), com as cinco classes do slide 19.
+// Legenda do mapa inteligente (T20), com as cinco classes do slide 19. Cada
+// classe agrupa categorias da demanda (12 tipos do Modelo §03, decisão 15),
+// listadas abaixo do nome da classe e no `title` do símbolo.
 //
 // A legenda é uma tabela de verdade (não só cores no mapa): cada linha tem o
 // símbolo, o nome da classe, a forma em texto e a contagem do recorte atual.
 // É o que permite ler o mapa sem enxergar as cores e sem usar o mouse.
 
-import { MAP_FEED_LAYER, MAP_LEGEND, type MapLegendClass } from "@/lib/app/map";
-import type { DemandCategory } from "@/lib/app/types";
+import {
+  countsByLegend, isLegendActive, isLegendSelected, MAP_FEED_LAYER, MAP_LEGEND, type MapLegendClass,
+} from "@/lib/app/map";
+import { DEMAND_CATEGORY_LABELS, type DemandCategory } from "@/lib/app/types";
 import { shapeLabel, swatchSvg } from "./pins";
+
+const categoryNames = (item: MapLegendClass) => item.categories.map((c) => DEMAND_CATEGORY_LABELS[c]).join(", ");
 
 function Swatch({ color, shape }: { color: string; shape: MapLegendClass["shape"] }) {
   return (
@@ -19,15 +25,16 @@ function Swatch({ color, shape }: { color: string; shape: MapLegendClass["shape"
 }
 
 export interface MapLegendProps {
-  counts: Record<DemandCategory, number>;
+  /** Contagem por categoria; a legenda soma por classe. */
+  counts: Partial<Record<DemandCategory, number>>;
   feedCount: number | null;
-  /** Classes ligadas no filtro; vazio = todas. */
+  /** Categorias ligadas no filtro; vazio = todas. */
   active: DemandCategory[];
-  onToggle?: (category: DemandCategory) => void;
+  onToggle?: (legend: MapLegendClass) => void;
 }
 
 export function MapLegend({ counts, feedCount, active, onToggle }: MapLegendProps) {
-  const isActive = (category: DemandCategory) => active.length === 0 || active.includes(category);
+  const byClass = countsByLegend(counts);
   return (
     <section className="app-card rounded-2xl p-4" aria-labelledby="map-legend-title">
       <h2 id="map-legend-title" className="text-sm font-bold" style={{ color: "var(--th-text)" }}>
@@ -46,28 +53,34 @@ export function MapLegend({ counts, feedCount, active, onToggle }: MapLegendProp
         </thead>
         <tbody>
           {MAP_LEGEND.map((item) => (
-            <tr key={item.id} style={{ opacity: isActive(item.category) ? 1 : 0.5 }}>
+            <tr key={item.id} style={{ opacity: isLegendActive(active, item) ? 1 : 0.5 }}>
               <th scope="row" className="py-1 pr-2 font-medium" style={{ color: "var(--th-text)" }}>
                 {onToggle ? (
                   <button
                     type="button"
                     className="flex items-center gap-2 rounded px-1 py-0.5 text-left underline-offset-2 hover:underline"
-                    aria-pressed={active.includes(item.category)}
-                    onClick={() => onToggle(item.category)}
+                    aria-pressed={isLegendSelected(active, item)}
+                    onClick={() => onToggle(item)}
+                    title={categoryNames(item)}
                   >
                     <Swatch color={item.color} shape={item.shape} />
                     <span>{item.label}</span>
                   </button>
                 ) : (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2" title={categoryNames(item)}>
                     <Swatch color={item.color} shape={item.shape} />
                     <span>{item.label}</span>
                   </span>
                 )}
+                {item.categories.length > 1 ? (
+                  <span className="mt-0.5 block pl-7 text-xs font-normal" style={{ color: "var(--th-muted)" }}>
+                    {categoryNames(item)}
+                  </span>
+                ) : null}
               </th>
               <td className="py-1 pr-2 text-xs" style={{ color: "var(--th-muted)" }}>{shapeLabel(item.shape)}</td>
               <td className="py-1 text-right font-numeric" style={{ color: "var(--th-text)" }}>
-                {(counts[item.category] ?? 0).toLocaleString("pt-BR")}
+                {byClass[item.id].toLocaleString("pt-BR")}
               </td>
             </tr>
           ))}
