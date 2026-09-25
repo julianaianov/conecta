@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PublicDemandView } from "@/components/app/demand/PublicDemandView";
 import {
   getPublicDemand, getPublicDemandAccountability, getPublicDemandCoverage, getPublicDemandExecution,
-  getPublicDemandInstitutional, getPublicDemandTimeline, getPublicDossierInfo,
+  getPublicDemandInstitutional, getPublicDemandTimeline, getPublicDossierInfo, getPublicInstitution,
 } from "@/lib/server/public-data";
 import { DEMAND_CATEGORY_LABELS } from "@/lib/app/types";
 import { absoluteUrl, metadataForPage } from "@/lib/seo/site";
@@ -40,6 +40,9 @@ export default async function PublicDemandPage({ params }: { params: Promise<{ i
     getPublicDemandExecution(id), getPublicDemandAccountability(id), getPublicDemandCoverage(id),
   ]);
   if (!demand) notFound();
+  // Instituição responsável (T-02-02): depende do autor, então vem depois da
+  // demanda; sem projeção validada, o bloco não aparece.
+  const institution = await getPublicInstitution(demand.authorId);
   const url = absoluteUrl(`/demandas/${encodeURIComponent(demand.id)}`);
   return (
     <>
@@ -51,6 +54,7 @@ export default async function PublicDemandPage({ params }: { params: Promise<{ i
         execution={execution}
         accountability={accountability}
         coverage={coverage}
+        institution={institution}
       />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(demandJsonLd(demand, url)).replace(/</g, "\\u003c") }} />
     </>

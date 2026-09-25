@@ -307,6 +307,12 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   parecer da devolução, retomada da edição e as ações de `availableActions`
   (`buscar_parceiro`, `conectar`, `iniciar_execucao`, `concluir`,
   `prestar_contas`) com confirmação.
+- Instituição responsável (T-02-02, slides 4 e 19): `/demandas/[id]` lê
+  `getPublicInstitution(demand.authorId)` (projeção pública do user-service,
+  só validada, sem contato do representante; resolve o vínculo da T29) e
+  `PublicDemandView` mostra o selo ao lado do autor e o bloco "Publicada por"
+  (`PublicInstitutionCard`: razão social, CNPJ, CNAE). Sem projeção, o bloco
+  não aparece.
 - Post-vitrine: `PostCard`, `PublicPostCard` e o detalhe do post linkam para
   `/demandas/<demandId>`; o detalhe não oferece "Editar ponto" no post-vitrine.
   O `/criar` do Agente aponta para o assistente e para "Minhas demandas"; o menu

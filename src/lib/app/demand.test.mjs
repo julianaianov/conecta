@@ -291,3 +291,31 @@ test("aviso do gate fala da instituição do Agente", () => {
   assert.doesNotMatch(institutionGateMessage("mover_demanda", null, "agente_transformacao"), /Poder Público/);
   assert.match(institutionGateMessage("publicar", null), /Poder Público/);
 });
+
+// ── Instituição responsável na página pública da demanda (T-02-02) ──────────
+import { readFileSync } from "node:fs";
+import { mapPublicInstitutionRecord } from "./institution.ts";
+
+const readSource = (path) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
+
+test("página pública da demanda mostra a instituição responsável, sem contato do representante", () => {
+  const page = readSource("src/app/(app)/demandas/[id]/page.tsx");
+  assert.match(page, /getPublicInstitution\(demand\.authorId\)/);
+  assert.match(page, /institution=\{institution\}/);
+  const view = readSource("src/components/app/demand/PublicDemandView.tsx");
+  assert.match(view, /<PublicInstitutionCard institution=\{institution\} title="Publicada por"/);
+
+  const projected = mapPublicInstitutionRecord({
+    institution_kind: "agente_transformacao",
+    cnpj: "11222333000181",
+    legal_name: "Associação de Moradores do Parque",
+    cnae_primary: "9430800",
+    representative_email: "representante@exemplo.org",
+    representative_phone: "11999990000",
+    validation_reviewed_at: "2026-09-20T10:00:00.000Z",
+  });
+  assert.equal(projected.legalName, "Associação de Moradores do Parque");
+  assert.equal(projected.cnaePrimary, "9430800");
+  const keys = Object.keys(projected).join(",");
+  assert.doesNotMatch(keys, /email|phone|telefone|representative/i);
+});

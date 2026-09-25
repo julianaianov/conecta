@@ -8,6 +8,7 @@ import {
   type PublicDemandAccountabilityView,
   type PublicDossierInfo,
   type DemandCoverage,
+  type PublicInstitution,
 } from "@/lib/app/types";
 import { DOSSIER_TITLE, formatBytesShort, publicDossierDownloadPath, shortHash } from "@/lib/app/dossier";
 import { resolveMediaUrl } from "@/lib/app/uploads";
@@ -19,6 +20,7 @@ import { ReportButton } from "../ReportButton";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { DemandMap } from "./DemandMap";
+import { InstitutionSeal, PublicInstitutionCard } from "../institution/PublicInstitutionCard";
 import { PublicInstitutionalSection } from "../institutional/InstitutionalParts";
 import { institutionalTimelineDetail } from "@/lib/app/institutional";
 import { interestTimelineDetail } from "@/lib/app/interest";
@@ -101,8 +103,14 @@ function PublicDossierSection({ demandId, dossier }: { demandId: string; dossier
 
 export function PublicDemandView({
   demand, timeline, dossier = null, institutional = null, execution = null, accountability = null, coverage = [],
+  institution = null,
 }: {
   demand: PublicDemand;
+  /**
+   * Instituição responsável pela publicação (slides 4 e 19): projeção pública
+   * do user-service, só quando validada; sem contatos do representante.
+   */
+  institution?: PublicInstitution | null;
   timeline: DemandTimelineEvent[];
   dossier?: PublicDossierInfo | null;
   /** Respostas institucionais e status por órgão (T13). */
@@ -138,7 +146,10 @@ export function PublicDemandView({
               <Avatar name={demand.authorName ?? "Agente de Transformação"} src={demand.authorAvatar} id={demand.authorId} size={40} />
             </Link>
             <div className="min-w-0">
-              <Link href={profileHref} className="text-sm font-bold hover:underline" style={{ color: "var(--th-text)" }}>{demand.authorName ?? "Agente de Transformação"}</Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link href={profileHref} className="text-sm font-bold hover:underline" style={{ color: "var(--th-text)" }}>{demand.authorName ?? "Agente de Transformação"}</Link>
+                {institution && <InstitutionSeal institution={institution} />}
+              </div>
               <p className="text-xs" style={{ color: "var(--th-muted)" }}>
                 Agente de Transformação{demand.publishedAt ? ` · publicada em ${formatDate(demand.publishedAt)}` : ""}
               </p>
@@ -185,6 +196,9 @@ export function PublicDemandView({
           </div>
         </div>
       </div>
+
+      {/* Instituição responsável pela publicação (T-02-02): razão social, CNPJ, CNAE e selo. */}
+      {institution && <PublicInstitutionCard institution={institution} title="Publicada por" profileHref={profileHref} />}
 
       <DemandInterestPanel demandId={demand.id} authorId={demand.authorId} postId={demand.postId} />
 

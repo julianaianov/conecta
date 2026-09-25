@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatDate } from "@/lib/app/format";
 import { safeWebsite } from "@/lib/app/institution";
 import {
@@ -34,9 +35,16 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 /**
  * Dados públicos da instituição validada (projeção pública do user-service:
- * sem contatos, endereço completo nem representante).
+ * sem contatos, endereço completo nem representante). Na página pública da
+ * demanda aparece como "Publicada por", com link ao perfil (T-02-02).
  */
-export function PublicInstitutionCard({ institution }: { institution: PublicInstitution }) {
+export function PublicInstitutionCard({
+  institution, title = "Instituição validada", profileHref = null,
+}: {
+  institution: PublicInstitution;
+  title?: string;
+  profileHref?: string | null;
+}) {
   const name = institution.tradeName || institution.legalName;
   const website = safeWebsite(institution.website);
   const place = [institution.municipality, institution.uf].filter(Boolean).join("/");
@@ -45,7 +53,8 @@ export function PublicInstitutionCard({ institution }: { institution: PublicInst
     <section aria-labelledby="public-institution-title" className="app-card overflow-hidden rounded-2xl" style={{ boxShadow: "0 4px 16px rgba(13,45,66,0.05)" }}>
       <div className="flex items-center gap-2 border-b px-4 py-2.5" style={{ borderColor: "var(--th-border)", borderLeft: "3px solid #2e9e5b" }}>
         <Icon name="shield" size={15} style={{ color: "#2e9e5b" }} />
-        <h2 id="public-institution-title" className="text-sm font-bold" style={{ color: "var(--th-text)" }}>Instituição validada</h2>
+        <h2 id="public-institution-title" className="text-sm font-bold" style={{ color: "var(--th-text)" }}>{title}</h2>
+        {title !== "Instituição validada" && <span className="ml-auto"><InstitutionSeal institution={institution} /></span>}
       </div>
       <div className="space-y-3 p-4">
         <div>
@@ -93,6 +102,11 @@ export function PublicInstitutionCard({ institution }: { institution: PublicInst
         </dl>
         {institution.validatedAt && (
           <p className="text-xs" style={{ color: "var(--th-muted)" }}>Validada pela equipe do DM Conecta em {formatDate(institution.validatedAt)}.</p>
+        )}
+        {profileHref && (
+          <Link href={profileHref} className="inline-flex items-center gap-1 text-sm font-semibold hover:underline" style={{ color: "#2e7ba8" }}>
+            Ver perfil de quem publicou <Icon name="chevronRight" size={14} />
+          </Link>
         )}
       </div>
     </section>
