@@ -34,11 +34,11 @@ import { DemandExecutionSection } from "../execution/DemandExecutionSection";
 import { DemandAccountabilitySection } from "../accountability/DemandAccountabilitySection";
 import { DemandInterestPanel } from "../interest/DemandInterestPanel";
 import { DemandSupportBlock } from "../support/DemandSupportPanel";
+import { ViewerComposition } from "../institutional/ViewerComposition";
 import {
   BudgetTable,
   CategoryBadge,
   ModuleDetailsBlock,
-  CompositionCard,
   DemandStatusBadge,
   DocumentsSummary,
   GoalsList,
@@ -188,9 +188,13 @@ export function PublicDemandView({
             <ModuleDetailsBlock module={demand.module} moduleLabel={demand.moduleLabel} moduleDetails={demand.moduleDetails} />
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
+            {/* O apoio à demanda é registrado no painel desta página (T16, T-04-01), não no post-vitrine. */}
+            <a href="#registrar-apoio" className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}>
+              <Icon name="volunteer" size={17} /> Apoiar esta demanda
+            </a>
             {demand.postId && (
-              <Link href={`/post/${encodeURIComponent(demand.postId)}`} className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg,#f4841a,#f89b45)" }}>
-                <Icon name="volunteer" size={17} /> Apoiar e acompanhar no pulso
+              <Link href={`/post/${encodeURIComponent(demand.postId)}`} className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold" style={{ borderColor: "var(--th-border)", color: "var(--th-text)" }}>
+                <Icon name="comment" size={17} /> Acompanhar no pulso
               </Link>
             )}
             <Link href="/mapa" className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold" style={{ borderColor: "var(--th-border)", color: "var(--th-text)" }}>
@@ -232,7 +236,8 @@ export function PublicDemandView({
 
       <ReadSection title="Orçamento e composição financeira" icon="payments">
         <BudgetTable items={demand.budgetItems} />
-        <div className="mt-4"><CompositionCard composition={demand.composition} /></div>
+        {/* Decisão 14: o Poder Público vê só o orçamento original. */}
+        <div className="mt-4"><ViewerComposition composition={demand.composition} /></div>
         <p className="mt-3 text-xs" style={{ color: "var(--th-muted)" }}>
           A plataforma não processa pagamentos: os valores servem à transparência, ao dossiê e à prestação de contas.
         </p>

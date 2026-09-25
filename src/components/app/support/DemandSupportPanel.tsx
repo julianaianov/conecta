@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
+import { normalizeRole } from "@/lib/app/types";
 import { MY_DEMANDS_PATH } from "@/lib/app/demand";
 import {
   DEMAND_SUPPORT_TYPES,
@@ -38,8 +39,10 @@ import { Checkbox, FormAlert, SelectInput, TextArea, TextInput } from "../demand
 import { formatDate } from "@/lib/app/format";
 
 /** Formulário do registro de apoio realizado (as 6 modalidades da fonte). */
-function SupportForm({ modality, busy, onSubmit, onCancel }: {
+function SupportForm({ modality, supportTypes, busy, onSubmit, onCancel }: {
   modality: SupportModality;
+  /** O que o perfil pode oferecer (`allowedSupportTypes` do servidor). */
+  supportTypes: SupportType[];
   busy: boolean;
   onSubmit: (input: {
     supportType: SupportType; description: string; amountCents: number | null;
@@ -90,7 +93,7 @@ function SupportForm({ modality, busy, onSubmit, onCancel }: {
         value={supportType}
         onValue={setSupportType}
         placeholder="Escolha"
-        options={DEMAND_SUPPORT_TYPES.map((t) => ({ value: t, label: SUPPORT_TYPE_LABELS[t] }))}
+        options={DEMAND_SUPPORT_TYPES.filter((t) => supportTypes.includes(t)).map((t) => ({ value: t, label: SUPPORT_TYPE_LABELS[t] }))}
       />
       <TextArea name="descricao-apoio" label="Descrição do apoio" required value={description} onValue={setDescription} rows={3} maxLength={2000}
         hint="Diga o que foi entregue, contratado ou custeado." />
@@ -103,7 +106,7 @@ function SupportForm({ modality, busy, onSubmit, onCancel }: {
       <Checkbox name="consentimento" label="Exibir o nome do apoiador no histórico público da demanda" checked={consent} onChecked={setConsent}
         hint="Você pode mudar essa escolha depois." />
       {consent && (
-        <TextInput name="nome-publico" label="Nome público (empresa, marca ou órgão)" value={publicName} onValue={setPublicName} maxLength={160}
+        <TextInput name="nome-publico" label="Nome público (pessoa, empresa, marca ou órgão)" value={publicName} onValue={setPublicName} maxLength={160}
           hint="Em branco, aparece o nome da conta." />
       )}
       <TextArea name="mensagem-apoio" label="Mensagem para o Agente (opcional)" value={message} onValue={setMessage} rows={2} maxLength={2000} />
@@ -210,18 +213,30 @@ export function DemandSupportPanel({ demandId, authorId, history, onChange }: {
   }
 
   const isAuthor = Boolean(user && user.id === authorId);
+  const isMember = Boolean(user && normalizeRole(user.role, user.profileType) === "member");
   const mine = context?.supports ?? [];
   const allowed = context?.allowedModalities ?? [];
+  const allowedTypes = context?.allowedSupportTypes ?? [];
   const open = context?.open ?? true;
   const totals = history?.totals ?? null;
 
   return (
+    // Âncora do botão "Apoiar esta demanda" da página pública.
+    <div id="registrar-apoio" className="scroll-mt-24">
     <ReadSection title="Registrar apoio" icon="volunteer">
-      <p className="text-sm" style={{ color: "var(--th-muted)" }}>
-        Patrocinar projetos, doar recursos, financiar eventos, adotar espaços públicos, apoiar ações ambientais ou
-        contratar serviços locais. A plataforma não processa pagamento: o valor financeiro é declarado e confirmado
-        pelo Agente de Transformação.
-      </p>
+      {isMember ? (
+        <p className="text-sm" style={{ color: "var(--th-muted)" }}>
+          Como Membro da Comunidade, você apoia projetos doando recursos, adotando espaços públicos ou apoiando ações
+          ambientais. O Agente de Transformação confirma o recebimento. Para se oferecer como voluntário, use
+          “Quero ser voluntário” em Apoio e participação.
+        </p>
+      ) : (
+        <p className="text-sm" style={{ color: "var(--th-muted)" }}>
+          Patrocinar projetos, doar recursos, financiar eventos, adotar espaços públicos, apoiar ações ambientais ou
+          contratar serviços locais. A plataforma não processa pagamento: o valor financeiro é declarado e confirmado
+          pelo Agente de Transformação.
+        </p>
+      )}
       {totals && totals.total > 0 && (
         <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }} aria-live="polite">
           {totals.total} {totals.total === 1 ? "apoio registrado" : "apoios registrados"} · {totals.confirmed} confirmado(s) pelo Agente
@@ -257,8 +272,8 @@ export function DemandSupportPanel({ demandId, authorId, history, onChange }: {
 
           {allowed.length === 0 && (
             <p className="text-sm" style={{ color: "var(--th-muted)" }}>
-              Registrar apoio realizado é uma ação de Parceiros e do Poder Público. Seu perfil pode demonstrar interesse
-              e participar na seção acima.
+              Registrar apoio realizado é uma ação de Parceiros, do Poder Público e de Membros da Comunidade. Seu
+              perfil pode demonstrar interesse e participar na seção acima.
             </p>
           )}
           {allowed.length > 0 && !open && (
@@ -284,6 +299,7 @@ export function DemandSupportPanel({ demandId, authorId, history, onChange }: {
           {opening && (
             <SupportForm
               modality={opening}
+              supportTypes={allowedTypes}
               busy={busy}
               onCancel={() => setOpening(null)}
               onSubmit={(input) => void act(
@@ -306,6 +322,7 @@ export function DemandSupportPanel({ demandId, authorId, history, onChange }: {
         {gate && <InstitutionGateNotice action="apoiar" status={gate.status} />}
       </div>
     </ReadSection>
+    </div>
   );
 }
 

@@ -13,7 +13,7 @@
 
 const {
   BOARDS, BADGES, EXCLUDED_CATEGORY, COMPANY_PROFILE_TYPES,
-  SUPPORT_BOARD_EXCLUDED_CATEGORIES, normalizeActorCategory,
+  SUPPORT_BOARD_EXCLUDED_CATEGORIES, SPONSOR_BOARD_EXCLUDED_CATEGORIES, normalizeActorCategory,
 } = require('./constants');
 const { PERIODS } = require('./constants');
 const { periodStart, pointsFor, rankEntries } = require('./scoring');
@@ -339,7 +339,8 @@ function buildBoards(actors, metrics) {
       amount: Number(row.sponsor_amount) || 0,
       confirmedSupports: asCount(row.sponsor_supports),
     };
-    const sponsorPoints = pointsFor('maiores_patrocinadores', sponsorMetrics);
+    const sponsorPoints = SPONSOR_BOARD_EXCLUDED_CATEGORIES.includes(actor.category)
+      ? 0 : pointsFor('maiores_patrocinadores', sponsorMetrics);
     if (sponsorPoints > 0) {
       // Só entra apoio com nome **e** valor autorizados: aqui o nome sempre aparece.
       boards.get('maiores_patrocinadores').push(userEntry(actor, sponsorPoints, sponsorMetrics, true));

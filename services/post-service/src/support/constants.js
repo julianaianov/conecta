@@ -92,15 +92,42 @@ const GESTAO_STATUS_LABELS = {
   rejected: 'Rejeitado',
 };
 
-// Categorias que registram apoio realizado (slides 10 e 11).
-const SUPPORTER_CATEGORIES = ['parceiro', 'poder_publico'];
+// Categorias que registram apoio realizado (slides 10 e 11; Membro da
+// Comunidade pelo Perfis §3.2, "Apoiar projetos", e pela decisão 18 —
+// migração 041).
+const SUPPORTER_CATEGORIES = ['parceiro', 'poder_publico', 'comunidade'];
 
-const SUPPORT_ROLE_CATEGORY = { partner: 'parceiro', government: 'poder_publico' };
+const SUPPORT_ROLE_CATEGORY = { partner: 'parceiro', government: 'poder_publico', member: 'comunidade' };
 
-const SUPPORT_ROLES = ['partner', 'government'];
+const SUPPORT_ROLES = ['partner', 'government', 'member'];
+
+// Modalidades por papel (decisão 18): o Membro apoia sem CNPJ — doar
+// recursos, apoiar ações ambientais e adotar espaços públicos; patrocínio,
+// financiamento e contratação ficam com Parceiro e Poder Público.
+const MEMBER_SUPPORT_MODALITIES = ['doar_recursos', 'adotar_espaco_publico', 'apoiar_acao_ambiental'];
+
+const MODALITIES_BY_ROLE = {
+  partner: SUPPORT_MODALITIES,
+  government: SUPPORT_MODALITIES,
+  member: MEMBER_SUPPORT_MODALITIES,
+};
+
+// O que o Membro oferece: sem valor financeiro (as modalidades dele não são
+// financeiras) e sem voluntariado, que continua pelo interesse da T15
+// (`demand_interests.kind = 'voluntariado'`). O CHECK
+// `supports_member_modalities` da migração 041 diz o mesmo.
+const MEMBER_SUPPORT_TYPES = DEMAND_SUPPORT_TYPES.filter((t) => !['financial', 'volunteering'].includes(t));
+
+const SUPPORT_TYPES_BY_ROLE = {
+  partner: DEMAND_SUPPORT_TYPES,
+  government: DEMAND_SUPPORT_TYPES,
+  member: MEMBER_SUPPORT_TYPES,
+};
 
 // "Poder Público e políticos não entram em ranking competitivo de apoiadores."
-const RANKING_CATEGORIES = ['parceiro'];
+// O Membro entra em "Maiores apoiadores", mas não em "Maiores patrocinadores"
+// (decisão 18: as modalidades dele não são de patrocínio).
+const RANKING_CATEGORIES = ['parceiro', 'comunidade'];
 
 // Estados da demanda que recebem registro de apoio (o trigger
 // supports_assert_demand_open confere): da publicação em diante, fora
@@ -141,6 +168,10 @@ module.exports = {
   SUPPORTER_CATEGORIES,
   SUPPORT_ROLE_CATEGORY,
   SUPPORT_ROLES,
+  MEMBER_SUPPORT_MODALITIES,
+  MODALITIES_BY_ROLE,
+  MEMBER_SUPPORT_TYPES,
+  SUPPORT_TYPES_BY_ROLE,
   RANKING_CATEGORIES,
   SUPPORT_OPEN_STATUSES,
   EVIDENCE_PURPOSES,

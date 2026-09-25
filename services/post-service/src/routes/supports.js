@@ -10,7 +10,9 @@
 //
 // Público:
 //   GET  /:id/supports                      histórico de apoio e totais
-// Parceiro e Poder Público validado:
+// Parceiro, Poder Público validado e Membro da Comunidade (Perfis §3.2,
+// "Apoiar projetos"; decisão 18: o Membro só nas modalidades
+// `doar_recursos`, `apoiar_acao_ambiental` e `adotar_espaco_publico`):
 //   GET  /supports/mine                     "Meus apoios", com o andamento das
 //                                           demandas apoiadas
 //   GET  /:id/supports/mine                 meus apoios nesta demanda e as
@@ -36,10 +38,9 @@ const { PUBLIC_STATUSES } = require('../demand/constants');
 const demandStore = require('../demand/store');
 const { findUsableUpload, parseUploadRef, formatUploadRef } = require('../uploads');
 const {
-  SUPPORT_MODALITIES, DEMAND_SUPPORT_TYPES, SUPPORT_ROLES, SUPPORT_ROLE_CATEGORY,
-  SUPPORT_OPEN_STATUSES, EVIDENCE_PURPOSES, RECEIPT_TRANSITIONS,
+  SUPPORT_ROLES, SUPPORT_ROLE_CATEGORY, SUPPORT_OPEN_STATUSES, EVIDENCE_PURPOSES, RECEIPT_TRANSITIONS,
 } = require('../support/constants');
-const { validateSupport, validateConsent, validateReceipt } = require('../support/validation');
+const { allowedFor, validateSupport, validateConsent, validateReceipt } = require('../support/validation');
 const store = require('../support/store');
 const { listHelpers } = require('./demands');
 
@@ -62,6 +63,10 @@ function mapSupportDbError(err) {
   }
   if (err?.code === '23514' && /não processa pagamento/.test(message)) {
     return new HttpError(422, { error: message, code: 'payment_not_supported' });
+  }
+  // Migração 041: Membro da Comunidade fora das modalidades da decisão 18.
+  if (err?.code === '23514' && err?.constraint === 'supports_member_modalities') {
+    return new HttpError(422, { error: 'Modalidade de apoio não disponível para Membros da Comunidade', code: 'modality_not_allowed' });
   }
   return err;
 }
@@ -87,7 +92,7 @@ module.exports = ({ pool, auth, governmentGate, institutionStatus }) => {
   function requireSupporterRole(req, res, next) {
     if (!SUPPORT_ROLES.includes(roleOf(req))) {
       return res.status(403).json({
-        error: 'Registrar apoio realizado é uma ação de Parceiros e do Poder Público',
+        error: 'Registrar apoio realizado é uma ação de Parceiros, do Poder Público e de Membros da Comunidade',
         code: 'support_not_allowed',
       });
     }
@@ -184,25 +189,27 @@ module.exports = ({ pool, auth, governmentGate, institutionStatus }) => {
       [req.params.id, req.user.userId],
     );
     const isAuthor = demand.author_id === req.user.userId;
-    const allowed = SUPPORT_ROLES.includes(roleOf(req)) && !isAuthor;
+    const role = roleOf(req);
+    const allowed = SUPPORT_ROLES.includes(role) && !isAuthor;
+    const { modalities, supportTypes } = allowedFor(role);
     res.json({
       supports: rows.map(store.serializeOwnSupport),
-      allowedModalities: allowed ? SUPPORT_MODALITIES : [],
-      allowedSupportTypes: allowed ? DEMAND_SUPPORT_TYPES : [],
+      allowedModalities: allowed ? modalities : [],
+      allowedSupportTypes: allowed ? supportTypes : [],
       isAuthor,
       open: SUPPORT_OPEN_STATUSES.includes(demand.status),
     });
   }));
 
   router.post('/:id/supports', auth, requireSupporterRole, governmentGate, handle(async (req, res) => {
-    const { value, errors } = validateSupport(req.body ?? {});
+    const role = roleOf(req);
+    const { value, errors } = validateSupport(req.body ?? {}, { role });
     if (Object.keys(errors).length) throw validationError(errors);
     const demand = await loadPublicDemand(pool, req.params.id);
     if (demand.author_id === req.user.userId) {
       throw new HttpError(403, { error: 'O autor não registra apoio à própria demanda', code: 'own_demand' });
     }
     assertOpen(demand);
-    const role = roleOf(req);
     let organizationId = null;
     if (role === 'government' && institutionStatus) {
       organizationId = (await institutionStatus(req)).organizationId ?? null;

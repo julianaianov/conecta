@@ -7,6 +7,8 @@ import {
   DEMAND_SUPPORT_TYPES,
   GESTAO_STATUS_LABELS,
   LEGACY_TYPE_MODALITY,
+  MEMBER_SUPPORT_MODALITIES,
+  MEMBER_SUPPORT_TYPES,
   RECEIPT_STATUSES,
   RECEIPT_STATUS_LABELS,
   SUPPORTER_CATEGORY_LABELS,
@@ -22,6 +24,7 @@ import {
   countsForRanking,
   formatCents,
   supportErrorMessage,
+  supportModalitiesFor,
   supportReaisToCents,
   supportTimelineDetail,
   supportTimelineLabel,
@@ -52,14 +55,25 @@ test("modalidades, tipos, estados e mapeamento seguem o post-service", () => {
   assert.deepEqual(Object.keys(SUPPORT_MODALITY_ICONS), SUPPORT_MODALITIES);
 });
 
-test("registrar apoio realizado é de Parceiros e do Poder Público; ranking só de Parceiros", () => {
+test("registrar apoio realizado: Parceiros, Poder Público e Membros da Comunidade; Poder Público fora do ranking", () => {
   assert.equal(canRegisterSupport("partner", "empresa"), true);
   assert.equal(canRegisterSupport("government", "prefeitura"), true);
-  assert.equal(canRegisterSupport("member", "morador"), false);
+  assert.equal(canRegisterSupport("member", "morador"), true);
   assert.equal(canRegisterSupport("agent", "ong"), false);
   assert.equal(canRegisterSupport("media", "jornalista"), false);
   assert.equal(countsForRanking("parceiro"), true);
+  assert.equal(countsForRanking("comunidade"), true);
   assert.equal(countsForRanking("poder_publico"), false);
+  assert.deepEqual(server.RANKING_CATEGORIES.filter((c) => countsForRanking(c)), server.RANKING_CATEGORIES);
+});
+
+test("Membro da Comunidade: modalidades e ofertas da decisão 18 (T-04-01)", () => {
+  assert.deepEqual(MEMBER_SUPPORT_MODALITIES, server.MEMBER_SUPPORT_MODALITIES);
+  assert.deepEqual(MEMBER_SUPPORT_TYPES, server.MEMBER_SUPPORT_TYPES);
+  assert.deepEqual(supportModalitiesFor("member", "morador"), server.MODALITIES_BY_ROLE.member);
+  assert.deepEqual(supportModalitiesFor("partner", "empresa"), server.MODALITIES_BY_ROLE.partner);
+  assert.deepEqual(supportModalitiesFor("agent", "ong"), []);
+  assert.ok(!MEMBER_SUPPORT_MODALITIES.includes("patrocinar_projeto"));
 });
 
 test("valores declarados: centavos ↔ reais", () => {
@@ -74,6 +88,7 @@ test("histórico público: nome só com consentimento", () => {
   assert.equal(supporterDisplayName({ supporterName: "Construtora Horizonte", supporterCategory: "parceiro" }), "Construtora Horizonte");
   assert.equal(supporterDisplayName({ supporterName: null, supporterCategory: "parceiro" }), "Parceiro apoiador");
   assert.equal(supporterDisplayName({ supporterName: null, supporterCategory: "poder_publico" }), "Órgão do Poder Público");
+  assert.equal(supporterDisplayName({ supporterName: null, supporterCategory: "comunidade" }), "Membro da Comunidade");
 });
 
 test("linha do tempo do apoio", () => {
@@ -98,7 +113,8 @@ test("linha do tempo do apoio", () => {
 
 test("mensagens de erro do apoio", () => {
   const err = (code) => Object.assign(new Error("erro"), { code });
-  assert.match(supportErrorMessage(err("support_not_allowed")), /Parceiros e do Poder Público/);
+  assert.match(supportErrorMessage(err("support_not_allowed")), /Parceiros, do Poder Público e de Membros da Comunidade/);
+  assert.match(supportErrorMessage(err("modality_not_allowed")), /não está disponível/);
   assert.match(supportErrorMessage(err("own_demand")), /própria demanda/);
   assert.match(supportErrorMessage(err("support_confirmed")), /não é cancelado/);
   assert.match(supportErrorMessage(err("payment_not_supported")), /não processa pagamento/);

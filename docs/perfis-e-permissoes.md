@@ -94,6 +94,14 @@ nem contato. Tabelas `business_profiles` e `media_profiles` (migração user
 Membros, Parceiros e Poder Público oferecem qualquer forma de apoio. Agentes e
 Comunicação contribuem com **Divulgação** (`sharing`).
 
+No **registro de apoio realizado a uma demanda** (T16), Parceiros e Poder
+Público usam as seis modalidades do slide 20. O Membro da Comunidade ("Apoiar
+projetos", Perfis §3.2; decisão 18, T-04-01) registra apoio em **Doar
+recursos**, **Adotar espaços públicos** e **Apoiar ações ambientais**, sem
+valor financeiro; voluntariado continua pelo interesse "Quero ser voluntário"
+(T15). O Membro entra em "Maiores apoiadores" e fica fora de "Maiores
+patrocinadores".
+
 ## Governança
 
 - Membros da Comunidade não publicam demandas ou projetos em nome de uma

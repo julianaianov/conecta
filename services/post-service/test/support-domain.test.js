@@ -67,8 +67,41 @@ test('estados, transições e eventos combinam com os triggers', () => {
     assert.ok(sql.includes(`'${type}'`), `${type} gravado pelo trigger`);
   }
   // O Poder Público apoia, mas não entra no ranking competitivo (slide 11).
-  assert.deepEqual(S.SUPPORTER_CATEGORIES, ['parceiro', 'poder_publico']);
-  assert.deepEqual(S.RANKING_CATEGORIES, ['parceiro']);
+  assert.deepEqual(S.SUPPORTER_CATEGORIES, ['parceiro', 'poder_publico', 'comunidade']);
+  assert.deepEqual(S.RANKING_CATEGORIES, ['parceiro', 'comunidade']);
+});
+
+// T-04-01: Membro da Comunidade apoia projetos (Perfis §3.2; decisão 18).
+const member = fs.readFileSync(path.join(__dirname, '../migrations/041-member-support.sql'), 'utf8');
+
+test('Membro da Comunidade registra apoio nas três modalidades da decisão 18', () => {
+  assert.deepEqual(S.SUPPORT_ROLES, ['partner', 'government', 'member']);
+  assert.equal(S.SUPPORT_ROLE_CATEGORY.member, 'comunidade');
+  assert.deepEqual(S.MEMBER_SUPPORT_MODALITIES, ['doar_recursos', 'adotar_espaco_publico', 'apoiar_acao_ambiental']);
+  assert.deepEqual(S.MODALITIES_BY_ROLE.member, S.MEMBER_SUPPORT_MODALITIES);
+  assert.deepEqual(S.MODALITIES_BY_ROLE.partner, S.SUPPORT_MODALITIES);
+  assert.ok(!S.MEMBER_SUPPORT_TYPES.includes('financial'), 'sem valor financeiro');
+  assert.ok(!S.MEMBER_SUPPORT_TYPES.includes('volunteering'), 'voluntariado continua pelo interesse da T15');
+  // A migração 041 diz o mesmo no banco.
+  assert.match(member, /supporter_category IN \('parceiro', 'poder_publico', 'comunidade'\)/);
+  const allowed = /modality::text IN \(([^)]*)\)/.exec(member)[1];
+  assert.deepEqual([...allowed.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort(), [...S.MEMBER_SUPPORT_MODALITIES].sort());
+  assert.match(member, /type::text NOT IN \('financial', 'volunteering', 'sharing'\)/);
+  assert.match(member, /WHEN 'comunidade' THEN 'comunidade'/, 'o evento sai com o ator comunidade');
+
+  const ok = S.validateSupport({ modality: 'doar_recursos', supportType: 'materials', description: 'Mudas' }, { role: 'member' });
+  assert.deepEqual(ok.errors, {});
+  for (const modality of ['patrocinar_projeto', 'financiar_evento', 'contratar_servicos_locais']) {
+    const res = S.validateSupport({ modality, supportType: 'materials', description: 'x' }, { role: 'member' });
+    assert.match(res.errors.modality, /Membros da Comunidade/);
+  }
+  assert.ok(S.validateSupport({ modality: 'doar_recursos', supportType: 'financial', description: 'x', amountCents: 100 },
+    { role: 'member' }).errors.supportType);
+  assert.ok(S.validateSupport({ modality: 'apoiar_acao_ambiental', supportType: 'volunteering', description: 'x' },
+    { role: 'member' }).errors.supportType);
+  // Parceiro continua com as 6 modalidades.
+  assert.deepEqual(S.validateSupport({ modality: 'patrocinar_projeto', supportType: 'financial', description: 'x', amountCents: 100 },
+    { role: 'partner' }).errors, {});
 });
 
 test('validateSupport: modalidade, oferta, descrição e valor declarado', () => {

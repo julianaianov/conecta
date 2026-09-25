@@ -3,11 +3,22 @@
 // rotas da demanda.
 
 const {
-  SUPPORT_MODALITIES, DEMAND_SUPPORT_TYPES, MAX_DESCRIPTION, MAX_MESSAGE, MAX_NOTE,
-  MAX_PUBLIC_NAME, MAX_AMOUNT_CENTS, MAX_EVIDENCE,
+  SUPPORT_MODALITIES, SUPPORT_MODALITY_LABELS, DEMAND_SUPPORT_TYPES, MODALITIES_BY_ROLE, SUPPORT_TYPES_BY_ROLE,
+  MAX_DESCRIPTION, MAX_MESSAGE, MAX_NOTE, MAX_PUBLIC_NAME, MAX_AMOUNT_CENTS, MAX_EVIDENCE,
 } = require('./constants');
 
 const text = (value) => (typeof value === 'string' ? value.trim() : '');
+
+/**
+ * Modalidades e o que pode ser oferecido por papel (decisão 18). Sem papel
+ * conhecido, as listas completas (a rota já recusou quem não registra apoio).
+ */
+function allowedFor(role) {
+  return {
+    modalities: MODALITIES_BY_ROLE[role] ?? SUPPORT_MODALITIES,
+    supportTypes: SUPPORT_TYPES_BY_ROLE[role] ?? DEMAND_SUPPORT_TYPES,
+  };
+}
 
 /** Centavos inteiros não negativos; `null` quando ausente. */
 function parseAmountCents(value, errors, field = 'amountCents') {
@@ -54,15 +65,20 @@ function parseDate(value, errors, field = 'occurredOn', today = new Date()) {
  * `{ modality, supportType, description, amountCents?, amountPublic?, occurredOn?,
  *    message?, displayConsent?, publicName? }`.
  */
-function validateSupport(input, { today = new Date() } = {}) {
+function validateSupport(input, { today = new Date(), role = null } = {}) {
   const body = input && typeof input === 'object' ? input : {};
   const errors = {};
+  const { modalities, supportTypes } = allowedFor(role);
 
   const modality = typeof body.modality === 'string' ? body.modality : '';
-  if (!SUPPORT_MODALITIES.includes(modality)) errors.modality = `Modalidades aceitas: ${SUPPORT_MODALITIES.join(', ')}`;
+  if (!modalities.includes(modality)) {
+    errors.modality = role === 'member' && SUPPORT_MODALITIES.includes(modality)
+      ? `Membros da Comunidade apoiam nas modalidades: ${modalities.map((m) => SUPPORT_MODALITY_LABELS[m]).join(', ')}`
+      : `Modalidades aceitas: ${modalities.join(', ')}`;
+  }
 
   const supportType = typeof body.supportType === 'string' ? body.supportType : '';
-  if (!DEMAND_SUPPORT_TYPES.includes(supportType)) errors.supportType = `Valores aceitos: ${DEMAND_SUPPORT_TYPES.join(', ')}`;
+  if (!supportTypes.includes(supportType)) errors.supportType = `Valores aceitos: ${supportTypes.join(', ')}`;
 
   const description = text(body.description);
   if (!description) errors.description = 'Descreva o que foi oferecido';
@@ -160,6 +176,7 @@ function validateReceipt(input, { requireNote = false } = {}) {
 }
 
 module.exports = {
+  allowedFor,
   validateSupport,
   validateConsent,
   validateReceipt,

@@ -277,6 +277,22 @@ test('Comunicação entra em "Usuários mais ativos" e fica fora dos quadros de 
   assert.equal(boards.get('maiores_patrocinadores').length, 0);
 });
 
+test('Membro da Comunidade entra em "Maiores apoiadores" e fica fora de "Maiores patrocinadores" (T-04-01)', () => {
+  const boards = buildBoards(actors(), metrics({
+    supporters: {
+      rows: [{
+        user_id: MEMBER, confirmed_supports: 2, supported_demands: 2, modalities: 1,
+        volunteering_supports: 0, sponsor_supports: 1, sponsor_amount: '300', display_consent: true,
+      }],
+    },
+  }));
+  const [supporter] = boards.get('maiores_apoiadores');
+  assert.equal(supporter.subjectId, MEMBER);
+  assert.equal(supporter.category, 'comunidade');
+  assert.equal(boards.get('empresas_em_destaque').length, 0, 'empresas são só Parceiros');
+  assert.equal(boards.get('maiores_patrocinadores').length, 0, 'decisão 18: Membro não entra em patrocinadores');
+});
+
 test('Comunicação com dez compartilhamentos recebe o selo divulgador e a categoria no engajamento', async () => {
   const db = {
     async query(text) {

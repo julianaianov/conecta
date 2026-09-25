@@ -88,7 +88,7 @@ function toFilter(draft: Draft): OpportunityFilter | string {
   };
 }
 
-function OpportunityCard({ item }: { item: Opportunity }) {
+function OpportunityCard({ item, budgetOnly }: { item: Opportunity; budgetOnly: boolean }) {
   const d = item.demand;
   const place = [d.territory, [d.municipality, d.uf].filter(Boolean).join("/")].filter(Boolean).join(" · ");
   return (
@@ -106,8 +106,10 @@ function OpportunityCard({ item }: { item: Opportunity }) {
         <p className="mt-1 line-clamp-2 text-sm" style={{ color: "var(--th-muted)" }}>{d.description}</p>
         <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: "var(--th-muted)" }}>
           {place && <div><dt className="sr-only">Local</dt><dd className="inline-flex items-center gap-1"><Icon name="location" size={12} />{place}</dd></div>}
-          {/* TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql. */}
-          <div><dt className="inline">Valor total: </dt><dd className="inline font-numeric">{formatCents(d.totalAmountCents)}</dd></div>
+          {/* Decisão 14: 4% + 6% nunca incidem sobre o Poder Público, que vê o orçamento original. */}
+          {budgetOnly
+            ? <div><dt className="inline">Orçamento: </dt><dd className="inline font-numeric">{formatCents(d.budgetAmountCents)}</dd></div>
+            : <div><dt className="inline">Valor total: </dt><dd className="inline font-numeric">{formatCents(d.totalAmountCents)}</dd></div>}
           {d.beneficiariesEstimate != null && <div><dt className="inline">Beneficiados: </dt><dd className="inline font-numeric">{d.beneficiariesEstimate.toLocaleString("pt-BR")}</dd></div>}
         </dl>
         {d.neededResources.length > 0 && (
@@ -143,6 +145,9 @@ function OpportunityCard({ item }: { item: Opportunity }) {
 export function OpportunitiesClient() {
   const { user, status } = useAuth();
   const allowed = Boolean(user && canFilterOpportunities(user.role, user.profileType));
+  // Decisão 14: o servidor filtra o Poder Público pelo orçamento original.
+  const isGovernment = user?.role === "government";
+  const amountLabel = isGovernment ? "Orçamento" : "Valor total";
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [filter, setFilter] = useState<OpportunityFilter>({ sort: "compatibilidade", limit: PAGE });
   const [page, setPage] = useState<OpportunityPage | null>(null);
@@ -262,8 +267,8 @@ export function OpportunitiesClient() {
           <SelectInput name="op-uf" label="UF" value={draft.uf} onValue={set("uf")} placeholder="Todas" options={UFS.map((u) => ({ value: u, label: u }))} />
           <TextInput name="op-municipio" label="Município" value={draft.municipality} onValue={set("municipality")} maxLength={255} />
           <TextInput name="op-territorio" label="Território ou bairro" value={draft.territory} onValue={set("territory")} maxLength={255} />
-          <TextInput name="op-min" label="Valor total mínimo (R$)" value={draft.minValue} onValue={set("minValue")} inputMode="decimal" />
-          <TextInput name="op-max" label="Valor total máximo (R$)" value={draft.maxValue} onValue={set("maxValue")} inputMode="decimal" />
+          <TextInput name="op-min" label={`${amountLabel} mínimo (R$)`} value={draft.minValue} onValue={set("minValue")} inputMode="decimal" />
+          <TextInput name="op-max" label={`${amountLabel} máximo (R$)`} value={draft.maxValue} onValue={set("maxValue")} inputMode="decimal" />
           <TextInput name="op-busca" label="Busca" value={draft.q} onValue={set("q")} maxLength={200} placeholder="Título ou descrição" />
         </div>
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -295,7 +300,7 @@ export function OpportunitiesClient() {
         <EmptyState icon="search" title="Nenhuma oportunidade com estes filtros" hint="Amplie o território, retire filtros ou inclua demandas conectadas." />
       )}
       <ul className="space-y-3">
-        {items.map((item) => <OpportunityCard key={item.demand.id} item={item} />)}
+        {items.map((item) => <OpportunityCard key={item.demand.id} item={item} budgetOnly={isGovernment} />)}
       </ul>
       {loading && <div className="flex justify-center py-6"><span className="app-spinner" aria-label="Carregando oportunidades" /></div>}
       {!loading && page?.nextOffset != null && (

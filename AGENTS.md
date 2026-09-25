@@ -718,6 +718,18 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `dm-docs/gestao/04-modelagem-de-dados.md` §3.11.
 - Testes: `test/support-domain.test.js`, `test/supports-routes.test.js`,
   `test/support-e2e.test.js` (no `test:e2e`) e `src/lib/app/support.test.mjs`.
+- Membro da Comunidade apoia projetos (T-04-01; Perfis §3.2, decisão 18):
+  `SUPPORT_ROLES` inclui `member` (categoria `comunidade`), só nas modalidades
+  `doar_recursos`, `adotar_espaco_publico` e `apoiar_acao_ambiental`
+  (`MODALITIES_BY_ROLE`) e sem `financial`/`volunteering` como oferta
+  (`SUPPORT_TYPES_BY_ROLE`; voluntariado continua pelo interesse da T15); fora
+  disso, 422 no campo. Migração post 041 (`041-member-support.sql`): CHECK
+  `supports_demand_fields` aceita `comunidade`, CHECK
+  `supports_member_modalities` e `apoio_declarado` com ator `comunidade`.
+  `GET /:id/supports/mine` devolve as modalidades e ofertas do papel. O Membro
+  entra em "Maiores apoiadores" e fica fora de "Maiores patrocinadores"
+  (`SPONSOR_BOARD_EXCLUDED_CATEGORIES`). Na página pública, "Apoiar esta
+  demanda" leva à âncora `#registrar-apoio` do `DemandSupportPanel`.
 
 ## Execução, evidências antes/depois e acompanhamento (T17)
 

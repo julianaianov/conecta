@@ -85,7 +85,7 @@ function mapInterestDbError(err) {
 }
 
 /** Filtros de oportunidades → WHERE parametrizado (sem LIMIT: a ordenação é da compatibilidade). */
-function opportunityQuery(query) {
+function opportunityQuery(query, { government = false } = {}) {
   const fields = {};
   const params = [];
   const where = [];
@@ -133,9 +133,11 @@ function opportunityQuery(query) {
   const min = cents('minTotalCents');
   const max = cents('maxTotalCents');
   if (min !== null && max !== null && min > max) fields.maxTotalCents = 'O valor máximo é menor que o mínimo';
-  // TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — filtro pelo total com 4% + 6%, que não vale para o Poder Público; ver TODO em migrations/007-demands.sql.
-  if (min !== null) add('d.total_amount_cents >= ?', min);
-  if (max !== null) add('d.total_amount_cents <= ?', max);
+  // Decisão 14 (Modelo de Conexão §04 Obs.): 4% + 6% nunca incidem sobre o
+  // Poder Público, que filtra pelo orçamento original; os demais, pelo total.
+  const amountColumn = government ? 'd.budget_amount_cents' : 'd.total_amount_cents';
+  if (min !== null) add(`${amountColumn} >= ?`, min);
+  if (max !== null) add(`${amountColumn} <= ?`, max);
 
   const sort = query.sort === undefined || query.sort === '' ? 'compatibilidade' : query.sort;
   if (!['compatibilidade', 'recentes'].includes(sort)) fields.sort = 'Use compatibilidade ou recentes';
@@ -241,7 +243,7 @@ module.exports = ({
 
   // ── Oportunidades de apoio ────────────────────────────────────────────────
   router.get('/opportunities', auth, requireOpportunityRole, governmentGate, handle(async (req, res) => {
-    const { sql, params, sort, limit, offset } = opportunityQuery(req.query);
+    const { sql, params, sort, limit, offset } = opportunityQuery(req.query, { government: roleOf(req) === 'government' });
     const [{ rows }, profile] = await Promise.all([pool.query(sql, params), loadProfile(req)]);
     const ids = rows.map((r) => r.id);
     const needed = await store.neededResourcesByDemand(pool, ids);

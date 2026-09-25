@@ -98,10 +98,27 @@ export const GESTAO_STATUS_LABELS: Record<SupportGestaoStatus, string> = {
 export const SUPPORTER_CATEGORY_LABELS: Record<SupporterCategory, string> = {
   parceiro: "Parceiro",
   poder_publico: "Poder Público",
+  comunidade: "Membro da Comunidade",
 };
 
-/** "Registrar apoio realizado": Parceiros e Poder Público (slides 10 e 11). */
-export const SUPPORT_ROLES: UserRole[] = ["partner", "government"];
+/**
+ * "Registrar apoio realizado": Parceiros e Poder Público (slides 10 e 11) e
+ * Membros da Comunidade ("Apoiar projetos", Perfis §3.2; decisão 18).
+ */
+export const SUPPORT_ROLES: UserRole[] = ["partner", "government", "member"];
+
+/** Modalidades do Membro da Comunidade (decisão 18): sem patrocínio, financiamento nem contratação. */
+export const MEMBER_SUPPORT_MODALITIES: SupportModality[] = ["doar_recursos", "adotar_espaco_publico", "apoiar_acao_ambiental"];
+
+/** O Membro não declara valor financeiro nem voluntariado (voluntariado é o interesse da T15). */
+export const MEMBER_SUPPORT_TYPES: SupportType[] = DEMAND_SUPPORT_TYPES.filter((t) => t !== "financial" && t !== "volunteering");
+
+/** Modalidades permitidas por papel; o servidor devolve as mesmas em `allowedModalities`. */
+export function supportModalitiesFor(role: string | null | undefined, profileType?: string | null): SupportModality[] {
+  const normalized = normalizeRole(role, profileType);
+  if (normalized === "member") return MEMBER_SUPPORT_MODALITIES;
+  return SUPPORT_ROLES.includes(normalized) ? SUPPORT_MODALITIES : [];
+}
 
 /** Estados da demanda que recebem registro de apoio. */
 export const SUPPORT_OPEN_STATUSES: DemandStatus[] = [
@@ -132,9 +149,12 @@ export function canRegisterSupport(role: string | null | undefined, profileType?
   return SUPPORT_ROLES.includes(normalizeRole(role, profileType));
 }
 
-/** Parceiros entram no ranking de apoiadores; o Poder Público, não (slide 11). */
+/**
+ * Parceiros e Membros da Comunidade entram no ranking de apoiadores; o Poder
+ * Público, não (slide 11). O Membro fica fora de "Maiores patrocinadores".
+ */
 export function countsForRanking(category: SupporterCategory): boolean {
-  return category === "parceiro";
+  return category === "parceiro" || category === "comunidade";
 }
 
 /** "R$ 1.500,00" a partir de centavos; `null` quando não há valor declarado. */
@@ -156,7 +176,8 @@ export function supportReaisToCents(value: string): number | null {
 /** Nome exibido no histórico público (sem consentimento, só a categoria). */
 export function supporterDisplayName(support: { supporterName: string | null; supporterCategory: SupporterCategory }): string {
   if (support.supporterName) return support.supporterName;
-  return support.supporterCategory === "poder_publico" ? "Órgão do Poder Público" : "Parceiro apoiador";
+  if (support.supporterCategory === "poder_publico") return "Órgão do Poder Público";
+  return support.supporterCategory === "comunidade" ? "Membro da Comunidade" : "Parceiro apoiador";
 }
 
 export function supportTimelineLabel(event: Pick<DemandTimelineEvent, "type" | "details">): string | null {
@@ -192,7 +213,8 @@ export function supportErrorMessage(err: unknown, fallback = "Não foi possível
   if (err instanceof Error) {
     if (err.message === "network" || err.message === "timeout") return "Sem conexão com o servidor. Confira a internet e tente de novo.";
     const code = (err as { code?: unknown }).code;
-    if (code === "support_not_allowed") return "Registrar apoio realizado é uma ação de Parceiros e do Poder Público.";
+    if (code === "support_not_allowed") return "Registrar apoio realizado é uma ação de Parceiros, do Poder Público e de Membros da Comunidade.";
+    if (code === "modality_not_allowed") return "Esta modalidade de apoio não está disponível para o seu perfil.";
     if (code === "own_demand") return "O autor não registra apoio à própria demanda.";
     if (code === "demand_not_open") return "Esta demanda não recebe registro de apoio no estado atual.";
     if (code === "support_confirmed") return "Apoio já confirmado pelo Agente não é cancelado.";

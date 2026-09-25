@@ -121,7 +121,8 @@ test('apoio: modalidades da fonte, dupla confirmação, transparência e meus ap
 
       // ── Registro do apoio realizado (slides 10 e 20) ──────────────────────
       const register = (body, as = PARTNER, target = demand) => call('POST', `/demands/${target}/supports`, { as, body });
-      assert.equal((await register({ modality: 'doar_recursos', supportType: 'materials', description: 'Cimento' }, MEMBER)).body.code, 'support_not_allowed');
+      // Membro da Comunidade (T-04-01, decisão 18): patrocínio não é modalidade dele.
+      assert.equal((await register({ modality: 'patrocinar_projeto', supportType: 'materials', description: 'Cimento' }, MEMBER)).status, 422);
       assert.equal((await register({ modality: 'doar_recursos', supportType: 'materials', description: 'Cimento' }, AGENT)).status, 403);
       assert.equal((await register({ modality: 'doar_recursos', supportType: 'materials', description: 'Cimento' }, PARTNER, draft)).status, 404,
         'demanda não publicada não recebe apoio');
@@ -311,6 +312,47 @@ test('apoio: modalidades da fonte, dupla confirmação, transparência e meus ap
         [donation.body.support.id],
       );
       assert.deepEqual(gestaoRows[0], { type: 'materials', modality: 'doar_recursos', status: 'rejected' });
+
+      // ── Membro da Comunidade apoia projetos (T-04-01, Perfis §3.2) ────────
+      const garden = await publishedDemand('Horta comunitária');
+      const memberContext = await call('GET', `/demands/${garden}/supports/mine`, { as: MEMBER });
+      assert.equal(memberContext.status, 200);
+      assert.deepEqual(memberContext.body.allowedModalities, ['doar_recursos', 'adotar_espaco_publico', 'apoiar_acao_ambiental']);
+      assert.ok(!memberContext.body.allowedSupportTypes.includes('financial'));
+      assert.ok(!memberContext.body.allowedSupportTypes.includes('volunteering'));
+      const seedlings = await register({
+        modality: 'apoiar_acao_ambiental', supportType: 'materials', description: '30 mudas nativas',
+        displayConsent: true, publicName: 'Joana',
+      }, MEMBER, garden);
+      assert.equal(seedlings.status, 201, JSON.stringify(seedlings.body));
+      const { rows: [memberRow] } = await pool.query('SELECT supporter_category FROM supports WHERE id = $1', [seedlings.body.support.id]);
+      assert.equal(memberRow.supporter_category, 'comunidade');
+      const { rows: [memberEvent] } = await pool.query(
+        "SELECT actor_type, payload->'public'->>'supporterCategory' AS category FROM demand_events WHERE demand_id = $1 AND event_type = 'apoio_declarado'",
+        [garden],
+      );
+      assert.deepEqual(memberEvent, { actor_type: 'comunidade', category: 'comunidade' });
+      assert.equal((await register({
+        modality: 'financiar_evento', supportType: 'food', description: 'Lanche',
+      }, MEMBER, garden)).status, 422, 'financiar eventos fica com Parceiro e Poder Público');
+      // O banco é a última barreira (CHECK supports_member_modalities, migração 041).
+      await assert.rejects(pool.query(
+        `INSERT INTO supports (post_id, demand_id, user_id, supporter_category, type, modality, description,
+                               receipt_status, status)
+         SELECT p.id, p.demand_id, $2, 'comunidade', 'financial', 'patrocinar_projeto', 'x', 'declarado', 'pending'
+           FROM posts p WHERE p.demand_id = $1 LIMIT 1`,
+        [garden, MEMBER],
+      ), /supports_member_modalities/);
+      // O Agente confirma o apoio do Membro; o histórico mostra a categoria.
+      const memberConfirmed = await call('POST', `/demands/mine/${garden}/supports/${seedlings.body.support.id}/confirm`, {
+        as: AGENT, body: {},
+      });
+      assert.equal(memberConfirmed.status, 200);
+      assert.equal(memberConfirmed.body.support.supporter.category, 'comunidade');
+      const gardenHistory = await call('GET', `/demands/${garden}/supports`, { auth: false });
+      assert.equal(gardenHistory.body.supports[0].supporterCategory, 'comunidade');
+      assert.equal(gardenHistory.body.supports[0].supporterName, 'Joana');
+      assert.equal((await call('GET', '/demands/supports/mine', { as: MEMBER })).body.supports.length, 1);
     } finally {
       await new Promise((resolve) => server.close(resolve));
       await gestao.end();

@@ -122,6 +122,10 @@ test('opportunityQuery: parâmetros, recurso necessário e faixa de valor', () =
   assert.equal(q.params[q.params.length - 1], 500);
   assert.throws(() => opportunityQuery({ status: 'concluida' }), (err) => err.status === 422);
   assert.throws(() => opportunityQuery({ minTotalCents: '1.5' }), (err) => err.status === 422);
+  // Decisão 14: o Poder Público filtra pelo orçamento original, sem 4% + 6%.
+  const gov = opportunityQuery({ minTotalCents: '100', maxTotalCents: '5000' }, { government: true });
+  assert.match(gov.sql, /d\.budget_amount_cents >= \$\d+/);
+  assert.doesNotMatch(gov.sql, /total_amount_cents [<>]=/);
 });
 
 // ── Potenciais parceiros para o Agente (T30) ────────────────────────────────

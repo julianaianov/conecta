@@ -52,6 +52,10 @@ const ROLE_TO_CATEGORY = {
 // ativos" e recebe o selo `divulgador`.
 const SUPPORT_BOARD_EXCLUDED_CATEGORIES = ['comunicacao'];
 
+// "Maiores patrocinadores" também deixa de fora o Membro da Comunidade: ele
+// apoia (T-04-01) só em modalidades não financeiras (decisão 18).
+const SPONSOR_BOARD_EXCLUDED_CATEGORIES = ['comunidade'];
+
 // Categoria gravada em `supports.supporter_category` / `demand_interests.user_category`.
 const SUPPORTER_CATEGORY_TO_CATEGORY = {
   parceiro: 'parceiro',
@@ -125,7 +129,8 @@ const BOARDS = [
     criteria: 'Soma o valor declarado (decisão 5: a plataforma não processa pagamento) dos '
       + 'apoios confirmados nas modalidades "Patrocinar projetos" e "Financiar eventos". Entra '
       + 'só o apoio em que o apoiador autorizou divulgar o nome **e** o valor; sem essas duas '
-      + 'autorizações o apoio não aparece aqui. 1 ponto por real declarado.',
+      + 'autorizações o apoio não aparece aqui. 1 ponto por real declarado. Membros da Comunidade '
+      + 'apoiam em modalidades não financeiras e não entram neste quadro.',
     metrics: ['amount', 'confirmedSupports'],
   },
   {
@@ -240,6 +245,7 @@ module.exports = {
   EXCLUDED_CATEGORY,
   ROLE_TO_CATEGORY,
   SUPPORT_BOARD_EXCLUDED_CATEGORIES,
+  SPONSOR_BOARD_EXCLUDED_CATEGORIES,
   SUPPORTER_CATEGORY_TO_CATEGORY,
   normalizeActorCategory,
   COMPANY_PROFILE_TYPES,

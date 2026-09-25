@@ -30,7 +30,12 @@ import {
   type InstitutionalStatus,
   type InstitutionalSupportType,
   type InstitutionValidationStatus,
+  type PublicDemandAccountabilityView,
+  type PublicDemandExecution,
 } from "@/lib/app/types";
+import { DemandExecutionSection } from "../execution/DemandExecutionSection";
+import { DemandAccountabilitySection } from "../accountability/DemandAccountabilitySection";
+import { BudgetOnlyLine } from "./ViewerComposition";
 import { AuthPrompt } from "../AuthPrompt";
 import { Button } from "../Button";
 import { Card } from "../ui";
@@ -39,7 +44,6 @@ import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import {
   BudgetTable,
   CategoryBadge,
-  CompositionCard,
   DemandStatusBadge,
   DocumentsSummary,
   GoalsList,
@@ -374,6 +378,26 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
   const entries = (view?.responses.length ?? 0) + (view?.offers.length ?? 0)
     + (view?.forwardings ?? []).reduce((n, f) => n + 1 + f.updates.length, 0);
 
+  // Execução e prestação de contas (T-03-02; Fluxo 3, slide 9 "Acompanhar a
+  // execução da iniciativa"): as mesmas projeções públicas da página da
+  // demanda. Falha isolada: a análise continua disponível.
+  const demandId = view?.demand.id ?? null;
+  const [execution, setExecution] = useState<PublicDemandExecution | null>(null);
+  const [accountability, setAccountability] = useState<PublicDemandAccountabilityView | null>(null);
+  const [followFailed, setFollowFailed] = useState(false);
+  useEffect(() => {
+    if (!demandId) return;
+    let alive = true;
+    void Promise.allSettled([api.publicDemandExecution(demandId), api.publicDemandAccountability(demandId)])
+      .then(([exec, acc]) => {
+        if (!alive) return;
+        setExecution(exec.status === "fulfilled" ? exec.value : null);
+        setAccountability(acc.status === "fulfilled" ? acc.value : null);
+        setFollowFailed(exec.status === "rejected" || acc.status === "rejected");
+      });
+    return () => { alive = false; };
+  }, [demandId]);
+
   const replaceForwarding = (f: Forwarding) => setView((v) => (v ? {
     ...v, forwardings: (v.forwardings ?? []).map((x) => (x.id === f.id ? f : x)),
   } : v));
@@ -533,6 +557,15 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
         </ReadSection>
       )}
 
+      {/* Execução e resultados (T-03-02): mesmos componentes da página pública; cada um some sem conteúdo. */}
+      {followFailed && (
+        <p className="text-xs" role="status" style={{ color: "var(--th-muted)" }}>
+          Não foi possível carregar a execução ou a prestação de contas agora; a página pública da demanda mostra o mesmo conteúdo.
+        </p>
+      )}
+      <DemandExecutionSection execution={execution} />
+      <DemandAccountabilitySection data={accountability} />
+
       <ReadSection title="Análise da demanda" icon="document">
         <div className="space-y-4">
           <TextBlock label="Descrição">{demand.description}</TextBlock>
@@ -545,8 +578,9 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
       </ReadSection>
       <ReadSection title="Orçamento" icon="payments">
         <BudgetTable items={demand.budgetItems} />
-        {/* TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — o Poder Público não deveria ver a composição 4% + 6%; ver TODO em services/post-service/migrations/007-demands.sql. */}
-        <div className="mt-4"><CompositionCard composition={demand.composition} /></div>
+        {/* Decisão 14 (Modelo de Conexão §04 Obs.): 4% + 6% nunca incidem sobre o
+            Poder Público; o órgão vê só o orçamento original, sem a composição. */}
+        <div className="mt-4"><BudgetOnlyLine budgetAmountCents={demand.composition.budgetAmountCents} /></div>
       </ReadSection>
       <ReadSection title="Cronograma" icon="calendar">
         <ScheduleList items={demand.scheduleItems} budgetItems={demand.budgetItems} />

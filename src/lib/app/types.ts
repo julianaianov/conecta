@@ -2186,7 +2186,7 @@ export type SupportReceiptStatus = "declarado" | "confirmado" | "contestado";
 /** Estado que o dm-gestao confirma ou rejeita. */
 export type SupportGestaoStatus = "pending" | "confirmed" | "rejected";
 
-export type SupporterCategory = "parceiro" | "poder_publico";
+export type SupporterCategory = "parceiro" | "poder_publico" | "comunidade";
 
 export interface SupportEvidence {
   reference: string;

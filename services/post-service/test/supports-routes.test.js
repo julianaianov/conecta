@@ -46,7 +46,7 @@ const VALID = { modality: 'doar_recursos', supportType: 'materials', description
 test('registrar apoio: token, categoria e validação antes do banco', async () => {
   await withServer(async (base) => {
     assert.equal((await send(base, 'POST', `/demands/${DEMAND}/supports`, VALID, {})).status, 401);
-    for (const [role, profileType] of [['member', 'morador'], ['agent', 'ong'], ['media', 'imprensa']]) {
+    for (const [role, profileType] of [['agent', 'ong'], ['media', 'imprensa']]) {
       const res = await send(base, 'POST', `/demands/${DEMAND}/supports`, VALID, auth(role, profileType));
       assert.equal(res.status, 403);
       assert.equal(res.body.code, 'support_not_allowed');
@@ -61,6 +61,24 @@ test('registrar apoio: token, categoria e validação antes do banco', async () 
     assert.ok(semValor.body.fields.amountCents);
     assert.equal((await send(base, 'POST', '/demands/nao-e-uuid/supports', VALID)).status, 404);
     assert.equal((await send(base, 'GET', '/demands/nao-e-uuid/supports', undefined, {})).status, 404);
+  });
+});
+
+test('Membro da Comunidade registra apoio só nas modalidades da decisão 18 (T-04-01)', async () => {
+  await withServer(async (base) => {
+    const member = auth('member', 'morador');
+    for (const modality of ['patrocinar_projeto', 'financiar_evento', 'contratar_servicos_locais']) {
+      const res = await send(base, 'POST', `/demands/${DEMAND}/supports`, { ...VALID, modality }, member);
+      assert.equal(res.status, 422, modality);
+      assert.ok(res.body.fields.modality);
+    }
+    const financeiro = await send(base, 'POST', `/demands/${DEMAND}/supports`,
+      { ...VALID, supportType: 'financial', amountCents: 1000 }, member);
+    assert.equal(financeiro.status, 422);
+    assert.ok(financeiro.body.fields.supportType);
+    const voluntariado = await send(base, 'POST', `/demands/${DEMAND}/supports`,
+      { ...VALID, modality: 'apoiar_acao_ambiental', supportType: 'volunteering' }, member);
+    assert.equal(voluntariado.status, 422, 'voluntariado continua pelo interesse da T15');
   });
 });
 
