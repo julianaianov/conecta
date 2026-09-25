@@ -8,6 +8,8 @@
 
 /** Rótulo que substitui o nome nas publicações e comentários do feed. */
 const ANONYMOUS_NAME = 'Conta removida';
+/** Rótulo do corpo de mensagem eliminada (o mesmo da conversa T27 no user_db). */
+const ANONYMIZED_MESSAGE = '[removido a pedido do titular]';
 
 const iso = (v) => (v instanceof Date ? v.toISOString() : v ?? null);
 
@@ -20,7 +22,7 @@ async function exportUserData(db, userId) {
 
   const [
     publicacoes, comentarios, reacoes, demandas, apoios, interesses,
-    compartilhamentos, denuncias, consentimentoRanking, selos, arquivos, pautas,
+    compartilhamentos, denuncias, consentimentoRanking, selos, arquivos, pautas, mensagensDeProcesso,
   ] = await Promise.all([
     q(`SELECT id, type, title, description, status, visibility, neighborhood, city, state,
               zipcode, latitude, longitude, tags, images, videos, demand_id, created_at
@@ -54,6 +56,10 @@ async function exportUserData(db, userId) {
     q(`SELECT id, target_kind, target_id, target_title, angle, status, outlet_name, published_url,
               published_on, created_at, updated_at
          FROM media_agenda_items WHERE user_id = $1 ORDER BY created_at`),
+    // Comunicação do Processo de Conexão (T-05-02): só as mensagens do titular.
+    q(`SELECT id, process_id, author_side, author_organization_name, author_role_label, recipient_party, body,
+              attachments::text[] AS attachments, created_at
+         FROM connection_process_messages WHERE author_id = $1 ORDER BY created_at`),
   ]);
 
   return {
@@ -69,6 +75,7 @@ async function exportUserData(db, userId) {
     selosDeImpacto: selos,
     arquivos,
     pautas,
+    mensagensDeProcesso,
   };
 }
 
@@ -131,11 +138,21 @@ async function anonymizeUser(db, userId, { protocol = null } = {}) {
       RETURNING id`,
     [userId, ANONYMOUS_NAME],
   );
+  // Comunicação do Processo de Conexão (T-05-02, decisão 13): o corpo, o nome
+  // e o cargo saem; a mensagem fica (é registro da outra parte e do processo).
+  const processMessages = await db.query(
+    `UPDATE connection_process_messages
+        SET body = $2, author_name = $3, author_role_label = NULL
+      WHERE author_id = $1 AND (body <> $2 OR author_name <> $3 OR author_role_label IS NOT NULL)
+      RETURNING id`,
+    [userId, ANONYMIZED_MESSAGE, ANONYMOUS_NAME],
+  );
 
   const summary = {
     publicacoes: posts.rowCount ?? posts.rows.length,
     comentarios: comments.rowCount ?? comments.rows.length,
     pautas: agenda.rowCount ?? agenda.rows.length,
+    mensagensDeProcesso: processMessages.rowCount ?? processMessages.rows.length,
     apoiosComExibicaoRevogada: supports.rowCount ?? supports.rows.length,
     consentimentoDeRankingRevogado: (ranking.rowCount ?? ranking.rows.length) > 0,
   };

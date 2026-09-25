@@ -6,4 +6,6 @@ module.exports = {
   ...require('./constants'),
   ...require('./state-machine'),
   ...require('./validation'),
+  // Comunicação do processo (T-05-02, migração 027).
+  ...require('./communication'),
 };

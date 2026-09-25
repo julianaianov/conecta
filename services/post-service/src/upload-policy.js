@@ -14,6 +14,13 @@
 // - Foto do sinal do feed (`post_photo`): quem publica no feed envia antes de
 //   criar o post (o vínculo `uploads.post_id` é gravado pelo POST /posts);
 //   pública quando o post está visível.
+// - Arquivos do Processo de Conexão (`process_attachment`, anexos da
+//   comunicação, T-05-02; `process_document`, documentos do processo,
+//   T-05-04): qualquer das partes (Agente autor ou parte conectada, com o
+//   órgão por vínculo T29) envia para um processo em aberto (`processId`);
+//   vínculo em `uploads.process_id` (a demanda do processo vai junto, pelo
+//   trigger da migração 027). Nunca públicos por aqui: a leitura é pelas
+//   rotas do processo.
 
 const { normalizeRole, canPublishAny } = require('./roles');
 const { isUuid } = require('./security');
@@ -32,18 +39,55 @@ const EXECUTION_DOCUMENT_STATUSES = ['em_execucao', 'concluida', 'prestacao_de_c
 const PUBLIC_PREFIX = '/api/posts/uploads';
 const TARGET_COLUMN = 'demand_id';
 const POST_TARGET_COLUMN = 'post_id';
+// Processo de Conexão (T-05-02, T-05-04).
+const PROCESS_PURPOSES = ['process_attachment', 'process_document'];
+const PROCESS_TARGET_COLUMN = 'process_id';
+const ALL_PURPOSES = [...PURPOSES, ...PROCESS_PURPOSES];
 
 const DEMAND_NOT_FOUND = { error: 'Demanda não encontrada' };
+const PROCESS_NOT_FOUND = { error: 'Processo não encontrado' };
 
-function createPostUploadPolicy() {
+function targetColumnFor(purpose) {
+  if (POST_PURPOSES.includes(purpose)) return POST_TARGET_COLUMN;
+  if (PROCESS_PURPOSES.includes(purpose)) return PROCESS_TARGET_COLUMN;
+  return TARGET_COLUMN;
+}
+
+/** Processo em aberto de que quem envia é parte (Agente autor ou parte conectada). */
+async function resolveProcessTarget(db, req, body, institutionStatus) {
+  // Carregado aqui para não criar ciclo na inicialização (process/store usa demand/store).
+  const processStore = require('./process/store');
+  const processId = body?.processId;
+  if (!isUuid(processId)) {
+    throw new UploadError(422, {
+      error: 'Informe o processo do arquivo', code: 'validation_failed', fields: { processId: 'Processo inválido' },
+    });
+  }
+  let row;
+  let role = null;
+  try {
+    row = await processStore.findProcess(db, processId);
+    role = row ? await processStore.viewerRoleFor(req, row, institutionStatus) : null;
+  } catch (err) {
+    if (err?.status && err?.body) throw new UploadError(err.status, err.body);
+    throw err;
+  }
+  if (!row || !role) throw new UploadError(404, PROCESS_NOT_FOUND);
+  if (row.closed_at) throw new UploadError(409, { error: 'O processo foi encerrado', code: 'process_closed' });
+  return row.id;
+}
+
+function createPostUploadPolicy({ institutionStatus } = {}) {
   return {
-    purposes: PURPOSES,
+    purposes: ALL_PURPOSES,
     targetColumn: TARGET_COLUMN,
-    targetColumns: [TARGET_COLUMN, POST_TARGET_COLUMN],
-    targetColumnFor: (purpose) => (POST_PURPOSES.includes(purpose) ? POST_TARGET_COLUMN : TARGET_COLUMN),
+    targetColumns: [TARGET_COLUMN, POST_TARGET_COLUMN, PROCESS_TARGET_COLUMN],
+    targetColumnFor,
     publicPrefix: PUBLIC_PREFIX,
 
     canPresign(user, purpose) {
+      // Qualquer conta envia; a confirmação confere se ela é parte do processo.
+      if (PROCESS_PURPOSES.includes(purpose)) return null;
       if (POST_PURPOSES.includes(purpose)) {
         if (canPublishAny(user)) return null;
         return { status: 403, body: { error: 'Seu perfil não publica sinais no feed', code: 'cannot_publish' } };
@@ -55,9 +99,10 @@ function createPostUploadPolicy() {
       };
     },
 
-    async resolveTarget(db, user, purpose, body) {
+    async resolveTarget(db, user, purpose, body, req) {
       // A foto do sinal é confirmada antes do post existir; o vínculo vem no POST /posts.
       if (POST_PURPOSES.includes(purpose)) return null;
+      if (PROCESS_PURPOSES.includes(purpose)) return resolveProcessTarget(db, req ?? { user, headers: {} }, body, institutionStatus);
       const demandId = body?.demandId;
       if (!isUuid(demandId)) {
         throw new UploadError(422, {
@@ -102,6 +147,7 @@ function createPostUploadPolicy() {
     },
 
     async isPublic(db, row) {
+      if (PROCESS_PURPOSES.includes(row.purpose)) return false;
       if (POST_PURPOSES.includes(row.purpose)) {
         if (!row.post_id) return false;
         const { rows } = await db.query("SELECT 1 FROM posts WHERE id = $1 AND visibility = 'visible'", [row.post_id]);
@@ -219,6 +265,7 @@ module.exports = {
   assertPostPhotoUploads,
   attachPostPhotoUploads,
   POST_IMAGES_SQL,
-  UPLOAD_PURPOSES: PURPOSES,
+  UPLOAD_PURPOSES: ALL_PURPOSES,
+  PROCESS_UPLOAD_PURPOSES: PROCESS_PURPOSES,
   PUBLIC_PREFIX,
 };

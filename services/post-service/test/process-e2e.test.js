@@ -387,3 +387,228 @@ test('Processo de Conexão: protocolo anual, número na demanda, status §16, es
       await pool.end();
     }
   });
+
+// ── Comunicação e documentos do processo (T-05-02, T-05-04) ─────────────────
+// Mesmo banco do teste anterior (as migrações são reaplicadas: idempotentes).
+// S3 simulado em memória; o resto é o banco real.
+
+const PROFILE = {
+  [AGENT]: { organizationName: 'Associação Recreio Vivo', roleLabel: 'Presidente' },
+  [PARTNER]: { organizationName: null, roleLabel: 'Empresa' },
+  [GOV]: { organizationName: 'Secretaria Municipal de Obras', roleLabel: 'Coordenadora' },
+};
+
+async function processFixture() {
+  const pool = new Pool({ connectionString: DATABASE_URL });
+  const admin = await pool.connect();
+  for (const file of postDbFiles()) await admin.query(fs.readFileSync(file, 'utf8'));
+  // Grants do dm-infra (db/migrations/gestao/025 e 026).
+  await admin.query(`DO $$ BEGIN CREATE ROLE gestao_app LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+  await admin.query(`GRANT SELECT ON demands, demand_events, connection_processes, uploads,
+                       connection_process_messages, connection_process_message_reads TO gestao_app`);
+  await admin.query(`GRANT UPDATE (status, review_state, review_note, reviewed_by, archive_reason, updated_at)
+                       ON demands TO gestao_app`);
+  admin.release();
+  const gestaoUrl = new URL(DATABASE_URL);
+  gestaoUrl.username = 'gestao_app';
+  gestaoUrl.password = '';
+  const gestao = new Pool({ connectionString: gestaoUrl.toString() });
+
+  const objects = new Map();
+  const uploadStorage = {
+    async presignPut({ key, contentType }) {
+      return { url: `https://s3.test/${key}`, headers: { 'Content-Type': contentType }, expiresIn: 900 };
+    },
+    async presignGet({ key, expiresIn }) { return `https://s3.test/${key}?get&ttl=${expiresIn ?? 300}`; },
+    async head(key) {
+      const o = objects.get(key);
+      return o ? { size: o.bytes.length, contentType: o.contentType, checksumSha256: null } : null;
+    },
+    async readPrefix(key, length) { return objects.get(key).bytes.slice(0, length); },
+    async copy(from, to) { objects.set(to, objects.get(from)); },
+    async remove(key) { objects.delete(key); },
+  };
+  const server = createApp({
+    pool, secret: SECRET, operationUserIds: new Set(), uploadStorage, dossierService: null,
+    institutionStatus: async (req) => ({ ...(await institutionStatus(req)), ...(PROFILE[req.user.userId] ?? {}) }),
+    partnerProfile: { get: async () => null, match: async () => [] }, connections, governmentProfile,
+  }).listen(0);
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const call = async (method, url, { as = PARTNER, body, auth = true } = {}) => {
+    const headers = { 'content-type': 'application/json' };
+    if (auth) headers.authorization = `Bearer ${token(as)}`;
+    const res = await fetch(`${base}${url}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    return { status: res.status, body: await res.json().catch(() => null) };
+  };
+
+  async function publishedDemand(title) {
+    const created = await call('POST', '/demands', {
+      as: AGENT,
+      body: {
+        category: 'problema_urbano', title, description: `${title}: descrição.`, objective: 'Resolver.',
+        justification: 'Necessário.', beneficiariesEstimate: 200, beneficiariesProfile: 'Moradores', priority: 'alta',
+          problemIdentified: 'Situação sem resposta no território.', coverageArea: 'Bairro e entorno.',
+        photoRef: 'https://example.org/foto.jpg', cep: '22790-000', street: 'Rua A', addressNumber: '10',
+        district: 'Recreio', municipality: 'Rio de Janeiro', uf: 'RJ', latitude: -23.02, longitude: -43.45,
+        territory: 'Recreio dos Bandeirantes', problemIdentified: 'Situação que motiva a demanda.',
+        coverageArea: 'Quadras do entorno.',
+      },
+    });
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+    const id = created.body.id;
+    assert.equal((await call('POST', `/demands/${id}/schedule-items`, {
+      as: AGENT,
+      body: { stage: 'Execução', activities: 'Obra', startsOn: '2026-10-01', endsOn: '2026-11-30', recordMilestones: ['antes', 'depois'] },
+    })).status, 201);
+    assert.equal((await call('POST', `/demands/${id}/budget-items`, {
+      as: AGENT, body: { description: 'Fotografia e filmagem', quantity: 1, unit: 'serviço', unitPriceCents: 100000, isAudiovisualRecord: true },
+    })).status, 201);
+    assert.equal((await call('POST', `/demands/${id}/goals`, {
+      as: AGENT, body: { goal: 'Meta', expectedResult: 'Resultado', indicator: 'Indicador', measurementMethod: 'Medição' },
+    })).status, 201);
+    assert.equal((await call('POST', `/demands/${id}/resources`, { as: AGENT, body: { kind: 'necessario', type: 'materiais' } })).status, 201);
+    const submitted = await call('POST', `/demands/${id}/submit`, { as: AGENT });
+    assert.equal(submitted.status, 200, JSON.stringify(submitted.body));
+    await gestao.query("UPDATE demands SET status = 'publicada', reviewed_by = 'Equipe DM', updated_at = NOW() WHERE id = $1", [id]);
+    return id;
+  }
+
+  /** Demanda publicada com o processo do Parceiro (interesse de apoio aceito). */
+  async function partnerProcess(title) {
+    const demand = await publishedDemand(title);
+    const interest = await call('POST', `/demands/${demand}/interests`, {
+      body: { kind: 'apoio', offerTypes: ['produtos'], message: 'Doamos o material.' },
+    });
+    assert.equal(interest.status, 201, JSON.stringify(interest.body));
+    const asked = await call('POST', `/demands/${demand}/interests/${interest.body.interest.id}/connection`, {
+      body: { message: 'Podemos conversar?' },
+    });
+    const accepted = await call('POST', `/demands/mine/${demand}/connections/${asked.body.connection.id}/accept`, { as: AGENT });
+    assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+    return { demand, process: accepted.body.process, connectionId: asked.body.connection.id };
+  }
+
+  async function upload(as, purpose, processId, contentType, bytes, fileName) {
+    const ticket = await call('POST', '/uploads/presign', { as, body: { purpose, contentType, size: bytes.length, fileName } });
+    assert.equal(ticket.status, 201, JSON.stringify(ticket.body));
+    objects.set(`tmp/${ticket.body.uploadId}`, { bytes: Uint8Array.from(bytes), contentType });
+    return { ticket: ticket.body, confirm: (who = as) => call('POST', `/uploads/${ticket.body.uploadId}/confirm`, { as: who, body: { processId } }) };
+  }
+
+  const close = async () => {
+    server.close();
+    await gestao.end();
+    await pool.end();
+  };
+  return { pool, gestao, objects, call, partnerProcess, upload, close };
+}
+
+const PDF = Buffer.from('%PDF-1.7\n%âãÏÓ\n1 0 obj', 'latin1');
+const XLSX = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0, 6, 0, 8, 0, 0, 0, 0x21, 0]);
+const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+test('Comunicação do processo (T-05-02): cargo, instituição, destinatário, anexos, 404, 422, linha do tempo, aviso e LGPD',
+  { skip: !DATABASE_URL && 'defina DM_E2E_DATABASE_URL (npm run test:e2e)' }, async () => {
+    const f = await processFixture();
+    const { call, pool, gestao } = f;
+    try {
+      const { demand, process: p } = await f.partnerProcess('Praça sem iluminação');
+      const { process: otherProcess } = await f.partnerProcess('Escadaria quebrada');
+
+      // Anexo: o Parceiro envia para o processo; terceiro não confirma (404).
+      const attachment = await f.upload(PARTNER, 'process_attachment', p.id, 'application/pdf', PDF, 'Orçamento.pdf');
+      assert.equal((await attachment.confirm(OTHER)).status, 404, 'terceiro não confirma arquivo alheio');
+      const confirmed = await attachment.confirm();
+      assert.equal(confirmed.status, 200, JSON.stringify(confirmed.body));
+      assert.equal(confirmed.body.processId, p.id);
+      assert.ok(f.objects.has(`processes/${p.id}/attachments/${confirmed.body.id}.pdf`));
+      const { rows: [linked] } = await pool.query('SELECT demand_id, process_id FROM uploads WHERE id = $1', [confirmed.body.id]);
+      assert.deepEqual(linked, { demand_id: demand, process_id: p.id }, 'o arquivo do processo fica na demanda do processo');
+      const strangerTicket = await f.upload(OTHER, 'process_attachment', p.id, 'application/pdf', PDF, 'x.pdf');
+      assert.equal((await strangerTicket.confirm()).status, 404, 'quem não é parte não envia para o processo');
+      // Anexo de outra demanda (outro processo) não serve: 422.
+      const foreign = await f.upload(PARTNER, 'process_attachment', otherProcess.id, 'application/pdf', PDF, 'Outro.pdf');
+      assert.equal((await foreign.confirm()).status, 200);
+      const wrong = await call('POST', `/processes/${p.id}/messages`, { body: { body: 'Segue', attachments: [foreign.ticket.ref] } });
+      assert.equal(wrong.status, 422, JSON.stringify(wrong.body));
+      assert.ok(wrong.body.fields.attachments);
+
+      // Mensagem do Parceiro ao Agente, com anexo.
+      const sent = await call('POST', `/processes/${p.protocol}/messages`, {
+        body: { body: 'Segue o orçamento do material.', recipient: 'agente', attachments: [confirmed.body.ref] },
+      });
+      assert.equal(sent.status, 201, JSON.stringify(sent.body));
+      assert.equal(sent.body.message.authorName, 'Construtora Horizonte');
+      assert.equal(sent.body.message.authorRoleLabel, 'Empresa');
+      assert.equal(sent.body.message.recipient, 'agente');
+      assert.equal(sent.body.message.attachments[0].fileName, 'Orçamento.pdf');
+
+      // As duas partes veem; terceiros recebem 404.
+      assert.equal((await call('GET', `/processes/${p.id}/messages`, { as: OTHER })).status, 404);
+      assert.equal((await call('POST', `/processes/${p.id}/messages`, { as: OTHER, body: { body: 'Oi' } })).status, 404);
+      const { rows: [notice] } = await pool.query(
+        "SELECT read_at FROM notifications WHERE user_id = $1 AND kind = 'nova_mensagem' AND process_id = $2", [AGENT, p.id],
+      );
+      assert.ok(notice, 'o Agente recebe o aviso de nova mensagem');
+      assert.equal(notice.read_at, null);
+      const agentView = await call('GET', `/processes/${p.id}/messages`, { as: AGENT });
+      assert.equal(agentView.status, 200);
+      const [m] = agentView.body.messages;
+      assert.equal(m.authorName, 'Construtora Horizonte');
+      assert.equal(m.mine, false);
+      assert.match(m.attachments[0].url, new RegExp(`processes/${p.id}/attachments/`));
+      assert.ok((await pool.query(
+        "SELECT read_at FROM notifications WHERE user_id = $1 AND kind = 'nova_mensagem' AND process_id = $2", [AGENT, p.id],
+      )).rows[0].read_at, 'abrir a conversa lê o aviso');
+
+      const reply = await call('POST', `/processes/${p.id}/messages`, { as: AGENT, body: { body: 'Recebido, obrigada.' } });
+      assert.equal(reply.status, 201, JSON.stringify(reply.body));
+      assert.equal(reply.body.message.authorOrganizationName, 'Associação Recreio Vivo');
+      assert.equal(reply.body.message.authorRoleLabel, 'Presidente');
+      assert.equal(reply.body.message.recipient, 'todos');
+      const partnerView = await call('GET', `/processes/${p.id}/messages?limit=1`);
+      assert.equal(partnerView.body.messages.length, 1);
+      assert.equal(partnerView.body.hasMore, true);
+      const older = await call('GET', `/processes/${p.id}/messages?before=${encodeURIComponent(partnerView.body.messages[0].createdAt)}`);
+      assert.equal(older.body.messages[0].body, 'Segue o orçamento do material.');
+
+      // Linha do tempo: evento privado, sem o corpo.
+      const full = await call('GET', `/processes/${p.id}`, { as: AGENT });
+      const events = full.body.timeline.filter((e) => e.type === 'mensagem_registrada');
+      assert.equal(events.length, 2);
+      assert.ok(events.every((e) => e.isPublic === false));
+      assert.ok(!JSON.stringify(full.body.timeline).includes('orçamento do material'));
+      const pub = await call('GET', `/processes/${p.protocol}/timeline`, { auth: false });
+      assert.ok(!pub.body.events.some((e) => e.type === 'mensagem_registrada'));
+
+      // Append-only; gestão só lê.
+      const id = sent.body.message.id;
+      await assert.rejects(pool.query("UPDATE connection_process_messages SET body = 'editada' WHERE id = $1", [id]), /não é editada/);
+      await assert.rejects(pool.query('DELETE FROM connection_process_messages WHERE id = $1', [id]), /não é excluída/);
+      await assert.rejects(pool.query('TRUNCATE connection_process_messages'), /não são apagadas/);
+      assert.equal((await gestao.query('SELECT count(*)::int AS n FROM connection_process_messages WHERE process_id = $1', [p.id])).rows[0].n, 2);
+      await assert.rejects(gestao.query(
+        `INSERT INTO connection_process_messages (process_id, demand_id, author_id, author_side, author_name, recipient_party, body)
+         VALUES ($1, $2, $3, 'agente', 'x', 'todos', 'x')`, [p.id, demand, AGENT],
+      ));
+
+      // LGPD: a eliminação troca corpo, nome e cargo; a mensagem fica.
+      const anonymized = await call('POST', '/me/privacy/anonymize', { body: { protocol: 'LGPD-2026-000777' } });
+      assert.equal(anonymized.status, 200, JSON.stringify(anonymized.body));
+      assert.equal(anonymized.body.summary.mensagensDeProcesso, 1);
+      const after = await call('GET', `/processes/${p.id}/messages`, { as: AGENT });
+      const gone = after.body.messages.find((x) => x.id === id);
+      assert.equal(gone.body, '[removido a pedido do titular]');
+      assert.equal(gone.authorName, 'Conta removida');
+      assert.equal(gone.authorRoleLabel, null);
+      assert.equal(gone.anonymized, true);
+
+      // Processo encerrado: a conversa fica registrada e não recebe mensagens.
+      assert.equal((await call('POST', `/processes/${p.id}/status`, { as: AGENT, body: { status: 'cancelada', note: 'Desistência' } })).status, 200);
+      const closed = await call('POST', `/processes/${p.id}/messages`, { as: AGENT, body: { body: 'Ainda dá?' } });
+      assert.equal(closed.status, 409);
+      assert.equal(closed.body.code, 'process_closed');
+    } finally {
+      await f.close();
+    }
+  });

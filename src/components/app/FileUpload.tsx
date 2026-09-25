@@ -28,7 +28,8 @@ import { Icon } from "./Icon";
 export interface FileUploadProps {
   label: string;
   purpose: UploadPurpose;
-  target?: { demandId?: string };
+  /** `processId` nos arquivos do Processo de Conexão (T-05-02, T-05-04). */
+  target?: { demandId?: string; processId?: string };
   value: UploadedFile | null;
   onChange: (file: UploadedFile | null) => void;
   hint?: ReactNode;

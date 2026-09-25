@@ -83,6 +83,8 @@ export function ConnectionProcessLink({ connectionId }: { connectionId: string }
     <Link href={processPath(process.protocol)} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold" style={{ borderColor: "var(--th-border)", color: "var(--th-text)" }}>
       <Icon name="document" size={16} />
       Processo {process.protocol} · {processStatusLabel(process.status)}
+      {/* Decisão 13: formalizada a conexão, mensagens e documentos seguem no processo (T-05-02). */}
+      <span className="font-normal" style={{ color: "var(--th-muted)" }}>· mensagens e documentos continuam no processo</span>
     </Link>
   );
 }

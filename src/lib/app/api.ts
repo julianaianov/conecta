@@ -19,6 +19,7 @@ import { normalizeCoordinates } from "./location";
 import { buildPostQuery, type PostListFilter } from "./post-query";
 import { mapPublicInstitutionRecord, normalizeCep } from "./institution";
 import { resolveMediaUrl } from "./uploads";
+import type { ProcessMessage, ProcessMessageInput, ProcessMessagePage } from "./process-communication";
 import type {
   ProcessDetail, ProcessResponsibleInput, ProcessStatus, ProcessSummary, PublicProcess,
 } from "./process";
@@ -289,6 +290,8 @@ function mapConnectionMessage(r: RawPost): ConnectionMessage {
     authorId: String(r.authorId ?? ""),
     authorName: String(r.authorName ?? ""),
     authorAvatarUrl: (r.authorAvatarUrl ?? null) as string | null,
+    authorOrganizationName: (r.authorOrganizationName ?? null) as string | null,
+    authorRoleLabel: (r.authorRoleLabel ?? null) as string | null,
     mine: Boolean(r.mine),
     body: String(r.body ?? ""),
     createdAt: String(r.createdAt ?? ""),
@@ -1041,6 +1044,21 @@ export const api = {
     return request<{ processes: PublicProcess[] }>(`/api/posts/demands/${encodeURIComponent(demandId)}/processes`)
       .then((body) => (Array.isArray(body.processes) ? body.processes : []));
   },
+  // Comunicação do processo (T-05-02, Modelo §12).
+  processMessages(ref: string, options: { before?: string | null; limit?: number } = {}): Promise<ProcessMessagePage> {
+    const params = new URLSearchParams();
+    if (options.before) params.set("before", options.before);
+    if (options.limit) params.set("limit", String(options.limit));
+    const query = params.toString();
+    return request<ProcessMessagePage>(`/api/posts/processes/${encodeURIComponent(ref)}/messages${query ? `?${query}` : ""}`)
+      .then((body) => ({ messages: body.messages ?? [], hasMore: Boolean(body.hasMore), open: Boolean(body.open) }));
+  },
+  sendProcessMessage(ref: string, input: ProcessMessageInput): Promise<ProcessMessage> {
+    return request<{ message: ProcessMessage }>(`/api/posts/processes/${encodeURIComponent(ref)}/messages`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }).then((body) => body.message);
+  },
   /** Formalização pelo órgão do Poder Público (acompanhamento → processo). */
   formalizeInstitutionalProcess(demandId: string): Promise<InstitutionalDemandView> {
     return request<InstitutionalDemandView>(
@@ -1097,7 +1115,7 @@ export const api = {
   },
 
   /** Confirma o envio e vincula o arquivo (`demandId` nos arquivos da demanda). */
-  confirmUpload(service: UploadService, uploadId: string, target: { demandId?: string } = {}): Promise<UploadedFile> {
+  confirmUpload(service: UploadService, uploadId: string, target: { demandId?: string; processId?: string } = {}): Promise<UploadedFile> {
     return uploadRequest<UploadedFile>(service, `/${encodeURIComponent(uploadId)}/confirm`, { method: "POST", body: JSON.stringify(target) });
   },
 

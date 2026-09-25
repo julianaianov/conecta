@@ -230,6 +230,9 @@ export function processTimelineLabel(event: { type: string; details?: object | n
   const d = (event.details ?? {}) as Record<string, unknown>;
   const protocol = typeof d.protocol === "string" ? d.protocol : null;
   switch (event.type) {
+    // Comunicação do processo (T-05-02): evento privado, sem o corpo.
+    case "mensagem_registrada":
+      return "Mensagem registrada no processo";
     case "processo_formalizado": {
       const party = typeof d.organizationName === "string" && d.organizationName
         ? d.organizationName

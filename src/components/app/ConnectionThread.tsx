@@ -129,6 +129,10 @@ export function ConnectionThread({ connectionId, onSent }: { connectionId: strin
                 >
                   <p className="text-[11px] font-semibold" style={{ color: "var(--th-muted)" }}>
                     {m.mine ? "Você" : m.authorName}
+                    {/* Cargo/perfil e instituição no envio (T-05-02, Modelo §12). */}
+                    {(m.authorRoleLabel || m.authorOrganizationName) && (
+                      <span className="font-normal"> · {[m.authorRoleLabel, m.authorOrganizationName].filter(Boolean).join(" · ")}</span>
+                    )}
                   </p>
                   <p className="whitespace-pre-line text-[15px] leading-relaxed">{m.body}</p>
                   <p className="mt-1 text-[11px] font-numeric" style={{ color: "var(--th-muted)" }}>

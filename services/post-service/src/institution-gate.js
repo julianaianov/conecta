@@ -61,6 +61,9 @@ function createInstitutionStatusClient({
             organizationName: typeof body.delegation.organizationName === 'string' ? body.delegation.organizationName : null,
           }
           : null,
+        // Retrato de quem escreve no processo (T-05-02, Modelo §12).
+        organizationName: typeof body.organizationName === 'string' ? body.organizationName : null,
+        roleLabel: typeof body.roleLabel === 'string' ? body.roleLabel : null,
       };
       if (userId) {
         if (cache.size >= MAX_CACHE_ENTRIES) cache.delete(cache.keys().next().value);

@@ -17,6 +17,7 @@ import {
   type ProcessDetail, type ProcessResponsible, type ProcessStatus,
 } from "@/lib/app/process";
 import { timelineEventLabel } from "@/lib/app/demand";
+import { ProcessThread } from "./ProcessThread";
 import { AuthPrompt } from "../AuthPrompt";
 import { Button } from "../Button";
 import { Card, EmptyState } from "../ui";
@@ -203,6 +204,9 @@ export function ProcessDetailClient({ protocol }: { protocol: string }) {
           <StatusForm detail={detail} onDone={setDetail} />
         </Card>
       )}
+
+      {/* Comunicação do processo (T-05-02, Modelo §12). */}
+      <ProcessThread processId={p.id} viewerRole={p.viewerRole} closed={Boolean(p.closedAt)} />
 
       <Card>
         <h2 className="mb-2 text-base font-bold" style={{ color: "var(--th-text)" }}>Responsável atual</h2>

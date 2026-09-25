@@ -114,8 +114,9 @@ CREATE INDEX IF NOT EXISTS idx_demand_forwardings_destination
   ON demand_forwardings(destination_organization_id, status, forwarded_at DESC)
   WHERE destination_organization_id IS NOT NULL;
 
--- TODO(fonte-da-verdade): Modelo de Conexão §12 — faltam mensagens com cargo, destinatário e anexos
--- entre o Agente e os conectados.
+-- Mensagens com cargo, instituição, destinatário e anexos entre o Agente e os
+-- conectados (Modelo de Conexão §12) são a comunicação do Processo de Conexão:
+-- connection_process_messages (migração 027, T-05-02).
 CREATE TABLE IF NOT EXISTS demand_forwarding_updates (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   forwarding_id      UUID NOT NULL,

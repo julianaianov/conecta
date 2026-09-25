@@ -597,6 +597,9 @@ export interface ConnectionMessage {
   authorId: string;
   authorName: string;
   authorAvatarUrl: string | null;
+  /** Instituição e cargo/perfil no envio (T-05-02, Modelo §12; nulos nas mensagens antigas). */
+  authorOrganizationName?: string | null;
+  authorRoleLabel?: string | null;
   /** escrita pela conta logada */
   mine: boolean;
   body: string;
@@ -1625,7 +1628,10 @@ export type UploadPurpose =
   | "demand_execution_document"
   | "institution_proof"
   | "institution_document"
-  | "post_photo";
+  | "post_photo"
+  // Processo de Conexão (T-05-02, T-05-04).
+  | "process_attachment"
+  | "process_document";
 
 /** Serviço que guarda o arquivo: `posts` (demanda) ou `users` (instituição). */
 export type UploadService = "posts" | "users";
@@ -1643,6 +1649,8 @@ export interface UploadedFile {
   sha256: string | null;
   demandId?: string | null;
   organizationId?: string | null;
+  /** Arquivos do Processo de Conexão (T-05-02, T-05-04). */
+  processId?: string | null;
   createdAt: string | null;
   confirmedAt: string | null;
   /** URL de leitura curta (alguns minutos); peça outra com `api.getUpload`. */

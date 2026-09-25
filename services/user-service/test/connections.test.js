@@ -177,9 +177,13 @@ function messagesPool({ status = 'accepted' } = {}) {
       }
       if (text.includes('INSERT INTO connection_message_reads')) return { rows: [], rowCount: 1 };
       if (text.includes('INSERT INTO profiles')) return { rows: [], rowCount: 0 };
+      // Retrato do autor (T-05-02): cadastro próprio com o cargo do representante.
+      if (text.includes('SELECT o.institution_kind, o.validation_status')) {
+        return { rows: [{ institution_kind: 'agente_transformacao', validation_status: 'validada', organization_id: 'org-1', organization_name: 'Instituto Maré', representative_position: 'Coordenadora' }] };
+      }
       if (text.includes('INSERT INTO connection_messages')) return { rows: [{ id: 'm3' }] };
       if (text.includes('FROM connection_messages m') && text.includes('WHERE m.id = $1')) {
-        return { rows: [{ id: 'm3', connection_id: CX_ID, author_id: USER_ID, body: params.body ?? 'Combinado, levo os materiais.', created_at: '2026-09-24T12:00:00.000Z', author_name: 'Maria Silva', author_avatar_url: null }] };
+        return { rows: [{ id: 'm3', connection_id: CX_ID, author_id: USER_ID, body: params.body ?? 'Combinado, levo os materiais.', created_at: '2026-09-24T12:00:00.000Z', author_name: 'Maria Silva', author_avatar_url: null, author_organization_name: 'Instituto Maré', author_role_label: 'Coordenadora' }] };
       }
       throw new Error(`Unexpected query: ${text}`);
     },
@@ -235,9 +239,11 @@ test('POST /connections/:id/messages: grava a mensagem de uma parte com a conex�
     assert.equal(body.id, 'm3');
     assert.equal(body.mine, true);
     assert.equal(body.connectionId, CX_ID);
+    assert.equal(body.authorOrganizationName, 'Instituto Maré');
+    assert.equal(body.authorRoleLabel, 'Coordenadora');
   });
   const insert = pool.calls.find((c) => c.text.includes('INSERT INTO connection_messages'));
-  assert.deepEqual(insert.params, [CX_ID, USER_ID, 'Combinado, levo os materiais.']);
+  assert.deepEqual(insert.params, [CX_ID, USER_ID, 'Combinado, levo os materiais.', 'Instituto Maré', 'Coordenadora']);
 });
 
 test('POST /connections/:id/messages: corpo vazio ou longo é 400; conexão encerrada é 409; terceiro é 404', async () => {

@@ -22,7 +22,8 @@ const {
   MAX_INSTITUTION_DOCUMENTS,
   kindForUser, validateInstitution, canActInstitutionally, validateInstitutionDocument, missingInstitutionDocuments,
 } = require('../institution');
-const { permissionsFor, PUBLIC_ACTING_LEVELS } = require('../organization-members');
+const { permissionsFor, PUBLIC_ACTING_LEVELS, LEVEL_LABELS } = require('../organization-members');
+const { authorContext } = require('../author-context');
 
 const ORG_DATA_COLUMNS = [
   'cnpj', 'legal_name', 'trade_name', 'cnae_primary', 'cnae_primary_description', 'cnae_secondary',
@@ -129,7 +130,9 @@ const OWN_ORG_SQL = `SELECT ${cols(OWNER_ORG_COLUMNS)}
     JOIN profiles p ON p.id = o.profile_id
    WHERE p.user_id = $1 AND o.institution_kind IS NOT NULL`;
 
-const STATUS_SQL = `SELECT o.institution_kind, o.validation_status, o.id AS organization_id
+const STATUS_SQL = `SELECT o.institution_kind, o.validation_status, o.id AS organization_id,
+         coalesce(nullif(o.trade_name, ''), nullif(o.legal_name, ''), o.org_name) AS organization_name,
+         (SELECT r.position FROM organization_representatives r WHERE r.organization_id = o.id) AS representative_position
     FROM organizations o
     JOIN profiles p ON p.id = o.profile_id
    WHERE p.user_id = $1 AND o.institution_kind IS NOT NULL`;
@@ -214,6 +217,9 @@ async function institutionStatus(db, user) {
       // demanda no envio para análise (T06a). Não é dado sensível: é o próprio cadastro.
       organizationId: rows[0].organization_id ?? null,
       delegation: null,
+      // Retrato de quem escreve na conversa e no processo (T-05-02, Modelo §12):
+      // instituição e cargo do representante.
+      ...authorContext(user, { organizationName: rows[0].organization_name, position: rows[0].representative_position }),
     };
   }
   // Sem cadastro próprio: o vínculo ativo (T29) empresta a instituição e as
@@ -233,6 +239,9 @@ async function institutionStatus(db, user) {
       permissions: permissionsFor(delegated.level),
       organizationName: delegated.organization_name || 'Instituição',
     } : null,
+    ...authorContext(user, delegated
+      ? { organizationName: delegated.organization_name, position: LEVEL_LABELS[delegated.level] ?? null }
+      : {}),
   };
 }
 

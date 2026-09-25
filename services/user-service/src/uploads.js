@@ -109,9 +109,19 @@ const PURPOSES = {
     label: 'Foto do sinal', target: 'post', folder: 'photo',
     types: IMAGE_TYPES, maxBytes: 15 * MB, visibility: 'public', deferredTarget: true,
   },
+  // Processo de Conexão (Modelo de Conexão §12 e §17): anexos da comunicação
+  // (documentos e imagens) e documentos do processo, das partes (T-05-02/T-05-04).
+  process_attachment: {
+    label: 'Anexo da comunicação do processo', target: 'process', folder: 'attachments',
+    types: { ...DOCUMENT_TYPES, ...IMAGE_TYPES }, maxBytes: 25 * MB, visibility: 'private',
+  },
+  process_document: {
+    label: 'Documento do processo', target: 'process', folder: 'documents',
+    types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
+  },
 };
 
-const TARGET_PREFIX = { demand: 'demands', institution: 'institutions', post: 'posts' };
+const TARGET_PREFIX = { demand: 'demands', institution: 'institutions', post: 'posts', process: 'processes' };
 
 const PUT_EXPIRES_SECONDS = 15 * 60;
 const GET_EXPIRES_SECONDS = 5 * 60;
@@ -482,7 +492,7 @@ const UNAVAILABLE = {
  *   targetColumnFor(purpose) (opcional): a coluna de vínculo da finalidade;
  *   publicPrefix: prefixo público das rotas (ex.: '/api/posts/uploads');
  *   canPresign(user, purpose) → null | { status, body };
- *   resolveTarget(db, user, purpose, body) → id do alvo (lança UploadError);
+ *   resolveTarget(db, user, purpose, body, req) → id do alvo (lança UploadError);
  *     `null` nas finalidades com `deferredTarget` (o vínculo vem depois);
  *   isPublic(db, row) → o alvo está publicado?
  * `institutionalAccess(db, row, req)` (opcional; `req` nulo na leitura sem
@@ -572,7 +582,7 @@ function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = ne
       return res.json({ ...serializeUpload(row, targetColumns), url: await readUrl(storage, row) });
     }
 
-    const targetId = await policy.resolveTarget(pool, req.user, row.purpose, req.body ?? {});
+    const targetId = await policy.resolveTarget(pool, req.user, row.purpose, req.body ?? {}, req);
     if (targetId === null && !PURPOSES[row.purpose]?.deferredTarget) {
       throw new UploadError(422, { error: 'Informe a que o arquivo se vincula', code: 'validation_failed' });
     }

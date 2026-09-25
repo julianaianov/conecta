@@ -282,6 +282,10 @@ test('Poder Público: cadastro com esfera, território, competência e represent
       kind: 'poder_publico', status: 'pendente', requiredKind: 'poder_publico', canActInstitutionally: false, organizationId: body.id,
       // Sem vínculo (T29): a delegação vem nula.
       delegation: null,
+      // Retrato do autor na conversa e no processo (T-05-02): sem o nome na
+      // fixtura, fica o subperfil da conta.
+      organizationName: null,
+      roleLabel: 'Prefeitura',
     });
   });
 });

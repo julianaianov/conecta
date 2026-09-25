@@ -50,6 +50,9 @@ export const UPLOAD_PURPOSES: Record<UploadPurpose, UploadPurposeRule> = {
   institution_proof: { label: "Comprovação da representação", service: "users", types: DOCUMENT_TYPES, maxBytes: 25 * MB },
   institution_document: { label: "Documentação institucional", service: "users", types: DOCUMENT_TYPES, maxBytes: 25 * MB },
   post_photo: { label: "Foto do sinal", service: "posts", types: IMAGE_TYPES, maxBytes: 15 * MB },
+  // Processo de Conexão (T-05-02, T-05-04): anexos da comunicação e documentos do processo.
+  process_attachment: { label: "Anexo da comunicação do processo", service: "posts", types: { ...DOCUMENT_TYPES, ...IMAGE_TYPES }, maxBytes: 25 * MB },
+  process_document: { label: "Documento do processo", service: "posts", types: DOCUMENT_TYPES, maxBytes: 25 * MB },
 };
 
 /** Arquivos até este tamanho levam sha256 (o S3 confere a integridade). */

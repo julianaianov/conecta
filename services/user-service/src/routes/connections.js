@@ -1,6 +1,7 @@
 const express = require('express');
 const { ensureProfile, isForeignKeyViolation } = require('../profile-provision');
 const { isUuid } = require('../security');
+const { institutionStatus } = require('./institutions');
 
 function mapRow(r) {
   return {
@@ -50,7 +51,11 @@ const DETAIL_SQL = `SELECT
 // A conexão é a Camada 2 (pedido e aceite). Formalizada, vira Processo de
 // Conexão com protocolo DM-AAAA-NNNNNN no post_db (connection_processes,
 // migração post 026, decisão 13); o post-service cria o processo no aceite.
-// TODO(fonte-da-verdade): Modelo de Conexão §12/§15/§17 — comunicação, prazos e documentos do processo (T-05-02, T-05-03, T-05-04).
+// Depois do protocolo, a comunicação (§12) e os documentos (§17) são do
+// processo (post-service: connection_process_messages e
+// connection_process_documents, T-05-02/T-05-04); a conversa daqui é a da
+// fase de pedido (decisão 13).
+// TODO(fonte-da-verdade): Modelo de Conexão §15 — prazos do processo (T-05-03).
 const CONNECTION_TYPES = ['support', 'sponsorship', 'partnership', 'meeting', 'resources', 'outreach'];
 const MAX_MESSAGE_LENGTH = 2000;
 
@@ -68,12 +73,16 @@ function mapMessage(r, meId) {
     authorName: r.author_name || '',
     authorAvatarUrl: r.author_avatar_url || null,
     mine: r.author_id === meId,
+    // Instituição e cargo/perfil no envio (T-05-02, Modelo §12; migração user 014).
+    authorOrganizationName: r.author_organization_name || null,
+    authorRoleLabel: r.author_role_label || null,
     body: r.body,
     createdAt: r.created_at,
   };
 }
 
 const MESSAGE_SQL = `SELECT m.id, m.connection_id, m.author_id, m.body, m.created_at,
+                            m.author_organization_name, m.author_role_label,
                             p.name AS author_name, p.avatar_url AS author_avatar_url
                        FROM connection_messages m
                        LEFT JOIN profiles p ON p.user_id = m.author_id`;
@@ -284,9 +293,13 @@ module.exports = (pool, auth, institutionalGate = (_req, _res, next) => next()) 
         });
       }
       await ensureProfile(pool, req.user);
+      // Retrato de quem escreve (instituição e cargo/perfil), como no
+      // GET /me/institution/status (delegação T29 incluída).
+      const author = await institutionStatus(pool, req.user);
       const { rows } = await pool.query(
-        `INSERT INTO connection_messages (connection_id, author_id, body) VALUES ($1, $2, $3) RETURNING id`,
-        [c.id, req.user.userId, body],
+        `INSERT INTO connection_messages (connection_id, author_id, body, author_organization_name, author_role_label)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [c.id, req.user.userId, body, author.organizationName ?? null, author.roleLabel ?? null],
       );
       const detail = await pool.query(`${MESSAGE_SQL} WHERE m.id = $1`, [rows[0].id]);
       await pool.query(
