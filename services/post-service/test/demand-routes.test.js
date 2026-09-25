@@ -286,6 +286,81 @@ test('erros do banco: estado → 409, dado → 422, desconhecido → 500', () =>
   assert.equal(mapDbError(new Error('rede')), null);
 });
 
+test('§04 (T-05-09): importação de CSV com 3 linhas cria 3 itens e recalcula a composição', async () => {
+  const inserted = [];
+  let deleted = false;
+  const pool = fakePool((text, params) => {
+    if (/FOR UPDATE OF d/.test(text)) return { rows: [demandRow()] };
+    if (/SELECT count\(\*\)::int AS n FROM demand_budget_items/.test(text)) return { rows: [{ n: 1 }] };
+    if (/^DELETE FROM demand_budget_items/.test(text)) { deleted = true; return { rows: [], rowCount: 1 }; }
+    if (/^\s*INSERT INTO demand_budget_items/.test(text)) { inserted.push({ text, params }); return { rows: [], rowCount: 1 }; }
+    if (/sum\(total_cents\)/.test(text)) {
+      const total = ({ text: t, params: p }) => {
+        const names = /\(demand_id, position, ([^)]*)\)/.exec(t)[1].split(', ');
+        return Number(p[names.indexOf('total_cents') + 1]);
+      };
+      return { rows: [{ base: String(inserted.reduce((s, row) => s + total(row), 0)) }] };
+    }
+    if (/^\s*UPDATE demands\s+SET budget_amount_cents/.test(text)) return { rows: [], rowCount: 1 };
+    if (/FROM demand_budget_items WHERE demand_id = \$1 ORDER BY/.test(text)) return { rows: [] };
+    return null;
+  });
+  const csv = [
+    'item;descricao;quantidade;unidade;valor_unitario;fornecedor',
+    'Tinta;Tinta acrílica;2;galão;150,00;Loja A',
+    'Rolo;Rolo de lã;4;unidade;25,50;',
+    ';Registro fotográfico e audiovisual;1;serviço;1.000,00;Fotógrafo',
+  ].join('\n');
+  await withServer(pool, async (base) => {
+    const res = await fetch(`${base}/demands/${DEMAND}/budget-items/import`, {
+      method: 'POST', headers: { ...headers(), 'content-type': 'text/csv; charset=utf-8' }, body: csv,
+    });
+    assert.equal(res.status, 201, await res.clone().text());
+    const body = await res.json();
+    assert.equal(body.imported, 3);
+    assert.equal(body.mode, 'acrescentar');
+    // 2 × 150 + 4 × 25,50 + 1.000 = R$ 1.402,00; 4% + 6% calculados sobre a base.
+    assert.deepEqual(body.composition, {
+      budgetAmountCents: 140_200, agentFeeBps: 400, platformFeeBps: 600,
+      agentFeeCents: 5_608, platformFeeCents: 8_412, totalAmountCents: 154_220,
+    });
+  });
+  assert.equal(inserted.length, 3);
+  assert.equal(deleted, false);
+  assert.match(inserted[0].text, /\bitem\b.*supplier_reference/s);
+  assert.ok(inserted[0].params.includes('Loja A'));
+  assert.ok(pool.calls.some(({ text }) => text === 'COMMIT'));
+});
+
+test('§04 (T-05-09): importação recusada é 422 por linha, sem gravar; fora do rascunho é 409', async () => {
+  const pool = fakePool((text) => {
+    if (/FOR UPDATE OF d/.test(text)) return { rows: [demandRow()] };
+    if (/SELECT count\(\*\)::int AS n FROM demand_budget_items/.test(text)) return { rows: [{ n: 0 }] };
+    return null;
+  });
+  const post = (base, body, query = '', type = 'text/csv') => fetch(`${base}/demands/${DEMAND}/budget-items/import${query}`, {
+    method: 'POST', headers: { ...headers(), 'content-type': type }, body,
+  });
+  await withServer(pool, async (base) => {
+    const bad = await post(base, 'item;descricao;quantidade;unidade;valor_unitario;fornecedor\nA;;1;un;x;\nB;ok;1;un;1;');
+    assert.equal(bad.status, 422);
+    const body = await bad.json();
+    assert.equal(body.code, 'import_failed');
+    assert.deepEqual(body.rows, [{ line: 2, fields: { valor_unitario: 'Valor unitário inválido (ex.: 1.250,50)', descricao: 'Descreva o item' } }]);
+    assert.equal((await post(base, 'x', '?mode=apagar')).status, 422);
+    const json = await post(base, JSON.stringify({ csv: 'a' }), '', 'application/json');
+    assert.equal(json.status, 422);
+    assert.ok((await json.json()).fields.file);
+  });
+  assert.ok(!pool.calls.some(({ text }) => /^\s*(INSERT|DELETE|UPDATE)/.test(text)));
+
+  const locked = fakePool((text) => (/FOR UPDATE OF d/.test(text) ? { rows: [demandRow({ review_state: 'aguardando_analise' })] } : null));
+  await withServer(locked, async (base) => {
+    const res = await post(base, 'descricao;quantidade;unidade;valor_unitario\nA;1;un;1');
+    assert.equal(res.status, 409);
+  });
+});
+
 test('módulo (T-05-08): PUT grava moduleDetails como JSONB; leitura traz o módulo derivado da categoria', async () => {
   let details = {};
   let update = null;

@@ -129,6 +129,7 @@ test('encaminhamentos: setor interno, órgão da plataforma e órgão externo, s
           category: 'problema_urbano', title: 'Descarte irregular na praça', description: 'Entulho acumulado na praça.',
           objective: 'Limpar a praça.', justification: 'Risco à saúde.', beneficiariesEstimate: 300,
           beneficiariesProfile: 'Moradores do entorno', priority: 'alta', photoRef: 'https://example.org/foto.jpg',
+          problemIdentified: 'Situação sem resposta no território.', coverageArea: 'Bairro e entorno.',
           cep: '22790-000', street: 'Rua A', addressNumber: '10', district: 'Recreio', municipality: 'Rio de Janeiro',
           uf: 'RJ', latitude: -23.02, longitude: -43.45, territory: 'Recreio dos Bandeirantes',
         },

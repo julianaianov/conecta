@@ -89,6 +89,7 @@ test('apoio: modalidades da fonte, dupla confirmação, transparência e meus ap
         body: {
           category: 'problema_urbano', title, description: `${title}: descrição.`, objective: 'Resolver.',
           justification: 'Necessário.', beneficiariesEstimate: 200, beneficiariesProfile: 'Moradores',
+          problemIdentified: 'Situação sem resposta no território.', coverageArea: 'Bairro e entorno.',
           priority: 'alta', photoRef: 'https://example.org/foto.jpg', cep: '22790-000', street: 'Rua A',
           addressNumber: '10', district: 'Recreio', municipality: 'Rio de Janeiro', uf: 'RJ',
           latitude: -23.02, longitude: -43.45, territory: 'Recreio dos Bandeirantes',

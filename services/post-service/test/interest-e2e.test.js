@@ -141,6 +141,7 @@ test('interesse, conexão com o Agente, demanda conectada e oportunidades com co
         body: {
           category, title, description: `${title}: descrição.`, objective: 'Resolver.', justification: 'Necessário.',
           beneficiariesEstimate: 200, beneficiariesProfile: 'Moradores', priority: 'alta',
+          problemIdentified: 'Situação sem resposta no território.', coverageArea: 'Bairro e entorno.',
           photoRef: 'https://example.org/foto.jpg', cep: '22790-000', street: 'Rua A', addressNumber: '10',
           district: territory, municipality, uf, latitude: -23.02, longitude: -43.45, territory,
         },

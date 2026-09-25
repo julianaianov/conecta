@@ -90,8 +90,8 @@ CREATE TABLE IF NOT EXISTS demands (
   -- rascunho é parcial; o envio exige o conjunto completo (demands_guard).
   category                demand_category,
   title                   VARCHAR(200),
-  -- TODO(fonte-da-verdade): Modelo de Conexão §04 — faltam "Problema identificado" e "Área de
-  -- abrangência" como campos distintos de description e territory (ver src/demand/validation.js).
+  -- "Problema identificado" e "Área de abrangência" (Modelo §04) são colunas
+  -- próprias desde a migração 033 (problem_identified, coverage_area).
   description             TEXT,
   objective               TEXT,
   justification           TEXT,
@@ -166,8 +166,8 @@ CREATE INDEX IF NOT EXISTS idx_demands_review_queue
 
 -- Cronograma de execução (slides 13 e 14): etapa, atividades, início, término,
 -- responsável e os momentos de registro fotográfico/audiovisual.
--- TODO(fonte-da-verdade): Modelo de Conexão §05 — etapa sem recursos necessários, sem valor
--- associado explícito e sem status (ver src/components/app/demand/ScheduleEditor.tsx).
+-- Recursos necessários e valor associado da etapa (Modelo §05): migração 033;
+-- o status da etapa é o da execução (migrações 014 e 034).
 CREATE TABLE IF NOT EXISTS demand_schedule_items (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   demand_id         UUID NOT NULL REFERENCES demands(id) ON DELETE CASCADE,
@@ -189,8 +189,8 @@ CREATE INDEX IF NOT EXISTS idx_demand_schedule_items_demand ON demand_schedule_i
 -- Orçamento detalhado (slides 9–12). O vínculo com a etapa do cronograma forma
 -- o cronograma físico-financeiro; a FK composta garante que a etapa é da mesma
 -- demanda. total_cents = round(quantidade × valor unitário), meio para cima.
--- TODO(fonte-da-verdade): Modelo de Conexão §04 — faltam coluna Item separada da descrição,
--- Fornecedor/referência e importação de planilha (ver src/components/app/demand/BudgetEditor.tsx).
+-- Item e fornecedor/referência (Modelo §04): migração 033; importação da
+-- planilha CSV em src/demand/budget-import.js.
 CREATE TABLE IF NOT EXISTS demand_budget_items (
   id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   demand_id              UUID NOT NULL REFERENCES demands(id) ON DELETE CASCADE,

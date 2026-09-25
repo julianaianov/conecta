@@ -11,6 +11,8 @@ function complete(overrides = {}) {
     category: 'projeto_social',
     title: 'Reforma da praça do bairro',
     description: 'A praça está sem iluminação e com brinquedos quebrados.',
+    problemIdentified: 'Sem iluminação, as famílias deixaram de usar a praça à noite.',
+    coverageArea: 'Praça central e as quatro quadras do entorno.',
     objective: 'Recuperar a praça para uso das famílias.',
     justification: 'É o único espaço de lazer do bairro.',
     beneficiariesEstimate: 300,
@@ -89,6 +91,8 @@ test('envio: cada obrigatório da fonte, quando ausente, gera erro no próprio c
   const required = [
     'category', 'title', 'description', 'objective', 'justification', 'beneficiariesEstimate',
     'beneficiariesProfile', 'priority', 'photoRef', 'cep', 'latitude', 'municipality', 'uf', 'territory',
+    // Modelo de Conexão §04 (T-05-09).
+    'problemIdentified', 'coverageArea',
   ];
   for (const field of required) {
     const { errors } = validateDemand(complete({ [field]: '' }), { forSubmission: true });
@@ -308,4 +312,100 @@ test('módulo específico (T-05-08): informações validadas, marcos do ambienta
     'moduleDetails.area_m2', 'moduleDetails.responsavel_tecnico.cpf', 'moduleDetails.x',
   ]);
   assert.equal(validateDemand({ moduleDetails: [] }).errors.moduleDetails, 'Informações do módulo inválidas');
+});
+
+// ── Modelo de Conexão §04/§05 (T-05-09) ─────────────────────────────────────
+
+test('§04: sem problema identificado o envio aponta fields.problemIdentified; área de abrangência idem', () => {
+  const { errors } = validateDemand(complete({ problemIdentified: null, coverageArea: '  ' }), { forSubmission: true });
+  assert.deepEqual(Object.keys(errors).sort(), ['coverageArea', 'problemIdentified']);
+  // Rascunho aceita sem os dois; texto acima do limite é erro no campo.
+  assert.deepEqual(validateDemand({ title: 'Só título' }).errors, {});
+  assert.match(validateDemand({ problemIdentified: 'x'.repeat(5001) }).errors.problemIdentified, /5000/);
+  assert.equal(validateDemand({ coverageArea: ' Quadras 1 a 4 ' }).value.coverageArea, 'Quadras 1 a 4');
+});
+
+test('§04/§05: item e fornecedor do orçamento; recursos e valor associado da etapa', () => {
+  const { value, errors } = validateDemand({
+    budgetItems: [{ item: ' Tinta ', description: 'Tinta acrílica branca', supplierReference: 'Cotação Loja A', quantity: '2', unit: 'galão', unitPriceCents: 15_000 }],
+    scheduleItems: [{ stage: 'Pintura', activities: 'Pintar', startsOn: '2026-10-01', endsOn: '2026-10-10', resourcesNeeded: 'Tinta e rolos', amountCents: 30_000 }],
+  });
+  assert.deepEqual(errors, {});
+  assert.equal(value.budgetItems[0].item, 'Tinta');
+  assert.equal(value.budgetItems[0].supplierReference, 'Cotação Loja A');
+  assert.equal(value.scheduleItems[0].resourcesNeeded, 'Tinta e rolos');
+  assert.equal(value.scheduleItems[0].amountCents, 30_000);
+  // Opcionais: ausentes viram null.
+  const bare = validateDemand({ scheduleItems: [{ stage: 'A', activities: 'b', startsOn: '2026-10-01', endsOn: '2026-10-01' }] });
+  assert.equal(bare.value.scheduleItems[0].amountCents, null);
+  assert.equal(bare.value.scheduleItems[0].resourcesNeeded, null);
+  const bad = validateDemand({
+    budgetItems: [{ item: 'x'.repeat(201), description: 'd', quantity: 1, unit: 'un', unitPriceCents: 1 }],
+    scheduleItems: [{ stage: 'A', activities: 'b', startsOn: '2026-10-01', endsOn: '2026-10-01', amountCents: -1 }],
+  });
+  assert.ok(bad.errors['budgetItems[0].item']);
+  assert.ok(bad.errors['scheduleItems[0].amountCents']);
+  assert.ok(validateDemand({ scheduleItems: [{ stage: 'A', activities: 'b', startsOn: '2026-10-01', endsOn: '2026-10-01', amountCents: 1.5 }] })
+    .errors['scheduleItems[0].amountCents']);
+});
+
+test('§05: prazo da etapa em dias (término − início + 1)', () => {
+  const { deadlineDays, ITEM_SERIALIZERS } = require('../src/demand/store');
+  assert.equal(deadlineDays('2026-10-01', '2026-10-01'), 1);
+  assert.equal(deadlineDays('2026-10-01', '2026-10-10'), 10);
+  assert.equal(deadlineDays('2026-02-27', '2026-03-02'), 4);
+  assert.equal(deadlineDays(null, '2026-10-01'), null);
+  const stage = ITEM_SERIALIZERS.scheduleItems({
+    id: 's', position: 0, stage: 'A', activities: 'b', starts_on: '2026-10-01', ends_on: '2026-10-05',
+    responsible: 'Ana', resources_needed: 'Andaime', amount_cents: '120000', record_milestones: [],
+  }, { isPublic: true });
+  assert.equal(stage.deadlineDays, 5);
+  assert.equal(stage.amountCents, 120_000);
+  assert.equal(stage.resourcesNeeded, 'Andaime');
+  assert.equal('responsible' in stage, false);
+  // Fornecedor pode ser nome de pessoa: fora da projeção pública.
+  const row = { id: 'b', position: 0, item: 'Tinta', description: 'd', quantity: '1', unit: 'un', unit_price_cents: 1, total_cents: 1, is_audiovisual_record: false, schedule_item_id: null, supplier_reference: 'João' };
+  assert.equal('supplierReference' in ITEM_SERIALIZERS.budgetItems(row, { isPublic: true }), false);
+  assert.equal(ITEM_SERIALIZERS.budgetItems(row, { isPublic: false }).supplierReference, 'João');
+  assert.equal(ITEM_SERIALIZERS.budgetItems(row, { isPublic: true }).item, 'Tinta');
+});
+
+test('§04: planilha CSV do orçamento → itens (decimal com vírgula, aspas, BOM) ou erros por linha', () => {
+  const { parseBudgetCsv, TEMPLATE_HEADER } = require('../src/demand/budget-import');
+  const csv = '﻿' + [
+    TEMPLATE_HEADER,
+    'Tinta;"Tinta acrílica; cor branca";2,5;galão;1.250,50;Cotação Loja A',
+    'Pincel;Pincel largo;10;unidade;12;',
+    ';Registro fotográfico e audiovisual;1;serviço;R$ 800,00;Fotógrafo local',
+    '',
+  ].join('\r\n');
+  const ok = parseBudgetCsv(csv);
+  assert.deepEqual(ok.errors, {});
+  assert.equal(ok.items.length, 3);
+  assert.deepEqual(ok.items.map((i) => [i.item, i.description, i.quantity, i.unitPriceCents, i.totalCents, i.supplierReference]), [
+    ['Tinta', 'Tinta acrílica; cor branca', 2.5, 125_050, 312_625, 'Cotação Loja A'],
+    ['Pincel', 'Pincel largo', 10, 1_200, 12_000, null],
+    [null, 'Registro fotográfico e audiovisual', 1, 80_000, 80_000, 'Fotógrafo local'],
+  ]);
+  // Separador vírgula e coluna opcional de registro audiovisual.
+  const comma = parseBudgetCsv('descricao,quantidade,unidade,valor_unitario,registro_audiovisual\nFilmagem,1,serviço,500.00,sim\n');
+  assert.deepEqual(comma.errors, {});
+  assert.equal(comma.items[0].isAudiovisualRecord, true);
+  assert.equal(comma.items[0].unitPriceCents, 50_000);
+
+  const bad = parseBudgetCsv([TEMPLATE_HEADER, 'A;;1;un;10;', 'B;desc;0;un;abc;', 'C;ok;1.000;m;1;'].join('\n'));
+  assert.equal(bad.items.length, 0, 'tudo ou nada');
+  assert.match(bad.errors.rows, /2 linhas com erro/);
+  assert.deepEqual(bad.rowErrors.map((r) => [r.line, Object.keys(r.fields).sort()]), [
+    [2, ['descricao']],
+    [3, ['quantidade', 'valor_unitario']],
+  ]);
+  assert.equal(parseBudgetCsv([TEMPLATE_HEADER, 'C;ok;1.000;m;1;'].join('\n')).items[0].quantity, 1000);
+
+  assert.match(parseBudgetCsv('item;valor\nA;1').errors.header, /descricao, quantidade, unidade, valor_unitario/);
+  assert.match(parseBudgetCsv(`${TEMPLATE_HEADER};cor\nA;b;1;un;1;;azul`).errors.header, /fora do modelo: cor/);
+  assert.ok(parseBudgetCsv('').errors.file);
+  assert.ok(parseBudgetCsv(TEMPLATE_HEADER).errors.file);
+  const many = [TEMPLATE_HEADER, ...Array.from({ length: 5 }, (_, i) => `I${i};d;1;un;1;`)].join('\n');
+  assert.match(parseBudgetCsv(many, { existingCount: 198 }).errors.file, /No máximo 200 itens/);
 });

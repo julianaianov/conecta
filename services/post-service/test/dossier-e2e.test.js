@@ -145,6 +145,7 @@ test('dossiê: envio (S3 fora) → regeneração → reenvio → publicação �
           objective: 'Produzir alimentos e ocupar o espaço público.',
           justification: 'A praça está abandonada e o bairro não tem área verde cuidada.',
           beneficiariesEstimate: 250, beneficiariesProfile: 'Moradores do entorno, escolas e idosos',
+          problemIdentified: 'Situação sem resposta no território.', coverageArea: 'Bairro e entorno.',
           priority: 'alta', photoRef: 'https://example.org/foto-praca.jpg', cep: '22790-000',
           street: 'Rua das Flores', addressNumber: '100', district: 'Recreio', municipality: 'Rio de Janeiro',
           uf: 'RJ', latitude: -23.0247, longitude: -43.4567, territory: 'Recreio dos Bandeirantes',

@@ -394,6 +394,8 @@ function renderBody(doc, content) {
   field(doc, 'Nível de prioridade', PRIORITY_LABELS[demand.priority] ?? demand.priority);
   field(doc, 'Execução física', demand.hasPhysicalExecution ? 'Sim (exige registro do antes e do depois)' : 'Não');
   labeledParagraph(doc, 'Descrição', demand.description);
+  // Modelo de Conexão §04 (T-05-09); ausente em retratos anteriores.
+  if (demand.problemIdentified) labeledParagraph(doc, 'Problema identificado', demand.problemIdentified);
   labeledParagraph(doc, 'Justificativa', demand.justification);
   labeledParagraph(doc, 'Objetivos', demand.objective);
 
@@ -406,6 +408,7 @@ function renderBody(doc, content) {
   field(doc, 'Bairro', location.district);
   field(doc, 'Município/UF', [location.municipality, location.uf].filter(Boolean).join('/') || null);
   field(doc, 'Território impactado', location.territory);
+  if (location.coverageArea) field(doc, 'Área de abrangência', location.coverageArea);
   if (!isPublic && location.latitude !== null) {
     field(doc, 'Coordenadas', `${location.latitude}, ${location.longitude}`, { numeric: true });
   }
@@ -430,7 +433,8 @@ function renderBody(doc, content) {
     { header: 'Valor unitário', width: 0.15, align: 'right', numeric: true },
     { header: 'Total', width: 0.15, align: 'right', numeric: true },
   ], budget.items.map((i) => [
-    `${i.description}${i.isAudiovisualRecord ? '\n(registro fotográfico e audiovisual)' : ''}`,
+    `${i.item ? `${i.item}: ` : ''}${i.description}${i.isAudiovisualRecord ? '\n(registro fotográfico e audiovisual)' : ''}`
+      + `${i.supplierReference ? `\nFornecedor/referência: ${i.supplierReference}` : ''}`,
     i.scheduleStage,
     formatQuantity(i.quantity),
     i.unit,
@@ -503,9 +507,16 @@ function renderBody(doc, content) {
     ];
   table(doc, cols, schedule.map((s) => {
     const milestones = s.recordMilestones.map((m) => MILESTONE_SHORT[m] ?? m).join('\n');
+    // Prazo, recursos necessários e valor associado da etapa (Modelo §05, T-05-09).
+    const activities = [
+      s.activities,
+      s.deadlineDays ? `Prazo: ${s.deadlineDays} dia(s)` : null,
+      s.resourcesNeeded ? `Recursos: ${s.resourcesNeeded}` : null,
+      s.amountCents != null ? `Valor associado: ${formatCents(s.amountCents)}` : null,
+    ].filter(Boolean).join('\n');
     return withResponsible
-      ? [s.stage, s.activities, formatDate(s.startsOn), formatDate(s.endsOn), s.responsible, milestones]
-      : [s.stage, s.activities, formatDate(s.startsOn), formatDate(s.endsOn), milestones];
+      ? [s.stage, activities, formatDate(s.startsOn), formatDate(s.endsOn), s.responsible, milestones]
+      : [s.stage, activities, formatDate(s.startsOn), formatDate(s.endsOn), milestones];
   }));
   subTitle(doc, 'Prazos');
   field(doc, 'Início previsto', formatDate(deadlines.startsOn), { numeric: true });

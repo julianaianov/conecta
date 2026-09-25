@@ -111,10 +111,16 @@ function demandSnapshot(row, items, { accountability = null, processes = null } 
     startsOn: s.starts_on,
     endsOn: s.ends_on,
     responsible: text(s.responsible),
+    // Recursos necessários e valor associado da etapa (Modelo §05, T-05-09).
+    resourcesNeeded: text(s.resources_needed),
+    amountCents: toNumber(s.amount_cents),
     recordMilestones: Array.isArray(s.record_milestones) ? s.record_milestones : [],
   }));
   const stageById = new Map(schedule.map((s) => [s.id, s.stage]));
   const budgetItems = (items.budgetItems ?? []).map((b) => ({
+    // Item e fornecedor ou referência (Modelo §04, T-05-09).
+    item: text(b.item),
+    supplierReference: text(b.supplier_reference),
     description: b.description,
     quantity: String(b.quantity),
     unit: b.unit,
@@ -137,6 +143,7 @@ function demandSnapshot(row, items, { accountability = null, processes = null } 
       category: row.category ?? null,
       title: row.title ?? null,
       description: row.description ?? null,
+      problemIdentified: row.problem_identified ?? null,
       objective: row.objective ?? null,
       justification: row.justification ?? null,
       beneficiariesEstimate: toNumber(row.beneficiaries_estimate),
@@ -163,6 +170,7 @@ function demandSnapshot(row, items, { accountability = null, processes = null } 
       latitude: toNumber(row.latitude),
       longitude: toNumber(row.longitude),
       territory: text(row.territory),
+      coverageArea: text(row.coverage_area),
     },
     budget: {
       items: budgetItems,
@@ -184,6 +192,9 @@ function demandSnapshot(row, items, { accountability = null, processes = null } 
       startsOn: s.startsOn,
       endsOn: s.endsOn,
       responsible: s.responsible,
+      deadlineDays: daysBetween(s.startsOn, s.endsOn),
+      resourcesNeeded: s.resourcesNeeded,
+      amountCents: s.amountCents,
       recordMilestones: s.recordMilestones,
     })),
     goals: (items.goals ?? []).map((g) => ({
@@ -329,7 +340,10 @@ function redactSnapshot(snapshot) {
       latitude: null,
       longitude: null,
       territory: location.territory,
+      coverageArea: location.coverageArea ?? null,
     },
+    // Fornecedor ou referência pode ser nome de pessoa (T-05-09).
+    budget: { ...snapshot.budget, items: snapshot.budget.items.map((b) => ({ ...b, supplierReference: null })) },
     schedule: schedule.map((s) => ({ ...s, responsible: null })),
     documents: documents.map((d) => ({ type: d.type, title: d.title, description: null, source: null })),
     // Processos como na lista pública: o órgão é identificado; Parceiros, só pelo tipo.

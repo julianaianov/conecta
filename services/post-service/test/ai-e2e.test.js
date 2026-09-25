@@ -110,6 +110,7 @@ test('sugestões de IA: gravadas como sugestão, revisadas por pessoa, uso appen
           description: 'A quadra está às escuras. Falar com Ana no (21) 99999-8888 ou ana@exemplo.com.',
           objective: 'Reinstalar a iluminação', justification: 'Risco de acidente à noite',
           beneficiariesEstimate: 300, beneficiariesProfile: 'Crianças e jovens', priority: 'media',
+          problemIdentified: 'Situação sem resposta no território.', coverageArea: 'Bairro e entorno.',
           photoRef: 'https://example.org/quadra.jpg', cep: '24210-000', street: 'Rua das Flores',
           addressNumber: '100', district: 'Centro', municipality: 'Niterói', uf: 'RJ',
           latitude: -22.9, longitude: -43.1, territory: 'Centro',

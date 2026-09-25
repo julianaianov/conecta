@@ -8,8 +8,9 @@
 //   ausente é permitido.
 // - Envio para análise (`forSubmission: true`): exige os obrigatórios da fonte
 //   (fotografia, localização com CEP, orçamento detalhado, cronograma, e também
-//   categoria, título, descrição, objetivo, justificativa, público beneficiado
-//   com estimativa e perfil, prioridade, território, metas com indicadores) e a
+//   categoria, título, descrição, problema identificado, objetivo,
+//   justificativa, público beneficiado com estimativa e perfil, prioridade,
+//   território, área de abrangência, metas com indicadores) e a
 //   regra do registro fotográfico/audiovisual quando houver execução física.
 // - `warnings`: o que a fonte pede "sempre que possível" (vínculo das etapas ao
 //   custo, marco de acompanhamento) e o que ela não exige mas a plataforma
@@ -38,6 +39,12 @@ const UFS = [
 const LIMITS = {
   title: 200,
   description: 10_000,
+  // Modelo de Conexão §04 (T-05-09, migração 033).
+  problemIdentified: 5_000,
+  coverageArea: 2_000,
+  budgetItem: 200,
+  supplierReference: 500,
+  stageResources: 2_000,
   objective: 5_000,
   justification: 5_000,
   beneficiariesProfile: 2_000,
@@ -62,11 +69,13 @@ const LIMITS = {
 const MAX_ITEMS = 200;
 const MAX_BENEFICIARIES = 100_000_000;
 
-// TODO(fonte-da-verdade): Modelo de Conexão §04 — faltam "Problema identificado" e "Área de abrangência" distintos de descrição e território; ver TODO em migrations/007-demands.sql.
+// "Problema identificado" e "Área de abrangência" (Modelo de Conexão §04,
+// T-05-09) são campos próprios, distintos da descrição e do território.
 const REQUIRED_ON_SUBMIT = [
   ['category', 'Selecione a categoria da demanda'],
   ['title', 'Informe o título da demanda'],
   ['description', 'Descreva a demanda'],
+  ['problemIdentified', 'Informe o problema identificado: a situação que motiva a demanda'],
   ['objective', 'Informe o objetivo: o que se pretende resolver ou realizar'],
   ['justification', 'Explique a necessidade da ação (justificativa)'],
   ['beneficiariesEstimate', 'Informe a estimativa de pessoas beneficiadas'],
@@ -78,6 +87,7 @@ const REQUIRED_ON_SUBMIT = [
   ['municipality', 'Informe o município'],
   ['uf', 'Informe a UF'],
   ['territory', 'Informe o território de abrangência (bairro, comunidade ou região)'],
+  ['coverageArea', 'Informe a área de abrangência: até onde a ação chega (ruas, quadras, bairros ou região)'],
 ];
 
 function isBlank(value) {
@@ -167,7 +177,10 @@ function normalizeBudgetItem(errors, raw, i, scheduleIds) {
   const key = (field) => `budgetItems[${i}].${field}`;
   const item = {
     id: optionalId(raw.id),
+    // Item (nome curto) e fornecedor ou referência do preço (§04): opcionais.
+    item: text(errors, key('item'), raw.item, LIMITS.budgetItem),
     description: text(errors, key('description'), raw.description, LIMITS.itemDescription),
+    supplierReference: text(errors, key('supplierReference'), raw.supplierReference, LIMITS.supplierReference),
     quantity: null,
     unit: text(errors, key('unit'), raw.unit, LIMITS.unit),
     unitPriceCents: null,
@@ -208,8 +221,19 @@ function normalizeScheduleItem(errors, raw, i) {
     startsOn: isoDate(errors, key('startsOn'), raw.startsOn),
     endsOn: isoDate(errors, key('endsOn'), raw.endsOn),
     responsible: text(errors, key('responsible'), raw.responsible, LIMITS.responsible),
+    // Recursos necessários e valor associado da etapa (§05); o valor é
+    // informativo e não entra na composição (que é a soma dos itens).
+    resourcesNeeded: text(errors, key('resourcesNeeded'), raw.resourcesNeeded, LIMITS.stageResources, { multiline: true }),
+    amountCents: null,
     recordMilestones: [],
   };
+  if (!isBlank(raw.amountCents)) {
+    if (!Number.isSafeInteger(raw.amountCents) || raw.amountCents < 0 || raw.amountCents > MAX_BUDGET_CENTS) {
+      errors[key('amountCents')] = 'Valor associado inválido (centavos inteiros, não negativo)';
+    } else {
+      item.amountCents = raw.amountCents;
+    }
+  }
   if (item.stage === null && !errors[key('stage')]) errors[key('stage')] = 'Informe a etapa';
   if (item.activities === null && !errors[key('activities')]) errors[key('activities')] = 'Descreva as atividades previstas';
   if (item.startsOn === null && !errors[key('startsOn')]) errors[key('startsOn')] = 'Informe a data de início';
@@ -416,6 +440,7 @@ function validateDemand(input, { forSubmission = false } = {}) {
     category: oneOf(errors, 'category', body.category, CATEGORIES, 'Categoria fora dos doze tipos da plataforma'),
     title: text(errors, 'title', body.title, LIMITS.title),
     description: text(errors, 'description', body.description, LIMITS.description, { multiline: true }),
+    problemIdentified: text(errors, 'problemIdentified', body.problemIdentified, LIMITS.problemIdentified, { multiline: true }),
     objective: text(errors, 'objective', body.objective, LIMITS.objective, { multiline: true }),
     justification: text(errors, 'justification', body.justification, LIMITS.justification, { multiline: true }),
     beneficiariesEstimate: normalizeBeneficiaries(errors, body.beneficiariesEstimate),
@@ -433,6 +458,7 @@ function validateDemand(input, { forSubmission = false } = {}) {
     latitude: coordinate(errors, 'latitude', body.latitude, 90),
     longitude: coordinate(errors, 'longitude', body.longitude, 180),
     territory: text(errors, 'territory', body.territory, LIMITS.territory),
+    coverageArea: text(errors, 'coverageArea', body.coverageArea, LIMITS.coverageArea, { multiline: true }),
     themes: normalizeThemes(errors, body.themes),
     moduleDetails: normalizeModuleDetails(errors, body.moduleDetails),
     hasPhysicalExecution: body.hasPhysicalExecution === undefined ? true : body.hasPhysicalExecution,

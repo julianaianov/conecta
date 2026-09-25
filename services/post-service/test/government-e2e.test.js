@@ -109,6 +109,7 @@ test('governo: indicadores reais, recorte, priorização, ações divulgadas e e
           category: 'problema_urbano', title: 'Praça sem iluminação', description: 'Postes apagados há meses.',
           objective: 'Restabelecer a iluminação.', justification: 'Insegurança à noite.', beneficiariesEstimate: 500,
           beneficiariesProfile: 'Moradores', priority: 'alta', photoRef: 'https://example.org/foto.jpg',
+          problemIdentified: 'Situação sem resposta no território.', coverageArea: 'Bairro e entorno.',
           cep: '22790-000', street: 'Rua A', addressNumber: '10', district: 'Recreio',
           municipality: 'Rio de Janeiro', uf: 'RJ', latitude: -23.02, longitude: -43.45,
           territory: 'Zona Oeste', ...overrides,

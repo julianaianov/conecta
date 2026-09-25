@@ -92,6 +92,8 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
       category: 'projeto_ambiental',
       title: 'Horta comunitária na praça',
       description: 'Implantar horta comunitária com canteiros elevados.',
+      problemIdentified: 'Praça abandonada, com lixo acumulado e sem uso pelas famílias.',
+      coverageArea: 'Praça das Flores e as ruas do entorno até a escola municipal.',
       objective: 'Produzir alimentos e ocupar o espaço público.',
       justification: 'A praça está abandonada e o bairro não tem área verde cuidada.',
       beneficiariesEstimate: 250,
@@ -197,6 +199,52 @@ test('demanda: rascunho → envio → devolução → reenvio → publicação �
       assert.ok(dup.body.fields.type);
       const wrongKind = await call('POST', `/demands/${id}/resources`, { body: { kind: 'contrapartida', type: 'mao_de_obra' } });
       assert.equal(wrongKind.status, 422);
+
+      // ── Modelo de Conexão §04/§05 (T-05-09) ─────────────────────────────
+      // Problema identificado é obrigatório no envio (422 fields.problemIdentified).
+      assert.equal((await call('PUT', `/demands/${id}`, { body: { problemIdentified: null } })).status, 200);
+      const noProblem = await call('POST', `/demands/${id}/submit`);
+      assert.equal(noProblem.status, 422);
+      assert.ok(noProblem.body.fields.problemIdentified);
+      assert.equal((await call('PUT', `/demands/${id}`, { body: { problemIdentified: complete.problemIdentified } })).status, 200);
+      // Etapa com recursos, valor associado e prazo derivado.
+      const stageFull = await call('POST', `/demands/${draftId}/schedule-items`, {
+        body: { stage: 'Pintura', activities: 'Pintar muros', startsOn: '2026-10-01', endsOn: '2026-10-10', resourcesNeeded: 'Tinta e andaime', amountCents: 250_000 },
+      });
+      assert.equal(stageFull.status, 201, JSON.stringify(stageFull.body));
+      assert.equal(stageFull.body.item.deadlineDays, 10);
+      assert.equal(stageFull.body.item.resourcesNeeded, 'Tinta e andaime');
+      assert.equal(stageFull.body.item.amountCents, 250_000);
+      // Importação da planilha (CSV): 3 linhas → 3 itens, composição recalculada.
+      const importCsv = (demandId, csv, query = '') => fetch(`${base}/demands/${demandId}/budget-items/import${query}`, {
+        method: 'POST', headers: { authorization: `Bearer ${token(AGENT)}`, 'content-type': 'text/csv; charset=utf-8' }, body: csv,
+      }).then(async (res) => ({ status: res.status, body: await res.json() }));
+      const imported = await importCsv(draftId, [
+        'item;descricao;quantidade;unidade;valor_unitario;fornecedor',
+        'Tinta;Tinta acrílica branca;4;galão;150,00;Cotação Loja A',
+        'Rolo;"Rolo de lã; 23 cm";6;unidade;25,50;',
+        ';Registro fotográfico e audiovisual;1;serviço;1.000,00;Fotógrafo do bairro',
+      ].join('\r\n'));
+      assert.equal(imported.status, 201, JSON.stringify(imported.body));
+      assert.equal(imported.body.imported, 3);
+      assert.equal(imported.body.items.length, 3);
+      assert.equal(imported.body.composition.budgetAmountCents, 60_000 + 15_300 + 100_000);
+      assert.equal(imported.body.items[0].supplierReference, 'Cotação Loja A');
+      assert.equal(imported.body.items[1].description, 'Rolo de lã; 23 cm');
+      const rejected = await importCsv(draftId, 'descricao;quantidade;unidade;valor_unitario\nSem preço;1;un;abc');
+      assert.equal(rejected.status, 422);
+      assert.deepEqual(rejected.body.rows.map((r) => r.line), [2]);
+      const replaced = await importCsv(draftId, 'descricao;quantidade;unidade;valor_unitario\nUm item;1;un;10,00', '?mode=substituir');
+      assert.equal(replaced.status, 201, JSON.stringify(replaced.body));
+      assert.equal(replaced.body.items.length, 1);
+      assert.equal(replaced.body.composition.budgetAmountCents, 1_000);
+      const draftView = await call('GET', `/demands/mine/${draftId}`);
+      assert.equal(draftView.body.composition.budgetAmountCents, 1_000);
+      // A gestão lê, mas não grava o conteúdo do Agente.
+      await assert.rejects(
+        gestao.query('UPDATE demands SET problem_identified = $2 WHERE id = $1', [id, 'x']),
+        /informados pelo Agente|permission denied/,
+      );
 
       // Critérios de prioridade (T-02-01, decisão 17): prioridade alta sem
       // critério declarado vira aviso, nunca erro.

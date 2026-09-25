@@ -21,7 +21,8 @@
 //   POST /                         cria rascunho (em_analise/rascunho)
 //   PUT  /:id                      edita campos (só rascunho/devolvida)
 //   POST|PUT|DELETE /:id/{budget-items|schedule-items|goals|resources|documents}[/:itemId]
-//   POST /:id/validate             validação completa de envio, erros por campo
+//   POST /:id/budget-items/import  planilha CSV do orçamento (Modelo §04, T-05-09)
+//   POST /:id/validate            validação completa de envio, erros por campo
 //   POST /:id/submit               envia para análise (instituição validada)
 //   POST /:id/transitions          { action }: buscar_parceiro, conectar,
 //                                  iniciar_execucao, concluir, prestar_contas
@@ -53,6 +54,7 @@ const {
   CATEGORIES, PRIORITIES, PUBLIC_STATUSES, STATUSES, THEMES,
 } = require('../demand/constants');
 const { validateDemand, MAX_ITEMS } = require('../demand/validation');
+const { parseBudgetCsv, IMPORT_MODES, MAX_IMPORT_BYTES } = require('../demand/budget-import');
 const {
   compositionFromItems, computeComposition, lineTotalCents, MAX_BUDGET_CENTS,
 } = require('../demand/finance');
@@ -102,7 +104,9 @@ const ITEM_KINDS = {
     table: 'demand_budget_items',
     affectsBudget: true,
     columns: (v) => ({
+      item: v.item,
       description: v.description,
+      supplier_reference: v.supplierReference,
       quantity: String(v.quantity),
       unit: v.unit,
       unit_price_cents: v.unitPriceCents,
@@ -120,6 +124,8 @@ const ITEM_KINDS = {
       starts_on: v.startsOn,
       ends_on: v.endsOn,
       responsible: v.responsible,
+      resources_needed: v.resourcesNeeded,
+      amount_cents: v.amountCents,
       record_milestones: v.recordMilestones,
     }),
   },
@@ -635,6 +641,58 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
       res.json(result);
     }));
   }
+
+  // ── Importação da planilha do orçamento (Modelo §04, T-05-09) ─────────────
+  // Corpo: o CSV cru (`Content-Type: text/csv`), `?mode=acrescentar` (padrão)
+  // ou `substituir`. Tudo ou nada: com erro em alguma linha, 422 com `rows`
+  // (linha do arquivo → coluna → mensagem) e nada é gravado.
+  router.post('/:id/budget-items/import', auth, requireAgent,
+    express.text({ type: ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'], limit: MAX_IMPORT_BYTES + 1024 }),
+    handle(async (req, res) => {
+      const mode = req.query.mode === undefined || req.query.mode === '' ? 'acrescentar' : String(req.query.mode);
+      if (!IMPORT_MODES.includes(mode)) throw validationError({ mode: 'Use acrescentar ou substituir' });
+      if (typeof req.body !== 'string') {
+        throw validationError({ file: 'Envie a planilha em CSV (Content-Type: text/csv)' });
+      }
+      const result = await withTransaction(pool, async (client) => {
+        const row = await store.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
+        store.assertEditable(row);
+        const { rows: [count] } = await client.query(
+          'SELECT count(*)::int AS n FROM demand_budget_items WHERE demand_id = $1', [req.params.id],
+        );
+        const parsed = parseBudgetCsv(req.body, { existingCount: mode === 'substituir' ? 0 : count.n });
+        if (Object.keys(parsed.errors).length) {
+          throw new HttpError(422, {
+            error: parsed.errors.rows ?? parsed.errors.header ?? parsed.errors.file ?? 'Planilha recusada',
+            code: 'import_failed',
+            fields: Object.fromEntries(Object.entries(parsed.errors).filter(([key]) => key !== 'rows')),
+            rows: parsed.rowErrors,
+          });
+        }
+        if (mode === 'substituir') {
+          await client.query('DELETE FROM demand_budget_items WHERE demand_id = $1', [req.params.id]);
+        }
+        const kind = ITEM_KINDS['budget-items'];
+        for (const item of parsed.items) {
+          const cols = Object.entries(kind.columns(item));
+          await client.query(
+            `INSERT INTO demand_budget_items (demand_id, position, ${cols.map(([c]) => c).join(', ')})
+             VALUES ($1, (SELECT coalesce(max(position) + 1, 0) FROM demand_budget_items WHERE demand_id = $1),
+                     ${cols.map((_, i) => `$${i + 2}`).join(', ')})`,
+            [req.params.id, ...cols.map(([, v]) => v)],
+          );
+        }
+        const composition = await store.recomputeComposition(client, req.params.id);
+        const { rows } = await client.query(store.ITEM_SQL.budgetItems, [req.params.id]);
+        return {
+          imported: parsed.items.length,
+          mode,
+          items: rows.map((r) => store.ITEM_SERIALIZERS.budgetItems(r, { isPublic: false })),
+          composition,
+        };
+      });
+      res.status(201).json(result);
+    }));
 
   // ── Validação, envio e transições ─────────────────────────────────────────
   router.post('/:id/validate', auth, requireAgent, handle(async (req, res) => {

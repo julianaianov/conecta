@@ -112,6 +112,7 @@ test('Poder Público: fila, acompanhamento, respostas, status, oferta de apoio e
           category: 'projeto_ambiental', title: 'Horta comunitária', description: 'Canteiros elevados na praça.',
           objective: 'Produzir alimentos.', justification: 'Praça abandonada.', beneficiariesEstimate: 120,
           beneficiariesProfile: 'Moradores do entorno', priority: 'alta', photoRef: 'https://example.org/foto.jpg',
+          problemIdentified: 'Situação sem resposta no território.', coverageArea: 'Bairro e entorno.',
           cep: '22790-000', street: 'Rua A', addressNumber: '10', district: 'Recreio', municipality: 'Rio de Janeiro',
           uf: 'RJ', latitude: -23.02, longitude: -43.45, territory: 'Recreio dos Bandeirantes', ...overrides,
         },

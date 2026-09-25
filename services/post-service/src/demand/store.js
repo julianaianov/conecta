@@ -81,6 +81,9 @@ const SCALAR_COLUMNS = {
   category: 'category',
   title: 'title',
   description: 'description',
+  // Modelo de Conexão §04 (T-05-09, migração 033).
+  problemIdentified: 'problem_identified',
+  coverageArea: 'coverage_area',
   objective: 'objective',
   justification: 'justification',
   beneficiariesEstimate: 'beneficiaries_estimate',
@@ -106,7 +109,7 @@ const SCALAR_COLUMNS = {
 // Projeção do autor: tudo menos `reviewed_by` e `archived_by` (nomes da equipe).
 const OWNER_DEMAND_SQL = `
   d.id, d.author_id, d.organization_id, d.author_name, d.author_avatar,
-  d.category, d.title, d.description, d.objective, d.justification,
+  d.category, d.title, d.description, d.problem_identified, d.coverage_area, d.objective, d.justification,
   d.beneficiaries_estimate, d.beneficiaries_profile, d.priority, d.priority_criteria, d.photo_ref,
   d.cep, d.street, d.address_number, d.address_complement, d.district,
   d.municipality, d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution, d.module_details,
@@ -122,7 +125,7 @@ const OWNER_DEMAND_SQL = `
 // instituição interna, sem dados da análise.
 const PUBLIC_DEMAND_SQL = `
   d.id, d.author_id, d.author_name, d.author_avatar, d.category, d.title,
-  d.description, d.objective, d.justification, d.beneficiaries_estimate,
+  d.description, d.problem_identified, d.coverage_area, d.objective, d.justification, d.beneficiaries_estimate,
   d.beneficiaries_profile, d.priority, d.priority_criteria, d.photo_ref, d.district, d.municipality,
   d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution, d.module_details,
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
@@ -143,11 +146,12 @@ const PUBLIC_SUMMARY_SQL = `
   (SELECT p.id FROM posts p WHERE p.demand_id = d.id AND p.visibility = 'visible') AS post_id`;
 
 const ITEM_SQL = {
-  budgetItems: `SELECT id, position, description, quantity::text AS quantity, unit, unit_price_cents,
-                       total_cents, is_audiovisual_record, schedule_item_id
+  budgetItems: `SELECT id, position, item, description, quantity::text AS quantity, unit, unit_price_cents,
+                       total_cents, is_audiovisual_record, schedule_item_id, supplier_reference
                   FROM demand_budget_items WHERE demand_id = $1 ORDER BY position, created_at, id`,
   scheduleItems: `SELECT id, position, stage, activities, to_char(starts_on, 'YYYY-MM-DD') AS starts_on,
                          to_char(ends_on, 'YYYY-MM-DD') AS ends_on, responsible,
+                         resources_needed, amount_cents,
                          record_milestones::text[] AS record_milestones
                     FROM demand_schedule_items WHERE demand_id = $1 ORDER BY position, starts_on, id`,
   goals: `SELECT id, position, goal, expected_result, indicator, measurement_method
@@ -160,6 +164,13 @@ const ITEM_SQL = {
 
 const toNumber = (value) => (value === null || value === undefined ? null : Number(value));
 const toIso = (value) => (value instanceof Date ? value.toISOString() : value ?? null);
+
+/** Prazo da etapa (Modelo §05): término − início + 1, em dias corridos. */
+function deadlineDays(startsOn, endsOn) {
+  const a = Date.parse(`${startsOn}T00:00:00Z`);
+  const b = Date.parse(`${endsOn}T00:00:00Z`);
+  return Number.isFinite(a) && Number.isFinite(b) && b >= a ? Math.round((b - a) / 86_400_000) + 1 : null;
+}
 
 function serializeComposition(row) {
   return {
@@ -189,9 +200,10 @@ function projectionFor(viewer) {
 }
 
 const ITEM_SERIALIZERS = {
-  budgetItems: (r) => ({
+  budgetItems: (r, { isPublic } = {}) => ({
     id: r.id,
     position: r.position,
+    item: r.item ?? null,
     description: r.description,
     quantity: toNumber(r.quantity),
     unit: r.unit,
@@ -199,6 +211,9 @@ const ITEM_SERIALIZERS = {
     totalCents: toNumber(r.total_cents),
     isAudiovisualRecord: r.is_audiovisual_record,
     scheduleItemId: r.schedule_item_id ?? null,
+    // Fornecedor ou referência pode ser nome de pessoa: fica fora da rota
+    // pública, como o responsável da etapa (Modelo §04, T-05-09).
+    ...(isPublic ? {} : { supplierReference: r.supplier_reference ?? null }),
   }),
   scheduleItems: (r, { isPublic }) => ({
     id: r.id,
@@ -209,6 +224,10 @@ const ITEM_SERIALIZERS = {
     endsOn: r.ends_on,
     // Responsável é nome de pessoa: fica fora da rota pública.
     ...(isPublic ? {} : { responsible: r.responsible ?? null }),
+    // Prazo em dias, recursos necessários e valor associado (Modelo §05).
+    deadlineDays: deadlineDays(r.starts_on, r.ends_on),
+    resourcesNeeded: r.resources_needed ?? null,
+    amountCents: toNumber(r.amount_cents),
     recordMilestones: Array.isArray(r.record_milestones) ? r.record_milestones : [],
   }),
   goals: (r) => ({
@@ -245,6 +264,8 @@ function serializeScalars(row) {
     category: row.category ?? null,
     title: row.title ?? null,
     description: row.description ?? null,
+    problemIdentified: row.problem_identified ?? null,
+    coverageArea: row.coverage_area ?? null,
     objective: row.objective ?? null,
     justification: row.justification ?? null,
     beneficiariesEstimate: toNumber(row.beneficiaries_estimate),
@@ -505,6 +526,7 @@ module.exports = {
   PUBLIC_SUMMARY_SQL,
   ITEM_SQL,
   ITEM_SERIALIZERS,
+  deadlineDays,
   serializeComposition,
   serializeOwnerDemand,
   serializePublicDemand,
