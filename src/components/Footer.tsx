@@ -17,7 +17,8 @@ export function Footer() {
               <DMLogo size={32} tone="plain" />
             </Link>
             <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--th-muted)" }}>
-              A plataforma de impacto local. Transformando demandas do bairro em ações acompanhadas.
+              Infraestrutura Digital de Impacto Local. Plataforma de impacto local, ponte entre
+              comunidade e oportunidades e hub de transformação urbana.
             </p>
           </div>
 

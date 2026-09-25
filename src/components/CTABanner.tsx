@@ -24,17 +24,26 @@ export function CTABanner() {
                 <div className="mb-6 flex justify-center">
                   <span className="inline-flex items-center gap-2 rounded-full border border-orange/30 bg-orange/10 px-4 py-1.5 text-sm text-orange">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" />
-                    Plataforma aberta para todos os bairros
+                    Posicionamento
                   </span>
                 </div>
 
+                {/* Posicionamento literal da Apresentação Institucional, slide 28 */}
                 <h2 className="text-3xl font-extrabold sm:text-4xl lg:text-5xl" style={{ color: "var(--th-text)" }}>
-                  Pronto para fazer
-                  <br />
-                  <span className="gradient-text">entrar na ação?</span>
+                  Plataforma de impacto local
                 </h2>
+                <ul className="mt-4 space-y-1 text-xl font-bold sm:text-2xl">
+                  <li className="gradient-text">Ponte entre comunidade e oportunidades</li>
+                  <li className="gradient-text">Hub de transformação urbana</li>
+                </ul>
 
-                <p className="mt-5 text-lg" style={{ color: "var(--th-muted)" }}>
+                {/* Diferencial, slide 29 */}
+                <p className="mt-6 text-lg" style={{ color: "var(--th-muted)" }}>
+                  É um ecossistema de transformação social local, conectando pessoas, dados e
+                  oportunidades em um sistema único de impacto mensurável.
+                </p>
+
+                <p className="mt-4 text-sm" style={{ color: "var(--th-muted)" }}>
                   Gratuito · Sem anúncios · Web e Android
                 </p>
 

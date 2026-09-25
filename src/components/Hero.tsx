@@ -43,11 +43,11 @@ export function Hero({ profiles, stats }: { profiles: RankEntry[]; stats: { valu
 
       {/* ── Text content ── */}
       <div className="mx-auto w-full max-w-4xl px-5 text-center lg:px-8">
-        {/* Badge */}
+        {/* Badge: posicionamento literal da Apresentação Institucional, slide 1 */}
         <div className="mb-8 flex justify-center">
           <span className="hero-pill inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" />
-            Plataforma aberta para todos os bairros do Brasil
+            Infraestrutura Digital de Impacto Local
           </span>
         </div>
 
@@ -56,17 +56,19 @@ export function Hero({ profiles, stats }: { profiles: RankEntry[]; stats: { valu
           className="hero-text font-extrabold leading-[1.1] tracking-tight"
           style={{ fontSize: "clamp(2.4rem, 6vw, 4.5rem)" }}
         >
-          Conecte seu bairro,
+          {/* Lema literal da Apresentação Institucional, slides 1 e 29 */}
+          Conecte-se · Participe ·
           <br />
-          <span className="gradient-text">transforme sua cidade</span>
+          <span className="gradient-text">Transforme</span>
         </h1>
 
-        {/* Sub-headline */}
+        {/* Sub-headline: slide 2 da Apresentação Institucional */}
         <p
-          className="hero-muted mx-auto mt-6 max-w-xl text-lg leading-relaxed sm:text-xl"
+          className="hero-muted mx-auto mt-6 max-w-2xl text-lg leading-relaxed sm:text-xl"
         >
-          Registre problemas, lance projetos e convoque ações. Articule vizinhos,
-          ONGs, governo e empresas em um só fluxo de transformação.
+          O DM Conecta identifica demandas reais das comunidades, estrutura projetos e conecta
+          empresas, organizações e poder público para transformar recursos em impacto local
+          mensurável.
         </p>
 
         {/* CTAs */}

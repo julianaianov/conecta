@@ -16,9 +16,10 @@ const inter = Inter({
   weight: ["400", "500", "600", "700"],
 });
 
-const HOME_TITLE = "DM Conecta — Conecte-se, participe, transforme";
+const HOME_TITLE = "DM Conecta — Conecte-se · Participe · Transforme";
+// Apresentação Institucional, slides 1 e 2 (texto literal da fonte da verdade).
 const HOME_DESCRIPTION =
-  "Plataforma de impacto local. Mapeie demandas, conecte iniciativas ao poder público e a quem pode ajudar. Registre apoios, acompanhe avanços e transforme o território.";
+  "Infraestrutura Digital de Impacto Local. O DM Conecta identifica demandas reais das comunidades, estrutura projetos e conecta empresas, organizações e poder público para transformar recursos em impacto local mensurável.";
 
 export const metadata: Metadata = metadataForPage({
   title: HOME_TITLE,

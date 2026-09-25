@@ -71,6 +71,37 @@ test("a interface usa linguagem de plataforma territorial", () => {
   assert.deepEqual(findings, []);
 });
 
+// Apresentação Institucional (fonte da verdade): lema e posicionamento são literais
+// na landing — slide 1 (lema), slide 2 (o que faz), slides 13–15 (9 etapas),
+// slide 28 (posicionamento) e slide 29 (diferencial).
+test("a landing traz o posicionamento literal da Apresentação Institucional", () => {
+  const flat = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8").replace(/\s+/g, " ");
+  const hero = flat("src/components/Hero.tsx");
+  assert.match(hero, /Infraestrutura Digital de Impacto Local/);
+  assert.match(hero, /Conecte-se · Participe · <br \/> <span className="gradient-text">Transforme<\/span>/);
+  assert.match(
+    hero,
+    /O DM Conecta identifica demandas reais das comunidades, estrutura projetos e conecta empresas, organizações e poder público para transformar recursos em impacto local mensurável\./,
+  );
+  assert.doesNotMatch(hero, /Conecte seu bairro|Plataforma aberta/);
+
+  const cta = flat("src/components/CTABanner.tsx");
+  for (const label of ["Plataforma de impacto local", "Ponte entre comunidade e oportunidades", "Hub de transformação urbana"]) {
+    assert.ok(cta.includes(label), label);
+  }
+  assert.match(cta, /É um ecossistema de transformação social local, conectando pessoas, dados e oportunidades em um sistema único de impacto mensurável\./);
+
+  const constants = flat("src/lib/constants.ts");
+  const stages = [...constants.matchAll(/name: "([^"]+)"/g)].map(([, name]) => name);
+  assert.deepEqual(stages, [
+    "Demanda", "Estruturação", "Conexão", "Apoio", "Articulação", "Amplificação", "Execução", "Resultado", "Mensuração",
+  ]);
+  assert.doesNotMatch(constants, /Sua marca \+ Associação/);
+
+  const page = flat("src/app/page.tsx");
+  for (const component of ["<Hero ", "<Steps />", "<CTABanner />"]) assert.ok(page.includes(component), component);
+});
+
 test("a navegação usa o vocabulário territorial do produto", () => {
   const source = fs.readFileSync(path.join(root, "src/components/app/AppShell.tsx"), "utf8");
 

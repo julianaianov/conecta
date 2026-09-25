@@ -1519,6 +1519,21 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `services/post-service/test/demand-gate.test.js`,
   `institutional-domain.test.js`; `src/lib/app/organization.test.mjs`.
 
+## Landing (Apresentação Institucional, T-01-01 a T-01-03)
+
+- A página inicial (`src/app/page.tsx`) usa o texto **literal** da fonte:
+  badge "Infraestrutura Digital de Impacto Local", lema "Conecte-se ·
+  Participe · Transforme" e a frase do slide 2 no `Hero`; o fluxo de 9 etapas
+  (slides 13–15) em `STEPS`/`FLOW_ROLES` (`src/lib/constants.ts`); o
+  posicionamento do slide 28 e o diferencial do slide 29 no `CTABanner`.
+  `language.test.mjs` confere esses textos.
+- Slide 25: a landing não promete o que não existe. iOS aparece só com
+  `InDevelopment` e sem link; o botão Google Play leva à ficha
+  `org.dmconecta.app`; nenhum `href="#"`. `landing-claims.test.mjs` confere
+  os componentes importados por `page.tsx`.
+- `Community`, `Features`, `TrustBar` e `FeatureIcon` foram apagados (código
+  morto com "PIX… 10 formas de contribuir", contrário à decisão 5).
+
 ## Segurança dos serviços
 
 - `JWT_SECRET` é obrigatório e forte (32+ caracteres, sem valores de exemplo)

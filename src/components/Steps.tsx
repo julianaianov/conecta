@@ -1,4 +1,4 @@
-import { STEPS } from "@/lib/constants";
+import { FLOW_ROLES, STEPS } from "@/lib/constants";
 import { AppImage } from "./AppImage";
 import { Reveal } from "./Reveal";
 
@@ -9,16 +9,18 @@ export function Steps() {
         <Reveal>
           <div className="mx-auto mb-16 max-w-xl text-center">
             <span className="text-sm font-semibold uppercase tracking-widest text-orange">
-              Como a transformação acontece
+              Como funciona
             </span>
             <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl" style={{ color: "var(--th-text)" }}>
-              Da ideia ao impacto
+              Fluxo principal do DM Conecta
               <br />
-              <span className="gradient-text">em 3 passos</span>
+              <span className="gradient-text">da demanda ao impacto, em 9 etapas</span>
             </h2>
-            <p className="mt-4" style={{ color: "var(--th-muted)" }}>
-              Registre, articule e transforme o seu bairro — é simples e gratuito.
-            </p>
+            <ul className="mt-4 space-y-1 text-sm" style={{ color: "var(--th-muted)" }}>
+              {FLOW_ROLES.map((role) => (
+                <li key={role}>{role}</li>
+              ))}
+            </ul>
           </div>
         </Reveal>
 
@@ -56,9 +58,17 @@ export function Steps() {
 
                 <div className="flex flex-1 flex-col">
                   <h3 className="text-xl font-bold" style={{ color: "var(--th-text)" }}>{step.title}</h3>
-                  {/* min-h reserva 2 linhas: sem isso os destaques mais longos quebram e desalinham as descrições entre as colunas */}
-                  <p className="mt-1 text-xs font-semibold leading-4 text-orange md:min-h-8">{step.example}</p>
-                  <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--th-muted)" }}>{step.description}</p>
+                  <ol className="mt-3 space-y-3">
+                    {step.stages.map((stage) => (
+                      <li key={stage.number} className="text-sm leading-relaxed" style={{ color: "var(--th-muted)" }}>
+                        <span className="font-semibold text-orange">
+                          <span className="font-mono">{stage.number}</span> · {stage.name}
+                        </span>
+                        <br />
+                        {stage.description}
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               </div>
             </Reveal>
