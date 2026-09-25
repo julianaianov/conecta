@@ -327,6 +327,22 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   bloqueia). O envio grava prioridade e critérios no payload de
   `enviada_para_analise`; a revisão, a página pública e a análise do
   dm-gestao mostram os critérios; o prompt de urgência da IA cita os mesmos.
+- Módulo específico (T-05-08, Modelo §29, decisão 15): derivado da categoria,
+  nunca escolhido (`services/post-service/src/demand/modules.js`, espelho
+  `src/lib/app/demand-modules.ts`, função SQL `demand_module`): Obras,
+  Ambiental, Social, Apoio/Investimento e Articulação Pública. Define os
+  documentos possíveis (15 tipos novos em `demand_document_type`, migração post
+  032), indicadores sugeridos (atalhos no editor de metas), marcos (o ambiental
+  soma diagnóstico, intervenção e monitoramento ao cronograma) e as
+  informações específicas em `demands.module_details` (JSONB; área, imóvel,
+  responsável técnico, diagnóstico, vegetação, metodologia, plano de
+  monitoramento, equipe, público-alvo), preenchidas na etapa 1 abaixo da
+  categoria. No envio, o que falta vira `warnings.moduleDetails`; marcos do
+  ambiental fora dele são erro. As leituras trazem `module`, `moduleLabel` e
+  `moduleDetails` (só as chaves do módulo; a pública sem o imóvel); o dossiê
+  imprime o módulo e as informações. O uso dos marcos do ambiental nas
+  evidências da execução (`src/execution/*`) ainda não foi feito: a definição
+  está em `MODULE_MILESTONES`.
 - Avisos do envio (T-02-05, slide 14 "sempre que possível"): a revisão
   (etapa 9) lista os `warnings` do `validate` no bloco "Recomendações antes de
   enviar" (`demandWarnings` em `demand.ts`: rótulo humano, etapa de correção,
@@ -888,13 +904,22 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Fonte: Apresentação Institucional, slide 19 (legenda literal e "leitura
   rápida para governo, empresas, mídia e comunidade") e slide 18 (demandas e
   conteúdos do feed como camadas distintas).
-- Legenda: as cinco classes são as cinco categorias da demanda, uma para uma —
-  Problemas urgentes (`problema_urgente`), Problemas urbanos (`problema_urbano`),
-  Projetos sociais (`projeto_social`), Ações ambientais (`projeto_ambiental`) e
-  Necessidades (Oportunidades de patrocínio) (`necessidade_de_patrocinio`).
-  > TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda (obra/infraestrutura,
-  > revitalização de espaço, recuperação ambiental, apoio técnico, apoio com serviços, apoio com
-  > materiais, outras); a legenda de 1 classe por categoria precisa ser revista.
+- Legenda: as cinco classes literais do slide 19 — Problemas urgentes,
+  Problemas urbanos, Projetos sociais, Ações ambientais e Necessidades
+  (Oportunidades de patrocínio) —, cada uma agrupando categorias da demanda (os
+  12 tipos do Modelo §03, decisão 15; T-05-07): urgentes = problema urgente;
+  urbanos = problema urbano, obra ou melhoria de infraestrutura, revitalização
+  de espaço; sociais = projeto social; ambientais = projeto ambiental,
+  recuperação ambiental; necessidades = patrocínio, apoio técnico, com serviços,
+  com materiais e outras demandas territoriais. O mapa é `CATEGORY_MAP_CLASS`
+  (`src/demand/constants.js`), repetido pela função SQL `demand_map_class`
+  (migração post 031) e pela gestão (`App\Support\MapLegend`); `LEGEND[].categories`
+  lista as categorias de cada classe, e `counts`, `clusters` e `territories`
+  trazem `category` (12) **e** `mapClass` (5); cada ponto traz `mapClass`.
+  A 031 também cria `demand_post_type` e o gatilho `posts_demand_post_type`
+  (apoios → `need`, outras → `problem`, obra/revitalização/recuperação →
+  `project`), e a user 015 recria o CHECK de `partner_profiles.interest_categories`
+  com os 12.
   Cada classe tem cor do manual de marca **e** forma própria (triângulo,
   quadrado, círculo, losango, estrela), para o mapa não depender só de cor;
   `Conteúdos do feed` é a sexta camada (`#5A9BC4`, ponto). Vocabulário em

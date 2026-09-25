@@ -23,11 +23,8 @@
 --
 -- Idempotente: pode rodar de novo (o deploy reaplica o manifesto inteiro).
 
--- TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda: obra/infraestrutura,
--- revitalização de espaço, recuperação ambiental, apoio técnico, apoio com serviços, apoio com
--- materiais e outras. Espelhos: src/demand/constants.js, src/map/constants.js (legenda do mapa é
--- 1 classe por categoria), user-service/src/partner-profile.js e, no portal, src/lib/app/types.ts,
--- demand.ts e map.ts.
+-- Os 5 primeiros tipos de demanda; os outros 7 do Modelo de Conexão §03 entram
+-- na migração 031 (decisão 15), que também cria `demand_map_class`.
 DO $$ BEGIN
   CREATE TYPE demand_category AS ENUM (
     'projeto_social', 'projeto_ambiental', 'necessidade_de_patrocinio',
