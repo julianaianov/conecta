@@ -47,7 +47,8 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Tipos de anexo da prestação (slide 24).
--- TODO(fonte-da-verdade): Modelo de Conexão §20/§24 — faltam laudos, certificados e registros técnicos.
+-- Laudos, certificados, notas fiscais e registros técnicos (Modelo de Conexão
+-- §20) entram pela migração 035.
 DO $$ BEGIN
   CREATE TYPE demand_accountability_document_kind AS ENUM (
     'comprovante_financeiro', 'relatorio_execucao', 'registro_acao', 'outro');

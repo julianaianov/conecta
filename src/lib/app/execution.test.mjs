@@ -10,6 +10,12 @@ import {
   EVIDENCE_OPEN_STATUSES,
   EVIDENCE_PURPOSE_BY_MEDIA,
   EXECUTION_EVENT_TYPES,
+  EVIDENCE_MILESTONES,
+  EVIDENCE_MILESTONE_LABELS,
+  EVIDENCE_MILESTONE_SHORT,
+  EXECUTION_DOCUMENT_OPEN_STATUSES,
+  EXECUTION_DOCUMENT_PURPOSE,
+  MAX_EXECUTION_DOCUMENTS,
   INCIDENT_IMPACTS,
   INCIDENT_IMPACT_LABELS,
   INCIDENT_KINDS,
@@ -134,4 +140,15 @@ test("status Atrasada/Bloqueada e ocorrências seguem o post-service (Modelo §1
   assert.equal(executionTimelineLabel({ type: "etapa_atrasada", details: {} }), "Etapa atrasada");
   assert.match(executionTimelineDetail({ type: "ocorrencia_registrada", details: { kind: "clima", impact: "prazo", stage: "Obra" } }) ?? "",
     /Etapa: Obra · Clima · impacto: prazo/);
+});
+
+test("marcos do módulo ambiental e documentos da execução seguem o post-service (§20, §24)", () => {
+  assert.deepEqual(EVIDENCE_MILESTONES, server.EVIDENCE_MILESTONES);
+  assert.deepEqual(EVIDENCE_MILESTONE_LABELS, server.EVIDENCE_MILESTONE_LABELS);
+  assert.deepEqual(Object.keys(EVIDENCE_MILESTONE_SHORT), EVIDENCE_MILESTONES);
+  assert.equal(EXECUTION_DOCUMENT_PURPOSE, server.EXECUTION_DOCUMENT_PURPOSE);
+  assert.deepEqual(EXECUTION_DOCUMENT_OPEN_STATUSES, server.EXECUTION_DOCUMENT_OPEN_STATUSES);
+  assert.equal(MAX_EXECUTION_DOCUMENTS, server.MAX_EXECUTION_DOCUMENTS);
+  assert.ok(UPLOAD_PURPOSES[EXECUTION_DOCUMENT_PURPOSE]);
+  assert.equal(executionTimelineLabel({ type: "documento_da_execucao_registrado", details: {} }), "Documento da execução anexado");
 });

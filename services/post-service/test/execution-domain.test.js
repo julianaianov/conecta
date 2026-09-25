@@ -49,9 +49,10 @@ test('a situação da etapa é o enum demand_stage_progress (slide 23; Modelo §
   assert.deepEqual(Object.keys(E.STAGE_PROGRESS_LABELS).sort(), [...E.STAGE_PROGRESS].sort());
 });
 
-test('os eventos da execução são os gravados pelos triggers da 014 e da 034', () => {
+test('os eventos da execução são os gravados pelos triggers da 014, da 034 e da 035', () => {
+  const documentsSql = fs.readFileSync(path.join(__dirname, '../migrations/035-execution-documents.sql'), 'utf8');
   for (const type of E.EXECUTION_EVENT_TYPES) {
-    assert.ok(sql.includes(`'${type}'`) || statusSql.includes(`'${type}'`),
+    assert.ok(sql.includes(`'${type}'`) || statusSql.includes(`'${type}'`) || documentsSql.includes(`'${type}'`),
       `evento ${type} não é gravado pela migração`);
   }
   assert.deepEqual(E.TRANSITION_REQUIRED_MILESTONE, { iniciar_execucao: 'antes', concluir: 'depois' });
@@ -248,4 +249,50 @@ test('registros previstos no cronograma e ainda não enviados, por etapa e marco
   ]);
   assert.deepEqual(store.pendingRecords(schedule, [...evidences,
     { scheduleItemId: 's1', milestone: 'acompanhamento' }, { scheduleItemId: 's2', milestone: 'depois' }]), []);
+});
+
+test('documento da execução: tipos do §20, título, arquivo e data sem futuro (T-05-12)', () => {
+  const accountabilitySql = fs.readFileSync(path.join(__dirname, '../migrations/015-accountability.sql'), 'utf8');
+  const documentsSql = fs.readFileSync(path.join(__dirname, '../migrations/035-execution-documents.sql'), 'utf8');
+  const A = require('../src/accountability/constants');
+  assert.deepEqual(
+    [...enumValues(accountabilitySql, 'demand_accountability_document_kind'),
+      ...addedValues(documentsSql, 'demand_accountability_document_kind')],
+    A.DOCUMENT_KINDS,
+  );
+  for (const kind of ['nota_fiscal', 'laudo', 'certificado', 'registro_tecnico', 'relatorio', 'documento']) {
+    assert.ok(A.DOCUMENT_KINDS.includes(kind), kind);
+  }
+  assert.equal(E.EXECUTION_DOCUMENT_PURPOSE, 'demand_execution_document');
+  assert.ok(documentsSql.includes("'documento_da_execucao_registrado'"));
+  assert.match(documentsSql, /a gestão só lê os documentos da execução/);
+
+  const { errors } = E.validateExecutionDocument({});
+  assert.ok(errors.kind && errors.title && errors.reference);
+  const future = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  assert.match(E.validateExecutionDocument({ kind: 'laudo', title: 'L', reference: 'upload:x', issuedOn: future })
+    .errors.issuedOn, /emissão não fica no futuro/);
+  assert.ok(E.validateExecutionDocument({ kind: 'laudo', title: 'L', reference: 'upload:x', milestone: 'meio' })
+    .errors.milestone);
+  const ok = E.validateExecutionDocument({
+    kind: 'nota_fiscal', title: ' NF 123 ', reference: 'upload:x', amountCents: 1500, milestone: 'acompanhamento',
+  });
+  assert.deepEqual(ok.errors, {});
+  assert.equal(ok.value.title, 'NF 123');
+  assert.equal(ok.value.amountCents, 1500);
+});
+
+test('marcos do módulo ambiental na evidência e no documento (§24; T-05-08 + T-05-12)', () => {
+  const demandSql = fs.readFileSync(path.join(__dirname, '../migrations/032-demand-modules.sql'), 'utf8');
+  for (const milestone of ['diagnostico', 'intervencao', 'monitoramento']) {
+    assert.ok(addedValues(demandSql, 'demand_record_milestone').includes(milestone), milestone);
+  }
+  assert.deepEqual(Object.keys(E.EVIDENCE_MILESTONE_LABELS), E.EVIDENCE_MILESTONES);
+  assert.deepEqual(E.evidenceMilestonesFor('recuperacao_ambiental'), E.EVIDENCE_MILESTONES);
+  assert.deepEqual(E.evidenceMilestonesFor('problema_urbano'), E.RECORD_MILESTONES);
+  assert.deepEqual(E.validateEvidence({
+    reference: 'upload:11111111-1111-4111-8111-111111111111', milestone: 'diagnostico', mediaKind: 'foto',
+    recordedOn: '2026-09-01',
+  }).errors, {});
+  assert.ok(E.validateEvidence({ milestone: 'meio' }).errors.milestone);
 });

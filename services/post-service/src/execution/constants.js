@@ -23,6 +23,28 @@ const RECORD_MILESTONE_LABELS = {
   depois: 'Depois (resultado final)',
 };
 
+// Marcos do módulo ambiental (Modelo de Conexão §24: ANTES → DIAGNÓSTICO →
+// INTERVENÇÃO → MONITORAMENTO → RESULTADO), acrescentados ao enum pela
+// migração 032 (T-05-08, src/demand/modules.js). A evidência e o documento da
+// execução aceitam os marcos do módulo da demanda: os três comuns em todo
+// módulo e, no ambiental, também estes três (`evidenceMilestonesFor`).
+const EVIDENCE_MILESTONES = ['antes', 'diagnostico', 'intervencao', 'monitoramento', 'acompanhamento', 'depois'];
+
+const EVIDENCE_MILESTONE_LABELS = {
+  antes: 'Antes (situação inicial)',
+  diagnostico: 'Diagnóstico',
+  intervencao: 'Intervenção',
+  monitoramento: 'Monitoramento',
+  acompanhamento: 'Acompanhamento (durante a execução)',
+  depois: 'Depois (resultado final)',
+};
+
+/** Marcos aceitos na evidência e no documento da execução de uma categoria. */
+function evidenceMilestonesFor(category) {
+  const { moduleOf } = require('../demand/modules');
+  return moduleOf(category) === 'ambiental' ? EVIDENCE_MILESTONES : RECORD_MILESTONES;
+}
+
 // Fotografia e filmagem (slide 12: fotografias do antes e do depois, filmagem
 // do processo e registro audiovisual do resultado final).
 const EVIDENCE_MEDIA_KINDS = ['foto', 'video'];
@@ -37,6 +59,14 @@ const EVIDENCE_PURPOSE_BY_MEDIA = {
   foto: 'demand_evidence_photo',
   video: 'demand_evidence_video',
 };
+
+// Documentos da execução (T-05-12; Modelo de Conexão §20): laudos,
+// certificados, notas fiscais, registros técnicos, relatórios e documentos,
+// anexados durante a execução. Os tipos são os da prestação de contas
+// (`demand_accountability_document_kind`, migrações 015 e 035).
+const EXECUTION_DOCUMENT_PURPOSE = 'demand_execution_document';
+const EXECUTION_DOCUMENT_OPEN_STATUSES = ['em_execucao', 'concluida', 'prestacao_de_contas'];
+const MAX_EXECUTION_DOCUMENTS = 100;
 
 // Situação da etapa do cronograma (slide 23; Modelo de Conexão §18: "Não
 // iniciada, Em andamento, Concluída, Atrasada, Bloqueada"). `atrasada` também
@@ -131,6 +161,8 @@ const EXECUTION_EVENT_TYPES = [
   'prazo_alterado', 'registro_dispensado',
   // Migração 034 (T-05-11): atraso gravado e ocorrências.
   'etapa_atrasada', 'ocorrencia_registrada', 'ocorrencia_resolvida',
+  // Migração 035 (T-05-12): documento anexado durante a execução.
+  'documento_da_execucao_registrado',
 ];
 
 const MAX_CAPTION = 500;
@@ -146,6 +178,9 @@ const MAX_EXECUTED_CENTS = 9_999_999_999;
 module.exports = {
   RECORD_MILESTONES,
   RECORD_MILESTONE_LABELS,
+  EVIDENCE_MILESTONES,
+  EVIDENCE_MILESTONE_LABELS,
+  evidenceMilestonesFor,
   EVIDENCE_MEDIA_KINDS,
   EVIDENCE_MEDIA_LABELS,
   EVIDENCE_PURPOSE_BY_MEDIA,
@@ -158,6 +193,9 @@ module.exports = {
   DELAY_RESOLUTIONS,
   isLate,
   stageStatus,
+  EXECUTION_DOCUMENT_PURPOSE,
+  EXECUTION_DOCUMENT_OPEN_STATUSES,
+  MAX_EXECUTION_DOCUMENTS,
   EVIDENCE_OPEN_STATUSES,
   PROGRESS_OPEN_STATUSES,
   WAIVER_OPEN_STATUSES,

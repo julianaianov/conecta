@@ -23,14 +23,27 @@ const ACCOUNTABILITY_STATUS_LABELS = {
   concluida: 'Prestação concluída',
 };
 
-// Anexos do slide 24.
-const DOCUMENT_KINDS = ['comprovante_financeiro', 'relatorio_execucao', 'registro_acao', 'outro'];
+// Anexos do slide 24 e, desde a migração 035 (T-05-12), as evidências
+// documentais do Modelo de Conexão §20: notas fiscais, laudos, certificados,
+// registros técnicos, relatórios e documentos. Ordem do enum
+// `demand_accountability_document_kind`; vale também para os documentos da
+// execução (`demand_execution_documents`).
+const DOCUMENT_KINDS = [
+  'comprovante_financeiro', 'relatorio_execucao', 'registro_acao', 'outro',
+  'nota_fiscal', 'laudo', 'certificado', 'registro_tecnico', 'relatorio', 'documento',
+];
 
 const DOCUMENT_KIND_LABELS = {
   comprovante_financeiro: 'Comprovante financeiro',
   relatorio_execucao: 'Relatório de execução',
   registro_acao: 'Registro da ação realizada',
   outro: 'Outro documento',
+  nota_fiscal: 'Nota fiscal',
+  laudo: 'Laudo',
+  certificado: 'Certificado',
+  registro_tecnico: 'Registro técnico',
+  relatorio: 'Relatório',
+  documento: 'Documento',
 };
 
 // Finalidade de upload (T08) dos anexos da prestação.

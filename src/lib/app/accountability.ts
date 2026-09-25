@@ -29,6 +29,7 @@ export const ACCOUNTABILITY_STATUS_LABELS: Record<DemandAccountabilityStatus, st
 
 export const DOCUMENT_KINDS: DemandAccountabilityDocumentKind[] = [
   "comprovante_financeiro", "relatorio_execucao", "registro_acao", "outro",
+  "nota_fiscal", "laudo", "certificado", "registro_tecnico", "relatorio", "documento",
 ];
 
 export const DOCUMENT_KIND_LABELS: Record<DemandAccountabilityDocumentKind, string> = {
@@ -36,6 +37,12 @@ export const DOCUMENT_KIND_LABELS: Record<DemandAccountabilityDocumentKind, stri
   relatorio_execucao: "Relatório de execução",
   registro_acao: "Registro da ação realizada",
   outro: "Outro documento",
+  nota_fiscal: "Nota fiscal",
+  laudo: "Laudo",
+  certificado: "Certificado",
+  registro_tecnico: "Registro técnico",
+  relatorio: "Relatório",
+  documento: "Documento",
 };
 
 export const ACCOUNTABILITY_UPLOAD_PURPOSE: UploadPurpose = "demand_accountability_document";

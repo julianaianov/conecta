@@ -84,6 +84,12 @@ const PURPOSES = {
     label: 'Documento da prestação de contas', target: 'demand', folder: 'accountability',
     types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
   },
+  // Laudos, certificados, notas fiscais e registros técnicos anexados durante
+  // a execução (T-05-12, Modelo de Conexão §20).
+  demand_execution_document: {
+    label: 'Documento da execução', target: 'demand', folder: 'execution',
+    types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
+  },
   institution_proof: {
     label: 'Comprovação da representação', target: 'institution', folder: 'proof',
     types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',

@@ -76,6 +76,7 @@ import type {
 import type {
   DemandEvidence, DemandEvidenceInput, DemandExecution, DemandProgressInput,
   DemandProgressUpdate, PublicDemandExecution, DemandIncident, DemandIncidentInput,
+  DemandExecutionDocument, DemandExecutionDocumentInput,
 } from "./types";
 import type {
   DemandAccountabilityDocumentInput, DemandAccountabilityInput, DemandAccountabilityResultInput,
@@ -1553,8 +1554,18 @@ export const api = {
 
   // ── EXECUÇÃO, EVIDÊNCIAS E ACOMPANHAMENTO (T17) ──────────────────────────
   /** Histórico visual e acompanhamento públicos da execução. */
-  publicDemandExecution(id: string): Promise<PublicDemandExecution | null> {
-    return demandRequest<PublicDemandExecution>(`/${encodeURIComponent(id)}/execution`);
+  async publicDemandExecution(id: string): Promise<PublicDemandExecution | null> {
+    const data = await demandRequest<PublicDemandExecution>(`/${encodeURIComponent(id)}/execution`);
+    if (!data) return null;
+    // Mídia em `/api/posts/...` com a base da API, como no SSR (tela do órgão, T-03-02).
+    const withUrl = <T extends { url: string | null }>(e: T): T => ({ ...e, url: e.url ? resolveMediaUrl(e.url, BASE) : null });
+    return {
+      ...data,
+      evidences: (data.evidences ?? []).map(withUrl),
+      pairs: (data.pairs ?? []).map((pair) => ({ ...pair, before: withUrl(pair.before), after: withUrl(pair.after) })),
+      progress: data.progress ?? [],
+      schedule: data.schedule ?? [],
+    };
   },
 
   /** Agente autor: evidências, andamento, execução orçamentária e pendências. */
@@ -1585,6 +1596,13 @@ export const api = {
     return (await demandRequired<{ progress: DemandProgressUpdate }>(
       `/mine/${encodeURIComponent(id)}/progress`, { method: "POST", ...json(input) },
     )).progress;
+  },
+
+  /** Anexa laudo, certificado, nota fiscal ou registro técnico durante a execução (§20). */
+  async registerDemandExecutionDocument(id: string, input: DemandExecutionDocumentInput): Promise<DemandExecutionDocument> {
+    return (await demandRequired<{ document: DemandExecutionDocument }>(
+      `/mine/${encodeURIComponent(id)}/execution-documents`, { method: "POST", ...json(input) },
+    )).document;
   },
 
   /** Registra uma ocorrência da execução (Modelo de Conexão §19). */

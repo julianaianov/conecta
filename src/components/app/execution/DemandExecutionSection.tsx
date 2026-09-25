@@ -11,8 +11,8 @@
 
 import {
   EVIDENCE_MEDIA_LABELS,
-  RECORD_MILESTONE_LABELS,
-  RECORD_MILESTONE_SHORT,
+  EVIDENCE_MILESTONE_LABELS,
+  EVIDENCE_MILESTONE_SHORT,
   STAGE_PROGRESS_LABELS,
   formatCents,
   formatRecordDate,
@@ -20,6 +20,7 @@ import {
 import type { PublicDemandEvidence, PublicDemandExecution } from "@/lib/app/types";
 import { Icon } from "../Icon";
 import { ExecutionIncidentList, ExecutionProgressSummary } from "./ExecutionProgressSummary";
+import { DOCUMENT_KIND_LABELS } from "@/lib/app/accountability";
 import { ReadSection } from "../demand/DemandParts";
 
 function EvidenceFigure({ evidence, badge }: { evidence: PublicDemandEvidence; badge: string }) {
@@ -32,7 +33,7 @@ function EvidenceFigure({ evidence, badge }: { evidence: PublicDemandEvidence; b
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={evidence.url}
-            alt={evidence.caption ?? `${RECORD_MILESTONE_LABELS[evidence.milestone]}${evidence.stage ? ` — ${evidence.stage}` : ""}`}
+            alt={evidence.caption ?? `${EVIDENCE_MILESTONE_LABELS[evidence.milestone]}${evidence.stage ? ` — ${evidence.stage}` : ""}`}
             className="h-48 w-full object-cover"
             loading="lazy"
           />
@@ -66,9 +67,11 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
   const paired = new Set(execution.pairs.flatMap((p) => [p.before.id, p.after.id]));
   const loose = execution.evidences.filter((e) => !paired.has(e.id));
   const incidents = execution.incidents ?? [];
+  const documents = execution.documents ?? [];
   const hasContent = execution.evidences.length > 0
     || execution.progress.length > 0
     || incidents.length > 0
+    || documents.length > 0
     || Boolean(execution.recordWaiverReason);
   if (!hasContent) return null;
 
@@ -103,7 +106,7 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
                 <EvidenceFigure
                   key={evidence.id}
                   evidence={evidence}
-                  badge={RECORD_MILESTONE_SHORT[evidence.milestone]}
+                  badge={EVIDENCE_MILESTONE_SHORT[evidence.milestone]}
                 />
               ))}
             </div>
@@ -114,7 +117,8 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
         </ReadSection>
       )}
 
-      {(execution.progress.length > 0 || execution.budgetExecution.executedCents > 0 || incidents.length > 0) && (
+      {(execution.progress.length > 0 || execution.budgetExecution.executedCents > 0 || incidents.length > 0
+        || documents.length > 0) && (
         <ReadSection title="Execução e acompanhamento" icon="clock">
           <dl className="mb-3 grid gap-2 sm:grid-cols-2">
             <div className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
@@ -134,6 +138,26 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
           <div className="mb-3">
             <ExecutionProgressSummary idPrefix="publico" summary={execution.summary} schedule={execution.schedule} />
           </div>
+
+          {documents.length > 0 && (
+            <div className="mb-3">
+              <h3 className="mb-1.5 text-sm font-bold" style={{ color: "var(--th-text)" }}>Documentos da execução</h3>
+              <ul className="space-y-1.5 text-sm">
+                {documents.map((doc) => (
+                  <li key={doc.id} className="rounded-lg border px-3 py-1.5" style={{ borderColor: "var(--th-border)" }}>
+                    <span className="font-semibold" style={{ color: "var(--th-text)" }}>{DOCUMENT_KIND_LABELS[doc.kind]}</span>
+                    <span style={{ color: "var(--th-text)" }}> · {doc.title}</span>
+                    <span className="text-xs" style={{ color: "var(--th-muted)" }}>
+                      {doc.issuedOn ? ` · emitido em ${formatRecordDate(doc.issuedOn)}` : ""}
+                      {doc.stage ? ` · ${doc.stage}` : ""}
+                      {doc.milestone ? ` · ${EVIDENCE_MILESTONE_SHORT[doc.milestone]}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>Os arquivos ficam com o Agente e com a equipe de análise.</p>
+            </div>
+          )}
 
           {incidents.length > 0 && (
             <div className="mb-3">

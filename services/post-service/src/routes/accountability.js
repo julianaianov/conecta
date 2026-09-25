@@ -170,6 +170,8 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
   /** Visão do Agente autor: rascunho, metas, anexos e o que a conclusão exige. */
   async function ownerView(db, demand, row) {
     const monitoring = await store.plannedMonitoring(db, demand.id);
+    // Documentos anexados durante a execução (T-05-12), listados no resumo.
+    const executionDocuments = await store.listExecutionDocuments(db, demand.id);
     if (!row) {
       const milestones = await store.evidenceMilestones(db, demand.id);
       const goals = await store.listGoalsWithResults(db, demand.id, null);
@@ -177,6 +179,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
         accountability: null,
         results: [],
         documents: [],
+        executionDocuments,
         goals,
         summary: store.summarize([], []),
         status: demand.status,
@@ -221,6 +224,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
       accountability,
       results,
       documents,
+      executionDocuments,
       goals,
       summary,
       status: demand.status,
@@ -247,7 +251,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
     if (!view) {
       // Sem prestação concluída a seção pública não existe ainda.
       res.json({
-        accountability: null, results: [], documents: [], summary: store.summarize([], []),
+        accountability: null, results: [], documents: [], executionDocuments: [], summary: store.summarize([], []),
         status: rows[0].status,
       });
       return;

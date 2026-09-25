@@ -1622,6 +1622,7 @@ export type UploadPurpose =
   | "demand_evidence_video"
   | "demand_document"
   | "demand_accountability_document"
+  | "demand_execution_document"
   | "institution_proof"
   | "institution_document"
   | "post_photo";
@@ -2367,7 +2368,8 @@ export interface PublicDemandEvidence {
   id: string;
   scheduleItemId: string | null;
   stage: string | null;
-  milestone: DemandRecordMilestone;
+  /** Os três comuns e, no módulo ambiental, diagnóstico/intervenção/monitoramento (§24). */
+  milestone: DemandScheduleMilestone;
   mediaKind: DemandEvidenceMediaKind;
   url: string | null;
   caption: string | null;
@@ -2479,6 +2481,7 @@ export interface PublicDemandExecution {
   budgetExecution: DemandBudgetExecution;
   schedule: DemandScheduleStatus[];
   incidents?: PublicDemandIncident[];
+  documents?: PublicDemandExecutionDocument[];
   summary?: DemandExecutionSummary;
   status: DemandStatus;
   hasPhysicalExecution: boolean;
@@ -2508,13 +2511,18 @@ export interface DemandExecution {
     antes: boolean;
     depois: boolean;
     /** Registros previstos por etapa no cronograma e ainda não enviados (T-02-04). */
-    records?: { scheduleItemId: string; stage: string; milestone: DemandRecordMilestone }[];
+    records?: { scheduleItemId: string; stage: string; milestone: DemandScheduleMilestone }[];
   };
+  /** Documentos anexados durante a execução (T-05-12). */
+  documents?: DemandExecutionDocument[];
+  canRegisterDocument?: boolean;
+  /** Marcos aceitos na evidência e no documento (módulo da demanda, §24). */
+  allowedMilestones?: DemandScheduleMilestone[];
 }
 
 export interface DemandEvidenceInput {
   reference: string;
-  milestone: DemandRecordMilestone;
+  milestone: DemandScheduleMilestone;
   mediaKind: DemandEvidenceMediaKind;
   recordedOn: string;
   caption?: string | null;
@@ -2551,7 +2559,47 @@ export type DemandAccountabilityDocumentKind =
   | "comprovante_financeiro"
   | "relatorio_execucao"
   | "registro_acao"
-  | "outro";
+  | "outro"
+  // Modelo de Conexão §20 (T-05-12, migração post 035).
+  | "nota_fiscal"
+  | "laudo"
+  | "certificado"
+  | "registro_tecnico"
+  | "relatorio"
+  | "documento";
+
+/** Documento anexado durante a execução, na visão pública (sem arquivo). */
+export interface PublicDemandExecutionDocument {
+  id: string;
+  scheduleItemId: string | null;
+  stage: string | null;
+  milestone: DemandScheduleMilestone | null;
+  kind: DemandAccountabilityDocumentKind;
+  title: string;
+  issuedOn: string | null;
+  amountCents: number | null;
+  createdAt: string | null;
+}
+
+/** Documento da execução visto pelo Agente autor. */
+export interface DemandExecutionDocument extends PublicDemandExecutionDocument {
+  progressUpdateId: string | null;
+  description: string | null;
+  reference: string;
+  author: { userId: string; name: string | null };
+}
+
+export interface DemandExecutionDocumentInput {
+  kind: DemandAccountabilityDocumentKind;
+  title: string;
+  reference: string;
+  description?: string | null;
+  issuedOn?: string | null;
+  amountCents?: number | null;
+  scheduleItemId?: string | null;
+  milestone?: DemandScheduleMilestone | null;
+  progressUpdateId?: string | null;
+}
 
 /** Por que uma exigência da conclusão vale (slide 24: "quando aplicável"). */
 export type DemandAccountabilityRequirementCondition =
@@ -2655,6 +2703,8 @@ export interface PublicDemandAccountabilityView {
   accountability: PublicDemandAccountability | null;
   results: PublicDemandAccountabilityResult[];
   documents: PublicDemandAccountabilityDocument[];
+  /** Documentos anexados durante a execução (T-05-12), no resumo. */
+  executionDocuments?: PublicDemandExecutionDocument[];
   summary: DemandAccountabilitySummary;
   status: DemandStatus;
 }
@@ -2664,6 +2714,7 @@ export interface DemandAccountabilityView {
   accountability: DemandAccountability | null;
   results: DemandAccountabilityResult[];
   documents: DemandAccountabilityDocument[];
+  executionDocuments?: PublicDemandExecutionDocument[];
   goals: DemandAccountabilityGoal[];
   summary: DemandAccountabilitySummary;
   status: DemandStatus;

@@ -7,6 +7,9 @@
 //   `arquivada` (a T17 vincula a evidência ao andamento).
 // - Documentos da prestação de contas (T18): só com a demanda em
 //   `prestacao_de_contas` (comprovantes, relatórios e registros das ações).
+// - Documentos da execução (T-05-12: laudos, certificados, notas fiscais,
+//   registros técnicos): da execução em diante (`em_execucao`, `concluida`,
+//   `prestacao_de_contas`).
 // - Público: foto e evidências de demanda publicada; documentos, nunca.
 // - Foto do sinal do feed (`post_photo`): quem publica no feed envia antes de
 //   criar o post (o vínculo `uploads.post_id` é gravado pelo POST /posts);
@@ -18,11 +21,14 @@ const { PUBLIC_STATUSES } = require('./demand/constants');
 const { UploadError, findUsableUpload, parseUploadRef, describeUploads, contentPath } = require('./uploads');
 
 const PURPOSES = ['demand_photo', 'demand_evidence_photo', 'demand_evidence_video', 'demand_document',
-  'demand_accountability_document', 'post_photo'];
+  'demand_accountability_document', 'demand_execution_document', 'post_photo'];
 const POST_PURPOSES = ['post_photo'];
 const EDITABLE_PURPOSES = ['demand_photo', 'demand_document'];
 // Prestação de contas (T18): a demanda precisa estar no último status canônico.
 const ACCOUNTABILITY_PURPOSES = ['demand_accountability_document'];
+// Documentos da execução (T-05-12): os mesmos estados do andamento.
+const EXECUTION_DOCUMENT_PURPOSES = ['demand_execution_document'];
+const EXECUTION_DOCUMENT_STATUSES = ['em_execucao', 'concluida', 'prestacao_de_contas'];
 const PUBLIC_PREFIX = '/api/posts/uploads';
 const TARGET_COLUMN = 'demand_id';
 const POST_TARGET_COLUMN = 'post_id';
@@ -76,6 +82,13 @@ function createPostUploadPolicy() {
         if (demand.status !== 'prestacao_de_contas') {
           throw new UploadError(409, {
             error: 'Os documentos da prestação de contas entram com a demanda em prestação de contas',
+            code: 'invalid_state',
+          });
+        }
+      } else if (EXECUTION_DOCUMENT_PURPOSES.includes(purpose)) {
+        if (!EXECUTION_DOCUMENT_STATUSES.includes(demand.status)) {
+          throw new UploadError(409, {
+            error: 'Os documentos da execução entram a partir do início da execução',
             code: 'invalid_state',
           });
         }

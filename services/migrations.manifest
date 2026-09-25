@@ -65,5 +65,6 @@ post_db post-service/migrations/026-connection-processes.sql
 post_db post-service/migrations/031-demand-categories.sql
 post_db post-service/migrations/032-demand-modules.sql
 post_db post-service/migrations/034-execution-status.sql
+post_db post-service/migrations/035-execution-documents.sql
 post_db post-service/migrations/039-notifications.sql
 post_db post-service/migrations/042-priority-criteria.sql

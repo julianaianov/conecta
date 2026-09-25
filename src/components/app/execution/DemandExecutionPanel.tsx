@@ -20,9 +20,10 @@ import {
   EVIDENCE_MEDIA_KINDS,
   EVIDENCE_MEDIA_LABELS,
   EVIDENCE_PURPOSE_BY_MEDIA,
+  EVIDENCE_MILESTONE_LABELS,
+  EVIDENCE_MILESTONE_SHORT,
+  EXECUTION_DOCUMENT_PURPOSE,
   RECORD_MILESTONES,
-  RECORD_MILESTONE_LABELS,
-  RECORD_MILESTONE_SHORT,
   STAGE_PROGRESS,
   STAGE_PROGRESS_LABELS,
   executionErrorMessage,
@@ -37,7 +38,8 @@ import type {
   DemandIncidentImpact,
   DemandIncidentKind,
   DemandProgressExpenseInput,
-  DemandRecordMilestone,
+  DemandAccountabilityDocumentKind,
+  DemandScheduleMilestone,
   DemandStageProgress,
   UploadedFile,
 } from "@/lib/app/types";
@@ -45,6 +47,7 @@ import { Button } from "../Button";
 import { FileUpload } from "../FileUpload";
 import { Checkbox, FormAlert, SelectInput, TextArea, TextInput } from "../demand/fields";
 import { ExecutionIncidentList, ExecutionProgressSummary } from "./ExecutionProgressSummary";
+import { DOCUMENT_KINDS, DOCUMENT_KIND_LABELS } from "@/lib/app/accountability";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -65,7 +68,7 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
   // Evidência
   const [file, setFile] = useState<UploadedFile | null>(null);
   const [mediaKind, setMediaKind] = useState<DemandEvidenceMediaKind>("foto");
-  const [milestone, setMilestone] = useState<DemandRecordMilestone>("antes");
+  const [milestone, setMilestone] = useState<DemandScheduleMilestone>("antes");
   const [recordedOn, setRecordedOn] = useState(today);
   const [caption, setCaption] = useState("");
   const [evidenceStage, setEvidenceStage] = useState("");
@@ -81,6 +84,14 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
   const [partialResults, setPartialResults] = useState("");
   const [note, setNote] = useState("");
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+
+  // Documentos da execução (Modelo §20)
+  const [docFile, setDocFile] = useState<UploadedFile | null>(null);
+  const [docKind, setDocKind] = useState<DemandAccountabilityDocumentKind | "">("");
+  const [docTitle, setDocTitle] = useState("");
+  const [docIssuedOn, setDocIssuedOn] = useState("");
+  const [docStage, setDocStage] = useState("");
+  const [docMilestone, setDocMilestone] = useState<DemandScheduleMilestone | "">("");
 
   // Ocorrências (Modelo §19)
   const [incidentKind, setIncidentKind] = useState<DemandIncidentKind | "">("");
@@ -196,6 +207,24 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
     await api.updateDemandEvidence(demandId, evidence.id, { pairEvidenceId: beforeId });
   });
 
+  const addDocument = () => run("document", async () => {
+    if (!docFile) throw Object.assign(new Error("Envie o arquivo do documento"), { fields: { reference: "Envie o arquivo" } });
+    await api.registerDemandExecutionDocument(demandId, {
+      kind: docKind as DemandAccountabilityDocumentKind,
+      title: docTitle.trim(),
+      reference: docFile.ref,
+      issuedOn: docIssuedOn || null,
+      scheduleItemId: docStage || null,
+      milestone: docMilestone || null,
+    });
+    setDocFile(null);
+    setDocKind("");
+    setDocTitle("");
+    setDocIssuedOn("");
+    setDocStage("");
+    setDocMilestone("");
+  });
+
   const addIncident = () => run("incident", async () => {
     await api.registerDemandIncident(demandId, {
       kind: incidentKind as DemandIncidentKind,
@@ -257,7 +286,7 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
                 style={{ borderColor: "var(--th-border)" }}
               >
                 <span style={{ color: "var(--th-text)" }}>{record.stage}</span>
-                <span style={{ color: "var(--th-muted)" }}>· {RECORD_MILESTONE_LABELS[record.milestone] ?? record.milestone}</span>
+                <span style={{ color: "var(--th-muted)" }}>· {EVIDENCE_MILESTONE_LABELS[record.milestone] ?? record.milestone}</span>
                 <Button
                   className="ml-auto"
                   type="button"
@@ -321,8 +350,8 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
               name={`exec-${demandId}-milestone`}
               label="Marco"
               value={milestone}
-              onValue={(v) => { setMilestone(v as DemandRecordMilestone); setPairWith(""); }}
-              options={RECORD_MILESTONES.map((m) => ({ value: m, label: RECORD_MILESTONE_LABELS[m] }))}
+              onValue={(v) => { setMilestone(v as DemandScheduleMilestone); setPairWith(""); }}
+              options={(data.allowedMilestones ?? RECORD_MILESTONES).map((m) => ({ value: m, label: EVIDENCE_MILESTONE_LABELS[m] }))}
               error={fields.milestone}
             />
             <TextInput
@@ -369,7 +398,7 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
           </div>
           <div className="mt-3">
             <FileUpload
-              label={`${EVIDENCE_MEDIA_LABELS[mediaKind]} do ${RECORD_MILESTONE_SHORT[milestone].toLowerCase()}`}
+              label={`${EVIDENCE_MEDIA_LABELS[mediaKind]} do ${EVIDENCE_MILESTONE_SHORT[milestone].toLowerCase()}`}
               purpose={EVIDENCE_PURPOSE_BY_MEDIA[mediaKind]}
               target={{ demandId }}
               value={file}
@@ -405,7 +434,7 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
                   style={{ borderColor: "var(--th-border)" }}
                 >
                   <span className="font-semibold" style={{ color: "var(--th-text)" }}>
-                    {RECORD_MILESTONE_SHORT[evidence.milestone]} · {EVIDENCE_MEDIA_LABELS[evidence.mediaKind]}
+                    {EVIDENCE_MILESTONE_SHORT[evidence.milestone]} · {EVIDENCE_MEDIA_LABELS[evidence.mediaKind]}
                   </span>
                   <span style={{ color: "var(--th-muted)" }}>
                     {formatRecordDate(evidence.recordedOn)}{evidence.stage ? ` · ${evidence.stage}` : ""}
@@ -587,6 +616,95 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
           <Button className="mt-3" type="button" size="sm" icon="send" loading={busy === "progress"} onClick={addProgress}>
             Registrar atualização
           </Button>
+        </section>
+      )}
+
+      {/* Documentos da execução (Modelo §20): laudos, certificados, notas fiscais. */}
+      {(data.canRegisterDocument || (data.documents ?? []).length > 0) && (
+        <section className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
+          <h3 className="mb-2 text-sm font-bold" style={{ color: "var(--th-text)" }}>Documentos da execução</h3>
+          {(data.documents ?? []).length > 0 ? (
+            <ul className="mb-3 space-y-1.5">
+              {(data.documents ?? []).map((doc) => (
+                <li key={doc.id} className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-1.5 text-sm" style={{ borderColor: "var(--th-border)" }}>
+                  <span className="font-semibold" style={{ color: "var(--th-text)" }}>{DOCUMENT_KIND_LABELS[doc.kind]}</span>
+                  <span style={{ color: "var(--th-text)" }}>{doc.title}</span>
+                  <span className="text-xs" style={{ color: "var(--th-muted)" }}>
+                    {doc.issuedOn ? `emitido em ${formatRecordDate(doc.issuedOn)}` : ""}
+                    {doc.stage ? ` · ${doc.stage}` : ""}
+                    {doc.milestone ? ` · ${EVIDENCE_MILESTONE_SHORT[doc.milestone]}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mb-2 text-sm" style={{ color: "var(--th-muted)" }}>Nenhum documento anexado ainda.</p>
+          )}
+          {data.canRegisterDocument && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SelectInput
+                name={`exec-${demandId}-doc-kind`}
+                label="Tipo de documento"
+                placeholder="Escolha o tipo"
+                value={docKind}
+                onValue={(v) => setDocKind(v as DemandAccountabilityDocumentKind | "")}
+                options={DOCUMENT_KINDS.map((k) => ({ value: k, label: DOCUMENT_KIND_LABELS[k] }))}
+                error={fields.kind}
+              />
+              <TextInput
+                name={`exec-${demandId}-doc-title`}
+                label="Título"
+                value={docTitle}
+                onValue={setDocTitle}
+                error={fields.title}
+              />
+              <TextInput
+                name={`exec-${demandId}-doc-date`}
+                label="Data de emissão"
+                type="date"
+                max={today()}
+                value={docIssuedOn}
+                onValue={setDocIssuedOn}
+                error={fields.issuedOn}
+              />
+              <SelectInput
+                name={`exec-${demandId}-doc-stage`}
+                label="Etapa do cronograma"
+                placeholder="Sem etapa específica"
+                value={docStage}
+                onValue={setDocStage}
+                options={stageOptions}
+                error={fields.scheduleItemId}
+              />
+              <SelectInput
+                name={`exec-${demandId}-doc-milestone`}
+                label="Marco"
+                placeholder="Sem marco específico"
+                value={docMilestone}
+                onValue={(v) => setDocMilestone(v as DemandScheduleMilestone | "")}
+                options={(data.allowedMilestones ?? RECORD_MILESTONES).map((m) => ({ value: m, label: EVIDENCE_MILESTONE_LABELS[m] }))}
+                error={fields.milestone}
+              />
+              <div className="sm:col-span-2">
+                <FileUpload
+                  label="Arquivo do documento"
+                  purpose={EXECUTION_DOCUMENT_PURPOSE}
+                  target={{ demandId }}
+                  value={docFile}
+                  onChange={setDocFile}
+                  error={fields.reference}
+                />
+                <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
+                  O público vê o tipo, o título e a data; o arquivo fica com você e com a equipe de análise.
+                </p>
+              </div>
+              <div className="sm:col-span-2">
+                <Button type="button" size="sm" icon="plus" loading={busy === "document"} onClick={addDocument}>
+                  Anexar documento
+                </Button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

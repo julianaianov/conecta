@@ -3,10 +3,11 @@
 // demanda.
 
 const {
-  RECORD_MILESTONES, EVIDENCE_MEDIA_KINDS, STAGE_PROGRESS, MAX_CAPTION, MAX_PARTIAL_RESULTS,
+  EVIDENCE_MEDIA_KINDS, STAGE_PROGRESS, MAX_CAPTION, MAX_PARTIAL_RESULTS,
   MAX_NOTE, MAX_REASON, MAX_EXPENSE_DESCRIPTION, MAX_EXPENSES, MAX_EXECUTED_CENTS,
-  INCIDENT_KINDS, INCIDENT_IMPACTS, MAX_INCIDENT_TEXT,
+  INCIDENT_KINDS, INCIDENT_IMPACTS, MAX_INCIDENT_TEXT, EVIDENCE_MILESTONES,
 } = require('./constants');
+const { DOCUMENT_KINDS, MAX_DOCUMENT_TITLE, MAX_DOCUMENT_DESCRIPTION, MAX_AMOUNT_CENTS } = require('../accountability/constants');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -89,9 +90,10 @@ function validateEvidence(input, { today = new Date() } = {}) {
   const reference = text(body.reference);
   if (!reference) errors.reference = 'Envie a foto ou o vídeo do registro';
 
+  // O marco do módulo da demanda é conferido na rota (`evidenceMilestonesFor`).
   const milestone = typeof body.milestone === 'string' ? body.milestone : '';
-  if (!RECORD_MILESTONES.includes(milestone)) {
-    errors.milestone = `Marcos aceitos: ${RECORD_MILESTONES.join(', ')}`;
+  if (!EVIDENCE_MILESTONES.includes(milestone)) {
+    errors.milestone = `Marcos aceitos: ${EVIDENCE_MILESTONES.join(', ')}`;
   }
 
   const mediaKind = typeof body.mediaKind === 'string' ? body.mediaKind : '';
@@ -259,6 +261,51 @@ function validateIncident(input, { today = new Date() } = {}) {
   return { value: { kind, description, occurredOn, impact, scheduleItemId, processId }, errors };
 }
 
+/**
+ * Documento da execução (T-05-12; Modelo de Conexão §20):
+ * `{ kind, title, reference, description?, issuedOn?, amountCents?,
+ *    scheduleItemId?, milestone?, progressUpdateId? }`. A referência é
+ * conferida contra `uploads` na rota.
+ */
+function validateExecutionDocument(input, { today = new Date(), milestones = EVIDENCE_MILESTONES } = {}) {
+  const body = input && typeof input === 'object' ? input : {};
+  const errors = {};
+  const kind = typeof body.kind === 'string' ? body.kind : '';
+  if (!DOCUMENT_KINDS.includes(kind)) errors.kind = `Tipos aceitos: ${DOCUMENT_KINDS.join(', ')}`;
+  const title = optionalText(body, 'title', errors, MAX_DOCUMENT_TITLE);
+  if (!title && !errors.title) errors.title = 'Dê um título ao documento';
+  const description = optionalText(body, 'description', errors, MAX_DOCUMENT_DESCRIPTION);
+  const reference = text(body.reference);
+  if (!reference) errors.reference = 'Envie o arquivo do documento';
+  const issuedOn = parseDate(body.issuedOn, errors, 'issuedOn', { future: false, today });
+  if (errors.issuedOn === 'A data do registro não fica no futuro') errors.issuedOn = 'A data de emissão não fica no futuro';
+  let amountCents = null;
+  if (body.amountCents !== undefined && body.amountCents !== null && body.amountCents !== '') {
+    const cents = typeof body.amountCents === 'number' ? body.amountCents : Number(body.amountCents);
+    if (!Number.isSafeInteger(cents) || cents < 0 || cents > MAX_AMOUNT_CENTS) {
+      errors.amountCents = 'Valor em centavos inteiros, não negativo';
+    } else {
+      amountCents = cents;
+    }
+  }
+  let milestone = null;
+  if (body.milestone !== undefined && body.milestone !== null && body.milestone !== '') {
+    if (!milestones.includes(body.milestone)) {
+      errors.milestone = `Marcos aceitos: ${milestones.join(', ')}`;
+    } else {
+      milestone = body.milestone;
+    }
+  }
+  const scheduleItemId = optionalUuid(body, 'scheduleItemId', errors);
+  const progressUpdateId = optionalUuid(body, 'progressUpdateId', errors);
+  return {
+    value: {
+      kind, title, description, reference, issuedOn, amountCents, milestone, scheduleItemId, progressUpdateId,
+    },
+    errors,
+  };
+}
+
 /** Resolução da ocorrência, gravada uma vez: `{ resolution }`. */
 function validateIncidentResolution(input) {
   const body = input && typeof input === 'object' ? input : {};
@@ -269,6 +316,7 @@ function validateIncidentResolution(input) {
 }
 
 module.exports = {
+  validateExecutionDocument,
   validateIncident,
   validateIncidentResolution,
   validateEvidence,

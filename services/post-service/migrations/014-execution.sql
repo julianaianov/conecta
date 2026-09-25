@@ -45,8 +45,8 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Situação da etapa do cronograma no momento da atualização (slide 23:
 -- "etapas concluídas" e "etapas em andamento").
--- TODO(fonte-da-verdade): Modelo de Conexão §18 — faltam os status Atrasada e Bloqueada da etapa;
--- espelho em src/execution/constants.js.
+-- Modelo de Conexão §18: `atrasada` e `bloqueada` entram na migração 034
+-- (espelho em src/execution/constants.js).
 DO $$ BEGIN
   CREATE TYPE demand_stage_progress AS ENUM ('nao_iniciada', 'em_andamento', 'concluida');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -145,7 +145,8 @@ CREATE TABLE IF NOT EXISTS demand_evidences (
   progress_update_id UUID REFERENCES demand_progress_updates(id) ON DELETE RESTRICT,
   -- Etapa do cronograma a que o registro se refere (slide 14).
   schedule_item_id   UUID,
-  -- TODO(fonte-da-verdade): Modelo de Conexão §20/§24 — faltam os marcos diagnóstico e monitoramento.
+  -- Marcos do módulo ambiental (§24: diagnóstico, intervenção, monitoramento)
+  -- entram no enum pela migração 032 e na evidência desde a T-05-12.
   milestone          demand_record_milestone NOT NULL,
   media_kind         demand_evidence_media NOT NULL,
   -- Arquivo da T08: `upload:<id>` de um upload confirmado desta demanda.

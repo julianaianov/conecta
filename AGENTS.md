@@ -905,6 +905,21 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   upload. Na prestação de contas, `evidence_acompanhamento` (condição
   `previsto_no_cronograma`) é exigência **informativa** (`informative: true`):
   aparece em `requirements` e nunca bloqueia `canConclude` nem o 422.
+- Documentos da execução (T-05-12; Modelo de Conexão §20): migração post 035
+  acrescenta `nota_fiscal`, `laudo`, `certificado`, `registro_tecnico`,
+  `relatorio` e `documento` a `demand_accountability_document_kind` (anexos da
+  prestação e da execução) e cria `demand_execution_documents` (só inserção,
+  etapa/marco/atualização opcionais, upload `demand_execution_document`,
+  privado, 25 MB, da execução em diante; evento público
+  `documento_da_execucao_registrado`). `POST /mine/:id/execution-documents`;
+  `documents` nas duas visões da execução (o público vê tipo, título, etapa,
+  marco, data e valor, nunca o arquivo) e `executionDocuments` na prestação de
+  contas. A 035 lê o CHECK de `uploads.purpose` do catálogo e só acrescenta a
+  finalidade nova.
+- Marcos do módulo ambiental (§24; enum da migração 032, T-05-08): a evidência
+  e o documento aceitam `diagnostico`, `intervencao` e `monitoramento` quando a
+  categoria é do módulo ambiental (`evidenceMilestonesFor`, 422 no campo
+  `milestone` nos demais); a visão do autor traz `allowedMilestones`.
 
 ## Mapa inteligente (T20)
 

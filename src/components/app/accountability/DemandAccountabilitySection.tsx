@@ -168,6 +168,32 @@ export function DemandAccountabilitySection({ data }: { data: PublicDemandAccoun
           </p>
         </div>
       )}
+
+      {(data.executionDocuments ?? []).length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>
+            Documentos anexados durante a execução
+          </p>
+          <ul className="space-y-1.5">
+            {(data.executionDocuments ?? []).map((document) => (
+              <li
+                key={document.id}
+                className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "var(--th-border)" }}
+              >
+                <span className="font-semibold" style={{ color: "var(--th-text)" }}>{document.title}</span>
+                <span style={{ color: "var(--th-muted)" }}>{DOCUMENT_KIND_LABELS[document.kind]}</span>
+                {document.stage && <span className="text-xs" style={{ color: "var(--th-muted)" }}>{document.stage}</span>}
+                {document.issuedOn && (
+                  <span className="text-xs font-numeric" style={{ color: "var(--th-muted)" }}>
+                    {formatAccountabilityDate(document.issuedOn)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </ReadSection>
   );
 }

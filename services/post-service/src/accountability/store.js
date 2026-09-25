@@ -214,6 +214,16 @@ function summarize(results, documents) {
   };
 }
 
+/**
+ * Documentos anexados durante a execução (T-05-12, `demand_execution_documents`),
+ * na projeção pública: a prestação os lista no resumo.
+ */
+async function listExecutionDocuments(db, demandId) {
+  const execution = require('../execution/store');
+  const rows = await execution.listExecutionDocuments(db, demandId);
+  return rows.map(execution.serializePublicExecutionDocument);
+}
+
 /** Prestação concluída de uma demanda, para o dossiê e a página pública. */
 async function loadConcludedView(db, demandId) {
   const row = await loadAccountability(db, demandId);
@@ -221,12 +231,14 @@ async function loadConcludedView(db, demandId) {
   // Em sequência: `db` pode ser o cliente de uma transação (dossiê).
   const results = await listResults(db, row.id);
   const documents = await listDocuments(db, row.id);
+  const executionDocuments = await listExecutionDocuments(db, demandId);
   const publicResults = results.map(serializePublicResult);
   const publicDocuments = documents.map(serializePublicDocument);
   return {
     accountability: serializePublicAccountability(row),
     results: publicResults,
     documents: publicDocuments,
+    executionDocuments,
     summary: summarize(publicResults, publicDocuments),
   };
 }
@@ -258,6 +270,7 @@ module.exports = {
   listGoalsWithResults,
   evidenceMilestones,
   plannedMonitoring,
+  listExecutionDocuments,
   summarize,
   loadConcludedView,
   loadDocument,

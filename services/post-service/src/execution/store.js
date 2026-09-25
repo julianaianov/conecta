@@ -250,6 +250,59 @@ async function scheduleStatus(db, demandId, { running = false, today = new Date(
   });
 }
 
+const EXECUTION_DOCUMENT_SQL = `
+  x.id, x.demand_id, x.progress_update_id, x.schedule_item_id, x.milestone::text AS milestone,
+  x.kind::text AS kind, x.title, x.description, x.reference, x.upload_id, x.issued_on, x.amount_cents,
+  x.author_id, x.author_name, x.created_at,
+  (SELECT s.stage FROM demand_schedule_items s WHERE s.id = x.schedule_item_id) AS stage`;
+
+/** Documento da execução visto pelo Agente autor (com a referência do arquivo). */
+function serializeExecutionDocument(row) {
+  return {
+    id: row.id,
+    progressUpdateId: row.progress_update_id ?? null,
+    scheduleItemId: row.schedule_item_id ?? null,
+    stage: row.stage ?? null,
+    milestone: row.milestone ?? null,
+    kind: row.kind,
+    title: row.title,
+    description: row.description ?? null,
+    reference: row.reference,
+    issuedOn: toDate(row.issued_on),
+    amountCents: row.amount_cents === null || row.amount_cents === undefined ? null : Number(row.amount_cents),
+    author: { userId: row.author_id, name: row.author_name ?? null },
+    createdAt: toIso(row.created_at),
+  };
+}
+
+/**
+ * Documento no acompanhamento público: tipo, título, etapa, marco, data e
+ * valor declarado — nunca o arquivo, a descrição ou o autor (como os anexos da
+ * prestação de contas).
+ */
+function serializePublicExecutionDocument(row) {
+  return {
+    id: row.id,
+    scheduleItemId: row.schedule_item_id ?? null,
+    stage: row.stage ?? null,
+    milestone: row.milestone ?? null,
+    kind: row.kind,
+    title: row.title,
+    issuedOn: toDate(row.issued_on),
+    amountCents: row.amount_cents === null || row.amount_cents === undefined ? null : Number(row.amount_cents),
+    createdAt: toIso(row.created_at),
+  };
+}
+
+async function listExecutionDocuments(db, demandId) {
+  const { rows } = await db.query(
+    `SELECT ${EXECUTION_DOCUMENT_SQL} FROM demand_execution_documents x
+      WHERE x.demand_id = $1 ORDER BY x.created_at, x.id`,
+    [demandId],
+  );
+  return rows;
+}
+
 const INCIDENT_SQL = `
   i.id, i.demand_id, i.process_id, i.schedule_item_id, i.kind::text AS kind, i.description,
   i.occurred_on, i.impact::text AS impact, i.author_id, i.author_name, i.resolved_at, i.resolution,
@@ -350,11 +403,13 @@ function pendingRecords(schedule = [], evidences = []) {
 
 /** Quantas evidências há por marco (pendências das transições). */
 function milestoneCounts(evidences) {
-  return {
-    antes: evidences.filter((e) => e.milestone === 'antes').length,
-    acompanhamento: evidences.filter((e) => e.milestone === 'acompanhamento').length,
-    depois: evidences.filter((e) => e.milestone === 'depois').length,
-  };
+  const count = (milestone) => evidences.filter((e) => e.milestone === milestone).length;
+  const counts = { antes: count('antes'), acompanhamento: count('acompanhamento'), depois: count('depois') };
+  // Marcos do módulo ambiental (§24) só entram quando há registro.
+  for (const milestone of ['diagnostico', 'intervencao', 'monitoramento']) {
+    if (count(milestone) > 0) counts[milestone] = count(milestone);
+  }
+  return counts;
 }
 
 /** Evidência da demanda; 404 quando é de outra demanda. */
@@ -382,6 +437,10 @@ module.exports = {
   pairsOf,
   budgetExecution,
   scheduleStatus,
+  EXECUTION_DOCUMENT_SQL,
+  serializeExecutionDocument,
+  serializePublicExecutionDocument,
+  listExecutionDocuments,
   INCIDENT_SQL,
   serializeIncident,
   serializePublicIncident,

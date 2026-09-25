@@ -19,9 +19,14 @@ function enumValues(text, type) {
   return [...match[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 }
 
-test('os estados e os tipos de anexo são os enums da migração 015', () => {
+test('os estados e os tipos de anexo são os enums das migrações 015 e 035', () => {
+  const added = fs.readFileSync(path.join(__dirname, '../migrations/035-execution-documents.sql'), 'utf8');
   assert.deepEqual(enumValues(sql, 'demand_accountability_status'), A.ACCOUNTABILITY_STATUSES);
-  assert.deepEqual(enumValues(sql, 'demand_accountability_document_kind'), A.DOCUMENT_KINDS);
+  assert.deepEqual([
+    ...enumValues(sql, 'demand_accountability_document_kind'),
+    ...[...added.matchAll(/ALTER TYPE demand_accountability_document_kind ADD VALUE IF NOT EXISTS '([a-z_]+)'/g)]
+      .map((m) => m[1]),
+  ], A.DOCUMENT_KINDS);
   assert.deepEqual(Object.keys(A.ACCOUNTABILITY_STATUS_LABELS).sort(), [...A.ACCOUNTABILITY_STATUSES].sort());
   assert.deepEqual(Object.keys(A.DOCUMENT_KIND_LABELS).sort(), [...A.DOCUMENT_KINDS].sort());
 });

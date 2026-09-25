@@ -22,6 +22,8 @@
 //   POST /mine/:id/progress              atualização de andamento e execução
 //                                        orçamentária (só inserção)
 //   POST /mine/:id/record-waiver         justifica a ausência de execução física
+//   POST /mine/:id/execution-documents   laudo, certificado, nota fiscal,
+//                                        registro técnico (Modelo §20; T-05-12)
 //   POST /mine/:id/incidents             registra ocorrência (Modelo §19)
 //   POST /mine/:id/incidents/:incidentId/resolve   resolução, gravada uma vez
 //
@@ -44,11 +46,12 @@ const { PUBLIC_STATUSES } = require('../demand/constants');
 const { findUsableUpload, parseUploadRef, formatUploadRef } = require('../uploads');
 const {
   EVIDENCE_PURPOSE_BY_MEDIA, EVIDENCE_OPEN_STATUSES, PROGRESS_OPEN_STATUSES, WAIVER_OPEN_STATUSES,
-  RECORD_MILESTONES,
+  RECORD_MILESTONES, EXECUTION_DOCUMENT_PURPOSE, EXECUTION_DOCUMENT_OPEN_STATUSES, MAX_EXECUTION_DOCUMENTS,
+  evidenceMilestonesFor,
 } = require('../execution/constants');
 const {
   validateEvidence, validateEvidenceUpdate, validateProgressUpdate, validateRecordWaiver,
-  validateIncident, validateIncidentResolution,
+  validateIncident, validateIncidentResolution, validateExecutionDocument,
 } = require('../execution/validation');
 const store = require('../execution/store');
 const { listHelpers } = require('./demands');
@@ -70,6 +73,12 @@ function mapExecutionDbError(err) {
   }
   if (err?.code === '23514' && /o par da evidência|o "depois" é pareado|o par antes\/depois|não é pareada consigo/.test(message)) {
     return new HttpError(422, { error: message, code: 'validation_failed', fields: { pairEvidenceId: message } });
+  }
+  if (err?.code === '23514' && /arquivo do documento|documento da execução usa/.test(message)) {
+    return new HttpError(422, { error: message, code: 'validation_failed', fields: { reference: message } });
+  }
+  if (err?.code === '23505' && /demand_execution_documents_upload/.test(message)) {
+    return new HttpError(409, { error: 'Este arquivo já foi registrado como documento', code: 'document_exists' });
   }
   if (err?.code === '23514' && /arquivo da evidência|arquivo já confirmado|demand_evidence_photo/.test(message)) {
     return new HttpError(422, { error: message, code: 'validation_failed', fields: { reference: message } });
@@ -124,6 +133,13 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
     return rows[0];
   }
 
+  /** Marco do módulo da demanda (o ambiental soma diagnóstico, intervenção e monitoramento). */
+  function assertModuleMilestone(demand, milestone) {
+    if (milestone && !evidenceMilestonesFor(demand.category).includes(milestone)) {
+      throw validationError({ milestone: 'Diagnóstico, intervenção e monitoramento são marcos do módulo ambiental' });
+    }
+  }
+
   function assertOpen(demand, statuses, message) {
     if (!statuses.includes(demand.status)) {
       throw new HttpError(409, { error: message, code: 'demand_not_open', status: demand.status });
@@ -149,12 +165,13 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
 
   /** Visão completa da execução, para o público e para o autor. */
   async function executionView(db, demandId, { owner, status }) {
-    const [rawEvidences, progress, budget, schedule, rawIncidents] = await Promise.all([
+    const [rawEvidences, progress, budget, schedule, rawIncidents, rawDocuments] = await Promise.all([
       store.listEvidences(db, demandId),
       store.listProgress(db, demandId),
       store.budgetExecution(db, demandId),
       store.scheduleStatus(db, demandId, { running: status === 'em_execucao' }),
       store.listIncidents(db, demandId),
+      store.listExecutionDocuments(db, demandId),
     ]);
     const evidences = rawEvidences.map(owner ? store.serializeEvidence : store.serializePublicEvidence);
     const incidents = rawIncidents.map(owner ? store.serializeIncident : store.serializePublicIncident);
@@ -168,6 +185,7 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
       budgetExecution: budget,
       schedule,
       incidents,
+      documents: rawDocuments.map(owner ? store.serializeExecutionDocument : store.serializePublicExecutionDocument),
       summary: store.executionSummary(schedule, budget, incidents),
     };
   }
@@ -200,6 +218,9 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
       canRegisterEvidence: EVIDENCE_OPEN_STATUSES.includes(demand.status),
       canRegisterProgress: PROGRESS_OPEN_STATUSES.includes(demand.status),
       canRegisterIncident: PROGRESS_OPEN_STATUSES.includes(demand.status),
+      canRegisterDocument: EXECUTION_DOCUMENT_OPEN_STATUSES.includes(demand.status),
+      // Marcos aceitos na evidência e no documento (módulo da demanda, §24).
+      allowedMilestones: evidenceMilestonesFor(demand.category),
       canWaiveRecord: !waived && WAIVER_OPEN_STATUSES.includes(demand.status),
       // Pendências das transições (`iniciar_execucao` e `concluir`) e, em
       // `records`, os registros previstos por etapa no cronograma e ainda não
@@ -219,6 +240,7 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
       const demand = await demandStore.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
       assertOpen(demand, EVIDENCE_OPEN_STATUSES,
         'A evidência da execução é registrada com a demanda publicada');
+      assertModuleMilestone(demand, value.milestone);
       const upload = await checkEvidenceUpload(client, value.reference, value.mediaKind, req.user.userId, demand.id);
       if (value.scheduleItemId) {
         const { rowCount } = await client.query(
@@ -368,6 +390,65 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
         ? waiver.record_waiver_at.toISOString()
         : waiver.record_waiver_at ?? null,
     });
+  }));
+
+  // Documentos da execução (Modelo de Conexão §20): laudos, certificados,
+  // notas fiscais, registros técnicos. Só inserção; o público vê tipo, título,
+  // etapa, marco e data, nunca o arquivo.
+  router.post('/mine/:id/execution-documents', auth, requireAgent, validatedAgent, handle(async (req, res) => {
+    const { value, errors } = validateExecutionDocument(req.body ?? {});
+    if (Object.keys(errors).length) throw validationError(errors);
+    const document = await withTransaction(pool, async (client) => {
+      const demand = await demandStore.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
+      assertOpen(demand, EXECUTION_DOCUMENT_OPEN_STATUSES,
+        'Os documentos da execução são anexados a partir do início da execução');
+      assertModuleMilestone(demand, value.milestone);
+      const { rows: [count] } = await client.query(
+        'SELECT count(*)::int AS total FROM demand_execution_documents WHERE demand_id = $1', [demand.id],
+      );
+      if (Number(count?.total ?? 0) >= MAX_EXECUTION_DOCUMENTS) {
+        throw validationError({ reference: `Anexe no máximo ${MAX_EXECUTION_DOCUMENTS} documentos da execução` });
+      }
+      const id = parseUploadRef(value.reference);
+      const upload = id ? await findUsableUpload(client, {
+        id, ownerId: req.user.userId, purpose: EXECUTION_DOCUMENT_PURPOSE, targetColumn: 'demand_id', targetId: demand.id,
+      }) : null;
+      if (!upload) {
+        throw validationError({
+          reference: 'Envie e confirme o arquivo desta demanda (finalidade "documento da execução")',
+        });
+      }
+      if (value.scheduleItemId) {
+        const { rowCount } = await client.query(
+          'SELECT 1 FROM demand_schedule_items WHERE id = $1 AND demand_id = $2', [value.scheduleItemId, demand.id],
+        );
+        if (!rowCount) throw validationError({ scheduleItemId: 'Escolha uma etapa do cronograma desta demanda' });
+      }
+      if (value.progressUpdateId) {
+        const { rowCount } = await client.query(
+          'SELECT 1 FROM demand_progress_updates WHERE id = $1 AND demand_id = $2', [value.progressUpdateId, demand.id],
+        );
+        if (!rowCount) throw validationError({ progressUpdateId: 'Escolha uma atualização desta demanda' });
+      }
+      const { rows: [row] } = await client.query(
+        `INSERT INTO demand_execution_documents
+           (demand_id, progress_update_id, schedule_item_id, milestone, kind, title, description,
+            reference, upload_id, issued_on, amount_cents, author_id, author_name)
+         VALUES ($1, $2, $3, $4::demand_record_milestone, $5::demand_accountability_document_kind, $6, $7,
+                 $8, $9, $10, $11, $12, $13)
+         RETURNING id`,
+        [
+          demand.id, value.progressUpdateId, value.scheduleItemId, value.milestone, value.kind, value.title,
+          value.description, formatUploadRef(upload.id), upload.id, value.issuedOn, value.amountCents,
+          req.user.userId, req.user.name || null,
+        ],
+      );
+      const { rows: [saved] } = await client.query(
+        `SELECT ${store.EXECUTION_DOCUMENT_SQL} FROM demand_execution_documents x WHERE x.id = $1`, [row.id],
+      );
+      return saved;
+    });
+    res.status(201).json({ document: store.serializeExecutionDocument(document) });
   }));
 
   // Ocorrências da execução (Modelo de Conexão §19): só inserção; entram na

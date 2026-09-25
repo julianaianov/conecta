@@ -14,6 +14,7 @@ import type {
   DemandIncidentImpact,
   DemandIncidentKind,
   DemandRecordMilestone,
+  DemandScheduleMilestone,
   DemandStageProgress,
   DemandStatus,
   DemandTimelineEvent,
@@ -34,6 +35,38 @@ export const RECORD_MILESTONE_SHORT: Record<DemandRecordMilestone, string> = {
   acompanhamento: "Acompanhamento",
   depois: "Depois",
 };
+
+/**
+ * Marcos da evidência e do documento da execução: os três comuns e, no módulo
+ * ambiental, diagnóstico, intervenção e monitoramento (Modelo de Conexão §24).
+ * O servidor devolve os aceitos para a demanda em `allowedMilestones`.
+ */
+export const EVIDENCE_MILESTONES: DemandScheduleMilestone[] = [
+  "antes", "diagnostico", "intervencao", "monitoramento", "acompanhamento", "depois",
+];
+
+export const EVIDENCE_MILESTONE_LABELS: Record<DemandScheduleMilestone, string> = {
+  antes: "Antes (situação inicial)",
+  diagnostico: "Diagnóstico",
+  intervencao: "Intervenção",
+  monitoramento: "Monitoramento",
+  acompanhamento: "Acompanhamento (durante a execução)",
+  depois: "Depois (resultado final)",
+};
+
+export const EVIDENCE_MILESTONE_SHORT: Record<DemandScheduleMilestone, string> = {
+  antes: "Antes",
+  diagnostico: "Diagnóstico",
+  intervencao: "Intervenção",
+  monitoramento: "Monitoramento",
+  acompanhamento: "Acompanhamento",
+  depois: "Depois",
+};
+
+/** Documentos da execução (Modelo de Conexão §20; T-05-12). */
+export const EXECUTION_DOCUMENT_PURPOSE: UploadPurpose = "demand_execution_document";
+export const EXECUTION_DOCUMENT_OPEN_STATUSES: DemandStatus[] = ["em_execucao", "concluida", "prestacao_de_contas"];
+export const MAX_EXECUTION_DOCUMENTS = 100;
 
 export const EVIDENCE_MEDIA_KINDS: DemandEvidenceMediaKind[] = ["foto", "video"];
 
@@ -121,6 +154,7 @@ export const EXECUTION_EVENT_TYPES = [
   "evidencia_registrada", "registro_pareado", "andamento_registrado",
   "prazo_alterado", "registro_dispensado",
   "etapa_atrasada", "ocorrencia_registrada", "ocorrencia_resolvida",
+  "documento_da_execucao_registrado",
 ];
 
 export const MAX_CAPTION = 500;
@@ -143,10 +177,10 @@ export function executionTimelineLabel(event: Pick<DemandTimelineEvent, "type" |
   const d = event.details ?? {};
   switch (event.type) {
     case "evidencia_registrada": {
-      const milestone = d.milestone as DemandRecordMilestone | undefined;
+      const milestone = d.milestone as DemandScheduleMilestone | undefined;
       const kind = d.mediaKind as DemandEvidenceMediaKind | undefined;
       const what = kind ? EVIDENCE_MEDIA_LABELS[kind].toLowerCase() : "registro";
-      const when = milestone ? RECORD_MILESTONE_SHORT[milestone].toLowerCase() : "execução";
+      const when = milestone && milestone in EVIDENCE_MILESTONE_SHORT ? EVIDENCE_MILESTONE_SHORT[milestone].toLowerCase() : "execução";
       return `Evidência registrada: ${what} do ${when}`;
     }
     case "registro_pareado":
@@ -163,6 +197,8 @@ export function executionTimelineLabel(event: Pick<DemandTimelineEvent, "type" |
       return "Ocorrência registrada na execução";
     case "ocorrencia_resolvida":
       return "Ocorrência resolvida";
+    case "documento_da_execucao_registrado":
+      return "Documento da execução anexado";
     default:
       return null;
   }
@@ -198,6 +234,9 @@ export function executionTimelineDetail(event: Pick<DemandTimelineEvent, "type" 
   const x = d as Record<string, unknown>;
   if (event.type === "andamento_registrado" && typeof x.blockReason === "string" && x.blockReason) {
     parts.push(`motivo do bloqueio: ${x.blockReason}`);
+  }
+  if (event.type === "documento_da_execucao_registrado" && typeof x.title === "string") {
+    parts.push(x.title);
   }
   if (event.type === "etapa_atrasada") {
     const dueOn = typeof x.dueOn === "string" ? formatRecordDate(x.dueOn.slice(0, 10)) : "";

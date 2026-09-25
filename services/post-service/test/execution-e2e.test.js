@@ -64,7 +64,7 @@ test('execução: evidências antes/depois, andamento, orçamento executado e hi
                            demand_progress_updates, demand_progress_expenses, posts TO gestao_app`);
       // dm-infra 031 (T-05-11/T-05-12): atraso gravado, situação da etapa e ocorrências.
       await admin.query(`GRANT SELECT ON demand_stage_delays, demand_stage_status,
-                           demand_execution_incidents TO gestao_app`);
+                           demand_execution_incidents, demand_execution_documents TO gestao_app`);
       await admin.query(`GRANT UPDATE (status, review_state, review_note, reviewed_by, archive_reason, updated_at)
                            ON demands TO gestao_app`);
     } catch (err) {
@@ -521,6 +521,42 @@ test('execução: evidências antes/depois, andamento, orçamento executado e hi
       );
       await assert.rejects(pool.query('DELETE FROM demand_execution_incidents WHERE id = $1', [incidentId]),
         /não são excluídas/);
+
+      // Documentos da execução (Modelo §20; T-05-12): laudo com a demanda em execução.
+      const semArquivoDoc = await call('POST', `/demands/mine/${quadra.id}/execution-documents`, {
+        body: { kind: 'laudo', title: 'Laudo.pdf', reference: await confirmedUpload(quadra.id, 'demand_evidence_photo') },
+      });
+      assert.equal(semArquivoDoc.status, 422, 'foto do antes/depois não vira documento da execução');
+      const laudo = await call('POST', `/demands/mine/${quadra.id}/execution-documents`, {
+        body: {
+          kind: 'laudo', title: 'Laudo.pdf', reference: await confirmedUpload(quadra.id, 'demand_execution_document'),
+          issuedOn: daysAgo(1), scheduleItemId: quadra.scheduleItemId, milestone: 'acompanhamento',
+          description: 'Laudo estrutural da arquibancada.',
+        },
+      });
+      assert.equal(laudo.status, 201, JSON.stringify(laudo.body));
+      assert.equal(laudo.body.document.kind, 'laudo');
+      assert.equal(laudo.body.document.stage, 'Execução da obra');
+      assert.match(laudo.body.document.reference, /^upload:/);
+      await assert.rejects(
+        pool.query('DELETE FROM demand_execution_documents WHERE id = $1', [laudo.body.document.id]),
+        /não muda nem é excluído/,
+      );
+      const comDocumento = await call('GET', `/demands/${quadra.id}/execution`, { auth: false });
+      assert.equal(comDocumento.body.documents.length, 1);
+      assert.equal(comDocumento.body.documents[0].title, 'Laudo.pdf');
+      assert.equal(comDocumento.body.documents[0].reference, undefined, 'o público não recebe o arquivo');
+      assert.equal(comDocumento.body.documents[0].description, undefined);
+      const { rows: docsGestao } = await gestao.query(
+        'SELECT kind::text AS kind FROM demand_execution_documents WHERE demand_id = $1', [quadra.id],
+      );
+      assert.deepEqual(docsGestao.map((d) => d.kind), ['laudo']);
+      // Antes do início da execução o documento não entra.
+      const cedoDoc = await call('POST', `/demands/mine/${outra.id}/execution-documents`, {
+        body: { kind: 'certificado', title: 'Certificado', reference: `upload:${crypto.randomUUID()}` },
+      });
+      assert.equal(cedoDoc.status, 409);
+      assert.equal(cedoDoc.body.code, 'demand_not_open');
 
       const concluida = await call('POST', `/demands/mine/${quadra.id}/progress`, {
         body: { scheduleItemId: quadra.scheduleItemId, stageProgress: 'concluida' },

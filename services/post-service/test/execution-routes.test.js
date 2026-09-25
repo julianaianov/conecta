@@ -162,3 +162,12 @@ test('ocorrências: token, papel, validação e id inválido antes do banco (Mod
     assert.equal(bad.body.error, 'Ocorrência não encontrada');
   });
 });
+
+test('documento da execução: validação por campo antes do banco (T-05-12)', async () => {
+  await withServer(async (base) => {
+    assert.equal((await send(base, 'POST', `/demands/mine/${DEMAND}/execution-documents`, { kind: 'laudo' }, {})).status, 401);
+    const res = await send(base, 'POST', `/demands/mine/${DEMAND}/execution-documents`, { kind: 'foto' });
+    assert.equal(res.status, 422);
+    assert.ok(res.body.fields.kind && res.body.fields.title && res.body.fields.reference);
+  });
+});
