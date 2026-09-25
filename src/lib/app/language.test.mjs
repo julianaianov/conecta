@@ -7,6 +7,8 @@ const root = path.resolve(import.meta.dirname, "../../..");
 
 const productFiles = [
   "src/app/layout.tsx",
+  "src/lib/constants.ts",
+  "src/lib/banner-data.ts",
   "src/components/Footer.tsx",
   "src/components/Hero.tsx",
   "src/components/ImpactGallery.tsx",
@@ -52,6 +54,8 @@ const forbiddenProductLanguage = [
   // A Arquitetura de Perfis §3.2 lista "Curtir/apoiar": o cadastro mostra o texto da fonte
   // (ROLE_PERMISSION_LABELS em types.ts); nas telas do produto a ação é a marcação de apoio.
   /\bcurtir\b/i,
+  // Arquitetura de Perfis §5: "Cidadão" → "Membros da Comunidade".
+  /\bcidad[ãa]os?\b/i,
 ];
 
 test("a interface usa linguagem de plataforma territorial", () => {

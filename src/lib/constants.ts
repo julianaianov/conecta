@@ -101,7 +101,7 @@ export const STEPS = [
 ] as const;
 
 export const COMMUNITY_BENEFITS = [
-  "Gratuito para cidadãos e voluntários",
+  "Gratuito para membros da comunidade e voluntários",
   "Web, Android e iOS",
   "Dados seguros e privacidade respeitada",
 ] as const;
