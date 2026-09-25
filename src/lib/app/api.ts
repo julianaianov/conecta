@@ -1554,18 +1554,8 @@ export const api = {
 
   // ── EXECUÇÃO, EVIDÊNCIAS E ACOMPANHAMENTO (T17) ──────────────────────────
   /** Histórico visual e acompanhamento públicos da execução. */
-  async publicDemandExecution(id: string): Promise<PublicDemandExecution | null> {
-    const data = await demandRequest<PublicDemandExecution>(`/${encodeURIComponent(id)}/execution`);
-    if (!data) return null;
-    // Mídia em `/api/posts/...` com a base da API, como no SSR (tela do órgão, T-03-02).
-    const withUrl = <T extends { url: string | null }>(e: T): T => ({ ...e, url: e.url ? resolveMediaUrl(e.url, BASE) : null });
-    return {
-      ...data,
-      evidences: (data.evidences ?? []).map(withUrl),
-      pairs: (data.pairs ?? []).map((pair) => ({ ...pair, before: withUrl(pair.before), after: withUrl(pair.after) })),
-      progress: data.progress ?? [],
-      schedule: data.schedule ?? [],
-    };
+  publicDemandExecution(id: string): Promise<PublicDemandExecution | null> {
+    return demandRequest<PublicDemandExecution>(`/${encodeURIComponent(id)}/execution`);
   },
 
   /** Agente autor: evidências, andamento, execução orçamentária e pendências. */
