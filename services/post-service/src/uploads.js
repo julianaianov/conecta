@@ -111,13 +111,14 @@ const PURPOSES = {
   },
   // Processo de Conexão (Modelo de Conexão §12 e §17): anexos da comunicação
   // (documentos e imagens) e documentos do processo, das partes (T-05-02/T-05-04).
+  // Institucional: a política do post-service decide (src/process/upload-access.js).
   process_attachment: {
     label: 'Anexo da comunicação do processo', target: 'process', folder: 'attachments',
-    types: { ...DOCUMENT_TYPES, ...IMAGE_TYPES }, maxBytes: 25 * MB, visibility: 'private',
+    types: { ...DOCUMENT_TYPES, ...IMAGE_TYPES }, maxBytes: 25 * MB, visibility: 'institutional',
   },
   process_document: {
     label: 'Documento do processo', target: 'process', folder: 'documents',
-    types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
+    types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'institutional',
   },
 };
 

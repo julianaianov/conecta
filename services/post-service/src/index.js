@@ -14,6 +14,7 @@ const { createPostUploadPolicy } = require('./upload-policy');
 const dossierRoutes = require('./routes/dossiers');
 const documentAccessRoutes = require('./routes/document-access');
 const { createInstitutionalUploadAccess } = require('./access/documents');
+const { createProcessUploadAccess } = require('./process/upload-access');
 const { createDossierService } = require('./dossier/service');
 const { createPublicInstitutionClient } = require('./dossier/institution');
 const institutionalRoutes = require('./routes/institutional');
@@ -26,6 +27,7 @@ const interestsRoutes = require('./routes/interests');
 const processesRoutes = require('./routes/processes');
 const analysisRequestsRoutes = require('./routes/analysis-requests');
 const processCommunicationRoutes = require('./routes/process-communication');
+const processDocumentsRoutes = require('./routes/process-documents');
 const supportsRoutes = require('./routes/supports');
 const executionRoutes = require('./routes/execution');
 const accountabilityRoutes = require('./routes/accountability');
@@ -108,8 +110,12 @@ const createApp = ({
   // Antes das rotas de posts, cujo `/:id` só aceita UUID. Público: /api/posts/demands.
   app.use('/uploads', createUploadRoutes({
     pool, auth, storage: uploadStorage, policy: createPostUploadPolicy({ institutionStatus }), operationUserIds,
-    // Documento da demanda no nível Institucional (T-05-18).
-    institutionalAccess: createInstitutionalUploadAccess({ institutionStatus, operationUserIds }),
+    // Documento da demanda no nível Institucional (T-05-18); arquivos do
+    // Processo de Conexão pela mesma regra (T-05-02, T-05-04).
+    institutionalAccess: ((demandAccess, processAccess) => (db, row, req) => (
+      row.process_id ? processAccess(db, row, req) : demandAccess(db, row, req)
+    ))(createInstitutionalUploadAccess({ institutionStatus, operationUserIds }),
+      createProcessUploadAccess({ institutionStatus, operationUserIds })),
   }));
   // Atuação institucional do Poder Público (T13) e encaminhamentos (T14):
   // /institutional/* e /demands/:id/institutional.
@@ -134,6 +140,8 @@ const createApp = ({
   app.use('/demands', analysisRequestsRoutes({ pool, auth, validatedAgent, institutionStatus }));
   // Comunicação do processo (T-05-02): /processes/:ref/messages, com anexos do bucket de uploads.
   app.use('/', processCommunicationRoutes({ pool, auth, institutionStatus, uploadStorage }));
+  // Documentos do processo com versão, status e acesso (T-05-04): /processes/:ref/documents.
+  app.use('/', processDocumentsRoutes({ pool, auth, institutionStatus, uploadStorage, operationUserIds }));
   // Registro de apoio realizado, dupla confirmação e histórico de apoio (T16).
   app.use('/demands', supportsRoutes({ pool, auth, governmentGate: institutional, institutionStatus }));
   // Execução, evidências do antes/depois e acompanhamento (T17).

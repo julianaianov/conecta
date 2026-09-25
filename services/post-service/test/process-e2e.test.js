@@ -405,7 +405,8 @@ async function processFixture() {
   // Grants do dm-infra (db/migrations/gestao/025 e 026).
   await admin.query(`DO $$ BEGIN CREATE ROLE gestao_app LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
   await admin.query(`GRANT SELECT ON demands, demand_events, connection_processes, uploads,
-                       connection_process_messages, connection_process_message_reads TO gestao_app`);
+                       connection_process_messages, connection_process_message_reads,
+                       connection_process_documents TO gestao_app`);
   await admin.query(`GRANT UPDATE (status, review_state, review_note, reviewed_by, archive_reason, updated_at)
                        ON demands TO gestao_app`);
   admin.release();
@@ -608,6 +609,136 @@ test('Comunicação do processo (T-05-02): cargo, instituição, destinatário, 
       const closed = await call('POST', `/processes/${p.id}/messages`, { as: AGENT, body: { body: 'Ainda dá?' } });
       assert.equal(closed.status, 409);
       assert.equal(closed.body.code, 'process_closed');
+    } finally {
+      await f.close();
+    }
+  });
+
+test('Documentos do processo (T-05-04): versões, status, acesso público/institucional/restrito, arquivo de 60 s e LGPD',
+  { skip: !DATABASE_URL && 'defina DM_E2E_DATABASE_URL (npm run test:e2e)' }, async () => {
+    const f = await processFixture();
+    const { call, pool, gestao } = f;
+    try {
+      const { demand, process: p } = await f.partnerProcess('Quadra sem cobertura');
+      // Outro órgão formaliza o próprio processo na demanda: fica envolvido (T-05-18).
+      const govProcess = await call('POST', `/institutional/demands/${demand}/formalize`, {
+        as: GOV2, body: { contributionKinds: ['autorizacao'] },
+      });
+      assert.equal(govProcess.status, 201, JSON.stringify(govProcess.body));
+
+      async function sendDocument(as, fileName, body) {
+        const up = await f.upload(as, 'process_document', p.id, XLSX_TYPE, XLSX, fileName);
+        const confirmed = await up.confirm();
+        assert.equal(confirmed.status, 200, JSON.stringify(confirmed.body));
+        return call('POST', `/processes/${p.id}/documents`, { as, body: { uploadId: confirmed.body.ref, ...body } });
+      }
+
+      // "Orçamento.xlsx" duas vezes no mesmo grupo: v1 substituído, v2 vigente.
+      const v1 = await sendDocument(PARTNER, 'Orçamento.xlsx', { name: 'Orçamento', documentType: 'orcamento' });
+      assert.equal(v1.status, 201, JSON.stringify(v1.body));
+      assert.equal(v1.body.document.version, 1);
+      assert.equal(v1.body.document.status, 'vigente');
+      assert.equal(v1.body.document.accessLevel, 'institucional');
+      const v2 = await sendDocument(PARTNER, 'Orçamento.xlsx', {
+        name: 'Orçamento', documentType: 'orcamento', replacesGroupId: v1.body.document.groupId,
+      });
+      assert.equal(v2.status, 201, JSON.stringify(v2.body));
+      assert.equal(v2.body.document.version, 2);
+      const list = await call('GET', `/processes/${p.protocol}/documents`, { as: AGENT });
+      assert.equal(list.status, 200);
+      const budget = list.body.groups.find((g) => g.groupId === v1.body.document.groupId);
+      assert.deepEqual(budget.versions.map((v) => [v.version, v.status]), [[2, 'vigente'], [1, 'substituido']]);
+      assert.equal(budget.versions[0].uploadedBy.name, 'Construtora Horizonte');
+      assert.equal(budget.versions[0].upload.fileName, 'Orçamento.xlsx');
+
+      // Arquivo por URL de 60 s: parte baixa o institucional; terceiro recebe 404.
+      const fileUrl = (d, as) => call('GET', `/processes/${p.id}/documents/${d}/file`, { as });
+      const agentFile = await fileUrl(v2.body.document.id, AGENT);
+      assert.equal(agentFile.status, 200, JSON.stringify(agentFile.body));
+      assert.match(agentFile.body.url, /ttl=60/);
+      assert.equal((await fileUrl(v2.body.document.id, OTHER)).status, 404);
+      assert.equal((await call('GET', `/processes/${p.id}/documents`, { as: OTHER })).status, 404);
+      // O órgão envolvido na demanda (outro processo) abre o institucional, com evento privado.
+      assert.equal((await fileUrl(v2.body.document.id, GOV2)).status, 200);
+      const { rows: consulted } = await pool.query(
+        "SELECT payload FROM demand_events WHERE demand_id = $1 AND event_type = 'documento_consultado'", [demand],
+      );
+      assert.ok(consulted.some((e) => e.payload.process_document_id === v2.body.document.id));
+      // Pelo GET /uploads/:id vale a mesma regra.
+      const uploadId = v2.body.document.upload.ref.slice('upload:'.length);
+      assert.equal((await call('GET', `/uploads/${uploadId}`, { as: AGENT })).status, 200);
+      assert.equal((await call('GET', `/uploads/${uploadId}`, { as: OTHER })).status, 404);
+
+      // Restrito: quem enviou, o autor e a lista.
+      const restricted = await sendDocument(PARTNER, 'Contrato.xlsx', {
+        name: 'Minuta do contrato', documentType: 'contrato', accessLevel: 'restrito', restrictedTo: [GOV2],
+      });
+      assert.equal(restricted.status, 201, JSON.stringify(restricted.body));
+      assert.equal((await fileUrl(restricted.body.document.id, GOV2)).status, 200, 'autorizado na lista');
+      assert.equal((await fileUrl(restricted.body.document.id, AGENT)).status, 200, 'restrito = autor + lista');
+      assert.equal((await fileUrl(restricted.body.document.id, GOV)).status, 404);
+      assert.equal((await fileUrl(restricted.body.document.id, OTHER)).status, 404);
+      const noList = await sendDocument(PARTNER, 'x.xlsx', { name: 'x', documentType: 'outro', accessLevel: 'restrito' });
+      assert.equal(noList.status, 422);
+
+      // Público: qualquer sessão abre; o evento é público (sem arquivo).
+      const pub = await sendDocument(AGENT, 'Relatório.xlsx', {
+        name: 'Relatório de execução', documentType: 'relatorio_de_execucao', accessLevel: 'publico',
+      });
+      assert.equal(pub.status, 201, JSON.stringify(pub.body));
+      assert.equal(pub.body.document.organizationName, 'Associação Recreio Vivo', 'instituição responsável');
+      assert.equal((await fileUrl(pub.body.document.id, OTHER)).status, 200);
+      const timeline = await call('GET', `/processes/${p.protocol}/timeline`, { auth: false });
+      const publicDocs = timeline.body.events.filter((e) => e.type === 'documento_registrado');
+      assert.deepEqual(publicDocs.map((e) => e.details.name), ['Relatório de execução'], 'só o documento público aparece');
+      assert.ok(!JSON.stringify(timeline.body).includes('processes/'), 'sem arquivo no evento');
+      const full = await call('GET', `/processes/${p.id}`, { as: PARTNER });
+      assert.equal(full.body.timeline.filter((e) => e.type === 'documento_registrado').length, 4);
+
+      // Arquivo errado: anexo da comunicação não vira documento (422); o mesmo upload não entra duas vezes.
+      const attachment = await f.upload(PARTNER, 'process_attachment', p.id, XLSX_TYPE, XLSX, 'a.xlsx');
+      const attached = await attachment.confirm();
+      const wrong = await call('POST', `/processes/${p.id}/documents`, {
+        body: { uploadId: attached.body.ref, name: 'a', documentType: 'outro' },
+      });
+      assert.equal(wrong.status, 422);
+      const again = await call('POST', `/processes/${p.id}/documents`, {
+        body: { uploadId: v2.body.document.upload.ref, name: 'b', documentType: 'outro' },
+      });
+      assert.equal(again.status, 422);
+
+      // Aviso de novo documento para o Agente.
+      const { rows: [notice] } = await pool.query(
+        "SELECT title FROM notifications WHERE user_id = $1 AND kind = 'novo_documento' AND process_id = $2", [AGENT, p.id],
+      );
+      assert.match(notice.title, /Novo documento no processo DM-/);
+
+      // Arquivar: só quem enviou, com motivo.
+      const archiveUrl = `/processes/${p.id}/documents/${v1.body.document.id}/archive`;
+      assert.equal((await call('POST', archiveUrl, { as: AGENT, body: { reason: 'Versão errada' } })).status, 403);
+      assert.equal((await call('POST', archiveUrl, { body: {} })).status, 422);
+      const archived = await call('POST', archiveUrl, { body: { reason: 'Versão com erro de soma' } });
+      assert.equal(archived.status, 200, JSON.stringify(archived.body));
+      assert.equal(archived.body.document.status, 'arquivado');
+      assert.equal((await call('POST', archiveUrl, { body: { reason: 'de novo' } })).status, 409);
+
+      // Nada é excluído nem editado; gestão só lê.
+      const id = v2.body.document.id;
+      await assert.rejects(pool.query("UPDATE connection_process_documents SET name = 'x' WHERE id = $1", [id]), /imutável/);
+      await assert.rejects(pool.query("UPDATE connection_process_documents SET status = 'substituido' WHERE id = $1", [id]), /nova versão/);
+      await assert.rejects(pool.query('DELETE FROM connection_process_documents WHERE id = $1', [id]), /não é excluído/);
+      await assert.rejects(pool.query('TRUNCATE connection_process_documents'), /não são apagados/);
+      const { rows: [counted] } = await gestao.query('SELECT count(*)::int AS n FROM connection_process_documents WHERE process_id = $1', [p.id]);
+      assert.equal(counted.n, 4);
+      await assert.rejects(gestao.query("UPDATE connection_process_documents SET status = 'arquivado' WHERE id = $1", [id]));
+
+      // LGPD: o nome de quem enviou sai; o documento fica.
+      const anonymized = await call('POST', '/me/privacy/anonymize', { as: AGENT, body: { protocol: 'LGPD-2026-000778' } });
+      assert.equal(anonymized.status, 200, JSON.stringify(anonymized.body));
+      assert.equal(anonymized.body.summary.documentosDeProcesso, 1);
+      const after = await call('GET', `/processes/${p.id}/documents`);
+      const report = after.body.groups.find((g) => g.documentType === 'relatorio_de_execucao');
+      assert.equal(report.versions[0].uploadedBy.name, 'Conta removida');
     } finally {
       await f.close();
     }

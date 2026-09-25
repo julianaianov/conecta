@@ -23,6 +23,7 @@ async function exportUserData(db, userId) {
   const [
     publicacoes, comentarios, reacoes, demandas, apoios, interesses,
     compartilhamentos, denuncias, consentimentoRanking, selos, arquivos, pautas, mensagensDeProcesso,
+    documentosDeProcesso,
   ] = await Promise.all([
     q(`SELECT id, type, title, description, status, visibility, neighborhood, city, state,
               zipcode, latitude, longitude, tags, images, videos, demand_id, created_at
@@ -60,6 +61,10 @@ async function exportUserData(db, userId) {
     q(`SELECT id, process_id, author_side, author_organization_name, author_role_label, recipient_party, body,
               attachments::text[] AS attachments, created_at
          FROM connection_process_messages WHERE author_id = $1 ORDER BY created_at`),
+    // Documentos do processo enviados pelo titular (T-05-04): metadados; o arquivo está em `arquivos`.
+    q(`SELECT id, process_id, document_group_id, version, name, document_type, organization_name, upload_id,
+              status, access_level, archive_reason, archived_at, created_at
+         FROM connection_process_documents WHERE uploaded_by = $1 ORDER BY created_at`),
   ]);
 
   return {
@@ -76,6 +81,7 @@ async function exportUserData(db, userId) {
     arquivos,
     pautas,
     mensagensDeProcesso,
+    documentosDeProcesso,
   };
 }
 
@@ -147,12 +153,21 @@ async function anonymizeUser(db, userId, { protocol = null } = {}) {
       RETURNING id`,
     [userId, ANONYMIZED_MESSAGE, ANONYMOUS_NAME],
   );
+  // Documentos do processo (T-05-04): o nome de quem enviou sai; o documento
+  // fica (registro do processo e da prestação de contas).
+  const processDocuments = await db.query(
+    `UPDATE connection_process_documents SET uploaded_by_name = $2
+      WHERE uploaded_by = $1 AND uploaded_by_name <> $2
+      RETURNING id`,
+    [userId, ANONYMOUS_NAME],
+  );
 
   const summary = {
     publicacoes: posts.rowCount ?? posts.rows.length,
     comentarios: comments.rowCount ?? comments.rows.length,
     pautas: agenda.rowCount ?? agenda.rows.length,
     mensagensDeProcesso: processMessages.rowCount ?? processMessages.rows.length,
+    documentosDeProcesso: processDocuments.rowCount ?? processDocuments.rows.length,
     apoiosComExibicaoRevogada: supports.rowCount ?? supports.rows.length,
     consentimentoDeRankingRevogado: (ranking.rowCount ?? ranking.rows.length) > 0,
   };
