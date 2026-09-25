@@ -160,7 +160,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `demand_documents`, `demand_events` (linha do tempo só inserção) e
   `posts.demand_id` (post-vitrine criado pelo trigger na publicação, protegido
   contra edição e exclusão; oculto quando a demanda é arquivada).
-- Estado: `status` (7 canônicos + `arquivada`) e, dentro de `em_analise`,
+- Estado: `status` (7 canônicos + `arquivada` + o final `encerrada`, T-05-14) e, dentro de `em_analise`,
   `review_state` (`rascunho` → `aguardando_analise` → `devolvida` | publicação
   `aprovada`). Transições por ator (agente, gestão = sessão `gestao_app`,
   sistema = `SET LOCAL dm.actor_type = 'sistema'`) no trigger `demands_guard`,
@@ -210,7 +210,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   (itens de orçamento recalculam a composição gravada), `POST /:id/validate`
   (erros por campo, não grava), `POST /:id/submit` e `POST /:id/transitions`
   (`buscar_parceiro`, `conectar`, `iniciar_execucao`, `concluir`,
-  `prestar_contas`).
+  `prestar_contas`, `encerrar` — ver T-05-14).
 - Rascunho, edição e itens exigem só perfil de Agente; `submit` e `transitions`
   passam por `requireValidatedAgent` (403 `institution_not_validated`). O envio
   grava `organization_id` da instituição validada. Escritas rodam em transação
@@ -328,7 +328,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - "Minhas demandas": status canônico (em análise com a etapa da análise),
   parecer da devolução, retomada da edição e as ações de `availableActions`
   (`buscar_parceiro`, `conectar`, `iniciar_execucao`, `concluir`,
-  `prestar_contas`) com confirmação.
+  `prestar_contas`, `encerrar`) com confirmação.
 - Prioridade (T-02-01, decisão 17): os quatro critérios da plataforma
   (`services/post-service/src/demand/priority.js`, espelho
   `DEMAND_PRIORITY_CRITERIA` em `demand.ts`) aparecem na etapa 3 como
@@ -1035,6 +1035,44 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   período e resultado final. A seção pública responde às dez perguntas
   literais do §21 (`RESULT_QUESTIONS`); o dossiê imprime quando, onde, quem
   participou e o resultado final.
+
+## Encerramento da demanda e dos processos (T-05-14)
+
+- Fonte: Modelo de Conexão §22 ("Data de conclusão, Responsáveis, Registro
+  final. O projeto passa então para: CONCLUÍDO e permanece disponível no
+  histórico") e §35; decisão 16.
+- Migração post 037 (`037-closure.sql`): `demand_status` ganha `encerrada`
+  (rótulo "Concluído — encerrado"); `demands.closed_at` (gravada pelo banco),
+  `closing_summary` (registro final, público) e `closing_responsibles`
+  (privado: fora da rota pública, do dossiê público e mascarado na gestão).
+  Única transição: `prestacao_de_contas` → `encerrada`, só pelo Agente
+  (`demand_status_transition_allowed` recriada; comparações por texto porque
+  o `ADD VALUE` está na mesma transação). `demands_closure_guard` exige a
+  prestação de contas `concluida`, registro final e responsáveis, e recusa
+  mudança dessas colunas fora do encerramento. `demand_events_closure` troca
+  o `status_alterado` por `demanda_encerrada` (público, `payload->'public'`
+  com `closedAt` e `closingSummary`). `demands_settle_processes` leva, na mesma
+  transação, os Processos de Conexão abertos ao status final do §16:
+  `em_execucao`/`concluida` → `prestacao_de_contas`; os que não chegaram à
+  execução (inclusive pausados) → `cancelada`, com a justificativa do
+  encerramento (sem status novo no processo). Dossiê: `trigger_kind`
+  `encerramento` (integral + pública). Sem grant novo (colunas em `demands`).
+- API: `POST /demands/:id/transitions` com `{ action: 'encerrar',
+  closingSummary, closingResponsibles }`: 409 `invalid_state` sem a prestação
+  concluída, 422 `validation_failed` por campo, 409 `invalid_transition` fora
+  de `prestacao_de_contas`. Avisa as partes dos processos
+  (`atualizacao_de_processo`, SAVEPOINT: falha no aviso não desfaz) e pede a
+  versão `encerramento` do dossiê fora do caminho crítico. `encerrada` está em
+  `PUBLIC_STATUSES` (lista, detalhe, mapa, perfil) e em `CONCLUDED_STATUSES`
+  (governo, rankings, eixos, pautas).
+- Portal: ação "Encerrar a demanda" em Minhas demandas (registro final e
+  responsáveis, `validateClosing`), registro final na linha da demanda, aba de
+  prestação de contas em leitura; seção "Encerramento" e detalhe do evento na
+  página pública; `StatusTrack`, filtros do mapa e atalho "Imprensa" com a
+  encerrada. Espelhos em `demand.ts`/`types.ts`, teste `src/lib/app/closure.test.mjs`.
+- Testes: `test/demand-state-machine.test.js`, `test/demand-routes.test.js`,
+  `test/demand-schema.test.js` e `test/closure-e2e.test.js` (suíte `closure`
+  do `test:e2e`).
 
 ## Mapa inteligente (T20)
 
