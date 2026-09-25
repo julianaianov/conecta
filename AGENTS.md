@@ -409,6 +409,15 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Versão pública: sem CEP, rua, número, complemento, coordenadas, responsáveis
   do cronograma, descrição/origem de documentos e ids internos. A instituição
   vem da projeção pública (CNPJ, CNAE, razão social; nunca contatos).
+- Histórico (Modelo §06, T-05-10; `src/dossier/history.js`): o retrato congela
+  os eventos de `demand_events` até o pedido da versão (`HISTORY_SQL`, com o
+  protocolo do processo quando há), com o texto de cada evento montado a partir
+  do tipo e de `payload->'public'`. Integral: todos, com o tipo de ator e a
+  nota; pública: só `is_public`, sem ator e sem nota (como `GET /:id/timeline`).
+  O PDF imprime a seção "Histórico" (Quando / O que aconteceu, no formato
+  `22/09/2026 — 14h35` do §12); o histórico entra no SHA-256. O PDF mostra
+  também os critérios de prioridade declarados (decisão 17). Retratos
+  anteriores, sem `history`, geram como antes.
 - Frontend: `src/lib/app/dossier.ts` (rótulos, caminhos, SHA-256 no navegador),
   bloco "DOSSIÊ DA DEMANDA (T10)" em `api.ts` e `types.ts`, `DossierPanel`
   (Minhas demandas, revisão do assistente e leitura depois do envio), seção

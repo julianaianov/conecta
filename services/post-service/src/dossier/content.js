@@ -13,6 +13,7 @@
 const crypto = require('node:crypto');
 const { CATEGORY_LABELS, STATUS_LABELS } = require('../demand/constants');
 const { MODULE_LABELS, MODULE_FIELDS, moduleOf, detailsForCategory } = require('../demand/modules');
+const { redactHistory } = require('./history');
 
 const DOCUMENT_TITLE = 'Documento Oficial da Demanda — Dossiê da Demanda';
 const SCHEMA_VERSION = 1;
@@ -103,7 +104,7 @@ function daysBetween(start, end) {
  * Demanda congelada no pedido do dossiê (linha de `demands` com a projeção do
  * autor + itens de store.loadItems). É o que a versão integral mostra.
  */
-function demandSnapshot(row, items, { accountability = null, processes = null } = {}) {
+function demandSnapshot(row, items, { accountability = null, processes = null, history = null } = {}) {
   const schedule = (items.scheduleItems ?? []).map((s) => ({
     id: s.id,
     stage: s.stage,
@@ -149,6 +150,8 @@ function demandSnapshot(row, items, { accountability = null, processes = null } 
       beneficiariesEstimate: toNumber(row.beneficiaries_estimate),
       beneficiariesProfile: row.beneficiaries_profile ?? null,
       priority: row.priority ?? null,
+      // Critérios declarados para a prioridade (decisão 17, T-02-01; migração 042).
+      priorityCriteria: Array.isArray(row.priority_criteria) ? row.priority_criteria : [],
       hasPhysicalExecution: Boolean(row.has_physical_execution),
       // Módulo específico derivado da categoria (T-05-08) e as suas informações.
       module: moduleOf(row.category),
@@ -221,6 +224,9 @@ function demandSnapshot(row, items, { accountability = null, processes = null } 
     // Processos de Conexão com a contribuição e as taxas de cada um (T-05-06,
     // decisão 14; colunas da migração 040). Ausente em retratos anteriores.
     ...(Array.isArray(processes) ? { processes: processes.map(processSnapshot) } : {}),
+    // Histórico (Modelo §06, T-05-10): eventos da demanda até o pedido desta
+    // versão (src/dossier/history.js). Ausente em retratos anteriores.
+    ...(Array.isArray(history) ? { history } : {}),
   };
 }
 
@@ -350,6 +356,8 @@ function redactSnapshot(snapshot) {
     ...(Array.isArray(snapshot.processes)
       ? { processes: snapshot.processes.map((p) => ({ ...p, partyName: p.partyKind === 'poder_publico' ? p.partyName : null })) }
       : {}),
+    // Histórico: só eventos públicos, sem ator e sem nota (T-05-10).
+    ...(Array.isArray(snapshot.history) ? { history: redactHistory(snapshot.history) } : {}),
   };
 }
 
@@ -390,9 +398,9 @@ function deadlines(schedule) {
 /**
  * Conteúdo final do dossiê (o que o PDF mostra e o hash identifica).
  * `meta`: { number, version, variant, trigger, issuedAt }; `photo`: { sha256,
- * contentType, embedded } ou null.
+ * contentType, embedded } ou null. O histórico (T-05-10), quando o retrato o
+ * traz, entra no conteúdo e portanto no SHA-256.
  */
-// TODO(fonte-da-verdade): Modelo de Conexão §06 — o dossiê não inclui o Histórico da demanda.
 function buildDossierContent({ snapshot, institution, meta, photo = null }) {
   const base = meta.variant === 'publica' ? redactSnapshot(snapshot) : snapshot;
   const audiovisualCents = base.budget.items

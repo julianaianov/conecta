@@ -17,6 +17,10 @@ const {
 } = require('./content');
 const { FEE_OBSERVATION } = require('./content');
 const { PARTY_KIND_LABELS, PROCESS_STATUS_LABELS } = require('../process/constants');
+const { PRIORITY_CRITERIA } = require('../demand/priority');
+const { ACTOR_LABELS, formatHistoryWhen } = require('./history');
+
+const PRIORITY_CRITERION_LABELS = Object.fromEntries(PRIORITY_CRITERIA.map((c) => [c.id, c.label]));
 const { DM_MARK_PATH, DM_MARK_VIEWBOX } = require('./brand');
 
 const FONTS_DIR = path.join(__dirname, '../../assets/fonts');
@@ -392,6 +396,11 @@ function renderBody(doc, content) {
   if (demand.moduleLabel) field(doc, 'Módulo específico', demand.moduleLabel);
   for (const [label, value] of moduleDetailLines(demand)) field(doc, label, value);
   field(doc, 'Nível de prioridade', PRIORITY_LABELS[demand.priority] ?? demand.priority);
+  // Critérios declarados pelo Agente (decisão 17, T-02-01); ausentes em retratos anteriores.
+  if (Array.isArray(demand.priorityCriteria) && demand.priorityCriteria.length) {
+    field(doc, 'Critérios de prioridade declarados', demand.priorityCriteria
+      .map((id) => PRIORITY_CRITERION_LABELS[id] ?? id).join('\n'));
+  }
   field(doc, 'Execução física', demand.hasPhysicalExecution ? 'Sim (exige registro do antes e do depois)' : 'Não');
   labeledParagraph(doc, 'Descrição', demand.description);
   // Modelo de Conexão §04 (T-05-09); ausente em retratos anteriores.
@@ -598,6 +607,37 @@ function renderBody(doc, content) {
       .text('Os arquivos dos comprovantes ficam com o Agente e com a equipe de análise; '
         + 'o dossiê registra o tipo, o título, a data e o valor declarado.', MARGIN.left, doc.y, { width: CONTENT_WIDTH });
     doc.moveDown(0.3);
+  }
+
+  // Histórico (Modelo de Conexão §06, T-05-10): eventos até o pedido desta
+  // versão, no formato do exemplo do §12 ("22/09/2026 — 14h35"). Integral:
+  // todos, com quem registrou e a nota; pública: só os públicos, sem ator.
+  if (Array.isArray(content.history)) {
+    sectionTitle(doc, ++n, 'Histórico');
+    if (!content.history.length) {
+      paragraph(doc, 'Nenhum evento registrado até a geração desta versão.');
+    } else if (isPublic) {
+      table(doc, [
+        { header: 'Quando', width: 0.26, numeric: true },
+        { header: 'O que aconteceu', width: 0.74 },
+      ], content.history.map((h) => [formatHistoryWhen(h.at), h.label]));
+    } else {
+      table(doc, [
+        { header: 'Quando', width: 0.22, numeric: true },
+        { header: 'O que aconteceu', width: 0.5 },
+        { header: 'Registrado por', width: 0.28 },
+      ], content.history.map((h) => [
+        formatHistoryWhen(h.at),
+        `${h.label}${h.note ? `\n${h.note}` : ''}${h.isPublic ? '' : '\n(evento interno)'}`,
+        ACTOR_LABELS[h.actorType] ?? h.actorType,
+      ]));
+    }
+    if (isPublic) {
+      doc.font('regular').fontSize(7.5).fillColor(COLOR.cinza)
+        .text('Versão pública: só os eventos públicos da linha do tempo, sem quem registrou e sem notas internas.',
+          MARGIN.left, doc.y, { width: CONTENT_WIDTH });
+      doc.moveDown(0.3);
+    }
   }
 
   sectionTitle(doc, ++n, 'Autenticidade');

@@ -320,6 +320,22 @@ test('dossiê: envio (S3 fora) → regeneração → reenvio → publicação �
       assert.equal(pub.content.documents[0].title, 'Cotação da madeira');
       assert.ok(storage.objects.has(`demands/${id}/dossie/v3-publica.pdf`));
 
+      // Histórico (Modelo §06, T-05-10): a versão da publicação lista os eventos
+      // até ali; a pública só os públicos, sem a devolução, o ator e a nota.
+      const integralRow = v3.find((d) => d.variant === 'integral');
+      const { rows: [full] } = await pool.query('SELECT content FROM demand_dossiers WHERE id = $1', [integralRow.id]);
+      const fullTypes = full.content.history.map((h) => h.type);
+      for (const type of ['criada', 'enviada_para_analise', 'devolvida_para_ajustes', 'publicada']) {
+        assert.ok(fullTypes.includes(type), `histórico integral com ${type}`);
+      }
+      assert.ok(full.content.history.some((h) => h.label === 'Reenviada para análise'));
+      assert.ok(full.content.history.every((h) => /^\d{4}-\d{2}-\d{2}T/.test(h.at) && h.actorType));
+      const publicTypes = pub.content.history.map((h) => h.type);
+      assert.ok(publicTypes.includes('publicada'));
+      assert.ok(!publicTypes.includes('devolvida_para_ajustes'), 'a devolução não entra na versão pública');
+      assert.ok(pub.content.history.every((h) => !('actorType' in h) && !('note' in h)));
+      assert.ok(!publicJson.includes('Detalhe o cronograma'), 'o parecer da devolução fica fora da versão pública');
+
       // Verificação da versão pública mostra a demanda publicada.
       const verifiedPublic = await call('GET', `/demands/dossiers/verify/${publicRow.contentSha256}`, { auth: false });
       assert.equal(verifiedPublic.body.demand.id, id);

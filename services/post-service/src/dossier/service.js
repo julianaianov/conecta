@@ -22,6 +22,7 @@ const {
   demandSnapshot, buildDossierContent, contentHash, sha256Hex, verifyUrl, formatDossierNumber,
 } = require('./content');
 const { renderDossierPdf, EMBEDDABLE_IMAGE_TYPES } = require('./pdf');
+const { HISTORY_SQL, historySnapshot } = require('./history');
 
 const MAX_ATTEMPTS = 6;
 const BACKOFF_BASE_SECONDS = 60;
@@ -165,7 +166,9 @@ function createDossierService({
            FROM connection_processes WHERE demand_id = $1 ORDER BY sequence_in_demand`,
         [demandId],
       );
-      const snapshot = demandSnapshot(row, items, { accountability, processes });
+      // Histórico (Modelo §06, T-05-10): eventos até este pedido, congelados no retrato.
+      const { rows: events } = await client.query(HISTORY_SQL, [demandId]);
+      const snapshot = demandSnapshot(row, items, { accountability, processes, history: historySnapshot(events) });
       const status = storage ? 'pendente' : 'indisponivel';
       const reason = storage ? null : UNAVAILABLE_REASON;
       let created = 0;

@@ -449,3 +449,56 @@ test('Modelo §04/§05 (T-05-09): problema, área de abrangência, item, fornece
   assert.equal(pub.location.coverageArea, 'Praça e quatro quadras do entorno');
   assert.ok(!(await pdfTexts(pub)).includes('Serraria do Zé'));
 });
+
+test('Histórico (Modelo §06, T-05-10): integral com tudo; pública só com eventos públicos, sem ator nem nota', async () => {
+  const history = require('../src/dossier/history');
+  const at = (s) => new Date(`2026-09-22T${s}Z`);
+  const rows = [
+    { event_type: 'criada', actor_type: 'agente', note: null, is_public: false, created_at: at('13:00:00') },
+    { event_type: 'enviada_para_analise', actor_type: 'agente', note: null, is_public: false, created_at: at('14:00:00'), reenvio: 'false' },
+    { event_type: 'devolvida_para_ajustes', actor_type: 'gestao', note: 'Falta a cotação', is_public: false, created_at: at('15:00:00') },
+    { event_type: 'enviada_para_analise', actor_type: 'agente', note: null, is_public: false, created_at: at('16:00:00'), reenvio: 'true' },
+    { event_type: 'publicada', actor_type: 'gestao', note: 'Aprovada pela Ana', is_public: true, created_at: at('17:35:00') },
+    { event_type: 'processo_formalizado', actor_type: 'agente', note: null, is_public: true, created_at: at('18:00:00'),
+      protocol: 'DM-2026-000184', details: { protocol: 'DM-2026-000184', partyKind: 'empresa', organizationName: null } },
+    { event_type: 'status_institucional_alterado', actor_type: 'poder_publico', note: null, is_public: true, created_at: at('18:10:00'),
+      details: { organizationName: 'Secretaria de Obras', institutionalStatus: 'em_analise' } },
+    { event_type: 'evento_novo_desconhecido', actor_type: 'sistema', note: null, is_public: true, created_at: at('18:20:00') },
+  ];
+  const items = history.historySnapshot(rows);
+  assert.deepEqual(items.map((h) => h.label), [
+    'Rascunho criado', 'Enviada para análise', 'Devolvida para ajustes', 'Reenviada para análise', 'Demanda publicada',
+    'Conexão formalizada — processo DM-2026-000184 (Empresa)', 'Secretaria de Obras: Em análise', 'Atualização registrada',
+  ]);
+  assert.equal(history.formatHistoryWhen('2026-09-22T17:35:00Z'), '22/09/2026 — 14h35', 'horário de Brasília, formato do §12');
+
+  const snapshot = content.demandSnapshot({ ...ROW, priority_criteria: ['risco_vida_seguranca', 'pessoas_afetadas'] }, ITEMS, { history: items });
+  const integral = content.buildDossierContent({ snapshot, institution: INSTITUTION, meta: meta('integral') });
+  assert.equal(integral.history.length, 8);
+  assert.equal(integral.history[2].note, 'Falta a cotação');
+  const pub = content.buildDossierContent({ snapshot, institution: INSTITUTION, meta: meta('publica') });
+  assert.deepEqual(pub.history.map((h) => h.type), ['publicada', 'processo_formalizado', 'status_institucional_alterado', 'evento_novo_desconhecido']);
+  assert.ok(!pub.history.some((h) => h.type === 'devolvida_para_ajustes'), 'devolução fica fora da versão pública');
+  assert.ok(pub.history.every((h) => !('actorType' in h) && !('note' in h)));
+  // O histórico entra no hash.
+  assert.notEqual(content.contentHash(integral),
+    content.contentHash(content.buildDossierContent({ snapshot: { ...snapshot, history: items.slice(0, 7) }, institution: INSTITUTION, meta: meta('integral') })));
+
+  const text = await pdfTexts(integral);
+  assert.ok(text.includes('Histórico'));
+  assert.ok(text.includes('22/09/2026 — 14h35'));
+  assert.ok(text.includes('Falta a cotação'));
+  assert.ok(text.includes('Equipe da plataforma'));
+  // Critérios de prioridade declarados (decisão 17, T-02-01).
+  assert.ok(text.includes('Critérios de prioridade declarados'));
+  assert.ok(text.includes('Risco à vida ou à segurança\nNúmero de pessoas afetadas'));
+  const pubText = await pdfTexts(pub);
+  assert.ok(!pubText.includes('Falta a cotação') && !pubText.includes('Aprovada pela Ana') && !pubText.includes('Equipe da plataforma'));
+  assert.ok(pubText.includes('Demanda publicada'));
+  assert.ok(pubText.includes('Risco à vida ou à segurança'), 'os critérios são públicos, como na página da demanda');
+
+  // Retrato anterior à T-05-10: sem a seção.
+  const old = content.buildDossierContent({ snapshot: content.demandSnapshot(ROW, ITEMS), institution: INSTITUTION, meta: meta('integral') });
+  assert.equal(old.history, undefined);
+  assert.deepEqual(old.demand.priorityCriteria, []);
+});
