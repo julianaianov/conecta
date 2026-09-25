@@ -230,7 +230,8 @@ test('monograma e rótulos iguais aos do frontend', () => {
 test('migração 009: imutabilidade e finalidade demand_dossier', () => {
   const sql = fs.readFileSync(path.join(__dirname, '../migrations/009-demand-dossiers.sql'), 'utf8');
   assert.match(sql, /CREATE TABLE IF NOT EXISTS demand_dossiers/);
-  assert.match(sql, /'demand_dossier'\)\);/);
+  // NOT VALID: o manifesto é reaplicado com arquivos de finalidades posteriores (ver 009).
+  assert.match(sql, /'demand_dossier'\)\) NOT VALID;/);
   assert.match(sql, /dossiê gerado é imutável/);
   assert.match(sql, /BEFORE TRUNCATE ON demand_dossiers/);
   const manifest = fs.readFileSync(path.join(__dirname, '../../migrations.manifest'), 'utf8');
@@ -319,7 +320,7 @@ test('migração 015: prestação congelada, gestão só lê e novo gatilho do d
   assert.match(sql, /CREATE TABLE IF NOT EXISTS demand_accountability\b/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS demand_accountability_results/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS demand_accountability_documents/);
-  assert.match(sql, /'demand_accountability_document'\)\);/);
+  assert.match(sql, /'demand_accountability_document'\)\) NOT VALID;/);
   assert.match(sql, /BEFORE TRUNCATE ON demand_accountability/);
   assert.match(sql, /trigger_kind IN \('envio', 'reenvio', 'publicacao', 'conclusao', 'prestacao_de_contas'\)/);
   const manifest = fs.readFileSync(path.join(__dirname, '../../migrations.manifest'), 'utf8');
