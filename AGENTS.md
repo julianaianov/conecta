@@ -501,7 +501,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Frontend: seção "Encaminhamento e tramitação" em `/governo/demandas/[id]`
   (`ForwardingForm` com busca de órgão validado ou texto livre, ações de status
   e providências), abas "Encaminhadas a nós" e "Enviadas" no `/governo`,
-  notificação no sino para encaminhamento recebido sem resposta e
+  aviso `encaminhamento_recebido` ao órgão na central (T-05-16) e
   "Encaminhamentos e tramitação" na página pública da demanda
   (`src/components/app/institutional/Forwarding*.tsx`).
 - Testes: `test/forwardings-domain.test.js`, `test/forwardings-routes.test.js`,
@@ -1413,8 +1413,8 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   mesmo 404): `GET /connections/:id/messages` (cronológica, `limit` ≤ 100,
   `before=<ISO>` pagina para trás, grava a leitura; `{ messages, hasMore, open }`)
   e `POST /connections/:id/messages` (`{ body }`; só com a conexão `pending` ou
-  `accepted`, senão 409 `connection_closed`). `GET /notifications` avisa
-  mensagem não lida (`kind: 'message'`, `href: /conexoes/<id>`), numa consulta.
+  `accepted`, senão 409 `connection_closed`). A mensagem gera aviso
+  `nova_mensagem` na central (T-05-16), lido ao abrir a conversa.
 - LGPD: a exportação leva só as mensagens escritas pelo titular; a eliminação
   troca o corpo delas pelo rótulo (a conversa fica, porque é registro da outra
   parte). Regra `conexoes` de `RETENTION_RULES` e `/privacidade` atualizadas.
@@ -1539,7 +1539,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `GET /:userId/institution` (projeção pública) resolve também pelo vínculo
   ativo de gestor/publicador, então o selo do perfil e o órgão do
   post-service (T13) valem para quem atua por delegação. Sino:
-  `kind: 'membership'` para convite em aberto (`href: /vinculos`).
+  `convite_de_vinculo` na central (T-05-16, `href: /vinculos`).
 - post-service (`src/delegation.js`): `effectiveRole(user, access)` — conta
   com `publicar_demandas` numa instituição `agente_transformacao` age como
   Agente; com `atuar_institucionalmente` num `poder_publico`, como Poder
@@ -1588,6 +1588,73 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   os componentes importados por `page.tsx`.
 - `Community`, `Features`, `TrustBar` e `FeatureIcon` foram apagados (código
   morto com "PIX… 10 formas de contribuir", contrário à decisão 5).
+
+## Central de notificações e caixa de saída de e-mail (T-05-16, T-02-03)
+
+- Fonte: Modelo de Conexão §08 ("Central de notificações"; por e-mail "Aviso
+  de nova demanda, Aviso de prazo, Solicitação de análise, Atualização de
+  processo, Nova mensagem, Novo documento") e §34 ("O e-mail avisa. O DM
+  Conecta organiza e registra o processo."); decisão 19.
+- Persistido por conta **no serviço dono do evento**: migração post 039
+  (`039-notifications.sql`) e user 016 (`016-notifications.sql`), mesmo
+  formato — `notification_kinds` (tipos aceitos; tipo novo entra por
+  `INSERT ... ON CONFLICT DO NOTHING` numa migração própria), `notifications`
+  (destinatário `user_id` ou, só no post_db, `organization_id` = órgão
+  inteiro; `title`, `summary`, `href` relativo, `demand_id`, `process_id`,
+  `event_id`/`connection_id`, `dedupe_key`, `read_at`, `emailed_at`),
+  `notification_preferences` (`in_app`, `email`; sem linha = ligados;
+  `in_app = false` grava já lida) e `email_outbox` (`pendente` | `enviado` |
+  `falhou` | `desligado`, tentativas, último erro). Porta de entrada SQL:
+  `notification_create(...)` (e `notification_create_for_organization` no
+  post_db), `SECURITY DEFINER`, fora do alcance do `gestao_app`.
+- Eventos gerados hoje, por trigger e na transação da ação (falha no aviso
+  vira WARNING e nunca desfaz a ação): post_db `demand_events_fan_out` —
+  devolvida para ajustes e publicada (T-02-03, para o Agente, sem a nota da
+  gestão), interesse registrado, apoio declarado, apoio institucional
+  oferecido, apoio confirmado (para o apoiador), atualização institucional
+  (acompanhamento aberto, resposta, status, encaminhamento; em aberto se
+  juntam por demanda), encaminhamento recebido (órgão de destino) e
+  respondido (órgão de origem); user_db — conexão pedida (resolvida quando o
+  pedido sai de `pending`) e aceita, nova mensagem na conversa (um aviso por
+  conversa, lido ao abrir a conversa) e convite de vínculo (lido ao
+  responder). O ator nunca é avisado do que fez; o nome de quem agiu no
+  user_db vem do perfil na leitura (a anonimização vale). O recado (legado)
+  saiu do sino.
+- **Gerar aviso de outra funcionalidade** (processos, prazos, solicitações,
+  identificação automática): `const { notify } = require('../notifications')`
+  e `await notify(client, { userId, kind, title, body, href, demandId,
+  processId, dedupeKey })` dentro da transação da ação (`organizationId` no
+  lugar de `userId` avisa o órgão, só no post-service). `kind` é um de
+  `NOTIFICATION_KINDS`; tipo novo exige a linha em `notification_kinds` nos
+  dois bancos e o espelho em `src/notifications/index.js` (cópia idêntica nos
+  dois serviços, há teste) e `src/lib/app/notifications.ts`/`types.ts`. Alternativa
+  no banco: `PERFORM notification_create(...)` num trigger.
+- Rotas (post-service e user-service, `src/routes/notifications.js`):
+  `GET /notifications?unread=1&limit=&kind=&before=` (`{ notifications,
+  unreadCount, hasMore }`; no post-service `institution=1` inclui os avisos do
+  órgão do Poder Público validado, próprio ou por vínculo — falha na
+  consulta ao user-service só omite os do órgão), `POST /notifications/read`
+  (`{ ids }` ou `{ all: true }`, só da conta/órgão), `GET|PUT
+  /notifications/preferences`. O `GET /notifications` recalculado do
+  `social.js` saiu.
+- E-mail: `src/notifications/mailer.js` (cópia idêntica), laço
+  `DM_MAIL_INTERVAL_MS` (60 s; 0 desliga). Sem `DM_MAIL_PROVIDER` (hoje) marca
+  a caixa de saída `desligado`; nenhum provedor está implementado (depende de
+  SES/provedor e DNS, ação humana). A gestão lê `email_outbox` do post_db
+  (dm-infra `032-gestao-app-post-notifications.sql`).
+- Frontend: `api.notifications` junta as duas fontes (uma fora não esconde a
+  outra, `partial`), `api.markNotificationsRead`, `api.notificationPreferences`
+  e `saveNotificationPreferences` (grava nos dois serviços);
+  `src/lib/app/notifications.ts` (rótulos, ícones, união);
+  `NotificationBell` sem `localStorage`, recarrega a cada minuto; página
+  `/notificacoes` (`NotificationsCenter`: filtro por tipo, só não lidas,
+  marcar lidas, preferências com o aviso `InDevelopment` do e-mail;
+  `noindex`, `robots.ts`, `PRIVATE_PATH_PREFIXES`). Minhas demandas tem a
+  âncora `#demanda-<id>`.
+- Testes: `services/post-service/test/notifications-routes.test.js`,
+  `test/notifications-e2e.test.js` (suíte `notifications` do `test:e2e`, cria
+  também um user_db), `services/user-service/test/notifications.test.js` e
+  `src/lib/app/notifications.test.mjs`.
 
 ## Segurança dos serviços
 
