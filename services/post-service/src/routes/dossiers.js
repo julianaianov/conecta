@@ -51,7 +51,8 @@ module.exports = ({ pool, auth, dossiers, operationUserIds = new Set() }) => {
   }
 
   /** Autor ou operação; lança 404 (não revela a existência) para os demais. */
-  // TODO(fonte-da-verdade): Modelo de Conexão §09/§33 — partes conectadas (nível Institucional) não acessam o dossiê integral.
+  // Partes conectadas (nível Institucional, T-05-18) leem o dossiê integral por
+  // GET /:id/dossie-integral (routes/document-access.js), sem regenerar.
   async function authorizedDemand(req, res) {
     const { rows } = await pool.query('SELECT id, author_id FROM demands WHERE id = $1', [req.params.id]);
     const row = rows[0];

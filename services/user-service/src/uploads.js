@@ -58,11 +58,12 @@ const DOCUMENT_TYPES = {
 /**
  * Finalidades. `target`: a que o arquivo se vincula na confirmação.
  * `visibility`: `public` só vale quando o alvo está publicado (política do
- * serviço); `private` fica com o dono e a gestão.
+ * serviço); `private` fica com o dono e a gestão; `institutional` (Modelo de
+ * Conexão §33, T-05-18) vale também para quem o serviço reconhece como
+ * envolvido no processo (`institutionalAccess` das rotas).
  * Vídeo: um PUT único aceita até 5 GB no S3; o limite da plataforma é 500 MB
  * sem multipart (conexões ruins podem precisar de reenvio).
  */
-// TODO(fonte-da-verdade): Modelo de Conexão §09/§33 — visibility só tem public/private; falta o nível Institucional (partes conectadas acessam documentos e dossiê integral; ver src/routes/dossiers.js authorizedDemand).
 const PURPOSES = {
   demand_photo: {
     label: 'Fotografia da demanda', target: 'demand', folder: 'photo',
@@ -78,7 +79,7 @@ const PURPOSES = {
   },
   demand_document: {
     label: 'Documento comprobatório da demanda', target: 'demand', folder: 'documents',
-    types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
+    types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'institutional',
   },
   demand_accountability_document: {
     label: 'Documento da prestação de contas', target: 'demand', folder: 'accountability',
@@ -485,7 +486,7 @@ const UNAVAILABLE = {
  *     `null` nas finalidades com `deferredTarget` (o vínculo vem depois);
  *   isPublic(db, row) → o alvo está publicado?
  */
-function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = new Set() }) {
+function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = new Set(), institutionalAccess = null }) {
   const express = require('express');
   if (typeof auth !== 'function' || !policy) throw new Error('upload routes exigem auth e política');
   const router = express.Router();
@@ -494,6 +495,8 @@ function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = ne
   const columnFor = (purpose) => policy.targetColumnFor?.(purpose) ?? targetColumn;
   const select = uploadSelect(targetColumns);
 
+ * `institutionalAccess(db, row, req)` (opcional; `req` nulo na leitura sem
+ * token): decide as finalidades `institutional` além do dono e da operação.
   const handle = (fn) => async (req, res) => {
     try {
       await fn(req, res);
@@ -507,9 +510,14 @@ function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = ne
   const notFound = (res) => res.status(404).json({ error: 'Arquivo não encontrado' });
   router.param('id', (_req, res, next, id) => (UUID_RE.test(id) ? next() : notFound(res)));
 
-  async function canRead(row, user) {
+  async function canRead(row, user, req = null) {
     if (user && (row.owner_id === user.userId || operationUserIds.has(user.userId))) return true;
-    if (PURPOSES[row.purpose]?.visibility !== 'public' || row.status !== 'confirmado') return false;
+    if (row.status !== 'confirmado') return false;
+    const visibility = PURPOSES[row.purpose]?.visibility;
+    if (visibility === 'institutional') {
+      return typeof institutionalAccess === 'function' && Boolean(await institutionalAccess(pool, row, req));
+    }
+    if (visibility !== 'public') return false;
     return policy.isPublic(pool, row);
   }
 
@@ -619,7 +627,7 @@ function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = ne
   router.get('/:id', auth, handle(async (req, res) => {
     const { rows } = await pool.query(`SELECT ${select} FROM uploads WHERE id = $1`, [req.params.id]);
     const row = rows[0];
-    if (!row || !(await canRead(row, req.user))) return notFound(res);
+    if (!row || !(await canRead(row, req.user, req))) return notFound(res);
     const url = storage && row.status === 'confirmado' ? await readUrl(storage, row) : null;
     res.json({ ...serializeUpload(row, targetColumns), url });
   }));

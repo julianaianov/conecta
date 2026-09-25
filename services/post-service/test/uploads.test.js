@@ -130,8 +130,10 @@ test('finalidades: tipos e limites da T08', () => {
   for (const purpose of ['demand_document', 'institution_proof']) {
     assert.deepEqual(Object.values(P[purpose].types).map((e) => e[0]), ['pdf', 'docx', 'xlsx', 'odt', 'ods', 'jpg', 'png']);
     assert.equal(P[purpose].maxBytes, 25 * MB);
-    assert.equal(P[purpose].visibility, 'private');
   }
+  // Documento da demanda: nível Institucional (Modelo §33, T-05-18); comprovação, privada.
+  assert.equal(P.demand_document.visibility, 'institutional');
+  assert.equal(P.institution_proof.visibility, 'private');
 });
 
 test('validateUploadRequest confere finalidade, tipo, tamanho, extensão e sha256', () => {
@@ -429,11 +431,23 @@ test('confirmação recusa arquivo ausente, tamanho, tipo, sha256 ou conteúdo d
   }
 });
 
-function readPool(row, demandStatus) {
-  return fakePool((text) => {
+function readPool(row, demandStatus, { document = null, party = {}, events = [] } = {}) {
+  return fakePool((text, params) => {
     if (/FROM uploads WHERE id = \$1$/.test(text.trim())) return { rows: row ? [row] : [] };
     if (/SELECT 1 FROM demands WHERE id = \$1 AND status = ANY/.test(text)) {
       return { rows: demandStatus && !['em_analise', 'arquivada'].includes(demandStatus) ? [{ '?column?': 1 }] : [] };
+    }
+    // Nível Institucional (T-05-18): documento que referencia o upload, demanda e partes.
+    if (/FROM demand_documents d LEFT JOIN demand_document_access a/.test(text)) return { rows: document ? [document] : [] };
+    if (/SELECT id, author_id, organization_id, status FROM demands WHERE id = \$1/.test(text)) {
+      return { rows: [{ id: DEMAND, author_id: AGENT, organization_id: null, status: demandStatus }] };
+    }
+    if (/AS party,\s+EXISTS \(SELECT 1 FROM demand_interests/.test(text)) {
+      return { rows: [{ party: Boolean(party.party), interested: Boolean(party.interested) }] };
+    }
+    if (/INSERT INTO demand_events/.test(text)) {
+      events.push(params);
+      return { rows: [] };
     }
     return null;
   });
@@ -467,6 +481,44 @@ test('leitura: /content só redireciona foto de demanda publicada; documento nun
   await withServer(readPool(null), memoryStorage(), async (base) => {
     assert.equal((await send(base, 'GET', '/uploads/nao-e-uuid')).status, 404);
     assert.equal((await send(base, 'GET', `/uploads/${UPLOAD}`)).status, 404);
+  });
+});
+
+test('leitura no nível Institucional (T-05-18): parte lê e fica registrada; restrito e sem relação são 404; público abre sem token', async () => {
+  const confirmed = {
+    status: 'confirmado', purpose: 'demand_document', content_type: 'application/pdf',
+    object_key: `demands/${DEMAND}/documents/${UPLOAD}.pdf`, size_bytes: '2048', demand_id: DEMAND,
+  };
+  const doc = (accessLevel, restrictedTo = []) => ({
+    id: 'abababab-abab-4bab-8bab-abababababab', demand_id: DEMAND, position: 0, document_type: 'orcamento',
+    title: 'Orçamento', description: null, reference: `upload:${UPLOAD}`, access_level: accessLevel, restricted_to: restrictedTo,
+  });
+  const partner = headers(OTHER, 'partner', 'empresa');
+
+  const events = [];
+  await withServer(readPool(uploadRow(confirmed), 'conectada', { document: doc('institucional'), party: { interested: true }, events }), memoryStorage(), async (base) => {
+    const res = await send(base, 'GET', `/uploads/${UPLOAD}`, undefined, partner);
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).url, `https://s3.test/demands/${DEMAND}/documents/${UPLOAD}.pdf?get`);
+    // Sem token, o institucional não abre.
+    assert.equal((await send(base, 'GET', `/uploads/${UPLOAD}/content`, undefined, {})).status, 404);
+  });
+  assert.equal(events.length, 1);
+  assert.equal(events[0][1], 'documento_consultado');
+  assert.equal(events[0][2], 'parceiro');
+  assert.equal(events[0][3], OTHER);
+
+  await withServer(readPool(uploadRow(confirmed), 'conectada', { document: doc('institucional') }), memoryStorage(), async (base) => {
+    assert.equal((await send(base, 'GET', `/uploads/${UPLOAD}`, undefined, partner)).status, 404, 'sem relação');
+  });
+  await withServer(readPool(uploadRow(confirmed), 'conectada', { document: doc('restrito'), party: { interested: true } }), memoryStorage(), async (base) => {
+    assert.equal((await send(base, 'GET', `/uploads/${UPLOAD}`, undefined, partner)).status, 404, 'restrito fora da lista');
+  });
+  await withServer(readPool(uploadRow(confirmed), 'conectada', { document: doc('restrito', [OTHER]), party: { interested: true } }), memoryStorage(), async (base) => {
+    assert.equal((await send(base, 'GET', `/uploads/${UPLOAD}`, undefined, partner)).status, 200, 'restrito com a conta na lista');
+  });
+  await withServer(readPool(uploadRow(confirmed), 'publicada', { document: doc('publico') }), memoryStorage(), async (base) => {
+    assert.equal((await send(base, 'GET', `/uploads/${UPLOAD}/content`, undefined, {})).status, 302);
   });
 });
 

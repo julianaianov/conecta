@@ -107,6 +107,8 @@ const createApp = ({
   // Antes das rotas de posts, cujo `/:id` só aceita UUID. Público: /api/posts/demands.
   app.use('/uploads', createUploadRoutes({
     pool, auth, storage: uploadStorage, policy: createPostUploadPolicy({ institutionStatus }), operationUserIds,
+    // Documento da demanda no nível Institucional (T-05-18).
+    institutionalAccess: createInstitutionalUploadAccess({ institutionStatus, operationUserIds }),
   }));
   // Atuação institucional do Poder Público (T13) e encaminhamentos (T14):
   // /institutional/* e /demands/:id/institutional.
