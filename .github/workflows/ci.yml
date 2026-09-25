@@ -62,32 +62,35 @@ jobs:
           done
           npm run seo:audit
 
-  # Publicação automática: develop → homologação, master → produção.
-  # Dispara a workflow do dm-infra (que constrói as imagens, faz backup, migra
-  # e sobe os containers). Só roda depois da validação acima passar.
-  publicar:
-    name: Publicar no servidor
+  # Publicação automática: develop → homologação, master → produção, só
+  # depois da validação acima passar. Chama a workflow reutilizável do
+  # dm-infra (build das imagens, backup obrigatório, migrações e subida dos
+  # containers). Os checkouts entre repositórios usam chaves de deploy
+  # somente leitura (secrets INFRA_/APPLICATION_/GESTAO_REPO_SSH_KEY).
+  publicar-homologacao:
+    name: Publicar em homologação
     needs: validate
-    if: github.event_name == 'push' && (github.ref_name == 'develop' || github.ref_name == 'master')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Disparar publicação no dm-infra
-        env:
-          # Token fine-grained com Actions: read and write só no DmConnecta/dm-infra.
-          GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::Secret DEPLOY_DISPATCH_TOKEN ausente: a publicação automática não foi disparada."
-            exit 1
-          fi
-          if [ "$GITHUB_REF_NAME" = master ]; then
-            workflow=deploy.yml; ambiente=produção
-          else
-            workflow=deploy-homologation.yml; ambiente=homologação
-          fi
-          # A branch (não o SHA) nos dois repositórios: se uma publicação
-          # pendente for substituída na fila dmconecta-host, a seguinte
-          # continua levando o último commit de cada repositório.
-          gh workflow run "$workflow" -R DmConnecta/dm-infra --ref "$GITHUB_REF_NAME" \
-            -f app_ref="$GITHUB_REF_NAME" -f gestao_ref="$GITHUB_REF_NAME"
-          echo "Publicação em $ambiente disparada: https://github.com/DmConnecta/dm-infra/actions/workflows/$workflow" >>"$GITHUB_STEP_SUMMARY"
+    if: github.event_name == 'push' && github.ref_name == 'develop'
+    permissions:
+      id-token: write
+      contents: read
+    uses: DmConnecta/dm-infra/.github/workflows/deploy-homologation.yml@develop
+    with:
+      app_ref: develop
+      gestao_ref: develop
+      infra_ref: develop
+    secrets: inherit
+
+  publicar-producao:
+    name: Publicar em produção
+    needs: validate
+    if: github.event_name == 'push' && github.ref_name == 'master'
+    permissions:
+      id-token: write
+      contents: read
+    uses: DmConnecta/dm-infra/.github/workflows/deploy.yml@master
+    with:
+      app_ref: master
+      gestao_ref: master
+      infra_ref: master
+    secrets: inherit
