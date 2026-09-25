@@ -131,10 +131,13 @@ test('mapa inteligente: legenda, filtros, bbox, agrupamento e territórios',
         territory: 'Vila Kennedy', municipality: 'Rio de Janeiro', district: 'Bangu',
         latitude: -22.87, longitude: -43.37,
       });
-      await publishedDemand({
-        category: 'projeto_ambiental', title: 'Mutirão do manguezal', priority: 'media',
+      // Recuperação ambiental (Modelo §03, migração 031) cai em "Ações ambientais".
+      const ambiental = await publishedDemand({
+        category: 'recuperacao_ambiental', title: 'Recuperação do manguezal', priority: 'media',
         territory: 'Vila Kennedy', latitude: -22.88, longitude: -43.38,
+        moduleDetails: { area_m2: 1500, responsavel_tecnico: { nome: 'Responsável', registro: 'CRBio 1' } },
       });
+
       await publishedDemand({
         category: 'necessidade_de_patrocinio', title: 'Patrocínio de uniformes', priority: 'alta',
         latitude: -23.03, longitude: -43.46,
@@ -208,7 +211,26 @@ test('mapa inteligente: legenda, filtros, bbox, agrupamento e territórios',
       assert.equal(vila.uf, 'RJ');
       assert.equal(vila.slug, 'vila-kennedy-rio-de-janeiro-rj');
       assert.equal(vila.category.projeto_social, 1);
-      assert.equal(vila.category.projeto_ambiental, 1);
+      assert.equal(vila.category.recuperacao_ambiental, 1);
+      assert.equal(vila.mapClass.acoes_ambientais, 1);
+
+      // ── 12 tipos (T-05-07) e módulo (T-05-08) ────────────────────────────
+      assert.deepEqual(legend.body.legend.find((l) => l.id === 'acoes_ambientais').categories,
+        ['projeto_ambiental', 'recuperacao_ambiental']);
+      const pontoAmbiental = all.body.points.find((p) => p.id === ambiental);
+      assert.equal(pontoAmbiental.mapClass, 'acoes_ambientais');
+      assert.equal(all.body.counts.mapClass.acoes_ambientais, 1);
+      const { rows: [vitrine] } = await pool.query('SELECT type::text AS type FROM posts WHERE demand_id = $1', [ambiental]);
+      assert.equal(vitrine.type, 'project');
+      const { rows: [fn] } = await pool.query(
+        `SELECT demand_post_type('apoio_com_materiais') AS apoio, demand_post_type('outras_demandas_territoriais') AS outras,
+                demand_map_class('recuperacao_ambiental') AS classe, demand_module('recuperacao_ambiental') AS modulo`,
+      );
+      assert.deepEqual(fn, { apoio: 'need', outras: 'problem', classe: 'acoes_ambientais', modulo: 'ambiental' });
+      const publica = await call('GET', `/demands/${ambiental}`, { auth: false });
+      assert.equal(publica.body.module, 'ambiental');
+      assert.equal(publica.body.moduleLabel, 'Módulo Ambiental');
+      assert.deepEqual(publica.body.moduleDetails.responsavel_tecnico, { nome: 'Responsável', registro: 'CRBio 1' });
 
       // ── Índices da migração 016 ──────────────────────────────────────────
       const { rows: idx } = await pool.query(
