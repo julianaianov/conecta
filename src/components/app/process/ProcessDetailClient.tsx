@@ -12,8 +12,8 @@ import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { formatDate } from "@/lib/app/format";
 import {
-  PARTY_KIND_LABELS, connectionNumberLabel, contributionLabels, formatCents, processErrorMessage, processPath,
-  processRequiresNote, processStatusLabel, processTimelineLabel,
+  PARTY_KIND_LABELS, connectionNumberLabel, contributionLabels, formatCents, processErrorMessage, processFeesLine,
+  processPath, processRequiresNote, processStatusLabel, processTimelineLabel,
   type ProcessDetail, type ProcessResponsible, type ProcessStatus,
 } from "@/lib/app/process";
 import { timelineEventLabel } from "@/lib/app/demand";
@@ -187,6 +187,8 @@ export function ProcessDetailClient({ protocol }: { protocol: string }) {
           <Row label="Contribuição" value={contributionLabels(p.contributionKinds)} />
           {p.contributionDescription && <Row label="Descrição" value={p.contributionDescription} />}
           {amount && <Row label="Valor declarado" value={amount} />}
+          {/* Decisão 14: 4% + 6% sobre a contribuição só com Parceiros/Empresas. */}
+          {processFeesLine(p.fees) && <Row label="Valor da conexão" value={processFeesLine(p.fees) ?? ""} />}
         </dl>
         {p.statusNote && (
           <p className="mt-3 text-sm" style={{ color: "var(--th-text)" }}><strong>Motivo do último status:</strong> {p.statusNote}</p>

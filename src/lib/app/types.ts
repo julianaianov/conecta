@@ -1865,9 +1865,9 @@ export type InstitutionalScope = "jurisdicao" | "todas";
 
 export interface InstitutionalDemandFilter extends DemandListFilter {
   scope?: InstitutionalScope;
-  /** Inclui `sem_acompanhamento`. */
   /** Eixos temáticos (T26), para as demandas da competência do órgão (T-03-01). */
   theme?: DemandTheme[];
+  /** Inclui `sem_acompanhamento`. */
   institutionalStatus?: (InstitutionalStatus | "sem_acompanhamento")[];
 }
 

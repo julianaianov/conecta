@@ -357,3 +357,95 @@ test('módulo específico (T-05-08): dossiê mostra o módulo e as informações
   assert.equal(redacted.demand.moduleDetails.imovel, undefined);
   assert.equal(redacted.demand.moduleDetails.area_m2, 80);
 });
+
+/** Textos escritos no PDF (as fontes são subconjuntos: o arquivo não tem texto legível). */
+async function pdfTexts(c) {
+  const PDFDocument = require('pdfkit');
+  const original = PDFDocument.prototype.text;
+  const texts = [];
+  PDFDocument.prototype.text = function capture(value, ...rest) {
+    if (typeof value === 'string') texts.push(value);
+    return original.call(this, value, ...rest);
+  };
+  try {
+    const hash = content.contentHash(c);
+    await renderDossierPdf(c, { verifyUrl: 'https://dmconecta.org/x', contentSha256: hash });
+  } finally {
+    PDFDocument.prototype.text = original;
+  }
+  return texts.join('\n');
+}
+
+const PROCESS_ROWS = [
+  {
+    protocol: 'DM-2026-000001', sequence_in_demand: 1, party_kind: 'empresa', party_name: 'Construtora Exemplo',
+    status: 'em_execucao', contribution_kinds: ['apoio_financeiro'], contribution_amount_cents: '1000000',
+    fee_applies: true, agent_fee_cents: '40000', platform_fee_cents: '60000', total_with_fees_cents: '1100000',
+    formalized_at: new Date('2026-09-23T12:00:00Z'),
+  },
+  {
+    protocol: 'DM-2026-000002', sequence_in_demand: 2, party_kind: 'poder_publico', party_name: 'Secretaria de Obras',
+    status: 'em_execucao', contribution_kinds: ['recurso_publico'], contribution_amount_cents: '500000',
+    fee_applies: false, agent_fee_cents: '0', platform_fee_cents: '0', total_with_fees_cents: '500000',
+    formalized_at: new Date('2026-09-23T13:00:00Z'),
+  },
+];
+
+test('4% + 6% por processo (T-05-06, decisão 14): orçamento de execução, frase da Obs. e taxas só com Parceiros', async () => {
+  const snapshot = content.demandSnapshot(ROW, ITEMS, { processes: PROCESS_ROWS });
+  assert.equal(snapshot.processes.length, 2);
+  assert.equal(snapshot.processes[0].totalWithFeesCents, 1_100_000);
+  assert.equal(snapshot.processes[1].feeApplies, false);
+  assert.equal(snapshot.processes[1].agentFeeCents, 0);
+
+  const integral = content.buildDossierContent({ snapshot, institution: INSTITUTION, meta: meta('integral') });
+  assert.deepEqual(integral.connectionFinance, {
+    executionBudgetCents: 1_000_000,
+    withFees: { processes: 1, contributionCents: 1_000_000, agentFeeCents: 40_000, platformFeeCents: 60_000, totalWithFeesCents: 1_100_000 },
+    government: { processes: 1, contributionCents: 500_000 },
+  });
+  const text = await pdfTexts(integral);
+  assert.ok(text.includes('Orçamento de execução'));
+  assert.ok(text.includes('Composição quando o apoio vem de Parceiros, Investidores ou Empresas (não se aplica ao Poder Público)'));
+  assert.ok(text.includes(content.FEE_OBSERVATION), 'frase literal do Modelo §04 Obs.');
+  assert.ok(text.includes('Não se aplica'), 'processo do Poder Público sem taxas');
+  assert.ok(text.includes('Construtora Exemplo'));
+
+  // Versão pública: Parceiro só pelo tipo; o órgão é identificado; valores iguais.
+  const pub = content.buildDossierContent({ snapshot, institution: INSTITUTION, meta: meta('publica') });
+  assert.equal(pub.processes[0].partyName, null);
+  assert.equal(pub.processes[1].partyName, 'Secretaria de Obras');
+  assert.deepEqual(pub.connectionFinance, integral.connectionFinance);
+  const pubText = await pdfTexts(pub);
+  assert.ok(pubText.includes(content.FEE_OBSERVATION));
+  assert.ok(!pubText.includes('Construtora Exemplo'));
+
+  // Retrato anterior à T-05-06 (sem processos) continua gerando o mesmo conteúdo.
+  const old = content.buildDossierContent({ snapshot: content.demandSnapshot(ROW, ITEMS), institution: INSTITUTION, meta: meta('integral') });
+  assert.equal(old.processes, undefined);
+  assert.equal(old.connectionFinance, undefined);
+});
+
+test('Modelo §04/§05 (T-05-09): problema, área de abrangência, item, fornecedor e recursos/valor da etapa no dossiê', async () => {
+  const row = { ...ROW, problem_identified: 'Praça sem uso à noite.', coverage_area: 'Praça e quatro quadras do entorno' };
+  const items = {
+    ...ITEMS,
+    budgetItems: ITEMS.budgetItems.map((b, i) => (i === 0 ? { ...b, item: 'Madeira', supplier_reference: 'Serraria do Zé' } : b)),
+    scheduleItems: ITEMS.scheduleItems.map((s, i) => (i === 0 ? { ...s, resources_needed: 'Caçamba', amount_cents: '150000' } : s)),
+  };
+  const snapshot = content.demandSnapshot(row, items);
+  assert.equal(snapshot.demand.problemIdentified, 'Praça sem uso à noite.');
+  assert.equal(snapshot.location.coverageArea, 'Praça e quatro quadras do entorno');
+  assert.equal(snapshot.budget.items[0].item, 'Madeira');
+  assert.equal(snapshot.budget.items[0].supplierReference, 'Serraria do Zé');
+  assert.deepEqual([snapshot.schedule[0].deadlineDays, snapshot.schedule[0].resourcesNeeded, snapshot.schedule[0].amountCents], [15, 'Caçamba', 150_000]);
+  const integral = await pdfTexts(content.buildDossierContent({ snapshot, institution: INSTITUTION, meta: meta('integral') }));
+  for (const expected of ['Problema identificado', 'Área de abrangência', 'Serraria do Zé', 'Recursos: Caçamba', 'Prazo: 15 dia(s)']) {
+    assert.ok(integral.includes(expected), expected);
+  }
+  // Versão pública: sem fornecedor (pode ser nome de pessoa); o resto fica.
+  const pub = content.buildDossierContent({ snapshot, institution: INSTITUTION, meta: meta('publica') });
+  assert.equal(pub.budget.items[0].supplierReference, null);
+  assert.equal(pub.location.coverageArea, 'Praça e quatro quadras do entorno');
+  assert.ok(!(await pdfTexts(pub)).includes('Serraria do Zé'));
+});

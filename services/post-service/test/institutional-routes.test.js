@@ -220,3 +220,23 @@ test('GET /institutional/me: eixos sugeridos pelas áreas de competência (T-03-
     assert.deepEqual((await (await send(base, 'GET', '/institutional/me')).json()).suggestedThemes, []);
   });
 });
+
+test('visão do órgão (T-05-06, decisão 14): só o orçamento de execução, sem a composição 4% + 6%', async () => {
+  const pool = fakePool((text) => {
+    if (/FROM demands d\s+WHERE d.id = \$1 AND d.status = ANY/.test(text)) {
+      return { rows: [{
+        id: DEMAND, author_id: GOV, author_name: 'Agente', category: 'projeto_social', title: 'Praça', status: 'publicada',
+        budget_amount_cents: '1000000', agent_fee_bps: 400, platform_fee_bps: 600, agent_fee_cents: '40000',
+        platform_fee_cents: '60000', total_amount_cents: '1100000', published_at: new Date(), updated_at: new Date(),
+      }] };
+    }
+    return { rows: [] };
+  });
+  await withServer(pool, async (base) => {
+    const res = await send(base, 'GET', `/institutional/demands/${DEMAND}`);
+    assert.equal(res.status, 200);
+    const { demand } = await res.json();
+    assert.deepEqual(demand.composition, { budgetAmountCents: 1_000_000 });
+    assert.ok(!JSON.stringify(demand).includes('1100000'), 'o total com 4% + 6% não sai para o órgão');
+  });
+});

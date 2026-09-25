@@ -155,7 +155,17 @@ function createDossierService({
       // Prestação de contas concluída (T18) entra no retrato: o dossiê da
       // prestação traz relatório, resultados por meta e impacto.
       const accountability = await accountabilityStore.loadConcludedView(client, demandId);
-      const snapshot = demandSnapshot(row, items, { accountability });
+      // Processos de Conexão com contribuição e taxas (T-05-06, decisão 14).
+      const { rows: processes } = await client.query(
+        `SELECT protocol, sequence_in_demand, party_kind::text AS party_kind, party_name, status::text AS status,
+                contribution_kinds::text[] AS contribution_kinds,
+                contribution_amount_cents::text AS contribution_amount_cents, fee_applies,
+                agent_fee_cents::text AS agent_fee_cents, platform_fee_cents::text AS platform_fee_cents,
+                total_with_fees_cents::text AS total_with_fees_cents, formalized_at
+           FROM connection_processes WHERE demand_id = $1 ORDER BY sequence_in_demand`,
+        [demandId],
+      );
+      const snapshot = demandSnapshot(row, items, { accountability, processes });
       const status = storage ? 'pendente' : 'indisponivel';
       const reason = storage ? null : UNAVAILABLE_REASON;
       let created = 0;

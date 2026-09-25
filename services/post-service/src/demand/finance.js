@@ -61,8 +61,13 @@ function feeCents(baseCents, bps) {
  * Composição gravada na demanda (colunas de `demands`):
  * `{ budgetAmountCents, agentFeeBps, platformFeeBps, agentFeeCents,
  *    platformFeeCents, totalAmountCents }`.
+ *
+ * Decisão 14 (Modelo de Conexão §04 Obs.): 4% + 6% só incidem nas conexões
+ * com Parceiros, Investidores e Empresas, nunca com o Poder Público. Por isso
+ * a composição da demanda é uma **projeção** "se apoiada por Parceiros/Empresas";
+ * o valor que vale é o de cada processo (`processFees`). O orçamento de
+ * execução é `budgetAmountCents`.
  */
-// TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% só se aplica a conexões com Parceiros/Investidores/Empresas, não ao Poder Público; hoje é calculado por demanda. Ver TODO em migrations/007-demands.sql.
 function computeComposition(baseCents) {
   if (!isCents(baseCents) || baseCents > MAX_BUDGET_CENTS) {
     throw new RangeError('valor do orçamento inválido');
@@ -86,6 +91,31 @@ function compositionFromItems(items) {
   return computeComposition(base);
 }
 
+/**
+ * Taxas de um Processo de Conexão (T-05-06, migração post 040): 4% + 6% sobre
+ * a contribuição financeira quando a parte não é o Poder Público
+ * (`feeApplies`). Com o Poder Público, taxas 0 e total = contribuição; sem
+ * contribuição financeira, tudo `null`. Espelha as colunas geradas
+ * `agent_fee_cents`, `platform_fee_cents` e `total_with_fees_cents`.
+ */
+function processFees(contributionAmountCents, feeApplies) {
+  if (contributionAmountCents === null || contributionAmountCents === undefined) {
+    return { feeApplies: Boolean(feeApplies), agentFeeCents: null, platformFeeCents: null, totalWithFeesCents: null };
+  }
+  if (!isCents(contributionAmountCents)) throw new RangeError('valor da contribuição inválido');
+  if (!feeApplies) {
+    return { feeApplies: false, agentFeeCents: 0, platformFeeCents: 0, totalWithFeesCents: contributionAmountCents };
+  }
+  const agentFeeCents = feeCents(contributionAmountCents, AGENT_FEE_BPS);
+  const platformFeeCents = feeCents(contributionAmountCents, PLATFORM_FEE_BPS);
+  return {
+    feeApplies: true,
+    agentFeeCents,
+    platformFeeCents,
+    totalWithFeesCents: contributionAmountCents + agentFeeCents + platformFeeCents,
+  };
+}
+
 /** Formata centavos em reais (pt-BR), para mensagens e dossiê. */
 function formatBRL(cents) {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -99,5 +129,6 @@ module.exports = {
   feeCents,
   computeComposition,
   compositionFromItems,
+  processFees,
   formatBRL,
 };

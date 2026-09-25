@@ -137,10 +137,12 @@ CREATE TABLE IF NOT EXISTS demands (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   -- 4% e 6% são da fonte; mudar o percentual exige nova decisão e migração.
   CONSTRAINT demands_fee_rates CHECK (agent_fee_bps = 400 AND platform_fee_bps = 600),
-  -- TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% só se aplica a conexões com
-  -- Parceiros/Investidores/Empresas, não ao Poder Público; hoje a composição é por demanda.
-  -- Espelhos: src/demand/finance.js, src/demand/store.js, src/routes/interests.js, src/dossier/ e,
-  -- no portal, DemandParts.tsx, InstitutionalDemandClient.tsx e OpportunitiesClient.tsx.
+  -- Modelo de Conexão §04 Obs. (decisão 14): 4% + 6% só se aplica a conexões com
+  -- Parceiros/Investidores/Empresas, nunca ao Poder Público. Esta composição é a projeção
+  -- "se apoiada por Parceiros/Empresas"; as taxas que valem são as de cada Processo de
+  -- Conexão (connection_processes.*_fee_cents, migração 040). Espelhos: src/demand/finance.js,
+  -- src/demand/store.js (projectionFor), src/routes/interests.js, src/dossier/ e, no portal,
+  -- DemandParts.tsx, ViewerComposition.tsx e OpportunitiesClient.tsx.
   CONSTRAINT demands_financial_composition CHECK (
     agent_fee_cents = round(budget_amount_cents::numeric * agent_fee_bps / 10000)
     AND platform_fee_cents = round(budget_amount_cents::numeric * platform_fee_bps / 10000)

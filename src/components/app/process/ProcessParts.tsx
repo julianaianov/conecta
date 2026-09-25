@@ -10,7 +10,8 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/app/api";
 import { formatDate } from "@/lib/app/format";
 import {
-  PROCESS_STATUS_COLORS, connectionNumberLabel, contributionLabels, processPath, processStatusLabel, publicPartyLabel,
+  PROCESS_STATUS_COLORS, connectionNumberLabel, contributionLabels, processFeesLine, processPath, processStatusLabel,
+  publicPartyLabel,
   type ProcessStatus, type ProcessSummary, type PublicProcess,
 } from "@/lib/app/process";
 import { Icon } from "../Icon";
@@ -57,6 +58,9 @@ export function DemandProcessesSection({ demandId }: { demandId: string }) {
               Contribuição: {contributionLabels(p.contributionKinds)}
               {p.formalizedAt ? ` · formalizado em ${formatDate(p.formalizedAt)}` : ""}
             </p>
+            {processFeesLine(p.fees) && (
+              <p className="text-xs font-numeric" style={{ color: "var(--th-text)" }}>{processFeesLine(p.fees)}</p>
+            )}
           </li>
         ))}
       </ul>

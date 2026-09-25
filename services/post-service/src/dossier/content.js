@@ -19,6 +19,10 @@ const SCHEMA_VERSION = 1;
 
 const PRIORITY_LABELS = { baixa: 'Baixa', media: 'Média', alta: 'Alta', urgente: 'Urgente' };
 
+// Texto literal do Modelo de Conexão §04 (Obs.), impresso no dossiê (decisão 14).
+const FEE_OBSERVATION = 'Este valor (%) será aplicado exclusivamente às conexões realizadas com Parceiros, '
+  + 'Investidores e Empresas. Não se aplica às conexões com o Poder Público.';
+
 const MILESTONE_LABELS = {
   antes: 'Situação inicial (antes)',
   diagnostico: 'Diagnóstico',
@@ -99,7 +103,7 @@ function daysBetween(start, end) {
  * Demanda congelada no pedido do dossiê (linha de `demands` com a projeção do
  * autor + itens de store.loadItems). É o que a versão integral mostra.
  */
-function demandSnapshot(row, items, { accountability = null } = {}) {
+function demandSnapshot(row, items, { accountability = null, processes = null } = {}) {
   const schedule = (items.scheduleItems ?? []).map((s) => ({
     id: s.id,
     stage: s.stage,
@@ -162,7 +166,9 @@ function demandSnapshot(row, items, { accountability = null } = {}) {
     },
     budget: {
       items: budgetItems,
-      // TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql.
+      // Projeção "se apoiada por Parceiros/Empresas" (decisão 14): 4% + 6%
+      // nunca incidem sobre o Poder Público; o que vale é o de cada processo
+      // (`processes`). O orçamento de execução é `budgetAmountCents`.
       composition: {
         budgetAmountCents: toNumber(row.budget_amount_cents),
         agentFeeBps: toNumber(row.agent_fee_bps),
@@ -201,6 +207,56 @@ function demandSnapshot(row, items, { accountability = null } = {}) {
     // A projeção já é a pública (sem nota interna e sem arquivo do anexo),
     // então a variante pública do dossiê a repete sem redigir mais nada.
     accountability: accountabilitySnapshot(accountability),
+    // Processos de Conexão com a contribuição e as taxas de cada um (T-05-06,
+    // decisão 14; colunas da migração 040). Ausente em retratos anteriores.
+    ...(Array.isArray(processes) ? { processes: processes.map(processSnapshot) } : {}),
+  };
+}
+
+/** Processo de Conexão no retrato do dossiê (linha de `connection_processes`). */
+function processSnapshot(p) {
+  return {
+    protocol: p.protocol,
+    sequenceInDemand: toNumber(p.sequence_in_demand),
+    partyKind: p.party_kind,
+    partyName: text(p.party_name),
+    status: p.status,
+    contributionKinds: Array.isArray(p.contribution_kinds) ? p.contribution_kinds : [],
+    contributionAmountCents: toNumber(p.contribution_amount_cents),
+    feeApplies: p.fee_applies === true,
+    agentFeeCents: toNumber(p.agent_fee_cents),
+    platformFeeCents: toNumber(p.platform_fee_cents),
+    totalWithFeesCents: toNumber(p.total_with_fees_cents),
+    formalizedAt: toIso(p.formalized_at),
+  };
+}
+
+/**
+ * Execução × com taxas (decisão 14): orçamento de execução da demanda e a
+ * soma das contribuições financeiras dos processos, separando os que têm
+ * 4% + 6% (Parceiros, Investidores e Empresas) dos do Poder Público (sem
+ * taxas). `null` quando o retrato não traz processos.
+ */
+function connectionFinance(snapshot) {
+  if (!Array.isArray(snapshot.processes)) return null;
+  const withAmount = snapshot.processes.filter((p) => p.contributionAmountCents !== null
+    && !['cancelada', 'nao_aprovada', 'nao_e_de_competencia'].includes(p.status));
+  const sum = (list, key) => list.reduce((total, p) => total + (p[key] ?? 0), 0);
+  const withFees = withAmount.filter((p) => p.feeApplies);
+  const government = withAmount.filter((p) => !p.feeApplies);
+  return {
+    executionBudgetCents: snapshot.budget.composition.budgetAmountCents,
+    withFees: {
+      processes: withFees.length,
+      contributionCents: sum(withFees, 'contributionAmountCents'),
+      agentFeeCents: sum(withFees, 'agentFeeCents'),
+      platformFeeCents: sum(withFees, 'platformFeeCents'),
+      totalWithFeesCents: sum(withFees, 'totalWithFeesCents'),
+    },
+    government: {
+      processes: government.length,
+      contributionCents: sum(government, 'contributionAmountCents'),
+    },
   };
 }
 
@@ -276,6 +332,10 @@ function redactSnapshot(snapshot) {
     },
     schedule: schedule.map((s) => ({ ...s, responsible: null })),
     documents: documents.map((d) => ({ type: d.type, title: d.title, description: null, source: null })),
+    // Processos como na lista pública: o órgão é identificado; Parceiros, só pelo tipo.
+    ...(Array.isArray(snapshot.processes)
+      ? { processes: snapshot.processes.map((p) => ({ ...p, partyName: p.partyKind === 'poder_publico' ? p.partyName : null })) }
+      : {}),
   };
 }
 
@@ -347,6 +407,8 @@ function buildDossierContent({ snapshot, institution, meta, photo = null }) {
       : null,
     deadlines: deadlines(base.schedule),
     audiovisualCents,
+    // Execução × com taxas por processo (T-05-06, decisão 14).
+    ...(Array.isArray(base.processes) ? { connectionFinance: connectionFinance(base) } : {}),
   };
 }
 
@@ -412,6 +474,9 @@ module.exports = {
   HASH_RE,
   demandSnapshot,
   accountabilitySnapshot,
+  processSnapshot,
+  connectionFinance,
+  FEE_OBSERVATION,
   redactSnapshot,
   institutionIdentity,
   deadlines,

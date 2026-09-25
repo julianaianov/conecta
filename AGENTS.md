@@ -169,8 +169,19 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Composição: 4% e 6% sobre o orçamento original, cada parcela arredondada meio
   para cima ao centavo, total = base + 4% + 6% (`src/demand/finance.js`, CHECK
   `demands_financial_composition`).
-  > TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% só se aplica a conexões com
-  > Parceiros/Investidores/Empresas, não ao Poder Público; hoje a composição é por demanda.
+- 4% + 6% por conexão (T-05-06, decisão 14; Modelo §04 Obs.): as taxas valem só
+  com Parceiros, Investidores e Empresas, nunca com o Poder Público. A
+  composição da demanda fica gravada como **projeção** "se apoiada por
+  Parceiros/Empresas" (`CompositionCard`); o valor real é por processo —
+  migração post 040 gera `agent_fee_cents`, `platform_fee_cents` e
+  `total_with_fees_cents` em `connection_processes` sobre
+  `contribution_amount_cents` (0 com o Poder Público; `finance.processFees`
+  espelha). `GET /processes/:ref` e a lista pública trazem `fees`
+  (`processFeesLine`: "Contribuição R$ X + 4% + 6% = R$ Y"). A visão do órgão
+  (`GET /institutional/demands/:id`, `projectionFor('poder_publico')`) traz só
+  `composition.budgetAmountCents`; as oportunidades filtram o órgão pelo
+  orçamento. O dossiê mostra o orçamento de execução e, em subseção, a
+  composição com Parceiros/Empresas com o texto da Obs. e os processos com taxas.
 - Domínio puro em `services/post-service/src/demand/` (constantes, cálculo,
   validação de rascunho e de envio, máquina de estados, gate T06a). Enviar exige
   Agente com instituição `validada` (`requireValidatedAgent`, que usa o cliente

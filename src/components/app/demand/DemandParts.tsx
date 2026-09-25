@@ -111,18 +111,20 @@ export function StatusTrack({ status }: { status: DemandStatus }) {
 }
 
 /**
- * Composição financeira (Fluxo 2, slides 9 e 10; decisão 5). Os percentuais
- * são acrescidos ao valor original, nunca descontados do recurso de execução.
+ * Composição financeira (Fluxo 2, slides 9 e 10; decisões 5 e 14). Os
+ * percentuais são acrescidos ao valor original, nunca descontados do recurso
+ * de execução, e só valem quando o apoio vem de Parceiros, Investidores ou
+ * Empresas (Modelo de Conexão §04 Obs.): a composição da demanda é a projeção
+ * desse caso; o valor de cada conexão fica no Processo de Conexão.
  */
-// TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql.
-export function CompositionCard({ composition, preview = false, pending = false, title = "Composição financeira" }: {
+export function CompositionCard({ composition, preview = false, pending = false, title = "Composição com Parceiros/Empresas (4% + 6%)" }: {
   composition: DemandComposition; preview?: boolean; pending?: boolean; title?: string;
 }) {
   const rows: [string, string, boolean?][] = [
     ["Valor do orçamento para execução", formatCents(composition.budgetAmountCents)],
     [`${formatBps(composition.agentFeeBps)} — Agente de Transformação`, `+ ${formatCents(composition.agentFeeCents)}`],
     [`${formatBps(composition.platformFeeBps)} — Plataforma`, `+ ${formatCents(composition.platformFeeCents)}`],
-    ["Valor total da demanda", formatCents(composition.totalAmountCents), true],
+    ["Valor total se apoiada por Parceiros/Empresas", formatCents(composition.totalAmountCents), true],
   ];
   return (
     <section aria-label={title} className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--th-border)", background: "var(--th-card)" }}>
@@ -141,6 +143,8 @@ export function CompositionCard({ composition, preview = false, pending = false,
       <p className="px-4 py-3 text-xs" style={{ color: "var(--th-muted)" }}>
         Os percentuais de 4% e 6% são calculados sobre o valor original do orçamento e <strong>acrescidos</strong> ao valor total da demanda,
         <strong> não descontados</strong> do recurso destinado à execução. O cálculo é feito automaticamente pelo sistema.
+        {" "}Este valor (%) será aplicado exclusivamente às conexões realizadas com Parceiros, Investidores e Empresas.
+        Não se aplica às conexões com o Poder Público.
       </p>
     </section>
   );

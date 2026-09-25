@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import {
   CONTRIBUTION_KIND_LABELS, PARTY_KIND_LABELS, PROCESS_EVENT_TYPES, PROCESS_FINAL_STATUSES, PROCESS_PROTOCOL_RE,
   PROCESS_STATUSES, PROCESS_STATUSES_REQUIRING_NOTE, PROCESS_STATUS_COLORS, PROCESS_STATUS_LABELS,
-  connectionNumberLabel, contributionLabels, processPath, processTimelineLabel, publicPartyLabel,
+  connectionNumberLabel, contributionLabels, processFeesLine, processPath, processTimelineLabel, publicPartyLabel,
 } from "./process.ts";
 import { timelineEventLabel } from "./demand.ts";
 
@@ -40,4 +40,17 @@ test("rótulos, caminho e linha do tempo sem nome de pessoa", () => {
     "Processo DM-2026-000001: Aprovada para execução",
   );
   assert.equal(processTimelineLabel({ type: "outro" }), null);
+});
+
+test("valor da conexão (T-05-06, decisão 14): 4% + 6% só com Parceiros/Empresas", () => {
+  const brl = (s) => s.replace(/\s/g, " ");
+  assert.equal(
+    brl(processFeesLine({ applies: true, contributionAmountCents: 1_000_000, agentFeeCents: 40_000, platformFeeCents: 60_000, totalWithFeesCents: 1_100_000 })),
+    "Contribuição R$ 10.000,00 + 4% (R$ 400,00) + 6% (R$ 600,00) = R$ 11.000,00",
+  );
+  assert.equal(
+    brl(processFeesLine({ applies: false, contributionAmountCents: 500_000, agentFeeCents: 0, platformFeeCents: 0, totalWithFeesCents: 500_000 })),
+    "Contribuição R$ 5.000,00 (sem 4% + 6%: conexão com o Poder Público)",
+  );
+  assert.equal(processFeesLine(null), null);
 });

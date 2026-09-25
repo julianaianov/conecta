@@ -51,6 +51,19 @@ export type ProcessResponsible = {
   dueOn: string | null;
 };
 
+/**
+ * Taxas do processo (T-05-06, decisão 14; migração post 040): 4% + 6% sobre a
+ * contribuição financeira só quando a parte não é o Poder Público. `null` no
+ * processo sem contribuição financeira.
+ */
+export type ProcessFees = {
+  applies: boolean;
+  contributionAmountCents: number;
+  agentFeeCents: number;
+  platformFeeCents: number;
+  totalWithFeesCents: number;
+};
+
 export type ConnectionProcess = ProcessSummary & {
   demand: { id: string; title: string | null; status: string | null };
   partyUserId: string | null;
@@ -62,6 +75,7 @@ export type ConnectionProcess = ProcessSummary & {
   contributionKinds: ProcessContributionKind[];
   contributionDescription: string | null;
   contributionAmountCents: number | null;
+  fees?: ProcessFees | null;
   previousStatus: ProcessStatus | null;
   statusNote: string | null;
   responsible: ProcessResponsible;
@@ -89,6 +103,8 @@ export type PublicProcess = {
   partyKind: ProcessPartyKind;
   organizationName: string | null;
   contributionKinds: ProcessContributionKind[];
+  feeApplies?: boolean;
+  fees?: ProcessFees | null;
   status: ProcessStatus;
   statusChangedAt: string | null;
   formalizedAt: string | null;
@@ -243,4 +259,16 @@ export function processErrorMessage(err: unknown, fallback = "Não foi possível
 export function formatCents(cents: number | null | undefined): string | null {
   if (cents === null || cents === undefined) return null;
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/**
+ * Valor da conexão (decisão 14): "Contribuição R$ X + 4% + 6% = R$ Y" com
+ * Parceiros, Investidores e Empresas; só "Contribuição R$ X" com o Poder
+ * Público (as taxas não se aplicam). `null` sem contribuição financeira.
+ */
+export function processFeesLine(fees: ProcessFees | null | undefined): string | null {
+  if (!fees) return null;
+  const amount = formatCents(fees.contributionAmountCents);
+  if (!fees.applies) return `Contribuição ${amount} (sem 4% + 6%: conexão com o Poder Público)`;
+  return `Contribuição ${amount} + 4% (${formatCents(fees.agentFeeCents)}) + 6% (${formatCents(fees.platformFeeCents)}) = ${formatCents(fees.totalWithFeesCents)}`;
 }

@@ -25,6 +25,8 @@ const PROCESS_SQL = `
   p.origin_interest_id, p.origin_track_id, p.origin_offer_id, p.origin_connection_id,
   p.contribution_kinds::text[] AS contribution_kinds, p.contribution_description,
   p.contribution_amount_cents::text AS contribution_amount_cents,
+  p.agent_fee_cents::text AS agent_fee_cents, p.platform_fee_cents::text AS platform_fee_cents,
+  p.total_with_fees_cents::text AS total_with_fees_cents,
   p.status::text AS status, p.previous_status::text AS previous_status, p.status_note, p.status_changed_by_kind,
   p.status_changed_at, p.responsible_organization_name, p.responsible_organ, p.responsible_department,
   p.responsible_sector, p.responsible_name, p.responsible_role, p.responsible_since,
@@ -35,6 +37,23 @@ const PROCESS_SQL = `
 const PROCESS_FROM = 'connection_processes p JOIN demands d ON d.id = p.demand_id';
 
 const amount = (value) => (value === null || value === undefined ? null : Number(value));
+
+/**
+ * Taxas do processo (T-05-06, decisão 14; colunas geradas da migração 040):
+ * 4% + 6% sobre a contribuição financeira só quando a parte não é o Poder
+ * Público. `null` sem contribuição financeira.
+ */
+function serializeFees(row) {
+  const contributionAmountCents = amount(row.contribution_amount_cents);
+  if (contributionAmountCents === null) return null;
+  return {
+    applies: row.fee_applies === true,
+    contributionAmountCents,
+    agentFeeCents: amount(row.agent_fee_cents) ?? 0,
+    platformFeeCents: amount(row.platform_fee_cents) ?? 0,
+    totalWithFeesCents: amount(row.total_with_fees_cents) ?? contributionAmountCents,
+  };
+}
 
 /** Resumo comum (listas). */
 function serializeSummary(row) {
@@ -71,6 +90,7 @@ function serializeProcess(row, { viewerRole = null } = {}) {
     contributionKinds: Array.isArray(row.contribution_kinds) ? row.contribution_kinds : [],
     contributionDescription: row.contribution_description ?? null,
     contributionAmountCents: amount(row.contribution_amount_cents),
+    fees: serializeFees(row),
     previousStatus: row.previous_status ?? null,
     statusNote: row.status_note ?? null,
     statusChangedByKind: row.status_changed_by_kind ?? null,
@@ -106,6 +126,10 @@ function serializePublicProcess(row) {
     // Parceiros aparecem só pelo tipo.
     organizationName: row.party_kind === 'poder_publico' ? row.party_name : null,
     contributionKinds: Array.isArray(row.contribution_kinds) ? row.contribution_kinds : [],
+    // Contribuição financeira e, com Parceiros/Empresas, "R$ X + 4% + 6% = R$ Y"
+    // (decisão 14); com o Poder Público, só a contribuição.
+    feeApplies: row.fee_applies === true,
+    fees: serializeFees(row),
     status: row.status,
     statusChangedAt: toIso(row.status_changed_at),
     formalizedAt: toIso(row.formalized_at),
@@ -357,6 +381,7 @@ module.exports = {
   TRACK_CLOSED,
   isProcessRef,
   serializeSummary,
+  serializeFees,
   serializeProcess,
   serializePublicProcess,
   findProcess,

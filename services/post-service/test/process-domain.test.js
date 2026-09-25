@@ -117,3 +117,31 @@ test('origem → parte e contribuição; projeção pública sem nome de pessoa'
   assert.ok(store.isProcessRef('DM-2026-000184'));
   assert.ok(!store.isProcessRef('DM-26-1'));
 });
+
+test('taxas do processo (T-05-06, decisão 14): Empresa com R$ 10.000 → R$ 11.000; Poder Público sem taxas', () => {
+  const base = {
+    id: 'p', protocol: 'DM-2026-000002', demand_id: 'd', sequence_in_demand: 2, party_user_id: 'u',
+    party_name: 'Fulano de Tal', contribution_kinds: ['apoio_financeiro'], status: 'recebida',
+  };
+  const empresa = {
+    ...base, party_kind: 'empresa', fee_applies: true, contribution_amount_cents: '1000000',
+    agent_fee_cents: '40000', platform_fee_cents: '60000', total_with_fees_cents: '1100000',
+  };
+  const expected = {
+    applies: true, contributionAmountCents: 1_000_000, agentFeeCents: 40_000, platformFeeCents: 60_000,
+    totalWithFeesCents: 1_100_000,
+  };
+  assert.deepEqual(store.serializeProcess(empresa).fees, expected);
+  assert.deepEqual(store.serializePublicProcess(empresa).fees, expected);
+  assert.equal(store.serializePublicProcess(empresa).feeApplies, true);
+  const orgao = {
+    ...base, party_kind: 'poder_publico', party_name: 'Secretaria', fee_applies: false,
+    contribution_amount_cents: '1000000', agent_fee_cents: '0', platform_fee_cents: '0', total_with_fees_cents: '1000000',
+  };
+  assert.deepEqual(store.serializePublicProcess(orgao).fees, {
+    applies: false, contributionAmountCents: 1_000_000, agentFeeCents: 0, platformFeeCents: 0, totalWithFeesCents: 1_000_000,
+  });
+  assert.equal(store.serializeProcess({ ...base, party_kind: 'marca', fee_applies: true, contribution_amount_cents: null }).fees, null);
+  assert.match(store.PROCESS_SQL, /p\.agent_fee_cents/);
+  assert.match(store.PROCESS_SQL, /p\.total_with_fees_cents/);
+});

@@ -172,6 +172,22 @@ function serializeComposition(row) {
   };
 }
 
+/**
+ * Projeção financeira conforme quem vê (T-05-06, decisão 14; Modelo de
+ * Conexão §04 Obs.): 4% + 6% nunca incidem sobre o Poder Público, então a
+ * visão do órgão traz só o orçamento de execução, sem a composição.
+ * `viewer`: `poder_publico` ou qualquer outro valor (visão completa).
+ */
+function projectionFor(viewer) {
+  const includeComposition = viewer !== 'poder_publico';
+  return {
+    includeComposition,
+    composition: (row) => (includeComposition
+      ? serializeComposition(row)
+      : { budgetAmountCents: toNumber(row.budget_amount_cents) }),
+  };
+}
+
 const ITEM_SERIALIZERS = {
   budgetItems: (r) => ({
     id: r.id,
@@ -293,15 +309,19 @@ function serializeOwnerDemand(row, items = null) {
   return demand;
 }
 
-/** Visão pública (demanda publicada em diante). */
-function serializePublicDemand(row, items = null) {
+/**
+ * Visão pública (demanda publicada em diante). `viewer: 'poder_publico'` (visão
+ * do órgão, routes/institutional.js) troca a composição pelo orçamento de
+ * execução (`projectionFor`).
+ */
+function serializePublicDemand(row, items = null, { viewer = null } = {}) {
   const demand = {
     id: row.id,
     authorId: row.author_id,
     authorName: row.author_name ?? null,
     authorAvatar: row.author_avatar ?? null,
     ...serializeScalars(row),
-    composition: serializeComposition(row),
+    composition: projectionFor(viewer).composition(row),
     status: row.status,
     publishedAt: toIso(row.published_at),
     updatedAt: toIso(row.updated_at),
@@ -398,8 +418,11 @@ function toValidationInput(row, items) {
   };
 }
 
-/** Recalcula e grava a composição a partir dos itens do orçamento. */
-// TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql.
+/**
+ * Recalcula e grava a composição a partir dos itens do orçamento. É a
+ * projeção "se apoiada por Parceiros/Empresas" (decisão 14); as taxas que
+ * valem são as de cada Processo de Conexão (migração 040).
+ */
 async function recomputeComposition(db, demandId) {
   const { rows } = await db.query(
     'SELECT coalesce(sum(total_cents), 0)::text AS base FROM demand_budget_items WHERE demand_id = $1',
@@ -485,6 +508,7 @@ module.exports = {
   serializeComposition,
   serializeOwnerDemand,
   serializePublicDemand,
+  projectionFor,
   serializePublicSummary,
   serializeItems,
   loadItems,

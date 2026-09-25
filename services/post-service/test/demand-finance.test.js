@@ -101,6 +101,40 @@ test('composição a partir dos itens do orçamento', () => {
   assert.equal(compositionFromItems([]).totalAmountCents, 0);
 });
 
+test('taxas por processo (T-05-06, decisão 14): 4% + 6% com Parceiros/Empresas, nunca com o Poder Público', () => {
+  const { processFees } = require('../src/demand/finance');
+  assert.deepEqual(processFees(1_000_000, true), {
+    feeApplies: true, agentFeeCents: 40_000, platformFeeCents: 60_000, totalWithFeesCents: 1_100_000,
+  });
+  assert.deepEqual(processFees(1_000_000, false), {
+    feeApplies: false, agentFeeCents: 0, platformFeeCents: 0, totalWithFeesCents: 1_000_000,
+  });
+  assert.deepEqual(processFees(null, true), {
+    feeApplies: true, agentFeeCents: null, platformFeeCents: null, totalWithFeesCents: null,
+  });
+  // Mesmo arredondamento da composição da demanda (meio para cima por parcela).
+  for (const amount of [1, 13, 12_345, 777_777]) {
+    const c = computeComposition(amount);
+    const f = processFees(amount, true);
+    assert.equal(f.agentFeeCents, c.agentFeeCents);
+    assert.equal(f.platformFeeCents, c.platformFeeCents);
+    assert.equal(f.totalWithFeesCents, c.totalAmountCents);
+  }
+  assert.throws(() => processFees(-1, true), RangeError);
+});
+
+test('migração 040: colunas geradas com a mesma regra, 0 para o Poder Público', () => {
+  const sql = require('node:fs').readFileSync(require('node:path').join(__dirname, '../migrations/040-process-fees.sql'), 'utf8');
+  for (const column of ['agent_fee_cents', 'platform_fee_cents', 'total_with_fees_cents']) {
+    assert.match(sql, new RegExp(`ADD COLUMN IF NOT EXISTS ${column} BIGINT GENERATED ALWAYS AS`));
+  }
+  assert.match(sql, /WHEN party_kind = 'poder_publico' THEN 0/);
+  assert.match(sql, /\* 400 \/ 10000/);
+  assert.match(sql, /\* 600 \/ 10000/);
+  const manifest = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../migrations.manifest'), 'utf8');
+  assert.match(manifest, /post_db post-service\/migrations\/040-process-fees\.sql/);
+});
+
 test('formatação em reais', () => {
   assert.equal(formatBRL(1_100_000).replace(/\s/g, ' '), 'R$ 11.000,00');
 });
