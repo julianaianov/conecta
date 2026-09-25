@@ -164,6 +164,7 @@ export function ForwardingForm({ view, onSaved }: { view: InstitutionalDemandVie
   const [reason, setReason] = useState("");
   const [responsibleName, setResponsibleName] = useState("");
   const [responsibleRole, setResponsibleRole] = useState("");
+  const [dueDays, setDueDays] = useState("");
   const [trackStatus, setTrackStatus] = useState<OriginStatus | "">("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -198,13 +199,14 @@ export function ForwardingForm({ view, onSaved }: { view: InstitutionalDemandVie
         responsibleName: responsibleName.trim() || null,
         responsibleRole: responsibleRole.trim() || null,
         trackStatus: trackStatus || null,
+        dueDays: dueDays ? Number(dueDays) : null,
       });
       onSaved(next);
       setDone(kind === "orgao_plataforma"
         ? "Demanda encaminhada. O órgão de destino recebeu a demanda na fila dele e o encaminhamento entrou na linha do tempo pública."
         : "Encaminhamento registrado na demanda e na linha do tempo pública.");
       setKind(""); setOrg(null); setExternalName(""); setSector(""); setSphere(""); setMunicipality(""); setUf("");
-      setReason(""); setResponsibleName(""); setResponsibleRole(""); setTrackStatus("");
+      setReason(""); setResponsibleName(""); setResponsibleRole(""); setTrackStatus(""); setDueDays("");
     } catch (err) {
       errors.capture(err, "Não foi possível registrar o encaminhamento agora.");
     } finally {
@@ -255,6 +257,11 @@ export function ForwardingForm({ view, onSaved }: { view: InstitutionalDemandVie
           <div className="grid gap-3 sm:grid-cols-2">
             <TextInput name="forward-responsible" label="Responsável pelo encaminhamento" value={responsibleName} onValue={setResponsibleName} maxLength={255} hint="Sem preencher, fica o nome da sua conta. Não aparece na página pública." error={errors.fields.responsibleName} />
             <TextInput name="forward-responsible-role" label="Cargo ou função" value={responsibleRole} onValue={setResponsibleRole} maxLength={255} error={errors.fields.responsibleRole} />
+            <TextInput
+              name="forward-due-days" label="Prazo (dias)" type="number" min={1} max={365} value={dueDays} onValue={setDueDays}
+              hint="Opcional. Conta a partir de hoje; o órgão responsável é avisado 3 dias antes e no vencimento."
+              error={errors.fields.dueDays ?? errors.fields.dueOn}
+            />
           </div>
           <SelectInput
             name="forward-track-status"

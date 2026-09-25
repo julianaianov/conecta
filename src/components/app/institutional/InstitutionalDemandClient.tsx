@@ -21,6 +21,7 @@ import {
 } from "@/lib/app/institutional";
 import { timelineEventLabel } from "@/lib/app/demand";
 import { formatDate } from "@/lib/app/format";
+import { formatDay } from "@/lib/app/deadlines";
 import {
   type ConnectionType,
   type DemandTimelineEvent,
@@ -135,6 +136,9 @@ function StatusForm({ view, onSaved }: { view: InstitutionalDemandView; onSaved:
 function ResponsibleForm({ view, onSaved }: { view: InstitutionalDemandView; onSaved: (v: InstitutionalDemandView) => void }) {
   const [name, setName] = useState(view.track?.responsibleName ?? "");
   const [role, setRole] = useState(view.track?.responsibleRole ?? "");
+  // Setor e data limite da próxima ação (Modelo de Conexão §14, T-05-03).
+  const [sector, setSector] = useState(view.track?.responsibleSector ?? "");
+  const [dueOn, setDueOn] = useState(view.track?.responsibleDueOn ?? "");
   const [busy, setBusy] = useState(false);
   const errors = useApiErrors();
   const [done, setDone] = useState(false);
@@ -145,7 +149,10 @@ function ResponsibleForm({ view, onSaved }: { view: InstitutionalDemandView; onS
     errors.reset();
     setDone(false);
     try {
-      onSaved(await api.setInstitutionalResponsible(view.demand.id, { responsibleName: name.trim() || null, responsibleRole: role.trim() || null }));
+      onSaved(await api.setInstitutionalResponsible(view.demand.id, {
+        responsibleName: name.trim() || null, responsibleRole: role.trim() || null,
+        responsibleSector: sector.trim() || null, responsibleDueOn: dueOn || null,
+      }));
       setDone(true);
     } catch (err) {
       errors.capture(err, "Não foi possível salvar o responsável agora.");
@@ -157,7 +164,10 @@ function ResponsibleForm({ view, onSaved }: { view: InstitutionalDemandView; onS
   return (
     <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2" aria-label="Responsável pelo acompanhamento">
       <TextInput name="responsible-name" label="Responsável no órgão" value={name} onValue={setName} maxLength={255} error={errors.fields.responsibleName} />
-      <TextInput name="responsible-role" label="Cargo ou setor" value={role} onValue={setRole} maxLength={255} error={errors.fields.responsibleRole} />
+      <TextInput name="responsible-role" label="Cargo" value={role} onValue={setRole} maxLength={255} error={errors.fields.responsibleRole} />
+      <TextInput name="responsible-sector" label="Setor" value={sector} onValue={setSector} maxLength={255} error={errors.fields.responsibleSector} />
+      <TextInput name="responsible-due" label="Data limite da próxima ação" type="date" value={dueOn} onValue={setDueOn}
+        hint="O órgão é avisado 3 dias antes e no vencimento." error={errors.fields.responsibleDueOn} />
       <p className="text-xs sm:col-span-2" style={{ color: "var(--th-muted)" }}>Uso interno do órgão: não aparece na página pública.</p>
       <div className="sm:col-span-2 space-y-2">
         {errors.message && <FormAlert message={errors.message} />}
@@ -493,6 +503,8 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
             <details className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
               <summary className="cursor-pointer text-sm font-semibold" style={{ color: "var(--th-text)" }}>
                 Responsável{track.responsibleName ? `: ${track.responsibleName}` : " (não definido)"}
+                {track.responsibleSector ? ` · ${track.responsibleSector}` : ""}
+                {track.responsibleDueOn ? ` · até ${formatDay(track.responsibleDueOn)}` : ""}
               </summary>
               <div className="mt-3"><ResponsibleForm view={view} onSaved={setView} /></div>
             </details>

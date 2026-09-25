@@ -36,6 +36,7 @@ import { DemandSupportsInbox } from "../support/DemandSupportsInbox";
 import { DemandExecutionPanel } from "../execution/DemandExecutionPanel";
 import { DemandAccountabilityPanel } from "../accountability/DemandAccountabilityPanel";
 import { AiSuggestionPanel } from "../ai/AiSuggestionPanel";
+import { PendingDeadlines } from "../process/ProcessDeadlines";
 import { FormAlert } from "./fields";
 import type { IconName } from "../Icon";
 
@@ -335,6 +336,13 @@ export function MyDemandsClient() {
       {!demands && !error && <div className="flex justify-center py-16"><span className="app-spinner" aria-label="Carregando suas demandas" /></div>}
       {demands && demands.length === 0 && (
         <EmptyState icon="plus" title="Você ainda não estruturou nenhuma demanda" hint="Comece pela categoria; o rascunho fica salvo e você completa as etapas no seu ritmo." />
+      )}
+
+      {/* Pendências de prazo dos processos de conexão (T-05-03, Modelo §15). */}
+      {others.length > 0 && (
+        <Card>
+          <PendingDeadlines emptyText="Nenhum prazo em aberto nos processos das suas demandas." />
+        </Card>
       )}
 
       {inProgress.length > 0 && (

@@ -1778,6 +1778,9 @@ export interface InstitutionalTrack {
   statusChangedBy: string | null;
   responsibleName: string | null;
   responsibleRole: string | null;
+  /** Setor e data limite da próxima ação (Modelo de Conexão §14, T-05-03). */
+  responsibleSector?: string | null;
+  responsibleDueOn?: string | null;
   receivedAt: string;
   statusChangedAt: string;
   concludedAt: string | null;
@@ -1955,6 +1958,8 @@ export interface PublicForwarding {
   receivedAt: string | null;
   acceptedAt: string | null;
   returnedAt: string | null;
+  /** Prazo do encaminhamento (Modelo de Conexão §13, T-05-03), AAAA-MM-DD. */
+  dueOn?: string | null;
   updates: ForwardingUpdate[];
 }
 
@@ -2000,6 +2005,9 @@ export interface ForwardingInput {
   responsibleName?: string | null;
   responsibleRole?: string | null;
   trackStatus?: "encaminhada" | "encaminhada_ao_orgao_responsavel" | null;
+  /** Prazo em dias a partir do envio, ou a data limite (T-05-03). */
+  dueDays?: number | null;
+  dueOn?: string | null;
 }
 
 /** Item da caixa do órgão (GET /api/posts/institutional/forwardings). */

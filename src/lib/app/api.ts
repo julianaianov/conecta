@@ -22,6 +22,7 @@ import { resolveMediaUrl } from "./uploads";
 import type {
   ProcessDetail, ProcessResponsibleInput, ProcessStatus, ProcessSummary, PublicProcess,
 } from "./process";
+import type { DeadlineInput, PendingItem } from "./deadlines";
 import {
   buildNotificationQuery, completePreferences, groupIdsBySource, mergeNotificationFeeds,
 } from "./notifications";
@@ -1019,6 +1020,23 @@ export const api = {
       body: JSON.stringify(input),
     });
   },
+  // Prazos por etapa e pendências (T-05-03, Modelo de Conexão §15).
+  setProcessDeadline(ref: string, input: DeadlineInput): Promise<ProcessDetail> {
+    return request<ProcessDetail>(`/api/posts/processes/${encodeURIComponent(ref)}/deadlines`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+  fulfillProcessDeadline(ref: string, deadlineId: string, note?: string | null): Promise<ProcessDetail> {
+    return request<ProcessDetail>(
+      `/api/posts/processes/${encodeURIComponent(ref)}/deadlines/${encodeURIComponent(deadlineId)}/fulfill`,
+      { method: "POST", body: JSON.stringify({ note: note ?? null }) },
+    );
+  },
+  pendingDeadlines(): Promise<PendingItem[]> {
+    return request<{ pending: PendingItem[] }>("/api/posts/processes/pending")
+      .then((body) => (Array.isArray(body.pending) ? body.pending : []));
+  },
   demandProcesses(demandId: string): Promise<PublicProcess[]> {
     return request<{ processes: PublicProcess[] }>(`/api/posts/demands/${encodeURIComponent(demandId)}/processes`)
       .then((body) => (Array.isArray(body.processes) ? body.processes : []));
@@ -1359,7 +1377,10 @@ export const api = {
     return demandRequired(`/demands/${encodeURIComponent(id)}/track`, { method: "POST", body: "{}" }, INSTITUTIONAL);
   },
 
-  setInstitutionalResponsible(id: string, input: { responsibleName: string | null; responsibleRole: string | null }): Promise<InstitutionalDemandView> {
+  setInstitutionalResponsible(id: string, input: {
+    responsibleName?: string | null; responsibleRole?: string | null;
+    responsibleSector?: string | null; responsibleDueOn?: string | null;
+  }): Promise<InstitutionalDemandView> {
     return demandRequired(`/demands/${encodeURIComponent(id)}/track`, { method: "PUT", ...json(input) }, INSTITUTIONAL);
   },
 

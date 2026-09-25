@@ -22,6 +22,7 @@ import { Button } from "../Button";
 import { Card, EmptyState } from "../ui";
 import { FormAlert, SelectInput, TextArea, TextInput } from "../demand/fields";
 import { ProcessStatusBadge } from "./ProcessParts";
+import { ProcessDeadlines } from "./ProcessDeadlines";
 
 const RESPONSIBLE_FIELDS: { key: Exclude<keyof ProcessResponsible, "since" | "dueOn">; label: string }[] = [
   { key: "organizationName", label: "Instituição" },
@@ -210,9 +211,16 @@ export function ProcessDetailClient({ protocol }: { protocol: string }) {
           {RESPONSIBLE_FIELDS.map(({ key, label }) => <Row key={key} label={label} value={p.responsible[key]} />)}
           <Row label="Desde" value={p.responsible.since ? formatDate(p.responsible.since) : null} />
           <Row label="Data limite" value={p.responsible.dueOn ? formatDate(`${p.responsible.dueOn}T12:00:00`) : null} />
+          <Row label="Status" value={processStatusLabel(p.status)} />
           <Row label="Última atualização" value={p.statusChangedAt ? formatDate(p.statusChangedAt) : null} />
         </dl>
         {!p.closedAt && <ResponsibleForm key={p.responsible.since ?? "novo"} detail={detail} onDone={setDetail} />}
+      </Card>
+
+      {/* Prazos por etapa (T-05-03, Modelo §15). */}
+      <Card>
+        <h2 className="mb-2 text-base font-bold" style={{ color: "var(--th-text)" }}>Prazos</h2>
+        <ProcessDeadlines detail={detail} onDone={setDetail} />
       </Card>
 
       <Card>

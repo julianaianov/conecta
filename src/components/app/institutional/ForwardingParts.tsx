@@ -15,6 +15,7 @@ import {
   forwardingDestinationLabel,
 } from "@/lib/app/institutional";
 import { formatDate } from "@/lib/app/format";
+import { formatDay } from "@/lib/app/deadlines";
 import { Icon } from "../Icon";
 
 const SPHERE_LABELS: Record<string, string> = { municipal: "municipal", estadual: "estadual", federal: "federal" };
@@ -86,6 +87,7 @@ export function ForwardingCard({ forwarding, children }: { forwarding: PublicFor
             {FORWARDING_DESTINATION_KIND_LABELS[forwarding.destinationKind]}
             {forwarding.destinationKind === "setor_interno" ? ` de ${forwarding.destinationOrganizationName}` : ""}
             {place ? ` · ${place}` : ""} · encaminhado em {formatDate(forwarding.forwardedAt)}
+            {forwarding.dueOn ? ` · prazo até ${formatDay(forwarding.dueOn)}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-1.5">

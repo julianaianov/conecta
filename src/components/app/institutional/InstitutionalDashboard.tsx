@@ -41,6 +41,7 @@ import { CategoryBadge, DemandStatusBadge, PriorityBadge } from "../demand/Deman
 import { FormAlert, SelectInput, TextInput } from "../demand/fields";
 import { InstitutionalStatusBadge } from "./InstitutionalParts";
 import { ForwardingInbox } from "./ForwardingPanel";
+import { PendingDeadlines } from "../process/ProcessDeadlines";
 
 const InstitutionalMap = dynamic(() => import("./InstitutionalMapInner"), {
   ssr: false,
@@ -245,6 +246,13 @@ export function InstitutionalDashboard() {
           <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>Visualize, analise, responda, articule e acompanhe as demandas do território.</p>
         )}
       </header>
+
+      {/* Pendências de prazo do órgão (T-05-03, Modelo §15): processos, encaminhamentos e acompanhamentos. */}
+      {ctx && (
+        <Card>
+          <PendingDeadlines emptyText="Nenhum prazo em aberto para o órgão." />
+        </Card>
+      )}
 
       {ctx && (
         <section aria-label="Acompanhamentos do órgão" className="flex flex-wrap gap-2">

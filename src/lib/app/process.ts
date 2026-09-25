@@ -93,7 +93,12 @@ export type ProcessTimelineEvent = {
   details?: Record<string, unknown>;
 };
 
-export type ProcessDetail = { process: ConnectionProcess; timeline: ProcessTimelineEvent[] };
+export type ProcessDetail = {
+  process: ConnectionProcess;
+  timeline: ProcessTimelineEvent[];
+  /** Prazos por etapa (§15, T-05-03; tipos em ./deadlines). */
+  deadlines?: import("./deadlines").ProcessDeadline[];
+};
 
 export type PublicProcess = {
   id: string;
@@ -235,6 +240,13 @@ export function processTimelineLabel(event: { type: string; details?: object | n
       return `Processo${protocol ? ` ${protocol}` : ""}: ${processStatusLabel(typeof d.status === "string" ? d.status : null)}`;
     case "responsavel_do_processo_definido":
       return "Responsável atual do processo definido";
+    // Prazos por etapa (T-05-03): eventos privados das partes.
+    case "prazo_definido":
+      return "Prazo de etapa definido";
+    case "prazo_cumprido":
+      return "Prazo de etapa cumprido";
+    case "prazo_vencido":
+      return "Prazo de etapa vencido";
     default:
       return null;
   }
