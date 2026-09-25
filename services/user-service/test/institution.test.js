@@ -149,3 +149,33 @@ test('user-service e post-service usam a mesma cópia de src/roles.js', () => {
   const read = (service) => fs.readFileSync(path.join(__dirname, '..', '..', service, 'src', 'roles.js'), 'utf8');
   assert.equal(read('user-service'), read('post-service'));
 });
+
+test('tipo de organização e documentação institucional (Modelo de Conexão §02, T-05-19)', () => {
+  const {
+    ORGANIZATION_TYPES, INSTITUTION_DOCUMENT_KINDS, defaultOrganizationType, validateInstitutionDocument,
+    missingInstitutionDocuments,
+  } = require('../src/institution');
+  assert.deepEqual(ORGANIZATION_TYPES, [
+    'associacao', 'ong', 'instituto', 'fundacao', 'cooperativa', 'coletivo', 'projeto_social', 'empresa', 'outro',
+  ]);
+  assert.equal(defaultOrganizationType('ong'), 'ong');
+  assert.equal(defaultOrganizationType('lider_comunitario'), null);
+
+  const agent = validateInstitution('agente_transformacao', { ...AGENT_INPUT, organizationType: ' ONG ', additionalInformation: ' Sede cedida ' });
+  assert.deepEqual(agent.errors, {});
+  assert.equal(agent.value.organization.organization_type, 'ong');
+  assert.equal(agent.value.organization.additional_information, 'Sede cedida');
+  assert.ok(validateInstitution('agente_transformacao', { ...AGENT_INPUT, organizationType: undefined }).errors.organizationType);
+  assert.ok(validateInstitution('agente_transformacao', { ...AGENT_INPUT, additionalInformation: 'x'.repeat(4001) }).errors.additionalInformation);
+  // Poder Público não tem tipo de organização.
+  assert.equal(validateInstitution('poder_publico', { ...GOV_INPUT, organizationType: 'ong' }).value.organization.organization_type, null);
+
+  assert.ok(INSTITUTION_DOCUMENT_KINDS.includes('estatuto'));
+  const ok = validateInstitutionDocument({ kind: 'estatuto', title: ' Estatuto ', uploadRef: 'upload:66666666-6666-4666-8666-666666666666' });
+  assert.deepEqual(ok, { value: { kind: 'estatuto', title: 'Estatuto', uploadId: '66666666-6666-4666-8666-666666666666' }, errors: {} });
+  assert.deepEqual(Object.keys(validateInstitutionDocument({}).errors).sort(), ['kind', 'title', 'uploadRef']);
+
+  assert.ok(missingInstitutionDocuments('agente_transformacao', []).documents);
+  assert.deepEqual(missingInstitutionDocuments('agente_transformacao', ['cartao_cnpj', 'estatuto']), {});
+  assert.deepEqual(missingInstitutionDocuments('poder_publico', []), {});
+});

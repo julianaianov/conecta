@@ -849,8 +849,34 @@ export interface InstitutionInput {
   institutionalEmail?: string | null;
   institutionalPhone?: string | null;
   website?: string | null;
+  /** Agente de Transformação (T-05-19): obrigatório no cadastro. */
+  organizationType?: OrganizationType | null;
+  /** Informações complementares para a validação (privadas). */
+  additionalInformation?: string | null;
   representative: Omit<InstitutionRepresentative, "proofDocumentRef" | "proofDescription" | "proofDocument">
     & Partial<Pick<InstitutionRepresentative, "proofDocumentRef" | "proofDescription">>;
+}
+
+/**
+ * Tipo de organização do Agente (Modelo de Conexão §02, T-05-19); rótulos em
+ * `ORGANIZATION_TYPE_LABELS` de lib/app/institution.ts.
+ */
+export type OrganizationType =
+  | "associacao" | "ong" | "instituto" | "fundacao" | "cooperativa" | "coletivo" | "projeto_social" | "empresa" | "outro";
+
+/** Tipo de documento da documentação institucional (T-05-19). */
+export type InstitutionDocumentKind =
+  | "estatuto" | "ata_de_eleicao" | "cartao_cnpj" | "comprovante_de_endereco" | "alvara" | "outro";
+
+/** Documento institucional anexado (privado: titular e gestão). */
+export interface InstitutionDocument {
+  id: string;
+  kind: InstitutionDocumentKind;
+  title: string;
+  uploadId: string;
+  createdAt: string;
+  /** Metadados e URL de leitura curta (nula sem bucket). */
+  file: UploadedFile | null;
 }
 
 /** Cadastro do próprio titular (GET /api/users/me/institution). */
@@ -868,6 +894,8 @@ export interface Institution extends Omit<InstitutionInput, "representative" | "
   updatedAt: string | null;
   representative: InstitutionRepresentative | null;
   events: InstitutionValidationEvent[];
+  /** Documentação institucional (T-05-19). */
+  documents: InstitutionDocument[];
 }
 
 /** Instituição validada exibida publicamente (sem contatos nem representante). */
@@ -887,6 +915,8 @@ export interface PublicInstitution {
   uf: string | null;
   website: string | null;
   validatedAt: string | null;
+  /** Tipo de organização do Agente (T-05-19); `null` no Poder Público e em cadastros antigos. */
+  organizationType: OrganizationType | null;
 }
 
 /** Vínculo ativo (T29): a conta age em nome da instituição com as permissões do nível. */
@@ -1463,6 +1493,7 @@ export type UploadPurpose =
   | "demand_document"
   | "demand_accountability_document"
   | "institution_proof"
+  | "institution_document"
   | "post_photo";
 
 /** Serviço que guarda o arquivo: `posts` (demanda) ou `users` (instituição). */

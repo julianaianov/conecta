@@ -7,7 +7,9 @@
  *
  * Fonte da verdade: Fluxo 2, etapas 01–02 (CNPJ + CNAE do Agente de
  * Transformação) e Fluxo 3, etapas 01–02 (órgão, esfera, território e
- * representante do Poder Público); decisões 2 e 3 de
+ * representante do Poder Público); Modelo de Conexão §02 (tipo de
+ * organização, documentação institucional e informações complementares,
+ * T-05-19); decisões 2, 3 e 18 de
  * dm-docs/fonte-da-verdade/decisoes-de-implementacao.md.
  */
 import {
@@ -20,10 +22,12 @@ import {
   type GovernmentSphere,
   type Institution,
   type InstitutionAccess,
+  type InstitutionDocumentKind,
   type InstitutionFieldErrors,
   type InstitutionInput,
   type InstitutionKind,
   type InstitutionValidationStatus,
+  type OrganizationType,
   type ProfileType,
   type PublicInstitution,
 } from "./types.ts";
@@ -40,6 +44,55 @@ export const INSTITUTION_FORM_PATHS: Record<InstitutionKind, string> = {
 export function postRegisterDestination(role: string | null | undefined, profileType?: string | null): string {
   const kind = institutionKindFor(role, profileType);
   return kind ? `${INSTITUTION_FORM_PATHS[kind]}?boas-vindas=1` : "/feed";
+}
+
+// ── Tipo de organização e documentação (Modelo de Conexão §02) ──
+// Espelho de ORGANIZATION_TYPES, ORGANIZATION_TYPE_BY_PROFILE,
+// INSTITUTION_DOCUMENT_KINDS e REQUIRED_DOCUMENT_KINDS do user-service (há teste).
+
+export const ORGANIZATION_TYPE_LABELS: Record<OrganizationType, string> = {
+  associacao: "Associação",
+  ong: "ONG",
+  instituto: "Instituto",
+  fundacao: "Fundação",
+  cooperativa: "Cooperativa",
+  coletivo: "Coletivo",
+  projeto_social: "Projeto social",
+  empresa: "Empresa",
+  outro: "Outro",
+};
+
+export const ORGANIZATION_TYPES = Object.keys(ORGANIZATION_TYPE_LABELS) as OrganizationType[];
+
+/** Subperfil da conta → tipo de organização sugerido na ficha. */
+export const ORGANIZATION_TYPE_BY_PROFILE: Partial<Record<ProfileType, OrganizationType>> = {
+  associacao: "associacao", ong: "ong", instituto: "instituto", projeto_social: "projeto_social", coletivo: "coletivo",
+};
+
+export function defaultOrganizationType(profileType: string | null | undefined): OrganizationType | "" {
+  return (profileType && ORGANIZATION_TYPE_BY_PROFILE[profileType as ProfileType]) || "";
+}
+
+export const INSTITUTION_DOCUMENT_KIND_LABELS: Record<InstitutionDocumentKind, string> = {
+  estatuto: "Estatuto social ou ato constitutivo",
+  ata_de_eleicao: "Ata de eleição da diretoria",
+  cartao_cnpj: "Cartão CNPJ",
+  comprovante_de_endereco: "Comprovante de endereço",
+  alvara: "Alvará",
+  outro: "Outro documento",
+};
+
+export const INSTITUTION_DOCUMENT_KINDS = Object.keys(INSTITUTION_DOCUMENT_KIND_LABELS) as InstitutionDocumentKind[];
+
+/** Documentos exigidos para enviar à validação (o servidor confere no envio). */
+export const REQUIRED_DOCUMENT_KINDS: Record<InstitutionKind, InstitutionDocumentKind[]> = {
+  agente_transformacao: ["estatuto"],
+  poder_publico: [],
+};
+
+/** Tipos exigidos que ainda faltam entre os documentos anexados. */
+export function missingDocumentKinds(kind: InstitutionKind, attached: { kind: InstitutionDocumentKind }[]): InstitutionDocumentKind[] {
+  return REQUIRED_DOCUMENT_KINDS[kind].filter((k) => !attached.some((d) => d.kind === k));
 }
 
 // ── Máscaras e validação (espelho do user-service) ─────────
@@ -166,6 +219,8 @@ export interface InstitutionFormState {
   institutionalEmail: string;
   institutionalPhone: string;
   website: string;
+  organizationType: OrganizationType | "";
+  additionalInformation: string;
   representative: {
     fullName: string;
     position: string;
@@ -176,12 +231,14 @@ export interface InstitutionFormState {
   };
 }
 
-export function emptyInstitutionForm(): InstitutionFormState {
+/** Formulário vazio; o tipo de organização vem sugerido pelo subperfil da conta. */
+export function emptyInstitutionForm(profileType?: string | null): InstitutionFormState {
   return {
     cnpj: "", legalName: "", tradeName: "", cnaePrimary: "", cnaePrimaryDescription: "",
     cnaeSecondary: [], governmentSphere: "", department: "", competenceAreas: [], territory: "",
     cep: "", street: "", addressNumber: "", addressComplement: "", district: "", municipality: "",
     municipalityIbgeCode: "", uf: "", institutionalEmail: "", institutionalPhone: "", website: "",
+    organizationType: defaultOrganizationType(profileType), additionalInformation: "",
     representative: {
       fullName: "", position: "", institutionalEmail: "", institutionalPhone: "",
       proofDocumentRef: "", proofDescription: "",
@@ -189,8 +246,11 @@ export function emptyInstitutionForm(): InstitutionFormState {
   };
 }
 
-/** Preenche o formulário com o cadastro salvo (com máscaras). */
-export function formFromInstitution(inst: Institution): InstitutionFormState {
+/**
+ * Preenche o formulário com o cadastro salvo (com máscaras). Cadastro salvo
+ * antes do tipo de organização recebe a sugestão do subperfil.
+ */
+export function formFromInstitution(inst: Institution, profileType?: string | null): InstitutionFormState {
   const rep = inst.representative;
   return {
     cnpj: maskCnpj(inst.cnpj ?? ""),
@@ -214,6 +274,8 @@ export function formFromInstitution(inst: Institution): InstitutionFormState {
     institutionalEmail: inst.institutionalEmail ?? "",
     institutionalPhone: maskPhone(inst.institutionalPhone ?? ""),
     website: inst.website ?? "",
+    organizationType: inst.organizationType ?? (inst.kind === "agente_transformacao" ? defaultOrganizationType(profileType) : ""),
+    additionalInformation: inst.additionalInformation ?? "",
     representative: {
       fullName: rep?.fullName ?? "",
       position: rep?.position ?? "",
@@ -239,6 +301,7 @@ export function inputFromForm(kind: InstitutionKind, form: InstitutionFormState)
     institutionalEmail: opt(form.institutionalEmail),
     institutionalPhone: form.institutionalPhone.trim() ? normalizePhone(form.institutionalPhone) : null,
     website: opt(form.website),
+    additionalInformation: opt(form.additionalInformation),
     representative: {
       fullName: form.representative.fullName.trim(),
       position: form.representative.position.trim(),
@@ -251,6 +314,7 @@ export function inputFromForm(kind: InstitutionKind, form: InstitutionFormState)
   if (kind === "agente_transformacao") {
     return {
       ...common,
+      organizationType: form.organizationType || null,
       cnaePrimary: normalizeCnae(form.cnaePrimary) || null,
       cnaePrimaryDescription: opt(form.cnaePrimaryDescription),
       cnaeSecondary: form.cnaeSecondary
@@ -291,7 +355,11 @@ export function validateInstitutionForm(kind: InstitutionKind, form: Institution
   if (form.institutionalPhone.trim() && !isValidPhone(form.institutionalPhone)) errors.institutionalPhone = "Telefone inválido (DDD + número)";
   if (form.website.trim() && !/^https?:\/\/\S+\.\S+/.test(form.website.trim())) errors.website = "Site deve começar com http:// ou https://";
 
+  if (form.additionalInformation.trim().length > 4000) errors.additionalInformation = "Informações complementares: até 4000 caracteres";
+
   if (kind === "agente_transformacao") {
+    if (!form.organizationType) errors.organizationType = "Tipo de organização é obrigatório";
+    else if (!ORGANIZATION_TYPES.includes(form.organizationType)) errors.organizationType = "Tipo de organização inválido";
     if (!normalizeCnae(form.cnaePrimary)) errors.cnaePrimary = "CNAE principal é obrigatório";
     else if (!isValidCnae(form.cnaePrimary)) errors.cnaePrimary = "CNAE inválido (7 dígitos, ex.: 9430-8/00)";
     else if (!form.cnaePrimaryDescription.trim()) errors.cnaePrimaryDescription = "Descrição do CNAE principal é obrigatória";
@@ -514,6 +582,7 @@ export function mapPublicInstitutionRecord(r: RawRecord): PublicInstitution {
     uf: str(r.uf),
     website: str(r.website),
     validatedAt: str(r.validation_reviewed_at),
+    organizationType: (str(r.organization_type) as OrganizationType | null),
   };
 }
 

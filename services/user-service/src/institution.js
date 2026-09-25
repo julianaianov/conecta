@@ -68,6 +68,30 @@ const COMPETENCE_AREA_SUGGESTIONS = [
   'Saúde', 'Segurança pública', 'Trabalho e renda', 'Defesa civil', 'Juventude',
 ];
 
+/**
+ * Tipo de organização do Agente de Transformação (Modelo de Conexão §02). A
+ * interface pré-preenche pelo subperfil da conta (`ORGANIZATION_TYPE_BY_PROFILE`);
+ * a equipe confere na validação (decisão 18).
+ */
+const ORGANIZATION_TYPES = [
+  'associacao', 'ong', 'instituto', 'fundacao', 'cooperativa', 'coletivo', 'projeto_social', 'empresa', 'outro',
+];
+
+const ORGANIZATION_TYPE_BY_PROFILE = {
+  associacao: 'associacao', ong: 'ong', instituto: 'instituto', projeto_social: 'projeto_social', coletivo: 'coletivo',
+};
+
+/** Documentação institucional (Modelo de Conexão §02), privada: titular e gestão. */
+const INSTITUTION_DOCUMENT_KINDS = [
+  'estatuto', 'ata_de_eleicao', 'cartao_cnpj', 'comprovante_de_endereco', 'alvara', 'outro',
+];
+
+/** Documentos exigidos para enviar à validação, por tipo de cadastro. */
+const REQUIRED_DOCUMENT_KINDS = { agente_transformacao: ['estatuto'], poder_publico: [] };
+
+const MAX_INSTITUTION_DOCUMENTS = 20;
+const MAX_ADDITIONAL_INFORMATION = 4000;
+
 const MAX_SECONDARY_CNAES = 20;
 const MAX_COMPETENCE_AREAS = 20;
 
@@ -258,8 +282,19 @@ function validateInstitution(kind, input = {}) {
     label: 'Território de atuação',
   });
 
-  // TODO(fonte-da-verdade): Modelo de Conexão §02 — faltam o tipo de organização da instituição e a documentação institucional (estatuto etc.); colunas em migrations/008-institutional-registration.sql.
+  // Informações complementares para validação (Modelo de Conexão §02): só o
+  // titular e a equipe da gestão leem.
+  org.additional_information = read('additionalInformation', body, 'additionalInformation', MAX_ADDITIONAL_INFORMATION, {
+    label: 'Informações complementares',
+  });
+
   if (kind === 'agente_transformacao') {
+    // Tipo de organização (Modelo de Conexão §02), conferido na validação.
+    const organizationType = typeof body.organizationType === 'string' ? body.organizationType.trim().toLowerCase() : '';
+    if (!organizationType) errors.organizationType = 'Tipo de organização é obrigatório';
+    else if (!ORGANIZATION_TYPES.includes(organizationType)) errors.organizationType = 'Tipo de organização inválido';
+    org.organization_type = ORGANIZATION_TYPES.includes(organizationType) ? organizationType : null;
+
     if (!org.municipality) errors.municipality = 'Município é obrigatório';
     if (!org.uf && !errors.uf) errors.uf = 'UF é obrigatória';
     if (!org.institutional_email && !org.institutional_phone) {
@@ -320,6 +355,7 @@ function validateInstitution(kind, input = {}) {
     org.cnae_primary = null;
     org.cnae_primary_description = null;
     org.cnae_secondary = [];
+    org.organization_type = null;
   }
 
   // Representante (Poder Público) / responsável (Agente). Contatos privados.
@@ -344,6 +380,39 @@ function validateInstitution(kind, input = {}) {
   representative.institutional_phone = repPhone || null;
 
   return { value: { organization: org, representative }, errors };
+}
+
+/** Tipo de organização sugerido pelo subperfil da conta (`null` sem sugestão). */
+function defaultOrganizationType(profileType) {
+  return ORGANIZATION_TYPE_BY_PROFILE[profileType] ?? null;
+}
+
+/**
+ * Documento institucional enviado pelo titular: `{ kind, title, uploadRef }`.
+ * Devolve `{ value: { kind, title, uploadId }, errors }`; a rota confere o upload.
+ */
+function validateInstitutionDocument(input = {}) {
+  const body = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const errors = {};
+  const kind = typeof body.kind === 'string' ? body.kind.trim() : '';
+  if (!INSTITUTION_DOCUMENT_KINDS.includes(kind)) errors.kind = 'Escolha o tipo de documento';
+  const title = text(body.title, 255);
+  if (title === undefined) errors.title = 'Título: até 255 caracteres';
+  else if (!title) errors.title = 'Título do documento é obrigatório';
+  const uploadId = parseUploadRef(body.uploadRef ?? body.uploadId);
+  if (!uploadId) errors.uploadRef = 'Envie o arquivo do documento';
+  return { value: { kind, title: title || null, uploadId }, errors };
+}
+
+/**
+ * Pendências de documentação para o envio à validação: `fields` (vazio quando ok).
+ * `kinds` são os tipos dos documentos já anexados.
+ */
+function missingInstitutionDocuments(kind, kinds = []) {
+  const missing = (REQUIRED_DOCUMENT_KINDS[kind] ?? []).filter((k) => !kinds.includes(k));
+  return missing.length
+    ? { documents: 'Anexe o estatuto social ou ato constitutivo da organização (documentação institucional)' }
+    : {};
 }
 
 /**
@@ -374,6 +443,11 @@ module.exports = {
   LINKED_AGENT_PROFILES,
   CNAE_REFERENCE,
   COMPETENCE_AREA_SUGGESTIONS,
+  ORGANIZATION_TYPES,
+  ORGANIZATION_TYPE_BY_PROFILE,
+  INSTITUTION_DOCUMENT_KINDS,
+  REQUIRED_DOCUMENT_KINDS,
+  MAX_INSTITUTION_DOCUMENTS,
   TRANSITIONS,
   normalizeCnpj,
   isValidCnpj,
@@ -390,6 +464,9 @@ module.exports = {
   isValidPhone,
   kindForUser,
   validateInstitution,
+  defaultOrganizationType,
+  validateInstitutionDocument,
+  missingInstitutionDocuments,
   transitionAllowed,
   canActInstitutionally,
 };

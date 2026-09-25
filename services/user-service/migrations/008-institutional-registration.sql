@@ -23,7 +23,7 @@
 --
 -- Idempotente: o deploy reaplica o manifesto inteiro.
 
--- TODO(fonte-da-verdade): Modelo de Conexão §02 — organizations sem tipo de organização e sem documentação institucional (estatuto etc.); ver TODO em src/institution.js.
+-- Tipo de organização e documentação institucional (Modelo de Conexão §02): migração 018.
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS institution_kind VARCHAR(30);
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS cnpj VARCHAR(14);
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS legal_name VARCHAR(255);

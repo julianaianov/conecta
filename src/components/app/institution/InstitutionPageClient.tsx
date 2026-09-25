@@ -7,6 +7,7 @@ import { api, InstitutionRequestError, type InstitutionReference } from "@/lib/a
 import { useAuth } from "@/lib/app/auth";
 import {
   INSTITUTION_FORM_PATHS,
+  ORGANIZATION_TYPE_LABELS,
   emptyInstitutionForm,
   formFromInstitution,
   inputFromForm,
@@ -24,6 +25,7 @@ import {
   formatCnpj,
   institutionKindFor,
   type Institution,
+  type InstitutionDocument,
   type InstitutionFieldErrors,
   type InstitutionKind,
   type ProfileType,
@@ -34,6 +36,7 @@ import { AuthPrompt } from "../AuthPrompt";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
 import { Card } from "../ui";
+import { InstitutionDocuments } from "./InstitutionDocuments";
 import { InstitutionForm, fieldId } from "./InstitutionForm";
 import { InstitutionStatusCard } from "./InstitutionStatus";
 import { invalidateInstitutionAccess } from "./useInstitutionAccess";
@@ -61,6 +64,8 @@ const FIELD_LABELS: Record<string, string> = {
   "representative.fullName": "Nome do representante", "representative.position": "Cargo ou função",
   "representative.institutionalEmail": "E-mail do representante", "representative.institutionalPhone": "Telefone do representante",
   "representative.proofDocumentRef": "Documento de comprovação", "representative.proofDescription": "Informação de comprovação",
+  organizationType: "Tipo de organização", additionalInformation: "Informações complementares",
+  documents: "Documentação institucional",
 };
 
 function labelFor(key: string): string {
@@ -144,6 +149,7 @@ function InstitutionSummary({ institution }: { institution: Institution }) {
       <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Row label={isAgent ? "Razão social" : "Órgão ou entidade"}>{institution.legalName}</Row>
         <Row label="Nome fantasia">{institution.tradeName}</Row>
+        {isAgent && <Row label="Tipo de organização">{institution.organizationType ? ORGANIZATION_TYPE_LABELS[institution.organizationType] : null}</Row>}
         <Row label="CNPJ"><span className="font-numeric">{formatCnpj(institution.cnpj)}</span></Row>
         {isAgent && <Row label="CNAE principal">{institution.cnaePrimary ? `${formatCnae(institution.cnaePrimary)} — ${institution.cnaePrimaryDescription ?? ""}` : null}</Row>}
         {isAgent && institution.cnaeSecondary.length > 0 && (
@@ -162,6 +168,7 @@ function InstitutionSummary({ institution }: { institution: Institution }) {
         {rep?.proofDocument
           ? <Row label="Comprovação"><ProofDocumentLink file={rep.proofDocument} /></Row>
           : rep?.proofDocumentRef && !parseUploadRef(rep.proofDocumentRef) && <Row label="Comprovação">{rep.proofDocumentRef}</Row>}
+        <Row label="Informações complementares">{institution.additionalInformation}</Row>
       </dl>
     </section>
   );
@@ -184,9 +191,11 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"draft" | "submit" | null>(null);
   const [proofDocument, setProofDocument] = useState<UploadedFile | null>(null);
+  const [documents, setDocuments] = useState<InstitutionDocument[]>([]);
   const summaryRef = useRef<HTMLDivElement | null>(null);
   const noticeRef = useRef<HTMLDivElement | null>(null);
 
+  const profileType = user?.profileType ?? null;
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -194,14 +203,15 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
       const [own, ref] = await Promise.all([api.getMyInstitution(), api.institutionReference()]);
       setInstitution(own);
       setReference(ref);
-      setForm(own ? formFromInstitution(own) : emptyInstitutionForm());
+      setForm(own ? formFromInstitution(own, profileType) : emptyInstitutionForm(profileType));
       setProofDocument(own?.representative?.proofDocument ?? null);
+      setDocuments(own?.documents ?? []);
     } catch {
       setLoadError("Não foi possível carregar o cadastro institucional agora. Verifique a conexão e tente de novo.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [profileType]);
 
   const matches = Boolean(user && userKind && kind === userKind);
   useEffect(() => {
@@ -241,8 +251,9 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
     try {
       const saved = await api.saveMyInstitution(inputFromForm(kind, form));
       setInstitution(saved);
-      setForm(formFromInstitution(saved));
+      setForm(formFromInstitution(saved, user?.profileType));
       setProofDocument(saved.representative?.proofDocument ?? null);
+      setDocuments(saved.documents);
       setErrors({});
       setFormMessage(null);
       syncAccess(saved);
@@ -281,7 +292,9 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
       syncAccess(sent);
       announce("Cadastro enviado para validação. A equipe do DM Conecta vai conferir os dados; acompanhe a situação nesta página.");
     } catch (err) {
-      showErrors({}, err instanceof InstitutionRequestError ? err.message : "Não foi possível enviar agora. O rascunho continua salvo; tente de novo.");
+      // 422 `institution_incomplete` (T-05-19): tipo de organização ou estatuto faltando.
+      if (err instanceof InstitutionRequestError && Object.keys(err.fields).length) showErrors(err.fields, err.message);
+      else showErrors({}, err instanceof InstitutionRequestError ? err.message : "Não foi possível enviar agora. O rascunho continua salvo; tente de novo.");
     } finally {
       setBusy(null);
     }
@@ -397,9 +410,22 @@ export function InstitutionPageClient({ kind: routeKind }: { kind?: InstitutionK
                 onSaveDraft={() => void saveDraft()}
                 onSubmit={() => void submit()}
               />
+              <InstitutionDocuments
+                kind={userKind}
+                documents={documents}
+                onChange={(next) => { setDocuments(next); setErrors((current) => { const rest = { ...current }; delete rest.documents; return rest; }); }}
+                editable
+                hasSavedRecord={Boolean(institution)}
+                error={errors.documents}
+              />
             </>
           ) : (
-            institution && <InstitutionSummary institution={institution} />
+            institution && (
+              <>
+                <InstitutionSummary institution={institution} />
+                <InstitutionDocuments kind={userKind} documents={documents} onChange={setDocuments} editable={false} hasSavedRecord />
+              </>
+            )
           )}
         </>
       )}

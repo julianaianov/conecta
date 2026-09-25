@@ -47,6 +47,7 @@ export const UPLOAD_PURPOSES: Record<UploadPurpose, UploadPurposeRule> = {
   demand_document: { label: "Documento comprobatório da demanda", service: "posts", types: DOCUMENT_TYPES, maxBytes: 25 * MB },
   demand_accountability_document: { label: "Documento da prestação de contas", service: "posts", types: DOCUMENT_TYPES, maxBytes: 25 * MB },
   institution_proof: { label: "Comprovação da representação", service: "users", types: DOCUMENT_TYPES, maxBytes: 25 * MB },
+  institution_document: { label: "Documentação institucional", service: "users", types: DOCUMENT_TYPES, maxBytes: 25 * MB },
   post_photo: { label: "Foto do sinal", service: "posts", types: IMAGE_TYPES, maxBytes: 15 * MB },
 };
 

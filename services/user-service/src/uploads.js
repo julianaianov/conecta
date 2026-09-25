@@ -88,6 +88,12 @@ const PURPOSES = {
     label: 'Comprovação da representação', target: 'institution', folder: 'proof',
     types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
   },
+  // Documentação institucional (estatuto, ata, cartão CNPJ...; Modelo de
+  // Conexão §02): titular e gestão.
+  institution_document: {
+    label: 'Documentação institucional', target: 'institution', folder: 'documents',
+    types: DOCUMENT_TYPES, maxBytes: 25 * MB, visibility: 'private',
+  },
   // Foto do sinal do feed: obrigatória para a publicação entrar no mapa. O
   // post ainda não existe na confirmação (`deferredTarget`): o arquivo fica em
   // `posts/<owner_id>/photo/<id>.<ext>` e o POST /posts grava o vínculo

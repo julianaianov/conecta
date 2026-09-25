@@ -5,8 +5,14 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import {
+  INSTITUTION_DOCUMENT_KINDS,
   INSTITUTION_FORM_PATHS,
   INSTITUTION_STATUS_COLORS,
+  ORGANIZATION_TYPES,
+  ORGANIZATION_TYPE_BY_PROFILE,
+  REQUIRED_DOCUMENT_KINDS,
+  defaultOrganizationType,
+  missingDocumentKinds,
   INSTITUTION_STATUS_GUIDANCE,
   cnaeSuggestions,
   emptyInstitutionForm,
@@ -39,6 +45,7 @@ function agentForm() {
     cnpj: "11.222.333/0001-81",
     legalName: "Associação de Moradores do Bairro Verde",
     tradeName: "AMBV",
+    organizationType: "associacao",
     cnaePrimary: "9430-8/00",
     cnaePrimaryDescription: "Atividades de associações de defesa de direitos sociais",
     cnaeSecondary: [{ code: "8800-6/00", description: "" }],
@@ -115,6 +122,7 @@ test("erros de campo usam as mesmas chaves que o servidor devolve em `fields`", 
     ["poder_publico", emptyInstitutionForm()],
     ["agente_transformacao", { ...agentForm(), cnpj: "11.222.333/0001-82", cep: "123", institutionalEmail: "" }],
     ["poder_publico", { ...govForm(), governmentSphere: "estadual", uf: "", competenceAreas: [] }],
+    ["agente_transformacao", { ...agentForm(), organizationType: "", additionalInformation: "x".repeat(4001) }],
   ];
   for (const [kind, form] of cases) {
     const client = Object.keys(validateInstitutionForm(kind, form)).sort();
@@ -142,7 +150,8 @@ test("cadastro salvo volta ao formulário com máscara", () => {
     governmentSphere: null, department: null, competenceAreas: [], territory: null, cep: "20040020",
     street: "R", addressNumber: "1", addressComplement: null, district: "C", municipality: "M", municipalityIbgeCode: null,
     uf: "RJ", institutionalEmail: null, institutionalPhone: "2133334444", website: null, status: "devolvida",
-    validationNote: "Ajuste", reviewedAt: null, submittedAt: null, createdAt: "", updatedAt: null, events: [],
+    validationNote: "Ajuste", reviewedAt: null, submittedAt: null, createdAt: "", updatedAt: null, events: [], documents: [],
+    organizationType: null, additionalInformation: "Sede cedida",
     representative: { fullName: "A", position: "P", institutionalEmail: "a@b.org", institutionalPhone: "21999990000", proofDocumentRef: null, proofDescription: null },
   });
   assert.equal(form.cnpj, "11.222.333/0001-81");
@@ -150,6 +159,29 @@ test("cadastro salvo volta ao formulário com máscara", () => {
   assert.equal(form.cep, "20040-020");
   assert.equal(form.institutionalPhone, "(21) 3333-4444");
   assert.equal(form.representative.institutionalPhone, "(21) 99999-0000");
+  assert.equal(form.additionalInformation, "Sede cedida");
+  assert.equal(form.organizationType, "", "cadastro antigo sem subperfil conhecido fica sem tipo");
+});
+
+test("tipo de organização e documentação espelham o user-service (Modelo de Conexão §02)", () => {
+  assert.deepEqual(ORGANIZATION_TYPES, server.ORGANIZATION_TYPES);
+  assert.deepEqual(ORGANIZATION_TYPE_BY_PROFILE, server.ORGANIZATION_TYPE_BY_PROFILE);
+  assert.deepEqual(INSTITUTION_DOCUMENT_KINDS, server.INSTITUTION_DOCUMENT_KINDS);
+  assert.deepEqual(REQUIRED_DOCUMENT_KINDS, server.REQUIRED_DOCUMENT_KINDS);
+  assert.equal(defaultOrganizationType("ong"), "ong");
+  assert.equal(defaultOrganizationType("lider_comunitario"), "");
+  assert.equal(emptyInstitutionForm("instituto").organizationType, "instituto");
+  assert.deepEqual(missingDocumentKinds("agente_transformacao", []), ["estatuto"]);
+  assert.deepEqual(missingDocumentKinds("agente_transformacao", [{ kind: "estatuto" }]), []);
+  assert.deepEqual(missingDocumentKinds("poder_publico", []), []);
+  assert.equal(inputFromForm("agente_transformacao", agentForm()).organizationType, "associacao");
+  assert.equal(inputFromForm("poder_publico", govForm()).organizationType, undefined);
+  const page = read("src/components/app/institution/InstitutionPageClient.tsx");
+  assert.match(page, /<InstitutionDocuments/);
+  const docs = read("src/components/app/institution/InstitutionDocuments.tsx");
+  assert.match(docs, /purpose="institution_document"/);
+  assert.match(docs, /api\.addInstitutionDocument/);
+  assert.match(docs, /api\.removeInstitutionDocument/);
 });
 
 test("sugestões de CNAE vêm da referência, por código ou atividade (sem acento)", () => {
@@ -263,7 +295,7 @@ test("perfil público mostra o selo da instituição validada", () => {
 
 test("componentes institucionais seguem a paleta e não trazem dados fictícios", () => {
   const allowed = new Set(["#1b4f72", "#0d2d42", "#2e7ba8", "#5a9bc4", "#d6eaf8", "#f4841a", "#f89b45", "#343a40", "#868e96", "#e53935", "#2e9e5b", "#fff"]);
-  for (const name of ["InstitutionForm", "InstitutionPageClient", "InstitutionStatus", "InstitutionBanner", "PublicInstitutionCard"]) {
+  for (const name of ["InstitutionForm", "InstitutionPageClient", "InstitutionStatus", "InstitutionBanner", "PublicInstitutionCard", "InstitutionDocuments"]) {
     const source = read(`src/components/app/institution/${name}.tsx`);
     for (const hex of source.match(/#[0-9a-fA-F]{3,6}\b/g) ?? []) assert.ok(allowed.has(hex.toLowerCase()), `${name}: ${hex}`);
     assert.doesNotMatch(source, /\b(?:demo|mock|fake|lorem)\b/i, name);

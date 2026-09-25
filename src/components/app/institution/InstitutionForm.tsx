@@ -3,6 +3,8 @@
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { api, type InstitutionReference } from "@/lib/app/api";
 import {
+  ORGANIZATION_TYPES,
+  ORGANIZATION_TYPE_LABELS,
   cnaeSuggestions,
   maskCep,
   maskCnae,
@@ -18,6 +20,7 @@ import {
   type GovernmentSphere,
   type InstitutionFieldErrors,
   type InstitutionKind,
+  type OrganizationType,
   type UploadedFile,
 } from "@/lib/app/types";
 import { parseUploadRef } from "@/lib/app/uploads";
@@ -325,6 +328,18 @@ export function InstitutionForm({
             <TextField name="cnpj" label="CNPJ" required value={form.cnpj} onValue={(v) => set("cnpj", maskCnpj(v))} errors={errors} inputMode="text" autoComplete="off" placeholder="00.000.000/0000-00" hint="Aceita o CNPJ numérico e o alfanumérico." />
             <TextField name="legalName" label="Razão social" required value={form.legalName} onValue={(v) => set("legalName", v)} errors={errors} maxLength={255} autoComplete="organization" />
             <TextField name="tradeName" label="Nome fantasia" value={form.tradeName} onValue={(v) => set("tradeName", v)} errors={errors} maxLength={255} hint="Como a organização é conhecida no território." />
+            <FieldShell id={fieldId("organizationType")} label="Tipo de organização" required error={errors.organizationType} hint="Sugerido pelo seu subperfil; confira com o estatuto ou o cartão CNPJ.">
+              <select
+                id={fieldId("organizationType")} value={form.organizationType}
+                onChange={(e) => set("organizationType", e.target.value as OrganizationType | "")}
+                aria-required aria-invalid={errors.organizationType ? true : undefined}
+                aria-describedby={errors.organizationType ? `${fieldId("organizationType")}-error` : `${fieldId("organizationType")}-hint`}
+                className="app-input" style={errors.organizationType ? { borderColor: "#e53935" } : undefined}
+              >
+                <option value="">Selecione</option>
+                {ORGANIZATION_TYPES.map((value) => <option key={value} value={value}>{ORGANIZATION_TYPE_LABELS[value]}</option>)}
+              </select>
+            </FieldShell>
             <TextField name="territory" label="Território de atuação" value={form.territory} onValue={(v) => set("territory", v)} errors={errors} maxLength={255} placeholder="Ex.: bairro, comunidade ou região" />
           </Section>
 
@@ -475,6 +490,19 @@ export function InstitutionForm({
           {errors["representative.proofDescription"] && <p className="mt-1 text-xs font-semibold" style={{ color: "#e53935" }}>{errors["representative.proofDescription"]}</p>}
         </div>
       </Section>
+
+      <section aria-labelledby="inst-additional-title" className="app-card rounded-2xl p-4 sm:p-5">
+        <h2 id="inst-additional-title" className="text-base font-bold" style={{ color: "var(--th-text)" }}>Informações complementares para validação</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--th-muted)" }}>Opcional. O que ajudar a equipe a conferir {isAgent ? "a organização" : "o órgão"} (ex.: onde a sede funciona, registros, parcerias). Só você e a equipe de validação leem.</p>
+        <textarea
+          id={fieldId("additionalInformation")} value={form.additionalInformation} maxLength={4000}
+          onChange={(e) => set("additionalInformation", e.target.value)}
+          aria-labelledby="inst-additional-title"
+          aria-invalid={errors.additionalInformation ? true : undefined}
+          className="app-textarea mt-3" style={{ minHeight: "5rem" }}
+        />
+        {errors.additionalInformation && <p className="mt-1 text-xs font-semibold" style={{ color: "#e53935" }}>{errors.additionalInformation}</p>}
+      </section>
 
       <div className="app-card sticky bottom-20 z-10 flex flex-col gap-2 rounded-2xl p-3 sm:flex-row sm:items-center sm:justify-end lg:bottom-4" style={{ boxShadow: "0 8px 24px rgba(13,45,66,0.12)" }}>
         <p className="text-xs sm:mr-auto" style={{ color: "var(--th-muted)" }}>

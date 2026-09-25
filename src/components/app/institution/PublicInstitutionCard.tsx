@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatDate } from "@/lib/app/format";
-import { safeWebsite } from "@/lib/app/institution";
+import { ORGANIZATION_TYPE_LABELS, safeWebsite } from "@/lib/app/institution";
 import {
   GOVERNMENT_SPHERE_LABELS,
   INSTITUTION_KIND_LABELS,
@@ -62,7 +62,10 @@ export function PublicInstitutionCard({
           {institution.tradeName && institution.tradeName !== institution.legalName && (
             <p className="text-xs" style={{ color: "var(--th-muted)" }}>{institution.legalName}</p>
           )}
-          <p className="mt-1 text-xs font-semibold" style={{ color: "#2e7ba8" }}>{INSTITUTION_KIND_LABELS[institution.kind]}</p>
+          <p className="mt-1 text-xs font-semibold" style={{ color: "#2e7ba8" }}>
+            {INSTITUTION_KIND_LABELS[institution.kind]}
+            {institution.organizationType ? ` · ${ORGANIZATION_TYPE_LABELS[institution.organizationType]}` : ""}
+          </p>
         </div>
         <dl className="grid gap-3">
           <Row label="CNPJ"><span className="font-numeric">{formatCnpj(institution.cnpj)}</span></Row>

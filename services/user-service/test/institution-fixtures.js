@@ -4,6 +4,7 @@ const AGENT_INPUT = {
   cnpj: '11.222.333/0001-81',
   legalName: 'Associação de Moradores do Bairro Verde',
   tradeName: 'AMBV',
+  organizationType: 'associacao',
   cnaePrimary: '9430-8/00',
   cnaeSecondary: [{ code: '8800-6/00' }, '9430800', { code: '9493600', description: 'Cultura e arte' }],
   cep: '20040-020',

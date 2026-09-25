@@ -12,11 +12,15 @@ const { ensureProfile } = require('../profile-provision');
 const { isUuid } = require('../security');
 const { normalizeRole } = require('../roles');
 const { UploadError } = require('../uploads');
-const { assertProofUpload, describeProof } = require('../upload-policy');
+const {
+  assertProofUpload, describeProof, findDocumentUpload, describeDocumentUploads,
+} = require('../upload-policy');
 const {
   INSTITUTION_KINDS, VALIDATION_STATUSES, EDITABLE_STATUSES, GOVERNMENT_SPHERES, UFS,
   LINKED_AGENT_PROFILES, CNAE_REFERENCE, COMPETENCE_AREA_SUGGESTIONS,
-  kindForUser, validateInstitution, canActInstitutionally,
+  ORGANIZATION_TYPES, ORGANIZATION_TYPE_BY_PROFILE, INSTITUTION_DOCUMENT_KINDS, REQUIRED_DOCUMENT_KINDS,
+  MAX_INSTITUTION_DOCUMENTS,
+  kindForUser, validateInstitution, canActInstitutionally, validateInstitutionDocument, missingInstitutionDocuments,
 } = require('../institution');
 const { permissionsFor, PUBLIC_ACTING_LEVELS } = require('../organization-members');
 
@@ -25,6 +29,8 @@ const ORG_DATA_COLUMNS = [
   'government_sphere', 'department', 'competence_areas', 'territory', 'cep', 'street',
   'address_number', 'address_complement', 'district', 'municipality', 'municipality_ibge_code',
   'uf', 'institutional_email', 'institutional_phone', 'website',
+  // Modelo de Conexão §02 (T-05-19, migração 018).
+  'organization_type', 'additional_information',
 ];
 
 /** Projeção do titular (sem quem validou: o nome da equipe fica na gestão). */
@@ -38,6 +44,9 @@ const PUBLIC_ORG_COLUMNS = [
   'institution_kind', 'cnpj', 'legal_name', 'trade_name', 'cnae_primary', 'cnae_primary_description',
   'cnae_secondary', 'government_sphere', 'department', 'competence_areas', 'territory',
   'municipality', 'uf', 'website', 'validation_status', 'validation_reviewed_at',
+  // Tipo de organização (T-05-19): público; informações complementares e
+  // documentos nunca saem aqui.
+  'organization_type',
 ];
 
 /** Diretório do Poder Público (T14): identificação pública do órgão validado. */
@@ -127,6 +136,21 @@ const STATUS_SQL = `SELECT o.institution_kind, o.validation_status, o.id AS orga
 
 const NOT_FOUND = { error: 'Cadastro institucional não encontrado' };
 
+// Documentação institucional (T-05-19, migração 018): privada, titular e gestão.
+const DOCUMENT_COLUMNS = ['id', 'kind', 'title', 'upload_id', 'created_at'];
+const DOCUMENTS_SQL = `SELECT ${DOCUMENT_COLUMNS.join(', ')}
+    FROM organization_documents
+   WHERE organization_id = $1
+   ORDER BY created_at ASC, id ASC
+   LIMIT 50`;
+
+/** Documentos da organização com metadados e URL de leitura curta (visão do titular). */
+async function loadDocuments(db, organizationId, uploadStorage = null) {
+  const { rows } = await db.query(DOCUMENTS_SQL, [organizationId]);
+  const files = await describeDocumentUploads(db, uploadStorage, rows.map((r) => r.upload_id));
+  return rows.map((r) => ({ ...r, file: files.get(r.upload_id) ?? null }));
+}
+
 // Delegação (T29): conta sem cadastro próprio, mas com vínculo ativo numa
 // instituição, age em nome dela com as permissões do nível (migração 013).
 const DELEGATION_SQL = `SELECT m.id AS member_id, m.level, o.id AS organization_id, o.institution_kind, o.validation_status,
@@ -155,7 +179,7 @@ async function loadOwn(db, userId, uploadStorage = null) {
   const { rows } = await db.query(OWN_ORG_SQL, [userId]);
   if (!rows.length) return null;
   const org = rows[0];
-  const [{ rows: reps }, { rows: events }] = await Promise.all([
+  const [{ rows: reps }, { rows: events }, documents] = await Promise.all([
     db.query(`SELECT ${REPRESENTATIVE_COLUMNS.join(', ')} FROM organization_representatives WHERE organization_id = $1`, [org.id]),
     db.query(
       `SELECT from_status, to_status, note, actor_type, created_at
@@ -165,13 +189,14 @@ async function loadOwn(db, userId, uploadStorage = null) {
         LIMIT 200`,
       [org.id],
     ),
+    loadDocuments(db, org.id, uploadStorage),
   ]);
   const representative = reps[0] ?? null;
   if (representative) {
     // Comprovação enviada por upload (T08): nome, tipo, tamanho e URL curta.
     representative.proof_document = await describeProof(db, uploadStorage, representative.proof_document_ref);
   }
-  return { ...org, representative, events };
+  return { ...org, representative, events, documents };
 }
 
 /** Estado institucional da conta: usado pela interface e pelo gate dos serviços. */
@@ -272,6 +297,11 @@ function routes(pool, auth, uploadStorage = null) {
       linkedAgentProfiles: LINKED_AGENT_PROFILES,
       cnaeReference: CNAE_REFERENCE,
       competenceAreaSuggestions: COMPETENCE_AREA_SUGGESTIONS,
+      organizationTypes: ORGANIZATION_TYPES,
+      organizationTypeByProfile: ORGANIZATION_TYPE_BY_PROFILE,
+      documentKinds: INSTITUTION_DOCUMENT_KINDS,
+      requiredDocumentKinds: REQUIRED_DOCUMENT_KINDS,
+      maxDocuments: MAX_INSTITUTION_DOCUMENTS,
     });
   });
 
@@ -404,7 +434,7 @@ function routes(pool, auth, uploadStorage = null) {
     try {
       await withTransaction(pool, async (db) => {
         const { rows } = await db.query(
-          `SELECT o.id, o.institution_kind, o.validation_status
+          `SELECT o.id, o.institution_kind, o.validation_status, o.organization_type
              FROM organizations o
              JOIN profiles p ON p.id = o.profile_id
             WHERE p.user_id = $1 AND o.institution_kind IS NOT NULL
@@ -427,12 +457,138 @@ function routes(pool, auth, uploadStorage = null) {
           [org.id],
         );
         if (!reps.length) throw new HttpError(422, { error: 'Informe o representante antes de enviar' });
+        // Modelo de Conexão §02 (T-05-19): tipo de organização e estatuto do
+        // Agente, conferidos depois pela gestão. Cadastros salvos antes da
+        // migração 018 não têm o tipo: o titular completa a ficha.
+        const fields = {};
+        if (org.institution_kind === 'agente_transformacao' && !org.organization_type) {
+          fields.organizationType = 'Tipo de organização é obrigatório';
+        }
+        const { rows: docs } = await db.query(
+          'SELECT kind FROM organization_documents WHERE organization_id = $1',
+          [org.id],
+        );
+        Object.assign(fields, missingInstitutionDocuments(org.institution_kind, docs.map((d) => d.kind)));
+        if (Object.keys(fields).length) {
+          throw new HttpError(422, { error: 'Complete o cadastro institucional antes de enviar', code: 'institution_incomplete', fields });
+        }
         await db.query(
           "UPDATE organizations SET validation_status = 'em_analise' WHERE id = $1",
           [org.id],
         );
       });
       res.json(await own(req.user.userId));
+    } catch (err) {
+      if (err instanceof HttpError) return res.status(err.status).json(err.body);
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // ── Documentação institucional (T-05-19; Modelo de Conexão §02) ──────────
+  // Só o titular do cadastro, com a ficha editável (pendente, devolvida ou
+  // revogada), anexa e remove; o arquivo é um upload confirmado da finalidade
+  // `institution_document` vinculado à organização (POST /uploads/presign +
+  // /confirm). Privada: nunca sai em rota pública; a gestão lê pelo gestao_app.
+  const ownOrgForUpdate = async (db, userId) => {
+    const { rows } = await db.query(
+      `SELECT o.id, o.institution_kind, o.validation_status
+         FROM organizations o
+         JOIN profiles p ON p.id = o.profile_id
+        WHERE p.user_id = $1 AND o.institution_kind IS NOT NULL
+        FOR UPDATE OF o`,
+      [userId],
+    );
+    const org = rows[0];
+    if (!org) throw new HttpError(404, NOT_FOUND);
+    if (!EDITABLE_STATUSES.includes(org.validation_status)) {
+      throw new HttpError(409, {
+        error: 'Cadastro em análise ou validado não recebe nem perde documentos',
+        code: 'institution_not_editable',
+        validationStatus: org.validation_status,
+      });
+    }
+    return org;
+  };
+
+  router.get('/me/institution/documents', auth, async (req, res) => {
+    try {
+      const { rows } = await pool.query(STATUS_SQL, [req.user.userId]);
+      if (!rows.length) return res.status(404).json(NOT_FOUND);
+      const { organization_id: organizationId, institution_kind: kind, validation_status: status } = rows[0];
+      res.json({
+        documents: await loadDocuments(pool, organizationId, uploadStorage),
+        editable: EDITABLE_STATUSES.includes(status),
+        requiredKinds: REQUIRED_DOCUMENT_KINDS[kind] ?? [],
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  router.post('/me/institution/documents', auth, async (req, res) => {
+    if (!kindForUser(req.user)) {
+      return res.status(403).json({ error: 'Documentação institucional é do Agente de Transformação e do Poder Público' });
+    }
+    const { value, errors } = validateInstitutionDocument(req.body);
+    if (Object.keys(errors).length) {
+      return res.status(422).json({ error: 'Documento inválido', code: 'validation_failed', fields: errors });
+    }
+    try {
+      const document = await withTransaction(pool, async (db) => {
+        const org = await ownOrgForUpdate(db, req.user.userId);
+        const { rows: [{ n }] } = await db.query(
+          'SELECT count(*)::int AS n FROM organization_documents WHERE organization_id = $1',
+          [org.id],
+        );
+        if (n >= MAX_INSTITUTION_DOCUMENTS) {
+          throw new HttpError(422, {
+            error: `Limite de ${MAX_INSTITUTION_DOCUMENTS} documentos por cadastro`,
+            code: 'validation_failed',
+            fields: { uploadRef: `Remova um documento antes de anexar outro (até ${MAX_INSTITUTION_DOCUMENTS})` },
+          });
+        }
+        const upload = await findDocumentUpload(db, { uploadId: value.uploadId, ownerId: req.user.userId, organizationId: org.id });
+        if (!upload) {
+          throw new HttpError(422, {
+            error: 'Documento inválido',
+            code: 'validation_failed',
+            fields: { uploadRef: 'Arquivo não encontrado: envie e confirme o documento antes de anexar' },
+          });
+        }
+        const { rows } = await db.query(
+          `INSERT INTO organization_documents (organization_id, kind, title, upload_id, uploaded_by)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING ${DOCUMENT_COLUMNS.join(', ')}`,
+          [org.id, value.kind, value.title, value.uploadId, req.user.userId],
+        );
+        return rows[0];
+      });
+      const files = await describeDocumentUploads(pool, uploadStorage, [document.upload_id]);
+      res.status(201).json({ ...document, file: files.get(document.upload_id) ?? null });
+    } catch (err) {
+      if (err instanceof HttpError) return res.status(err.status).json(err.body);
+      if (err?.code === '23505') {
+        return res.status(409).json({ error: 'Este arquivo já está anexado ao cadastro', code: 'document_already_attached' });
+      }
+      console.error(err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  router.delete('/me/institution/documents/:documentId', auth, async (req, res) => {
+    if (!isUuid(req.params.documentId)) return res.status(404).json({ error: 'Documento não encontrado' });
+    try {
+      await withTransaction(pool, async (db) => {
+        const org = await ownOrgForUpdate(db, req.user.userId);
+        const { rowCount } = await db.query(
+          'DELETE FROM organization_documents WHERE id = $1 AND organization_id = $2',
+          [req.params.documentId, org.id],
+        );
+        if (!rowCount) throw new HttpError(404, { error: 'Documento não encontrado' });
+      });
+      res.status(204).end();
     } catch (err) {
       if (err instanceof HttpError) return res.status(err.status).json(err.body);
       console.error(err);
@@ -519,5 +675,6 @@ module.exports.activeDelegation = activeDelegation;
 module.exports.OWNER_ORG_COLUMNS = OWNER_ORG_COLUMNS;
 module.exports.PUBLIC_ORG_COLUMNS = PUBLIC_ORG_COLUMNS;
 module.exports.REPRESENTATIVE_COLUMNS = REPRESENTATIVE_COLUMNS;
+module.exports.DOCUMENT_COLUMNS = DOCUMENT_COLUMNS;
 module.exports.DIRECTORY_COLUMNS = DIRECTORY_COLUMNS;
 module.exports.governmentDirectoryQuery = governmentDirectoryQuery;

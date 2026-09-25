@@ -22,7 +22,7 @@ import { resolveMediaUrl } from "./uploads";
 import type {
   CnaeEntry, Institution, InstitutionAccess, InstitutionFieldErrors, InstitutionInput,
   InstitutionKind, InstitutionValidationEvent, InstitutionValidationStatus, GovernmentSphere,
-  PublicInstitution,
+  PublicInstitution, InstitutionDocument, InstitutionDocumentKind, OrganizationType,
 } from "./types";
 import type {
   Demand, DemandAgentAction, DemandComposition, DemandEvent, DemandFieldErrors, DemandInput,
@@ -363,6 +363,18 @@ function mapInstitutionData(r: RawPost) {
   };
 }
 
+/** Documento institucional (T-05-19) → modelo do app. */
+function mapInstitutionDocument(d: RawPost): InstitutionDocument {
+  return {
+    id: String(d.id),
+    kind: d.kind as InstitutionDocumentKind,
+    title: String(d.title ?? ""),
+    uploadId: String(d.upload_id ?? ""),
+    createdAt: String(d.created_at ?? ""),
+    file: (d.file as UploadedFile | null | undefined) ?? null,
+  };
+}
+
 export function mapInstitution(r: RawPost): Institution {
   const rep = r.representative as RawPost | null | undefined;
   return {
@@ -377,6 +389,8 @@ export function mapInstitution(r: RawPost): Institution {
     municipalityIbgeCode: str(r.municipality_ibge_code),
     institutionalEmail: str(r.institutional_email),
     institutionalPhone: str(r.institutional_phone),
+    organizationType: (str(r.organization_type) as OrganizationType | null),
+    additionalInformation: str(r.additional_information),
     status: r.validation_status as InstitutionValidationStatus,
     validationNote: str(r.validation_note),
     reviewedAt: str(r.validation_reviewed_at),
@@ -403,6 +417,7 @@ export function mapInstitution(r: RawPost): Institution {
         createdAt: String(e.created_at ?? ""),
       }))
       : [],
+    documents: Array.isArray(r.documents) ? (r.documents as RawPost[]).map(mapInstitutionDocument) : [],
   };
 }
 
@@ -425,6 +440,10 @@ export interface InstitutionReference {
   competenceAreaSuggestions: string[];
   ufs: string[];
   governmentSpheres: GovernmentSphere[];
+  /** T-05-19: tipos de organização e de documento aceitos (espelho em lib/app/institution.ts). */
+  organizationTypes?: OrganizationType[];
+  documentKinds?: InstitutionDocumentKind[];
+  maxDocuments?: number;
 }
 
 // ── Demanda (T07) ──────────────────────────────────────────
@@ -992,6 +1011,39 @@ export const api = {
     const raw = await institutionRequest<RawPost>("/api/users/me/institution/submit", { method: "POST", body: "{}" });
     if (!raw) throw new InstitutionRequestError("Cadastro institucional não encontrado", 404);
     return mapInstitution(raw);
+  },
+
+  // Documentação institucional (T-05-19): anexa um upload confirmado
+  // `institution_document`; só com a ficha editável (409 `institution_not_editable`).
+  async addInstitutionDocument(input: { kind: InstitutionDocumentKind; title: string; uploadRef: string }): Promise<InstitutionDocument> {
+    const raw = await institutionRequest<RawPost>("/api/users/me/institution/documents", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    if (!raw) throw new InstitutionRequestError("Cadastro institucional não encontrado", 404);
+    return mapInstitutionDocument(raw);
+  },
+
+  async removeInstitutionDocument(id: string): Promise<void> {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    const token = getToken();
+    try {
+      const res = await fetch(`${BASE}/api/users/me/institution/documents/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        signal: ctrl.signal,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.status === 204 || res.status === 404) return;
+      const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      throw new InstitutionRequestError(String(body.error ?? `Erro ${res.status}`), res.status, (body.code as string) ?? null);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") throw new NetworkError("timeout");
+      if (err instanceof TypeError) throw new NetworkError("network");
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   },
 
   async myInstitutionAccess(): Promise<InstitutionAccess> {
