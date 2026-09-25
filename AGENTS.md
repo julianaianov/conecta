@@ -817,6 +817,13 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Portal: `ExecutionProgressSummary` (barras com `role="progressbar"` e tabela
   de etapas) no painel e na seção pública; formulário de ocorrência e motivo do
   bloqueio no `DemandExecutionPanel`.
+- Registros previstos no cronograma (T-02-04; Fluxo 2, slide 14):
+  `GET /mine/:id/execution` traz `pending.records` (etapa × marco de
+  `record_milestones` sem evidência daquela etapa e marco; `store.pendingRecords`)
+  e o painel lista "Registros previstos e ainda não enviados" com atalho para o
+  upload. Na prestação de contas, `evidence_acompanhamento` (condição
+  `previsto_no_cronograma`) é exigência **informativa** (`informative: true`):
+  aparece em `requirements` e nunca bloqueia `canConclude` nem o 422.
 
 ## Mapa inteligente (T20)
 

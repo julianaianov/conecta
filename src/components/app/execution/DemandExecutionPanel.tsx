@@ -242,6 +242,42 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
         </section>
       )}
 
+      {/* Registros previstos no cronograma e ainda não enviados (slide 14; T-02-04). */}
+      {data.canRegisterEvidence && (data.pending.records ?? []).length > 0 && (
+        <section className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
+          <h3 className="mb-1 text-sm font-bold" style={{ color: "var(--th-text)" }}>Registros previstos e ainda não enviados</h3>
+          <p className="mb-2 text-xs" style={{ color: "var(--th-muted)" }}>
+            O cronograma previu estes registros. O acompanhamento é informativo; o antes e o depois são pedidos para iniciar e concluir.
+          </p>
+          <ul className="space-y-1.5">
+            {(data.pending.records ?? []).map((record) => (
+              <li
+                key={`${record.scheduleItemId}-${record.milestone}`}
+                className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-1.5 text-sm"
+                style={{ borderColor: "var(--th-border)" }}
+              >
+                <span style={{ color: "var(--th-text)" }}>{record.stage}</span>
+                <span style={{ color: "var(--th-muted)" }}>· {RECORD_MILESTONE_LABELS[record.milestone] ?? record.milestone}</span>
+                <Button
+                  className="ml-auto"
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setMilestone(record.milestone);
+                    setEvidenceStage(record.scheduleItemId);
+                    setPairWith("");
+                    document.getElementById(`exec-${demandId}-evidence-form`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  Registrar agora
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {data.recordWaiverReason && (
         <p className="rounded-xl border p-3 text-sm" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)", color: "var(--th-text)" }}>
           <strong>Sem execução física a registrar.</strong> {data.recordWaiverReason}
@@ -271,7 +307,7 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
 
       {/* Registro de evidência (slide 12). */}
       {data.canRegisterEvidence && (
-        <section className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
+        <section id={`exec-${demandId}-evidence-form`} className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
           <h3 className="mb-2 text-sm font-bold" style={{ color: "var(--th-text)" }}>Registrar evidência</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectInput

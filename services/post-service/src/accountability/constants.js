@@ -48,7 +48,11 @@ const ACCOUNTABILITY_EVENT_TYPES = ['prestacao_de_contas_concluida'];
  * - `execucao_fisica`: só quando a demanda declarou execução física e o Agente
  *   não registrou a justificativa de ausência de registro (T17);
  * - `apoio_financeiro`: só quando o Agente declara apoio financeiro recebido
- *   ("comprovantes financeiros, **quando aplicável**").
+ *   ("comprovantes financeiros, **quando aplicável**");
+ * - `previsto_no_cronograma` (T-02-04): quando alguma etapa do cronograma
+ *   previu o registro do acompanhamento (Fluxo 2, slide 14). É **informativa**
+ *   (`informative: true`): aparece na lista, nunca bloqueia a conclusão — a
+ *   fonte diz "quando aplicável" (slide 12, filmagem do processo).
  */
 const REQUIREMENTS = [
   { key: 'execution_report', condition: 'sempre', label: 'Relatório de execução' },
@@ -61,6 +65,12 @@ const REQUIREMENTS = [
   { key: 'evidence_depois', condition: 'execucao_fisica', label: 'Registro do "depois" (foto ou filmagem)' },
   { key: 'financial_summary', condition: 'apoio_financeiro', label: 'Resumo da aplicação do apoio financeiro' },
   { key: 'financial_receipt', condition: 'apoio_financeiro', label: 'Comprovante financeiro anexado' },
+  {
+    key: 'evidence_acompanhamento',
+    condition: 'previsto_no_cronograma',
+    label: 'Registro do acompanhamento previsto no cronograma',
+    informative: true,
+  },
 ];
 
 const REQUIREMENT_KEYS = REQUIREMENTS.map((r) => r.key);

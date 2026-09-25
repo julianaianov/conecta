@@ -80,8 +80,9 @@ test("as exigências pendentes ignoram o que não se aplica", () => {
     { key: "a", label: "A", condition: "sempre", applies: true, satisfied: true, reason: null },
     { key: "b", label: "B", condition: "sempre", applies: true, satisfied: false, reason: null },
     { key: "c", label: "C", condition: "apoio_financeiro", applies: false, satisfied: false, reason: "sem apoio" },
+    { key: "d", label: "D", condition: "previsto_no_cronograma", applies: true, satisfied: false, informative: true, reason: null },
   ];
-  assert.deepEqual(pendingRequirements(requirements).map((r) => r.key), ["b"]);
+  assert.deepEqual(pendingRequirements(requirements).map((r) => r.key), ["b"], "a exigência informativa não bloqueia");
   assert.deepEqual(pendingRequirements(null), []);
 });
 

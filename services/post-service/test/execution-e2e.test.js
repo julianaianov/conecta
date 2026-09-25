@@ -562,11 +562,28 @@ test('execução: evidências antes/depois, andamento, orçamento executado e hi
       assert.equal(minha.body.canRegisterEvidence, true, 'o "antes" é registrado antes de iniciar');
       assert.equal(minha.body.canRegisterProgress, false);
       assert.equal(minha.body.canWaiveRecord, true);
-      assert.deepEqual(minha.body.pending, { antes: true, depois: true });
+      assert.equal(minha.body.pending.antes, true);
+      assert.equal(minha.body.pending.depois, true);
+      // T-02-04: os três marcos previstos na etapa aparecem como registros pendentes.
+      assert.deepEqual(minha.body.pending.records.map((r) => r.milestone), ['antes', 'acompanhamento', 'depois']);
+      assert.equal(minha.body.pending.records[0].stage, 'Execução da obra');
       assert.equal((await call('GET', `/demands/mine/${naoIniciada.id}/execution`, { as: OTHER_AGENT })).status, 404);
 
       const minhaConcluida = await call('GET', `/demands/mine/${demand.id}/execution`);
-      assert.deepEqual(minhaConcluida.body.pending, { antes: false, depois: false });
+      assert.equal(minhaConcluida.body.pending.antes, false);
+      assert.equal(minhaConcluida.body.pending.depois, false);
+      // O "antes" foi registrado na etapa; acompanhamento e "depois" da etapa, não.
+      assert.deepEqual(minhaConcluida.body.pending.records.map((r) => r.milestone), ['acompanhamento', 'depois']);
+      assert.equal((await call('POST', `/demands/mine/${demand.id}/evidences`, {
+        body: {
+          reference: await confirmedUpload(demand.id, 'demand_evidence_video'),
+          milestone: 'acompanhamento', mediaKind: 'video', recordedOn: daysAgo(5),
+          scheduleItemId: demand.scheduleItemId,
+        },
+      })).status, 201);
+      const depoisDoRegistro = await call('GET', `/demands/mine/${demand.id}/execution`);
+      assert.deepEqual(depoisDoRegistro.body.pending.records.map((r) => r.milestone), ['depois'],
+        'com a evidência registrada, a pendência some');
       assert.equal(minhaConcluida.body.canWaiveRecord, false);
       assert.equal(minhaConcluida.body.progress[0].note, 'Conferir a nota fiscal do cimento.');
       assert.equal(minhaConcluida.body.evidences[0].author.userId, AGENT);

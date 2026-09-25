@@ -2450,7 +2450,12 @@ export interface DemandExecution {
   canRegisterIncident?: boolean;
   canWaiveRecord: boolean;
   /** Marcos que faltam para as transições `iniciar_execucao` e `concluir`. */
-  pending: { antes: boolean; depois: boolean };
+  pending: {
+    antes: boolean;
+    depois: boolean;
+    /** Registros previstos por etapa no cronograma e ainda não enviados (T-02-04). */
+    records?: { scheduleItemId: string; stage: string; milestone: DemandRecordMilestone }[];
+  };
 }
 
 export interface DemandEvidenceInput {
@@ -2495,7 +2500,8 @@ export type DemandAccountabilityDocumentKind =
   | "outro";
 
 /** Por que uma exigência da conclusão vale (slide 24: "quando aplicável"). */
-export type DemandAccountabilityRequirementCondition = "sempre" | "execucao_fisica" | "apoio_financeiro";
+export type DemandAccountabilityRequirementCondition =
+  | "sempre" | "execucao_fisica" | "apoio_financeiro" | "previsto_no_cronograma";
 
 export interface DemandAccountabilityRequirement {
   key: string;
@@ -2504,6 +2510,8 @@ export interface DemandAccountabilityRequirement {
   /** A exigência vale nesta demanda. */
   applies: boolean;
   satisfied: boolean;
+  /** Só informa; nunca bloqueia a conclusão (T-02-04). */
+  informative?: boolean;
   reason: string | null;
 }
 

@@ -220,7 +220,7 @@ async function scheduleStatus(db, demandId, { running = false, today = new Date(
   const { rows } = await db.query(
     `SELECT st.schedule_item_id, st.position, st.stage, st.starts_on, st.ends_on, st.current_ends_on,
             st.rescheduled_to, st.declared_progress, st.block_reason, st.progress_updated_at,
-            st.open_delay_id, st.late_due_on, st.late_since, s.record_milestones
+            st.open_delay_id, st.late_due_on, st.late_since, s.record_milestones::text[] AS record_milestones
        FROM demand_stage_status st
        JOIN demand_schedule_items s ON s.id = st.schedule_item_id
       WHERE st.demand_id = $1 ORDER BY st.position, st.schedule_item_id`,
@@ -327,6 +327,27 @@ function executionSummary(schedule = [], budget = null, incidents = []) {
   };
 }
 
+/**
+ * Registros previstos no cronograma e ainda não enviados (T-02-04; Fluxo 2,
+ * slide 14): cada marco de `record_milestones` de uma etapa sem evidência
+ * daquela etapa e daquele marco. Informativo: só a transição para execução
+ * (`antes`) e a conclusão (`depois`) exigem registro, em nível de demanda.
+ */
+function pendingRecords(schedule = [], evidences = []) {
+  const done = new Set(evidences
+    .filter((e) => e.scheduleItemId)
+    .map((e) => `${e.scheduleItemId}:${e.milestone}`));
+  const pending = [];
+  for (const stage of schedule) {
+    for (const milestone of stage.recordMilestones ?? []) {
+      if (!done.has(`${stage.scheduleItemId}:${milestone}`)) {
+        pending.push({ scheduleItemId: stage.scheduleItemId, stage: stage.stage, milestone });
+      }
+    }
+  }
+  return pending;
+}
+
 /** Quantas evidências há por marco (pendências das transições). */
 function milestoneCounts(evidences) {
   return {
@@ -368,5 +389,6 @@ module.exports = {
   loadIncident,
   executionSummary,
   milestoneCounts,
+  pendingRecords,
   loadEvidence,
 };

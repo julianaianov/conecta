@@ -166,11 +166,14 @@ function validateAccountabilityDocument(input, { today = new Date() } = {}) {
  * `state`:
  * - `accountability`: a linha atual (campos já gravados);
  * - `hasPhysicalExecution` e `recordWaived`: da demanda (T06/T17);
- * - `milestones`: `{ antes, depois }`, quantas evidências há (T17);
+ * - `milestones`: `{ antes, acompanhamento, depois }`, quantas evidências há (T17);
+ * - `plannedMonitoring`: alguma etapa do cronograma previu o registro do
+ *   acompanhamento (T-02-04);
  * - `goalsTotal` e `resultsTotal`: metas declaradas × resultados informados;
  * - `financialReceipts`: quantos comprovantes financeiros foram anexados.
  *
- * Devolve `[{ key, label, condition, applies, satisfied, reason }]`.
+ * Devolve `[{ key, label, condition, applies, satisfied, informative, reason }]`.
+ * A exigência `informative` nunca bloqueia a conclusão.
  */
 function checkRequirements(state = {}) {
   const a = state.accountability ?? {};
@@ -190,10 +193,14 @@ function checkRequirements(state = {}) {
       : true,
     evidence_antes: Number(milestones.antes ?? 0) > 0,
     evidence_depois: Number(milestones.depois ?? 0) > 0,
+    evidence_acompanhamento: Number(milestones.acompanhamento ?? 0) > 0,
     financial_summary: has(a.financialSummary),
     financial_receipt: Number(state.financialReceipts ?? 0) > 0,
   };
-  const applies = { sempre: true, execucao_fisica: physical, apoio_financeiro: financial };
+  const monitoring = state.plannedMonitoring === true;
+  const applies = {
+    sempre: true, execucao_fisica: physical, apoio_financeiro: financial, previsto_no_cronograma: monitoring,
+  };
   const reasons = {
     sempre: null,
     execucao_fisica: physical
@@ -202,6 +209,9 @@ function checkRequirements(state = {}) {
     apoio_financeiro: financial
       ? 'O Agente declarou apoio financeiro recebido nesta demanda.'
       : 'Nenhum apoio financeiro foi declarado nesta prestação.',
+    previsto_no_cronograma: monitoring
+      ? 'O cronograma previu o registro do acompanhamento; é informativo e não bloqueia a conclusão.'
+      : 'Nenhuma etapa do cronograma previu o registro do acompanhamento.',
   };
 
   return REQUIREMENTS.map((requirement) => ({
@@ -210,13 +220,14 @@ function checkRequirements(state = {}) {
     condition: requirement.condition,
     applies: applies[requirement.condition] === true,
     satisfied: satisfiedBy[requirement.key] === true,
+    informative: requirement.informative === true,
     reason: reasons[requirement.condition],
   }));
 }
 
-/** Exigências que se aplicam e ainda não foram atendidas. */
+/** Exigências que se aplicam, bloqueiam e ainda não foram atendidas. */
 function missingRequirements(state) {
-  return checkRequirements(state).filter((r) => r.applies && !r.satisfied);
+  return checkRequirements(state).filter((r) => r.applies && !r.satisfied && !r.informative);
 }
 
 /** Erros por campo para a conclusão (422 `accountability_incomplete`). */
@@ -231,6 +242,7 @@ const REQUIREMENT_FIELD = {
   evidence_depois: 'evidences.depois',
   financial_summary: 'financialSummary',
   financial_receipt: 'documents.comprovante_financeiro',
+  evidence_acompanhamento: 'evidences.acompanhamento',
 };
 
 const REQUIREMENT_MESSAGE = {
@@ -244,6 +256,7 @@ const REQUIREMENT_MESSAGE = {
   evidence_depois: 'Registre a foto ou a filmagem do "depois" (aba Execução)',
   financial_summary: 'Descreva como o apoio financeiro foi aplicado',
   financial_receipt: 'Anexe ao menos um comprovante financeiro',
+  evidence_acompanhamento: 'Registre a foto ou a filmagem do acompanhamento previsto no cronograma (aba Execução)',
 };
 
 function conclusionErrors(state) {

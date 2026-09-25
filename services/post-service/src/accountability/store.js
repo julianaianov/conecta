@@ -180,11 +180,26 @@ async function listGoalsWithResults(db, demandId, accountabilityId) {
 async function evidenceMilestones(db, demandId) {
   const { rows: [row] } = await db.query(
     `SELECT count(*) FILTER (WHERE milestone = 'antes')  AS antes,
+            count(*) FILTER (WHERE milestone = 'acompanhamento') AS acompanhamento,
             count(*) FILTER (WHERE milestone = 'depois') AS depois
        FROM demand_evidences WHERE demand_id = $1`,
     [demandId],
   );
-  return { antes: Number(row?.antes ?? 0), depois: Number(row?.depois ?? 0) };
+  return {
+    antes: Number(row?.antes ?? 0),
+    acompanhamento: Number(row?.acompanhamento ?? 0),
+    depois: Number(row?.depois ?? 0),
+  };
+}
+
+/** Alguma etapa do cronograma previu o registro do acompanhamento (T-02-04)? */
+async function plannedMonitoring(db, demandId) {
+  const { rows: [row] } = await db.query(
+    `SELECT EXISTS (SELECT 1 FROM demand_schedule_items
+                     WHERE demand_id = $1 AND 'acompanhamento' = ANY(record_milestones)) AS planned`,
+    [demandId],
+  );
+  return row?.planned === true;
 }
 
 /** Totais que a página pública mostra: metas cumpridas e comprovantes. */
@@ -242,6 +257,7 @@ module.exports = {
   listDocuments,
   listGoalsWithResults,
   evidenceMilestones,
+  plannedMonitoring,
   summarize,
   loadConcludedView,
   loadDocument,

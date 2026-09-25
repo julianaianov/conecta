@@ -45,7 +45,12 @@ export const ACCOUNTABILITY_OPEN_STATUSES: DemandStatus[] = ["prestacao_de_conta
 export const ACCOUNTABILITY_EVENT_TYPES = ["prestacao_de_contas_concluida"];
 
 /** Exigências da conclusão, na ordem em que a tela as apresenta. */
-export const REQUIREMENTS: { key: string; condition: DemandAccountabilityRequirementCondition; label: string }[] = [
+export const REQUIREMENTS: {
+  key: string;
+  condition: DemandAccountabilityRequirementCondition;
+  label: string;
+  informative?: boolean;
+}[] = [
   { key: "execution_report", condition: "sempre", label: "Relatório de execução" },
   { key: "actions_record", condition: "sempre", label: "Registros das ações realizadas" },
   { key: "schedule_summary", condition: "sempre", label: "Atualização final do cronograma" },
@@ -56,6 +61,12 @@ export const REQUIREMENTS: { key: string; condition: DemandAccountabilityRequire
   { key: "evidence_depois", condition: "execucao_fisica", label: 'Registro do "depois" (foto ou filmagem)' },
   { key: "financial_summary", condition: "apoio_financeiro", label: "Resumo da aplicação do apoio financeiro" },
   { key: "financial_receipt", condition: "apoio_financeiro", label: "Comprovante financeiro anexado" },
+  {
+    key: "evidence_acompanhamento",
+    condition: "previsto_no_cronograma",
+    label: "Registro do acompanhamento previsto no cronograma",
+    informative: true,
+  },
 ];
 
 export const REQUIREMENT_KEYS = REQUIREMENTS.map((r) => r.key);
@@ -65,6 +76,7 @@ export const REQUIREMENT_CONDITION_LABELS: Record<DemandAccountabilityRequiremen
   sempre: "Sempre obrigatório",
   execucao_fisica: "Obrigatório com execução física",
   apoio_financeiro: "Obrigatório com apoio financeiro",
+  previsto_no_cronograma: "Informativo: previsto no cronograma, não bloqueia",
 };
 
 export const MAX_EXECUTION_REPORT = 20000;
@@ -82,11 +94,11 @@ export const MAX_DOCUMENTS = 60;
 export const MAX_BENEFICIARIES = 100_000_000;
 export const MAX_AMOUNT_CENTS = 9_999_999_999;
 
-/** Exigências que se aplicam e ainda faltam (o servidor devolve a lista pronta). */
+/** Exigências que se aplicam, bloqueiam e ainda faltam (o servidor devolve a lista pronta). */
 export function pendingRequirements(
   requirements: DemandAccountabilityRequirement[] | null | undefined,
 ): DemandAccountabilityRequirement[] {
-  return (requirements ?? []).filter((r) => r.applies && !r.satisfied);
+  return (requirements ?? []).filter((r) => r.applies && !r.satisfied && !r.informative);
 }
 
 /** "8 de 10 metas cumpridas" e afins, para o resumo público. */

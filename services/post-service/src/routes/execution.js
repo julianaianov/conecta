@@ -201,10 +201,13 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
       canRegisterProgress: PROGRESS_OPEN_STATUSES.includes(demand.status),
       canRegisterIncident: PROGRESS_OPEN_STATUSES.includes(demand.status),
       canWaiveRecord: !waived && WAIVER_OPEN_STATUSES.includes(demand.status),
-      // Pendências das transições (`iniciar_execucao` e `concluir`).
+      // Pendências das transições (`iniciar_execucao` e `concluir`) e, em
+      // `records`, os registros previstos por etapa no cronograma e ainda não
+      // enviados (T-02-04, informativo).
       pending: {
         antes: !waived && view.milestones.antes === 0,
         depois: !waived && view.milestones.depois === 0,
+        records: waived ? [] : store.pendingRecords(view.schedule, view.evidences),
       },
     });
   }));

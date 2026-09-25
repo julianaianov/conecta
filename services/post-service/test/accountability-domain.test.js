@@ -193,6 +193,37 @@ test('as chaves das exigências e as mensagens da conclusão cobrem a lista da f
   assert.deepEqual(A.REQUIREMENT_KEYS.sort(), Object.keys(A.REQUIREMENT_FIELD).sort());
   assert.deepEqual(Object.keys(A.REQUIREMENT_FIELD).sort(), Object.keys(A.REQUIREMENT_MESSAGE).sort());
   for (const requirement of A.REQUIREMENTS) {
-    assert.ok(['sempre', 'execucao_fisica', 'apoio_financeiro'].includes(requirement.condition), requirement.key);
+    assert.ok(['sempre', 'execucao_fisica', 'apoio_financeiro', 'previsto_no_cronograma'].includes(requirement.condition),
+      requirement.key);
   }
+});
+
+test('acompanhamento previsto no cronograma é exigência informativa, nunca bloqueia (T-02-04)', () => {
+  const complete = {
+    accountability: {
+      executionReport: 'r', actionsRecord: 'a', scheduleSummary: 's', beneficiariesReached: 10,
+      impactIndicators: 'i', financialSupport: false,
+    },
+    hasPhysicalExecution: false,
+    milestones: { antes: 0, acompanhamento: 0, depois: 0 },
+    goalsTotal: 0,
+    resultsTotal: 0,
+  };
+  const planned = A.checkRequirements({ ...complete, plannedMonitoring: true })
+    .find((r) => r.key === 'evidence_acompanhamento');
+  assert.equal(planned.applies, true);
+  assert.equal(planned.satisfied, false);
+  assert.equal(planned.informative, true);
+  assert.equal(planned.condition, 'previsto_no_cronograma');
+  assert.deepEqual(A.conclusionErrors({ ...complete, plannedMonitoring: true }), {}, 'não bloqueia a conclusão');
+
+  const registered = A.checkRequirements({
+    ...complete, plannedMonitoring: true, milestones: { antes: 0, acompanhamento: 1, depois: 0 },
+  }).find((r) => r.key === 'evidence_acompanhamento');
+  assert.equal(registered.satisfied, true);
+
+  const notPlanned = A.checkRequirements(complete).find((r) => r.key === 'evidence_acompanhamento');
+  assert.equal(notPlanned.applies, false);
+  assert.ok(A.checkRequirements(complete).filter((r) => r.key !== 'evidence_acompanhamento')
+    .every((r) => r.informative === false));
 });

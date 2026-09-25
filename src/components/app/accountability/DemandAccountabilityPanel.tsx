@@ -250,6 +250,11 @@ export function DemandAccountabilityPanel({ demandId, onChanged }: {
                 {requirement.applies && requirement.satisfied && (
                   <span className="sr-only">atendido</span>
                 )}
+                {requirement.applies && requirement.informative && (
+                  <span className="text-xs" style={{ color: "var(--th-muted)" }}>
+                    informativo, não bloqueia a conclusão{requirement.satisfied ? "" : ` — ${requirement.reason ?? ""}`}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

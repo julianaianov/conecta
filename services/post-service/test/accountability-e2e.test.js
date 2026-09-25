@@ -113,7 +113,7 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
       assert.equal((await call('POST', `/demands/${id}/schedule-items`, {
         body: {
           stage: 'Execução da obra', activities: 'Reforma da praça',
-          startsOn: '2026-10-01', endsOn: '2026-11-30', recordMilestones: ['antes', 'depois'],
+          startsOn: '2026-10-01', endsOn: '2026-11-30', recordMilestones: ['antes', 'acompanhamento', 'depois'],
         },
       })).status, 201);
       assert.equal((await call('POST', `/demands/${id}/budget-items`, {
@@ -203,7 +203,13 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
       assert.ok(inicial.body.goals.every((g) => g.answered === false));
       assert.equal(inicial.body.canConclude, false);
       assert.equal(inicial.body.hasPhysicalExecution, true);
-      assert.deepEqual(inicial.body.milestones, { antes: 1, depois: 1 });
+      assert.deepEqual(inicial.body.milestones, { antes: 1, acompanhamento: 0, depois: 1 });
+      // T-02-04: o cronograma previu o acompanhamento e não há registro — a
+      // exigência aparece, informativa, e não impede a conclusão (linha abaixo).
+      const acompanhamento = inicial.body.requirements.find((r) => r.key === 'evidence_acompanhamento');
+      assert.equal(acompanhamento.applies, true);
+      assert.equal(acompanhamento.satisfied, false);
+      assert.equal(acompanhamento.informative, true);
       // Execução física com registro: o condicional se aplica e já está atendido.
       const antes = inicial.body.requirements.find((r) => r.key === 'evidence_antes');
       assert.equal(antes.applies, true);

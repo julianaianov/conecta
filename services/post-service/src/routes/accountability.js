@@ -169,6 +169,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
 
   /** Visão do Agente autor: rascunho, metas, anexos e o que a conclusão exige. */
   async function ownerView(db, demand, row) {
+    const monitoring = await store.plannedMonitoring(db, demand.id);
     if (!row) {
       const milestones = await store.evidenceMilestones(db, demand.id);
       const goals = await store.listGoalsWithResults(db, demand.id, null);
@@ -187,6 +188,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
           hasPhysicalExecution: demand.has_physical_execution === true,
           recordWaived: Boolean(demand.record_waiver_reason),
           milestones,
+          plannedMonitoring: monitoring,
           goalsTotal: goals.length,
           resultsTotal: 0,
           financialReceipts: 0,
@@ -210,6 +212,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
       hasPhysicalExecution: demand.has_physical_execution === true,
       recordWaived: Boolean(demand.record_waiver_reason),
       milestones,
+      plannedMonitoring: monitoring,
       goalsTotal: goals.length,
       resultsTotal: results.length,
       financialReceipts: summary.financialReceipts,
@@ -228,7 +231,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
       editable: accountability.status === 'rascunho' && ACCOUNTABILITY_OPEN_STATUSES.includes(demand.status),
       canConclude: accountability.status === 'rascunho'
         && ACCOUNTABILITY_OPEN_STATUSES.includes(demand.status)
-        && requirements.every((r) => !r.applies || r.satisfied),
+        && requirements.every((r) => !r.applies || r.satisfied || r.informative),
     };
   }
 

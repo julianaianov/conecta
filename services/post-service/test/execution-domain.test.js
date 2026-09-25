@@ -232,3 +232,20 @@ test('a migração 034 grava o atraso e guarda as ocorrências (só inserção, 
   // Valor novo de enum não é literal na mesma transação.
   assert.doesNotMatch(statusSql, /'bloqueada'::demand_stage_progress/);
 });
+
+test('registros previstos no cronograma e ainda não enviados, por etapa e marco (T-02-04)', () => {
+  const schedule = [
+    { scheduleItemId: 's1', stage: 'Limpeza', recordMilestones: ['antes', 'acompanhamento'] },
+    { scheduleItemId: 's2', stage: 'Plantio', recordMilestones: ['depois'] },
+  ];
+  const evidences = [
+    { scheduleItemId: 's1', milestone: 'antes' },
+    { scheduleItemId: null, milestone: 'acompanhamento' },
+  ];
+  assert.deepEqual(store.pendingRecords(schedule, evidences), [
+    { scheduleItemId: 's1', stage: 'Limpeza', milestone: 'acompanhamento' },
+    { scheduleItemId: 's2', stage: 'Plantio', milestone: 'depois' },
+  ]);
+  assert.deepEqual(store.pendingRecords(schedule, [...evidences,
+    { scheduleItemId: 's1', milestone: 'acompanhamento' }, { scheduleItemId: 's2', milestone: 'depois' }]), []);
+});
