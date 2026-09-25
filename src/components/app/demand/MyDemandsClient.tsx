@@ -92,7 +92,7 @@ function DemandRow({ demand, onUpdated }: { demand: Demand; onUpdated: (next: De
 
   return (
     <li>
-      <article className="app-card overflow-hidden rounded-2xl" aria-labelledby={`dm-${demand.id}-title`}>
+      <article id={`demanda-${demand.id}`} className="app-card scroll-mt-24 overflow-hidden rounded-2xl" aria-labelledby={`dm-${demand.id}-title`}>
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:p-5">
           {demand.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -282,6 +282,12 @@ export function MyDemandsClient() {
       .catch((err) => { if (alive) setError(demandErrorMessage(err, "Não foi possível carregar suas demandas.")); });
     return () => { alive = false; };
   }, [status, isAgent, reload]);
+
+  // Link do sino (`#demanda-<id>`, T-05-16): a lista chega depois da página.
+  useEffect(() => {
+    if (!demands || typeof window === "undefined" || !window.location.hash.startsWith("#demanda-")) return;
+    document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "start" });
+  }, [demands]);
 
   if (status === "unknown") return <div className="flex justify-center py-24"><span className="app-spinner" aria-label="Carregando" /></div>;
   if (!user) {

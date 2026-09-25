@@ -4,67 +4,52 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/app/api";
 import { timeAgo } from "@/lib/app/format";
-import { forwardingNotification } from "@/lib/app/institutional";
+import { NOTIFICATION_KIND_ICONS, notificationLine } from "@/lib/app/notifications";
 import type { AppNotification } from "@/lib/app/types";
 import { Icon, type IconName } from "./Icon";
 
-// TODO(fonte-da-verdade): Modelo de Conexão §08/§34 — lido só em localStorage; falta central de notificações persistente; ver TODO em services/user-service/src/routes/social.js.
-const READ_KEY = (userId: string) => `conecta:notif:read:${userId}`;
-
-function loadRead(userId: string): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(READ_KEY(userId)) ?? "[]"));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveRead(userId: string, ids: Set<string>) {
-  try {
-    localStorage.setItem(READ_KEY(userId), JSON.stringify([...ids]));
-  } catch {
-    /* localStorage indisponível — segue sem persistir */
-  }
-}
+// Central persistente (T-05-16): os avisos e a leitura ficam no banco dos
+// serviços, então valem em qualquer sessão e dispositivo. O Poder Público vê
+// também os avisos do órgão (encaminhamento recebido etc.).
+const REFRESH_MS = 60_000;
 
 export function NotificationBell({ userId, government = false }: { userId: string | null; government?: boolean }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[]>([]);
-  const [read, setRead] = useState<Set<string>>(new Set());
+  const [unread, setUnread] = useState(0);
+
+  const load = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const feed = await api.notifications({ limit: 20, institution: government });
+      setItems(feed.notifications);
+      setUnread(feed.unreadCount);
+    } catch {
+      /* serviços fora: o sino fica como estava */
+    }
+  }, [userId, government]);
 
   useEffect(() => {
     if (!userId) {
       setItems([]);
-      setRead(new Set());
+      setUnread(0);
       return;
     }
-    let alive = true;
-    setRead(loadRead(userId));
-    // Poder Público (T14): encaminhamentos recebidos e ainda sem resposta. Falha
-    // aqui não esconde as demais notificações.
-    const forwarded = government
-      ? api.institutionalForwardings("recebidos", ["enviado"]).then((list) => list.map(forwardingNotification)).catch(() => [])
-      : Promise.resolve([]);
-    Promise.all([api.notifications(userId).catch(() => []), forwarded]).then(([list, extra]) => {
-      if (!alive) return;
-      setItems([...extra, ...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 30));
-    });
-    return () => {
-      alive = false;
-    };
-  }, [userId, government]);
+    load();
+    const timer = setInterval(load, REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [userId, load]);
 
   const markRead = useCallback(
-    (ids: string[]) => {
-      if (!userId) return;
-      setRead((prev) => {
-        const next = new Set(prev);
-        ids.forEach((id) => next.add(id));
-        saveRead(userId, next);
-        return next;
-      });
+    (target: AppNotification[] | "all") => {
+      const now = new Date().toISOString();
+      const ids = target === "all" ? null : new Set(target.map((n) => n.id));
+      const changed = items.filter((n) => !n.readAt && (!ids || ids.has(n.id))).length;
+      setItems((list) => list.map((n) => (!n.readAt && (!ids || ids.has(n.id)) ? { ...n, readAt: now } : n)));
+      setUnread((u) => (target === "all" ? 0 : Math.max(0, u - changed)));
+      api.markNotificationsRead(target, { institution: government }).catch(() => load());
     },
-    [userId],
+    [items, government, load],
   );
 
   if (!userId) {
@@ -80,11 +65,9 @@ export function NotificationBell({ userId, government = false }: { userId: strin
     );
   }
 
-  const unread = items.filter((n) => !read.has(n.id)).length;
-
   /** A navegação fica a cargo do <Link>; aqui só marcamos como lida e fechamos. */
   function openItem(n: AppNotification) {
-    markRead([n.id]);
+    if (!n.readAt) markRead([n]);
     setOpen(false);
   }
 
@@ -92,7 +75,10 @@ export function NotificationBell({ userId, government = false }: { userId: strin
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          if (!open) load();
+        }}
         className="relative flex h-9 w-9 items-center justify-center rounded-lg border transition-colors hover:border-orange/40"
         style={{ borderColor: "var(--th-border)", color: "var(--th-muted)", background: "var(--th-surface)" }}
         aria-label={unread > 0 ? `Notificações, ${unread} não lidas` : "Notificações"}
@@ -128,7 +114,7 @@ export function NotificationBell({ userId, government = false }: { userId: strin
               {unread > 0 && (
                 <button
                   type="button"
-                  onClick={() => markRead(items.map((n) => n.id))}
+                  onClick={() => markRead("all")}
                   className="text-xs font-semibold text-orange transition-opacity hover:opacity-70"
                 >
                   Marcar todas como lidas
@@ -146,11 +132,12 @@ export function NotificationBell({ userId, government = false }: { userId: strin
                 </div>
               ) : (
                 items.map((n) => {
-                  const isUnread = !read.has(n.id);
+                  const isUnread = !n.readAt;
+                  const line = notificationLine(n);
                   return (
                     <Link
-                      key={n.id}
-                      href={n.href ?? `/post/${n.postId}`}
+                      key={`${n.source}-${n.id}`}
+                      href={n.href ?? "/notificacoes"}
                       role="menuitem"
                       onClick={() => openItem(n)}
                       className="flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-[var(--th-card-alt)]"
@@ -160,21 +147,27 @@ export function NotificationBell({ userId, government = false }: { userId: strin
                         className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                         style={{ background: "rgba(244,132,26,0.12)", color: "#f4841a" }}
                       >
-                        <Icon name={n.icon as IconName} size={16} />
+                        <Icon name={(NOTIFICATION_KIND_ICONS[n.kind] ?? "bell") as IconName} size={16} />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm leading-snug" style={{ color: "var(--th-text)" }}>
-                          <strong className="font-semibold">{n.actorName}</strong> {n.summary}
-                        </span>
+                        <strong className="block text-sm font-semibold leading-snug" style={{ color: "var(--th-text)" }}>
+                          {n.title}
+                        </strong>
+                        {line && (
+                          <span className="block text-sm leading-snug" style={{ color: "var(--th-text)" }}>
+                            {line}
+                          </span>
+                        )}
                         <span className="mt-0.5 block text-xs font-numeric" style={{ color: "var(--th-muted)" }}>
                           {timeAgo(n.createdAt)}
+                          {n.scope === "organization" ? " · para o órgão" : ""}
                         </span>
                       </span>
                       {isUnread && (
                         <span
                           className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
                           style={{ background: "#f4841a" }}
-                          aria-hidden="true"
+                          aria-label="Não lida"
                         />
                       )}
                     </Link>
@@ -182,6 +175,13 @@ export function NotificationBell({ userId, government = false }: { userId: strin
                 })
               )}
             </div>
+            <Link
+              href="/notificacoes"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-3 text-center text-xs font-semibold text-orange hover:opacity-70"
+            >
+              Ver todas e preferências
+            </Link>
           </div>
         </>
       )}

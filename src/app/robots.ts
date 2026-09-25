@@ -23,6 +23,7 @@ const PRIVATE_PATHS = [
   "/minhas-inscricoes",
   "/pautas",
   "/vinculos",
+  "/notificacoes",
 ];
 
 export default function robots(): MetadataRoute.Robots {

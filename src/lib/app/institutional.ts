@@ -4,10 +4,8 @@
 // O servidor é quem decide: aqui só se orienta o formulário.
 
 import type {
-  AppNotification,
   DemandTimelineEvent,
   ForwardingDestinationKind,
-  ForwardingInboxItem,
   ForwardingStatus,
   ForwardingUpdateKind,
   InstitutionalDemandFilter,
@@ -202,22 +200,6 @@ export function forwardingDestinationLabel(f: { destinationKind?: string | null;
   if (f.destinationKind === "setor_interno") return f.destinationSector || "setor interno";
   const org = f.destinationOrganizationName || "órgão responsável";
   return f.destinationSector ? `${org} — ${f.destinationSector}` : org;
-}
-
-/** Notificação do sino para encaminhamento recebido e ainda sem resposta. */
-export function forwardingNotification(item: ForwardingInboxItem): AppNotification {
-  const f = item.forwarding;
-  return {
-    id: `n-fwd-${f.id}`,
-    kind: "forwarding",
-    actorName: f.originOrganizationName,
-    postId: item.demand.postId ?? "",
-    postTitle: item.demand.title,
-    summary: `${f.originOrganizationName} encaminhou «${item.demand.title}» ao órgão`,
-    icon: "send",
-    href: institutionalDemandPath(item.demand.id),
-    createdAt: f.forwardedAt,
-  };
 }
 
 /** Query da lista do Poder Público (GET /api/posts/institutional/demands). */

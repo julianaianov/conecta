@@ -15,7 +15,6 @@ import {
   FORWARDING_UPDATE_KIND_LABELS,
   canForwardFrom,
   forwardingDestinationLabel,
-  forwardingNotification,
   INSTITUTIONAL_STATUSES,
   INSTITUTIONAL_STATUS_LABELS,
   INSTITUTIONAL_TRANSITIONS,
@@ -118,13 +117,4 @@ test("linha do tempo e sino: encaminhamento com órgão, destino e status, sem r
   const update = { type: "encaminhamento_atualizado", details: { organizationName: "Companhia Y", updateKind: "providencia", excerpt: "Equipe designada" } };
   assert.equal(institutionalTimelineLabel(update), "Companhia Y registrou providência no encaminhamento");
   assert.equal(forwardingDestinationLabel({ destinationKind: "orgao_externo", destinationOrganizationName: "Cedae" }), "Cedae");
-
-  const n = forwardingNotification({
-    forwarding: { id: "f1", originOrganizationName: "Secretaria X", forwardedAt: "2026-09-22T12:00:00.000Z" },
-    demand: { id: "d 1", title: "Praça", postId: "p1" },
-  });
-  assert.equal(n.id, "n-fwd-f1");
-  assert.equal(n.kind, "forwarding");
-  assert.equal(n.href, "/governo/demandas/d%201");
-  assert.match(n.summary, /Secretaria X encaminhou «Praça»/);
 });

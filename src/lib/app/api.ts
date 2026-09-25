@@ -5,7 +5,7 @@ import {
   type Post, type Comment, type SupportRecord, type SupportSummaryItem,
   type User, type Profile, type UserRole, type ProfileType, type PostType,
   type SupportType, type PaymentMethod, type Community,
-  type AppNotification, type RankCategory, type RankEntry,
+  type NotificationFeed, type NotificationKind, type NotificationPreference, type RankCategory, type RankEntry,
   type Connection, type ConnectionEvent, type ConnectionParty, type ConnectionStatus, type ConnectionType,
   type ConnectionMessage, type ConnectionMessagePage,
   type AgendaCandidate, type MediaAgendaItem, type MediaAgendaItemUpdate,
@@ -19,6 +19,10 @@ import { normalizeCoordinates } from "./location";
 import { buildPostQuery, type PostListFilter } from "./post-query";
 import { mapPublicInstitutionRecord, normalizeCep } from "./institution";
 import { resolveMediaUrl } from "./uploads";
+import {
+  buildNotificationQuery, completePreferences, groupIdsBySource, mergeNotificationFeeds,
+} from "./notifications";
+import type { AppNotification } from "./types";
 import type {
   CnaeEntry, Institution, InstitutionAccess, InstitutionFieldErrors, InstitutionInput,
   InstitutionKind, InstitutionValidationEvent, InstitutionValidationStatus, GovernmentSphere,
@@ -784,10 +788,62 @@ export const api = {
     return request<RawPost[]>(`/api/posts/my/supports`).then((rows) => rows.map(mapSupport));
   },
 
-  // ── NOTIFICAÇÕES ─────────────────────────────────────────
-  async notifications(userId: string): Promise<AppNotification[]> {
-    void userId;
-    return request<AppNotification[]>("/api/users/notifications");
+  // ── NOTIFICAÇÕES (central persistente, T-05-16) ──────────
+  /**
+   * Avisos da conta, juntando post-service e user-service. `institution`
+   * inclui os avisos do órgão (Poder Público validado). Uma fonte fora do ar
+   * não esconde a outra (`partial`); as duas fora, erro.
+   */
+  async notifications(options: {
+    unreadOnly?: boolean; limit?: number; kinds?: NotificationKind[]; before?: string | null; institution?: boolean;
+  } = {}): Promise<NotificationFeed> {
+    const limit = options.limit ?? 30;
+    type Raw = { notifications?: Record<string, unknown>[]; unreadCount?: number; hasMore?: boolean };
+    const [posts, users] = await Promise.allSettled([
+      request<Raw>(`/api/posts/notifications${buildNotificationQuery({ ...options, limit })}`),
+      request<Raw>(`/api/users/notifications${buildNotificationQuery({ ...options, limit, institution: false })}`),
+    ]);
+    if (posts.status === "rejected" && users.status === "rejected") throw posts.reason;
+    return mergeNotificationFeeds(
+      posts.status === "fulfilled" ? posts.value : null,
+      users.status === "fulfilled" ? users.value : null,
+      limit,
+    );
+  },
+
+  /** Marca como lidos (cada aviso no serviço que o guarda) ou todos. */
+  async markNotificationsRead(
+    target: Pick<AppNotification, "id" | "source">[] | "all", options: { institution?: boolean } = {},
+  ): Promise<void> {
+    const institution = options.institution ? "?institution=1" : "";
+    if (target === "all") {
+      await Promise.all([
+        request(`/api/posts/notifications/read${institution}`, { method: "POST", body: JSON.stringify({ all: true }) }),
+        request("/api/users/notifications/read", { method: "POST", body: JSON.stringify({ all: true }) }),
+      ]);
+      return;
+    }
+    const ids = groupIdsBySource(target);
+    await Promise.all([
+      ids.posts.length ? request(`/api/posts/notifications/read${institution}`, { method: "POST", body: JSON.stringify({ ids: ids.posts }) }) : null,
+      ids.users.length ? request("/api/users/notifications/read", { method: "POST", body: JSON.stringify({ ids: ids.users }) }) : null,
+    ]);
+  },
+
+  /** Preferências por tipo (aplicativo e e-mail); o post-service é a referência. */
+  async notificationPreferences(): Promise<NotificationPreference[]> {
+    const data = await request<{ preferences: NotificationPreference[] }>("/api/posts/notifications/preferences");
+    return completePreferences(data.preferences);
+  },
+
+  /** Grava nos dois serviços (cada um aplica aos avisos que gera). */
+  async saveNotificationPreferences(preferences: NotificationPreference[]): Promise<NotificationPreference[]> {
+    const body = JSON.stringify({ preferences });
+    const [posts] = await Promise.all([
+      request<{ preferences: NotificationPreference[] }>("/api/posts/notifications/preferences", { method: "PUT", body }),
+      request("/api/users/notifications/preferences", { method: "PUT", body }),
+    ]);
+    return completePreferences(posts.preferences);
   },
 
   // ── PROFILE ──────────────────────────────────────────────

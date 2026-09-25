@@ -674,20 +674,48 @@ export interface DemandCoverage {
 }
 
 // ── Notificações ───────────────────────────────────────────
-export type NotificationKind = "comment" | "support" | "reaction" | "connection" | "forwarding" | "message" | "membership";
+// Central persistente (T-05-16): cada serviço guarda os avisos dos seus
+// eventos (post_db e user_db); `api.notifications` junta as duas listas.
+// Tipos espelhados em NOTIFICATION_KINDS (src/lib/app/notifications.ts).
+export type NotificationKind =
+  | "nova_demanda_compativel" | "prazo_proximo" | "prazo_vencido" | "solicitacao_de_analise"
+  | "atualizacao_de_processo" | "nova_mensagem" | "novo_documento" | "encaminhamento_recebido"
+  | "interesse_recebido" | "conexao" | "apoio" | "resultado_registrado"
+  | "demanda_devolvida" | "demanda_publicada" | "convite_de_vinculo";
+
+/** Serviço que guarda o aviso (define para onde vai a marcação de leitura). */
+export type NotificationSource = "posts" | "users";
 
 export interface AppNotification {
   id: string;
   kind: NotificationKind;
-  actorName: string;
-  postId: string;
-  postTitle: string;
-  /** resumo pronto para exibição, ex.: "comentou em «Buraco na Av.»" */
-  summary: string;
-  icon: string; // chave de ícone (ver Icon component)
-  /** destino ao clicar; sem isso vale a publicação (`/post/{postId}`) */
-  href?: string;
+  source: NotificationSource;
+  /** `organization`: aviso ao órgão inteiro (qualquer representante lê). */
+  scope: "user" | "organization";
+  title: string;
+  summary: string | null;
+  /** nome de quem agiu (só nos avisos do user-service) */
+  actorName: string | null;
+  href: string | null;
+  demandId: string | null;
+  processId: string | null;
+  connectionId: string | null;
   createdAt: string;
+  readAt: string | null;
+}
+
+export interface NotificationFeed {
+  notifications: AppNotification[];
+  unreadCount: number;
+  hasMore: boolean;
+  /** alguma das duas fontes não respondeu */
+  partial: boolean;
+}
+
+export interface NotificationPreference {
+  kind: NotificationKind;
+  inApp: boolean;
+  email: boolean;
 }
 
 // ── Perfil, histórico e referências de atuação ────────────
