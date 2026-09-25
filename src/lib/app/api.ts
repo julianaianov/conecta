@@ -38,6 +38,7 @@ import type {
   Demand, DemandAgentAction, DemandComposition, DemandEvent, DemandFieldErrors, DemandInput,
   DemandItemInputs, DemandItemKind, DemandItems, DemandListFilter, DemandPage, DemandReview,
   DemandTimelineEvent, DemandValidation, PublicDemand, DemandBudgetItemInput,
+  DemandBudgetImportResult, DemandBudgetImportRowError,
 } from "./types";
 import type { UploadedFile, UploadPurpose, UploadService, UploadTicket } from "./types";
 import type { MapTerritory, MapView } from "./types";
@@ -478,6 +479,13 @@ export class DemandRequestError extends Error {
 }
 
 const DEMANDS = "/api/posts/demands";
+/** Planilha do orçamento recusada (T-05-09): `rows` com a linha e as colunas com erro. */
+export class BudgetImportError extends DemandRequestError {
+  constructor(message: string, status: number, code: string | null, fields: DemandFieldErrors, readonly rows: DemandBudgetImportRowError[]) {
+    super(message, status, code, fields);
+  }
+}
+
 /** Eventos e inscrições (T25): outra base do post-service. */
 const EVENTS = "/api/posts/events";
 /** Inteligência artificial (T23): rotas na raiz do post-service. */
@@ -1348,6 +1356,39 @@ export const api = {
   },
 
   /** Composição 4%/6% da planilha antes de gravar. */
+  /**
+   * Importa a planilha do orçamento em CSV (Modelo §04, T-05-09): o texto do
+   * arquivo vai cru (`text/csv`). Tudo ou nada; recusa → `BudgetImportError`
+   * com as linhas e colunas com erro.
+   */
+  async importDemandBudget(id: string, csv: string, mode: "acrescentar" | "substituir" = "acrescentar"): Promise<DemandBudgetImportResult> {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    const token = getToken();
+    try {
+      const res = await fetch(`${BASE}${DEMANDS}/${encodeURIComponent(id)}/budget-items/import?mode=${mode}`, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: { "Content-Type": "text/csv; charset=utf-8", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: csv,
+      });
+      const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok) {
+        throw new BudgetImportError(
+          String(body.error ?? `Erro ${res.status}`), res.status, (body.code as string) ?? null,
+          (body.fields as DemandFieldErrors) ?? {}, Array.isArray(body.rows) ? (body.rows as DemandBudgetImportRowError[]) : [],
+        );
+      }
+      return body as unknown as DemandBudgetImportResult;
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") throw new NetworkError("timeout");
+      if (err instanceof TypeError) throw new NetworkError("network");
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+
   previewDemandComposition(
     budgetItems: DemandBudgetItemInput[],
   ): Promise<{ items: { totalCents: number }[]; composition: DemandComposition }> {

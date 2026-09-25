@@ -10,8 +10,10 @@ import {
   emptyScheduleItemForm,
   fieldErrorsOf,
   formatCents,
+  formatDeadlineDays,
   formatIsoDate,
   physicalFinancialRows,
+  stageDeadlineDays,
   scheduleItemFormFrom,
   scheduleItemInput,
   type ScheduleItemForm,
@@ -22,11 +24,12 @@ import { ScheduleList } from "./DemandParts";
 import { Checkbox, FormAlert, TextArea, TextInput, demandFieldId } from "./fields";
 
 /**
- * Etapa 06 · Cronograma (Fluxo 2, slides 13 e 14): etapas, atividades,
- * prazos e responsáveis; vínculo de cada custo à etapa (físico-financeiro) e
- * momentos de registro antes / acompanhamento / depois.
+ * Etapa 06 · Cronograma (Fluxo 2, slides 13 e 14; Modelo de Conexão §05):
+ * etapas, atividades, prazos, responsáveis, recursos necessários e valor
+ * associado; vínculo de cada custo à etapa (físico-financeiro) e momentos de
+ * registro antes / acompanhamento / depois. O status da etapa é o da execução
+ * (T-05-11), registrado depois da publicação.
  */
-// TODO(fonte-da-verdade): Modelo de Conexão §05 — etapa sem recursos necessários, valor associado explícito e status; ver TODO em services/post-service/migrations/007-demands.sql.
 export function ScheduleEditor({ demand, onDemand, disabled, hasPhysicalExecution, stepErrors, warnings }: {
   demand: Demand;
   onDemand: (next: Demand) => void;
@@ -171,7 +174,9 @@ export function ScheduleEditor({ demand, onDemand, disabled, hasPhysicalExecutio
             <TextInput className="sm:col-span-2" name="schedule-stage" label="Etapa do projeto" required value={form.stage} onValue={(v) => set("stage", v)} error={errors.stage} maxLength={255} />
             <TextArea className="sm:col-span-2" name="schedule-activities" label="Atividades previstas" required rows={3} value={form.activities} onValue={(v) => set("activities", v)} error={errors.activities} maxLength={5000} />
             <TextInput name="schedule-startsOn" label="Data de início" required type="date" value={form.startsOn} onValue={(v) => set("startsOn", v)} error={errors.startsOn} />
-            <TextInput name="schedule-endsOn" label="Data de término" required type="date" min={form.startsOn || undefined} value={form.endsOn} onValue={(v) => set("endsOn", v)} error={errors.endsOn} />
+            <TextInput name="schedule-endsOn" label="Data de término" required type="date" min={form.startsOn || undefined} value={form.endsOn} onValue={(v) => set("endsOn", v)} error={errors.endsOn} hint={stageDeadlineDays(form.startsOn, form.endsOn) ? `Prazo: ${formatDeadlineDays(stageDeadlineDays(form.startsOn, form.endsOn))}` : undefined} />
+            <TextArea className="sm:col-span-2" name="schedule-resourcesNeeded" label="Recursos necessários nesta etapa" rows={2} value={form.resourcesNeeded} onValue={(v) => set("resourcesNeeded", v)} error={errors.resourcesNeeded} maxLength={2000} hint="Materiais, equipe, equipamentos ou serviços que a etapa exige." />
+            <TextInput name="schedule-amount" label="Valor associado (R$)" inputMode="decimal" value={form.amount} onValue={(v) => set("amount", v)} error={errors.amountCents} placeholder="0,00" hint="Informativo. O custo que entra na composição vem dos itens do orçamento vinculados à etapa." />
             <TextInput className="sm:col-span-2" name="schedule-responsible" label="Responsável (quando aplicável)" value={form.responsible} onValue={(v) => set("responsible", v)} error={errors.responsible} maxLength={255} hint="Fica só no dossiê e na análise: a página pública não mostra o responsável." />
             <fieldset className="sm:col-span-2">
               <legend className="mb-1.5 text-sm font-semibold" style={{ color: "var(--th-text)" }}>Registro fotográfico e audiovisual nesta etapa</legend>
@@ -237,7 +242,8 @@ export function ScheduleEditor({ demand, onDemand, disabled, hasPhysicalExecutio
                   <th scope="col" className="px-3 py-2">Etapa</th>
                   <th scope="col" className="px-3 py-2">Período</th>
                   <th scope="col" className="px-3 py-2 text-right">Itens</th>
-                  <th scope="col" className="px-3 py-2 text-right">Custo</th>
+                  <th scope="col" className="px-3 py-2 text-right">Custo dos itens</th>
+                  <th scope="col" className="px-3 py-2 text-right">Valor associado</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,6 +253,7 @@ export function ScheduleEditor({ demand, onDemand, disabled, hasPhysicalExecutio
                     <td className="px-3 py-2 font-numeric">{row.startsOn ? `${formatIsoDate(row.startsOn)} a ${formatIsoDate(row.endsOn)}` : "—"}</td>
                     <td className="px-3 py-2 text-right font-numeric">{row.itemCount}</td>
                     <td className="px-3 py-2 text-right font-numeric font-semibold">{formatCents(row.totalCents)}</td>
+                    <td className="px-3 py-2 text-right font-numeric">{row.declaredCents != null ? formatCents(row.declaredCents) : "—"}</td>
                   </tr>
                 ))}
               </tbody>

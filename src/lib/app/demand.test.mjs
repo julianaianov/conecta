@@ -26,6 +26,8 @@ import {
   demandStatusText,
   demandStepStates,
   emptyDemandForm,
+  emptyScheduleItemForm,
+  scheduleItemFormFrom,
   errorsByStep,
   firstPendingStep,
   formFromDemand,
@@ -61,6 +63,8 @@ function completeDemand(overrides = {}) {
     category: "problema_urbano",
     title: "Recuperação da praça",
     description: "Praça com piso quebrado e sem iluminação.",
+    problemIdentified: "Moradores deixaram de usar a praça à noite.",
+    coverageArea: "Praça e quadras do entorno.",
     objective: "Recuperar o piso e a iluminação.",
     justification: "Moradores deixaram de usar o espaço à noite.",
     beneficiariesEstimate: 800,
@@ -256,17 +260,17 @@ test("total do item e composição 4%/6% iguais ao post-service", () => {
 });
 
 test("formulários dos itens conferem os obrigatórios antes de gravar", () => {
-  const bad = budgetItemInput({ description: " ", quantity: "0", unit: "", unitPrice: "x", isAudiovisualRecord: false, scheduleItemId: "" });
+  const bad = budgetItemInput({ item: "", description: " ", supplierReference: "", quantity: "0", unit: "", unitPrice: "x", isAudiovisualRecord: false, scheduleItemId: "" });
   assert.deepEqual(Object.keys(bad.errors).sort(), ["description", "quantity", "unit", "unitPriceCents"]);
-  const ok = budgetItemInput({ description: "Filmagem", quantity: "2,5", unit: "diária", unitPrice: "1.200,00", isAudiovisualRecord: true, scheduleItemId: "" });
+  const ok = budgetItemInput({ item: " Filmagem ", description: "Filmagem", supplierReference: "", quantity: "2,5", unit: "diária", unitPrice: "1.200,00", isAudiovisualRecord: true, scheduleItemId: "" });
   assert.deepEqual(ok.errors, {});
-  assert.deepEqual(ok.input, { description: "Filmagem", quantity: "2.5", unit: "diária", unitPriceCents: 120_000, isAudiovisualRecord: true, scheduleItemId: null });
+  assert.deepEqual(ok.input, { item: "Filmagem", description: "Filmagem", supplierReference: null, quantity: "2.5", unit: "diária", unitPriceCents: 120_000, isAudiovisualRecord: true, scheduleItemId: null });
   assert.deepEqual(validateDemand({ budgetItems: [ok.input] }).errors, {});
   const relinked = budgetItemToInput(completeDemand().budgetItems[0], { scheduleItemId: STAGE_B });
   assert.equal(relinked.scheduleItemId, STAGE_B);
   assert.equal(relinked.quantity, "10");
 
-  const stage = scheduleItemInput({ stage: "Obra", activities: "Piso", startsOn: "2026-10-10", endsOn: "2026-10-01", responsible: "", recordMilestones: ["depois", "antes"] });
+  const stage = scheduleItemInput({ stage: "Obra", activities: "Piso", startsOn: "2026-10-10", endsOn: "2026-10-01", responsible: "", resourcesNeeded: "", amount: "", recordMilestones: ["depois", "antes"] });
   assert.deepEqual(Object.keys(stage.errors), ["endsOn"]);
   assert.deepEqual(stage.input.recordMilestones, ["antes", "depois"]);
   assert.equal(stage.input.responsible, null);
@@ -383,4 +387,53 @@ test("avisos do envio: rótulo humano, etapa de correção e ordem das etapas", 
   }, { forSubmission: true });
   assert.ok(warnings.physicalFinancial);
   for (const w of demandWarnings(warnings)) assert.notEqual(w.label, w.key, w.key);
+});
+
+// ── Campos do Modelo de Conexão §04/§05 (T-05-09) ──────────────────────────
+import {
+  BUDGET_CSV_HEADER,
+  budgetCsvTemplate,
+  budgetImportErrorLines,
+  formatDeadlineDays,
+  stageDeadlineDays,
+} from "./demand.ts";
+
+test("§04: problema identificado e área de abrangência na etapa 2, obrigatórios no envio como no servidor", () => {
+  assert.ok(STEP_FIELDS.descricao.includes("problemIdentified"));
+  assert.ok(STEP_FIELDS.descricao.includes("coverageArea"));
+  assert.equal(stepForErrorKey("problemIdentified"), "descricao");
+  assert.equal(stepForErrorKey("coverageArea"), "descricao");
+  const form = { ...emptyDemandForm(), problemIdentified: "  Praça sem luz  ", coverageArea: "" };
+  const body = stepInput("descricao", form);
+  assert.equal(body.problemIdentified, "Praça sem luz");
+  assert.equal(body.coverageArea, null);
+  const missing = completeDemand({ problemIdentified: null, coverageArea: "" });
+  assert.deepEqual(Object.keys(localSubmitErrors(missing)).sort(), ["coverageArea", "problemIdentified"]);
+  assert.deepEqual(Object.keys(serverSubmitErrors(missing)).sort(), ["coverageArea", "problemIdentified"]);
+  assert.equal(demandFieldLabel("problemIdentified"), "Problema identificado");
+  assert.equal(demandFieldLabel("budgetItems[0].supplierReference"), "Orçamento, item 1: Fornecedor ou referência");
+  assert.equal(formFromDemand(completeDemand()).coverageArea, "Praça e quadras do entorno.");
+});
+
+test("§04/§05: item, fornecedor, recursos e valor da etapa; prazo em dias igual ao do post-service", () => {
+  const server = createRequire(import.meta.url)("../../../services/post-service/src/demand/budget-import.js");
+  assert.equal(BUDGET_CSV_HEADER, server.TEMPLATE_HEADER);
+  assert.ok(budgetCsvTemplate().startsWith("﻿" + BUDGET_CSV_HEADER));
+  assert.equal(server.parseBudgetCsv(budgetCsvTemplate()).errors.file, "A planilha não tem itens abaixo do cabeçalho");
+  for (const [a, b] of [["2026-10-01", "2026-10-01"], ["2026-10-01", "2026-10-31"], ["2026-02-27", "2026-03-02"], ["2026-10-02", "2026-10-01"]]) {
+    assert.equal(stageDeadlineDays(a, b), store.deadlineDays(a, b), `${a}..${b}`);
+  }
+  assert.equal(formatDeadlineDays(1), "1 dia");
+  assert.equal(formatDeadlineDays(15), "15 dias");
+  const stage = scheduleItemInput({ stage: "Obra", activities: "Piso", startsOn: "2026-10-01", endsOn: "2026-10-05", responsible: "", resourcesNeeded: " Andaime ", amount: "1.500,00", recordMilestones: [] });
+  assert.deepEqual(stage.errors, {});
+  assert.equal(stage.input.resourcesNeeded, "Andaime");
+  assert.equal(stage.input.amountCents, 150_000);
+  assert.deepEqual(validateDemand({ scheduleItems: [stage.input] }).errors, {});
+  assert.ok(scheduleItemInput({ ...emptyScheduleItemForm(), stage: "a", activities: "b", startsOn: "2026-10-01", endsOn: "2026-10-01", amount: "abc" }).errors.amountCents);
+  assert.equal(scheduleItemFormFrom({ ...completeDemand().scheduleItems[0], amountCents: 150_000, resourcesNeeded: "Andaime" }).amount, "1500,00");
+  const rows = physicalFinancialRows(completeDemand().budgetItems, [{ ...completeDemand().scheduleItems[0], amountCents: 900_000 }]);
+  assert.equal(rows[0].declaredCents, 900_000);
+  assert.deepEqual(budgetImportErrorLines([{ line: 3, fields: { valor_unitario: "Valor inválido", descricao: "Descreva" } }]),
+    ["Linha 3 · valor_unitario: Valor inválido", "Linha 3 · descricao: Descreva"]);
 });

@@ -183,6 +183,8 @@ export function PublicDemandView({
           <div className="mt-4"><StatusTrack status={demand.status} /></div>
           <div className="mt-5 space-y-4">
             <TextBlock label="Descrição">{demand.description}</TextBlock>
+            {demand.problemIdentified && <TextBlock label="Problema identificado">{demand.problemIdentified}</TextBlock>}
+            {demand.coverageArea && <TextBlock label="Área de abrangência">{demand.coverageArea}</TextBlock>}
             <TextBlock label="Objetivo">{demand.objective}</TextBlock>
             <TextBlock label="Justificativa">{demand.justification}</TextBlock>
             <ModuleDetailsBlock module={demand.module} moduleLabel={demand.moduleLabel} moduleDetails={demand.moduleDetails} />

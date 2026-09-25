@@ -137,6 +137,9 @@ export interface DemandFormState {
   category: DemandCategory | "";
   title: string;
   description: string;
+  /** Problema identificado e área de abrangência (Modelo §04, T-05-09). */
+  problemIdentified: string;
+  coverageArea: string;
   cep: string;
   street: string;
   addressNumber: string;
@@ -167,8 +170,8 @@ export type DemandFormField = keyof DemandFormState;
 export const STEP_FIELDS: Record<DemandStepId, DemandFormField[]> = {
   classificacao: ["category", "moduleDetails"],
   descricao: [
-    "title", "description", "cep", "street", "addressNumber", "addressComplement", "district",
-    "municipality", "uf", "latitude", "longitude", "territory",
+    "title", "description", "problemIdentified", "cep", "street", "addressNumber", "addressComplement", "district",
+    "municipality", "uf", "latitude", "longitude", "territory", "coverageArea",
   ],
   publico: ["beneficiariesEstimate", "beneficiariesProfile", "objective", "justification", "priority", "priorityCriteria"],
   orcamento: ["hasPhysicalExecution"],
@@ -181,7 +184,7 @@ export const STEP_FIELDS: Record<DemandStepId, DemandFormField[]> = {
 
 export function emptyDemandForm(): DemandFormState {
   return {
-    category: "", title: "", description: "", cep: "", street: "", addressNumber: "",
+    category: "", title: "", description: "", problemIdentified: "", coverageArea: "", cep: "", street: "", addressNumber: "",
     addressComplement: "", district: "", municipality: "", uf: "", latitude: null, longitude: null,
     territory: "", beneficiariesEstimate: "", beneficiariesProfile: "", objective: "",
     justification: "", priority: "", priorityCriteria: [], hasPhysicalExecution: true, moduleDetails: {},
@@ -200,6 +203,8 @@ export function formFromDemand(demand: Demand): DemandFormState {
     category: demand.category ?? "",
     title: str(demand.title),
     description: str(demand.description),
+    problemIdentified: str(demand.problemIdentified),
+    coverageArea: str(demand.coverageArea),
     cep: demand.cep ? maskDemandCep(demand.cep) : "",
     street: str(demand.street),
     addressNumber: str(demand.addressNumber),
@@ -273,7 +278,8 @@ export function isStepDirty(step: DemandStepId, form: DemandFormState, saved: De
 
 const FIELD_STEP: Record<string, DemandStepId> = {
   category: "classificacao", moduleDetails: "classificacao",
-  title: "descricao", description: "descricao", photoRef: "descricao", cep: "descricao", street: "descricao",
+  title: "descricao", description: "descricao", problemIdentified: "descricao", coverageArea: "descricao",
+  photoRef: "descricao", cep: "descricao", street: "descricao",
   addressNumber: "descricao", addressComplement: "descricao", district: "descricao", municipality: "descricao",
   uf: "descricao", latitude: "descricao", longitude: "descricao", territory: "descricao",
   beneficiariesEstimate: "publico", beneficiariesProfile: "publico", objective: "publico",
@@ -330,6 +336,8 @@ export const DEMAND_FIELD_LABELS: Record<string, string> = {
   moduleDetails: "Informações do módulo",
   title: "Título",
   description: "Descrição detalhada",
+  problemIdentified: "Problema identificado",
+  coverageArea: "Área de abrangência",
   photoRef: "Fotografia",
   cep: "CEP",
   street: "Logradouro",
@@ -358,6 +366,10 @@ export const DEMAND_FIELD_LABELS: Record<string, string> = {
   resources: "Recursos e contrapartida",
   documents: "Documentação comprobatória",
   description_item: "Descrição",
+  item: "Item",
+  supplierReference: "Fornecedor ou referência",
+  resourcesNeeded: "Recursos necessários",
+  amountCents: "Valor associado",
   quantity: "Quantidade",
   unit: "Unidade",
   unitPriceCents: "Valor unitário",
@@ -401,6 +413,7 @@ const REQUIRED_ON_SUBMIT: [keyof Demand, string][] = [
   ["category", "Selecione a categoria da demanda"],
   ["title", "Informe o título da demanda"],
   ["description", "Descreva a demanda"],
+  ["problemIdentified", "Informe o problema identificado: a situação que motiva a demanda"],
   ["objective", "Informe o objetivo: o que se pretende resolver ou realizar"],
   ["justification", "Explique a necessidade da ação (justificativa)"],
   ["beneficiariesEstimate", "Informe a estimativa de pessoas beneficiadas"],
@@ -412,6 +425,7 @@ const REQUIRED_ON_SUBMIT: [keyof Demand, string][] = [
   ["municipality", "Informe o município"],
   ["uf", "Informe a UF"],
   ["territory", "Informe o território de abrangência (bairro, comunidade ou região)"],
+  ["coverageArea", "Informe a área de abrangência: até onde a ação chega (ruas, quadras, bairros ou região)"],
 ];
 
 type DemandLike = Partial<Demand>;
@@ -557,7 +571,10 @@ export function formatQuantity(quantity: number): string {
 // ── Formulários dos itens ──────────────────────────────────
 
 export interface BudgetItemForm {
+  /** Item e fornecedor ou referência (Modelo §04, T-05-09); opcionais. */
+  item: string;
   description: string;
+  supplierReference: string;
   quantity: string;
   unit: string;
   unitPrice: string;
@@ -566,12 +583,14 @@ export interface BudgetItemForm {
 }
 
 export function emptyBudgetItemForm(): BudgetItemForm {
-  return { description: "", quantity: "1", unit: "", unitPrice: "", isAudiovisualRecord: false, scheduleItemId: "" };
+  return { item: "", description: "", supplierReference: "", quantity: "1", unit: "", unitPrice: "", isAudiovisualRecord: false, scheduleItemId: "" };
 }
 
 export function budgetItemFormFrom(item: DemandBudgetItem): BudgetItemForm {
   return {
+    item: item.item ?? "",
     description: item.description,
+    supplierReference: item.supplierReference ?? "",
     quantity: String(item.quantity).replace(".", ","),
     unit: item.unit,
     unitPrice: centsToInput(item.unitPriceCents),
@@ -592,7 +611,9 @@ export function budgetItemInput(form: BudgetItemForm): Checked<DemandBudgetItemI
   if (unitPriceCents === null) errors.unitPriceCents = "Informe o valor unitário em reais (ex.: 1.250,00)";
   return {
     input: {
+      item: form.item.trim() || null,
       description: form.description.trim(),
+      supplierReference: form.supplierReference.trim() || null,
       quantity,
       unit: form.unit.trim(),
       unitPriceCents: unitPriceCents ?? 0,
@@ -606,7 +627,9 @@ export function budgetItemInput(form: BudgetItemForm): Checked<DemandBudgetItemI
 /** Item gravado → corpo do PUT (para trocar só o vínculo com a etapa). */
 export function budgetItemToInput(item: DemandBudgetItem, overrides: Partial<DemandBudgetItemInput> = {}): DemandBudgetItemInput {
   return {
+    item: item.item ?? null,
     description: item.description,
+    supplierReference: item.supplierReference ?? null,
     quantity: String(item.quantity),
     unit: item.unit,
     unitPriceCents: item.unitPriceCents,
@@ -622,11 +645,26 @@ export interface ScheduleItemForm {
   startsOn: string;
   endsOn: string;
   responsible: string;
+  /** Recursos necessários e valor associado da etapa (Modelo §05, T-05-09). */
+  resourcesNeeded: string;
+  amount: string;
   recordMilestones: DemandScheduleMilestone[];
 }
 
 export function emptyScheduleItemForm(): ScheduleItemForm {
-  return { stage: "", activities: "", startsOn: "", endsOn: "", responsible: "", recordMilestones: [] };
+  return { stage: "", activities: "", startsOn: "", endsOn: "", responsible: "", resourcesNeeded: "", amount: "", recordMilestones: [] };
+}
+
+/** Prazo da etapa em dias corridos (término − início + 1), como o servidor. */
+export function stageDeadlineDays(startsOn: string | null | undefined, endsOn: string | null | undefined): number | null {
+  const a = startsOn ? Date.parse(`${startsOn}T00:00:00Z`) : Number.NaN;
+  const b = endsOn ? Date.parse(`${endsOn}T00:00:00Z`) : Number.NaN;
+  return Number.isFinite(a) && Number.isFinite(b) && b >= a ? Math.round((b - a) / 86_400_000) + 1 : null;
+}
+
+export function formatDeadlineDays(days: number | null | undefined): string {
+  if (!days) return "";
+  return days === 1 ? "1 dia" : `${days.toLocaleString("pt-BR")} dias`;
 }
 
 export function scheduleItemFormFrom(item: DemandScheduleItem): ScheduleItemForm {
@@ -636,6 +674,8 @@ export function scheduleItemFormFrom(item: DemandScheduleItem): ScheduleItemForm
     startsOn: item.startsOn,
     endsOn: item.endsOn,
     responsible: item.responsible ?? "",
+    resourcesNeeded: item.resourcesNeeded ?? "",
+    amount: item.amountCents != null ? centsToInput(item.amountCents) : "",
     recordMilestones: [...(item.recordMilestones ?? [])],
   };
 }
@@ -649,6 +689,8 @@ export function scheduleItemInput(form: ScheduleItemForm): Checked<DemandSchedul
   if (!ISO_DATE.test(form.startsOn)) errors.startsOn = "Informe a data de início";
   if (!ISO_DATE.test(form.endsOn)) errors.endsOn = "Informe a data de término";
   if (!errors.startsOn && !errors.endsOn && form.endsOn < form.startsOn) errors.endsOn = "O término não pode ser antes do início";
+  const amountCents = form.amount.trim() ? parseMoneyToCents(form.amount) : null;
+  if (form.amount.trim() && amountCents === null) errors.amountCents = "Informe o valor em reais (ex.: 1.250,00)";
   return {
     input: {
       stage: form.stage.trim(),
@@ -656,6 +698,8 @@ export function scheduleItemInput(form: ScheduleItemForm): Checked<DemandSchedul
       startsOn: form.startsOn,
       endsOn: form.endsOn,
       responsible: form.responsible.trim() || null,
+      resourcesNeeded: form.resourcesNeeded.trim() || null,
+      amountCents,
       recordMilestones: RECORD_MILESTONES.filter((m) => form.recordMilestones.includes(m)),
     },
     errors,
@@ -684,6 +728,29 @@ export function goalInput(form: DemandGoalInput): Checked<DemandGoalInput> {
   };
 }
 
+// ── Planilha do orçamento em CSV (Modelo §04, T-05-09) ─────
+
+/**
+ * Cabeçalho do modelo, igual a `TEMPLATE_HEADER` de
+ * `services/post-service/src/demand/budget-import.js` (o teste compara).
+ */
+export const BUDGET_CSV_HEADER = "item;descricao;quantidade;unidade;valor_unitario;fornecedor";
+
+/**
+ * Modelo para baixar: só o cabeçalho (as instruções ficam na tela), com BOM
+ * para o Excel abrir em UTF-8. Nenhuma linha de exemplo: a planilha é do Agente.
+ */
+export function budgetCsvTemplate(): string {
+  return `﻿${BUDGET_CSV_HEADER}\r\n`;
+}
+
+export const BUDGET_CSV_MAX_BYTES = 512 * 1024;
+
+/** Linhas recusadas → frases para a tela ("Linha 3 · valor_unitario: …"). */
+export function budgetImportErrorLines(rows: { line: number; fields: Record<string, string> }[]): string[] {
+  return rows.flatMap((row) => Object.entries(row.fields).map(([column, message]) => `Linha ${row.line} · ${column}: ${message}`));
+}
+
 // ── Cronograma físico-financeiro ───────────────────────────
 
 export interface PhysicalFinancialRow {
@@ -693,12 +760,14 @@ export interface PhysicalFinancialRow {
   endsOn: string | null;
   itemCount: number;
   totalCents: number;
+  /** Valor associado declarado na etapa (Modelo §05, informativo). */
+  declaredCents: number | null;
 }
 
 /** Custo por etapa (itens vinculados) e o que ainda não tem etapa. */
 export function physicalFinancialRows(
   budgetItems: Pick<DemandBudgetItem, "scheduleItemId" | "totalCents">[],
-  scheduleItems: Pick<DemandScheduleItem, "id" | "stage" | "startsOn" | "endsOn">[],
+  scheduleItems: (Pick<DemandScheduleItem, "id" | "stage" | "startsOn" | "endsOn"> & { amountCents?: number | null })[],
 ): PhysicalFinancialRow[] {
   const known = new Set(scheduleItems.map((s) => s.id));
   const rows: PhysicalFinancialRow[] = scheduleItems.map((s) => {
@@ -710,6 +779,7 @@ export function physicalFinancialRows(
       endsOn: s.endsOn,
       itemCount: linked.length,
       totalCents: linked.reduce((sum, b) => sum + b.totalCents, 0),
+      declaredCents: s.amountCents ?? null,
     };
   });
   const unlinked = budgetItems.filter((b) => !b.scheduleItemId || !known.has(b.scheduleItemId));
@@ -721,6 +791,7 @@ export function physicalFinancialRows(
       endsOn: null,
       itemCount: unlinked.length,
       totalCents: unlinked.reduce((sum, b) => sum + b.totalCents, 0),
+      declaredCents: null,
     });
   }
   return rows;

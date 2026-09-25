@@ -487,6 +487,7 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <TextInput className="sm:col-span-2" name="title" label="Título da demanda" required value={form.title} onValue={(v) => set("title", v)} error={stepFields.title} maxLength={200} hint="Uma frase curta que identifique a demanda." />
               <TextArea className="sm:col-span-2" name="description" label="Descrição detalhada da demanda" required rows={6} value={form.description} onValue={(v) => set("description", v)} error={stepFields.description} maxLength={10000} />
+              <TextArea className="sm:col-span-2" name="problemIdentified" label="Problema identificado" required rows={3} value={form.problemIdentified} onValue={(v) => set("problemIdentified", v)} error={stepFields.problemIdentified} maxLength={5000} hint="A situação que motiva a demanda: o que está acontecendo e quem é afetado." />
               <FileUpload
                 id={demandFieldId("photoRef")}
                 label="Fotografia da situação, do local ou do projeto"
@@ -533,6 +534,7 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
                 <SelectInput name="uf" label="UF" required value={form.uf} onValue={(v) => set("uf", v)} error={stepFields.uf} placeholder="—" options={UFS.map((uf) => ({ value: uf, label: uf }))} />
               </div>
               <TextInput className="sm:col-span-2" name="territory" label="Território de abrangência" required value={form.territory} onValue={(v) => set("territory", v)} error={stepFields.territory} maxLength={255} hint="Bairro, comunidade ou região impactada." />
+              <TextArea className="sm:col-span-2" name="coverageArea" label="Área de abrangência" required rows={2} value={form.coverageArea} onValue={(v) => set("coverageArea", v)} error={stepFields.coverageArea} maxLength={2000} hint="Até onde a ação chega: ruas, quadras, bairros ou região atendida." />
               <div className="sm:col-span-2">
                 <p className="mb-1.5 text-sm font-semibold" style={{ color: "var(--th-text)" }}>Ponto no mapa</p>
                 <LocationPicker

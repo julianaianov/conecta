@@ -1259,7 +1259,11 @@ export interface DemandComposition {
 }
 
 export interface DemandBudgetItemInput {
+  /** Nome curto do item (Modelo §04, T-05-09); opcional. */
+  item?: string | null;
   description: string;
+  /** Fornecedor ou referência do preço (§04); fora da rota pública. */
+  supplierReference?: string | null;
   /** Até 3 casas decimais; aceita "2,5". */
   quantity: number | string;
   unit: string;
@@ -1285,6 +1289,9 @@ export interface DemandScheduleItemInput {
   startsOn: string;
   endsOn: string;
   responsible?: string | null;
+  /** Recursos necessários e valor associado da etapa (Modelo §05, T-05-09). */
+  resourcesNeeded?: string | null;
+  amountCents?: number | null;
   recordMilestones?: DemandScheduleMilestone[];
   position?: number;
 }
@@ -1293,6 +1300,22 @@ export interface DemandScheduleItem extends DemandScheduleItemInput {
   id: string;
   position: number;
   recordMilestones: DemandScheduleMilestone[];
+  /** Prazo em dias corridos (término − início + 1), derivado pelo servidor. */
+  deadlineDays?: number | null;
+}
+
+/** Resultado de POST /demands/:id/budget-items/import (planilha CSV, §04). */
+export interface DemandBudgetImportResult {
+  imported: number;
+  mode: "acrescentar" | "substituir";
+  items: DemandBudgetItem[];
+  composition: DemandComposition;
+}
+
+/** Linha recusada da planilha: número da linha no arquivo → coluna → mensagem. */
+export interface DemandBudgetImportRowError {
+  line: number;
+  fields: Record<string, string>;
 }
 
 export interface DemandGoalInput {
@@ -1367,6 +1390,9 @@ export interface DemandInput {
   category?: DemandCategory | null;
   title?: string | null;
   description?: string | null;
+  /** Problema identificado e área de abrangência (Modelo §04, T-05-09). */
+  problemIdentified?: string | null;
+  coverageArea?: string | null;
   objective?: string | null;
   justification?: string | null;
   beneficiariesEstimate?: number | null;
@@ -1436,6 +1462,9 @@ export interface PublicDemand {
   category: DemandCategory;
   title: string;
   description: string;
+  /** Modelo §04 (T-05-09); nulos em demandas publicadas antes da migração 033. */
+  problemIdentified?: string | null;
+  coverageArea?: string | null;
   objective: string;
   justification: string;
   beneficiariesEstimate: number;

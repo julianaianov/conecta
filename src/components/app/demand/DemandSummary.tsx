@@ -50,6 +50,7 @@ export function DemandSummary({ demand, onEdit }: { demand: Demand; onEdit?: (st
             <ModuleDetailsBlock module={demand.module} moduleLabel={demand.moduleLabel} moduleDetails={demand.moduleDetails} />
             <TextBlock label="Título">{value(demand.title)}</TextBlock>
             <TextBlock label="Descrição detalhada">{value(demand.description)}</TextBlock>
+            <TextBlock label="Problema identificado">{value(demand.problemIdentified)}</TextBlock>
           </div>
           {demand.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -64,6 +65,7 @@ export function DemandSummary({ demand, onEdit }: { demand: Demand; onEdit?: (st
         <div className="grid gap-3 sm:grid-cols-2">
           <TextBlock label="Endereço">{value(address)}</TextBlock>
           <TextBlock label="Território de abrangência">{value(demand.territory)}</TextBlock>
+          <TextBlock label="Área de abrangência">{value(demand.coverageArea)}</TextBlock>
           <TextBlock label="Ponto no mapa">{demand.latitude != null && demand.longitude != null ? "Marcado" : <Missing />}</TextBlock>
         </div>
       </ReadSection>

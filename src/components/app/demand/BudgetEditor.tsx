@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/app/api";
+import { api, BudgetImportError } from "@/lib/app/api";
 import {
+  BUDGET_CSV_HEADER,
+  BUDGET_CSV_MAX_BYTES,
+  budgetCsvTemplate,
+  budgetImportErrorLines,
   budgetItemFormFrom,
   budgetItemInput,
   computeComposition,
@@ -37,15 +41,16 @@ function localComposition(inputs: DemandBudgetItemInput[]): DemandComposition {
 }
 
 function isBlankForm(form: BudgetItemForm) {
-  return !form.description.trim() && !form.unit.trim() && !form.unitPrice.trim();
+  return !form.item.trim() && !form.description.trim() && !form.unit.trim() && !form.unitPrice.trim();
 }
 
 /**
- * Etapa 05 · Orçamento (Fluxo 2, slides 9 a 12): planilha com os custos,
- * item obrigatório de registro fotográfico/audiovisual quando há execução
- * física e composição 4%/6% calculada ao vivo pelo servidor (preview).
+ * Etapa 05 · Orçamento (Fluxo 2, slides 9 a 12; Modelo de Conexão §04):
+ * planilha com item, descrição, quantidade, unidade, valor unitário, total e
+ * fornecedor ou referência; importação da planilha em CSV; item obrigatório de
+ * registro fotográfico/audiovisual quando há execução física e composição
+ * 4%/6% calculada ao vivo pelo servidor (preview).
  */
-// TODO(fonte-da-verdade): Modelo de Conexão §04 — faltam coluna Item separada da descrição, Fornecedor/referência e importação de planilha; ver TODO em services/post-service/migrations/007-demands.sql.
 export function BudgetEditor({ demand, onDemand, disabled, hasPhysicalExecution, onPhysicalChange, stepErrors }: {
   demand: Demand;
   onDemand: (next: Demand) => void;
@@ -213,10 +218,12 @@ export function BudgetEditor({ demand, onDemand, disabled, hasPhysicalExecution,
         <form ref={formRef} onSubmit={save} noValidate className="rounded-2xl border p-4" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)" }} aria-labelledby="budget-form-title">
           <h3 id="budget-form-title" className="text-sm font-bold" style={{ color: "var(--th-text)" }}>{editingId ? "Editar item" : "Novo item do orçamento"}</h3>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-6">
-            <TextInput className="sm:col-span-6" name="budget-description" label="Descrição do item" required value={form.description} onValue={(v) => set("description", v)} error={errors.description} maxLength={500} />
+            <TextInput className="sm:col-span-2" name="budget-item" label="Item" value={form.item} onValue={(v) => set("item", v)} error={errors.item} maxLength={200} hint="Nome curto. Ex.: Tinta, Mão de obra." />
+            <TextInput className="sm:col-span-4" name="budget-description" label="Descrição do item" required value={form.description} onValue={(v) => set("description", v)} error={errors.description} maxLength={500} />
             <TextInput className="sm:col-span-2" name="budget-quantity" label="Quantidade" required inputMode="decimal" value={form.quantity} onValue={(v) => set("quantity", v)} error={errors.quantity} hint="Até 3 casas decimais." />
             <TextInput className="sm:col-span-2" name="budget-unit" label="Unidade" required value={form.unit} onValue={(v) => set("unit", v)} error={errors.unit} maxLength={30} hint="Ex.: m², diária, unidade, serviço." />
             <TextInput className="sm:col-span-2" name="budget-unitPrice" label="Valor unitário (R$)" required inputMode="decimal" value={form.unitPrice} onValue={(v) => set("unitPrice", v)} error={errors.unitPriceCents} placeholder="0,00" hint={unitCents !== null ? formatCents(unitCents) : undefined} />
+            <TextInput className="sm:col-span-6" name="budget-supplierReference" label="Fornecedor ou referência" value={form.supplierReference} onValue={(v) => set("supplierReference", v)} error={errors.supplierReference} maxLength={500} hint="De onde vem o preço (cotação, loja, tabela). Fica no dossiê e na análise; a página pública não mostra." />
             <div className="sm:col-span-6">
               <Checkbox
                 name="budget-isAudiovisualRecord"
@@ -237,8 +244,114 @@ export function BudgetEditor({ demand, onDemand, disabled, hasPhysicalExecution,
         </form>
       )}
 
+      {!disabled && (
+        <BudgetImport
+          demand={demand}
+          onImported={(next) => { onDemand(next); setStatus("Planilha importada."); reset(); }}
+          disabled={busy}
+        />
+      )}
+
       <CompositionCard composition={composition} preview={needsPreview} pending={previewPending} />
       <p className="sr-only" aria-live="polite">{status}</p>
     </div>
+  );
+}
+
+/**
+ * "O sistema pode receber uma planilha detalhada" (Modelo §04): CSV com o
+ * cabeçalho do modelo, tudo ou nada, com erro por linha. XLSX não é lido: o
+ * Agente salva a planilha como CSV (separado por ponto e vírgula).
+ */
+function BudgetImport({ demand, onImported, disabled }: {
+  demand: Demand;
+  onImported: (next: Demand) => void;
+  disabled: boolean;
+}) {
+  const [mode, setMode] = useState<"acrescentar" | "substituir">("acrescentar");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [lines, setLines] = useState<string[]>([]);
+  const [done, setDone] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const hasItems = (demand.budgetItems ?? []).length > 0;
+
+  function downloadTemplate() {
+    const url = URL.createObjectURL(new Blob([budgetCsvTemplate()], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "modelo-orcamento-dm-conecta.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function onFile(file: File | undefined) {
+    if (!file) return;
+    setMessage(null);
+    setLines([]);
+    setDone(null);
+    if (/\.(xlsx|xls|ods)$/i.test(file.name)) {
+      setMessage("Salve a planilha como CSV (separado por ponto e vírgula) e envie de novo. Arquivos do Excel ainda não são lidos.");
+      return;
+    }
+    if (file.size > BUDGET_CSV_MAX_BYTES) {
+      setMessage("Planilha acima de 512 KB.");
+      return;
+    }
+    if (mode === "substituir" && hasItems && !window.confirm("Substituir todos os itens do orçamento pelos da planilha?")) return;
+    setBusy(true);
+    try {
+      const result = await api.importDemandBudget(demand.id, await file.text(), mode);
+      onImported({ ...demand, budgetItems: result.items, composition: result.composition });
+      setDone(`${result.imported} ${result.imported === 1 ? "item importado" : "itens importados"}. Confira e vincule cada item a uma etapa do cronograma.`);
+    } catch (err) {
+      setMessage(demandErrorMessage(err, "Não foi possível importar a planilha."));
+      if (err instanceof BudgetImportError) setLines(budgetImportErrorLines(err.rows).slice(0, 30));
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  return (
+    <section aria-labelledby="budget-import-title" className="rounded-2xl border p-4" style={{ borderColor: "var(--th-border)" }}>
+      <h3 id="budget-import-title" className="text-sm font-bold" style={{ color: "var(--th-text)" }}>Importar planilha (CSV)</h3>
+      <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
+        Colunas, nesta ordem: <span className="font-numeric">{BUDGET_CSV_HEADER}</span>. Separe por ponto e vírgula e use vírgula
+        nos decimais (ex.: 1.250,50). O valor total de cada item é calculado pelo sistema. No Excel ou no LibreOffice, use
+        &quot;Salvar como&quot; → CSV. Se alguma linha tiver erro, nada é importado.
+      </p>
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <label className="text-sm" style={{ color: "var(--th-text)" }}>
+          <span className="mb-1 block font-semibold">Itens já lançados</span>
+          <select className="app-input" value={mode} onChange={(e) => setMode(e.target.value as "acrescentar" | "substituir")} disabled={busy || disabled}>
+            <option value="acrescentar">Manter e acrescentar os da planilha</option>
+            <option value="substituir">Substituir pelos da planilha</option>
+          </select>
+        </label>
+        <input
+          ref={inputRef}
+          id="budget-import-file"
+          type="file"
+          accept=".csv,text/csv"
+          className="sr-only"
+          onChange={(e) => void onFile(e.target.files?.[0])}
+          disabled={busy || disabled}
+        />
+        <Button type="button" size="sm" icon="plus" loading={busy} disabled={disabled} onClick={() => inputRef.current?.click()}>
+          Escolher arquivo CSV
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={downloadTemplate}>Baixar modelo</Button>
+      </div>
+      <div aria-live="polite">
+        {done && <p className="mt-3 text-sm font-semibold" style={{ color: "#2e9e5b" }}>{done}</p>}
+        {message && <div className="mt-3"><FormAlert message={message} /></div>}
+        {lines.length > 0 && (
+          <ul className="mt-2 space-y-1 text-xs" style={{ color: "var(--th-text)" }}>
+            {lines.map((line) => <li key={line}>{line}</li>)}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }

@@ -31,9 +31,11 @@ import {
   demandStatusText,
   formatBps,
   formatCents,
+  formatDeadlineDays,
   formatIsoDate,
   formatQuantity,
   physicalFinancialRows,
+  stageDeadlineDays,
 } from "@/lib/app/demand";
 import { Icon, type IconName } from "../Icon";
 import { moduleDetailLines } from "@/lib/app/demand-modules";
@@ -176,7 +178,11 @@ export function BudgetTable({ items, actions, caption = "Orçamento detalhado", 
           {items.map((item) => (
             <tr key={item.id} className="border-t align-top" style={{ borderColor: "var(--th-border)", color: "var(--th-text)" }}>
               <td className="px-3 py-2">
+                {item.item && <span className="block text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>{item.item}</span>}
                 <span className="font-semibold">{item.description}</span>
+                {item.supplierReference && (
+                  <span className="mt-1 block text-[11px]" style={{ color: "var(--th-muted)" }}>Fornecedor ou referência: {item.supplierReference}</span>
+                )}
                 {item.isAudiovisualRecord && (
                   <span className="mt-1 flex items-center gap-1 text-[11px] font-bold" style={{ color: "#2e7ba8" }}>
                     <Icon name="eye" size={12} /> Registro fotográfico e audiovisual
@@ -204,6 +210,8 @@ export function BudgetTable({ items, actions, caption = "Orçamento detalhado", 
 type ScheduleLike = {
   id: string; stage: string; activities: string; startsOn: string; endsOn: string;
   responsible?: string | null; recordMilestones: DemandScheduleMilestone[];
+  /** Modelo §05 (T-05-09): prazo, recursos necessários e valor associado. */
+  deadlineDays?: number | null; resourcesNeeded?: string | null; amountCents?: number | null;
 };
 
 export function MilestoneChips({ milestones }: { milestones: DemandScheduleMilestone[] }) {
@@ -237,6 +245,7 @@ export function ScheduleList({ items, budgetItems = [], actions }: {
                 </p>
                 <p className="text-xs font-numeric" style={{ color: "var(--th-muted)" }}>
                   {formatIsoDate(item.startsOn)} a {formatIsoDate(item.endsOn)}
+                  {` · Prazo: ${formatDeadlineDays(item.deadlineDays ?? stageDeadlineDays(item.startsOn, item.endsOn))}`}
                   {item.responsible ? ` · Responsável: ${item.responsible}` : ""}
                 </p>
               </div>
@@ -250,6 +259,22 @@ export function ScheduleList({ items, budgetItems = [], actions }: {
               </div>
             </div>
             <p className="mt-2 whitespace-pre-line text-sm" style={{ color: "var(--th-text)" }}>{item.activities}</p>
+            {(item.resourcesNeeded || item.amountCents != null) && (
+              <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                {item.resourcesNeeded && (
+                  <div>
+                    <dt className="text-xs font-semibold" style={{ color: "var(--th-muted)" }}>Recursos necessários</dt>
+                    <dd className="whitespace-pre-line" style={{ color: "var(--th-text)" }}>{item.resourcesNeeded}</dd>
+                  </div>
+                )}
+                {item.amountCents != null && (
+                  <div>
+                    <dt className="text-xs font-semibold" style={{ color: "var(--th-muted)" }}>Valor associado</dt>
+                    <dd className="font-numeric" style={{ color: "var(--th-text)" }}>{formatCents(item.amountCents)}</dd>
+                  </div>
+                )}
+              </dl>
+            )}
             <MilestoneChips milestones={item.recordMilestones} />
           </li>
         );
