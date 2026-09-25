@@ -609,6 +609,16 @@ function renderBody(doc, content) {
     doc.moveDown(0.3);
   }
 
+  // Encerramento (Modelo de Conexão §22, T-05-14): data de conclusão,
+  // responsáveis (só na integral) e registro final.
+  if (content.closure) {
+    sectionTitle(doc, ++n, 'Encerramento');
+    field(doc, 'Data de conclusão', formatDateTime(content.closure.closedAt), { numeric: true });
+    if (content.closure.responsibles) labeledParagraph(doc, 'Responsáveis', content.closure.responsibles);
+    labeledParagraph(doc, 'Registro final', content.closure.summary);
+    doc.moveDown(0.3);
+  }
+
   // Histórico (Modelo de Conexão §06, T-05-10): eventos até o pedido desta
   // versão, no formato do exemplo do §12 ("22/09/2026 — 14h35"). Integral:
   // todos, com quem registrou e a nota; pública: só os públicos, sem ator.

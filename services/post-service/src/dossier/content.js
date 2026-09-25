@@ -83,6 +83,7 @@ const TRIGGER_LABELS = {
   publicacao: 'Publicação',
   conclusao: 'Conclusão da execução',
   prestacao_de_contas: 'Prestação de contas e resultados',
+  encerramento: 'Encerramento da demanda',
 };
 
 const VARIANT_LABELS = {
@@ -227,6 +228,15 @@ function demandSnapshot(row, items, { accountability = null, processes = null, h
     // Histórico (Modelo §06, T-05-10): eventos da demanda até o pedido desta
     // versão (src/dossier/history.js). Ausente em retratos anteriores.
     ...(Array.isArray(history) ? { history } : {}),
+    // Encerramento (Modelo de Conexão §22, T-05-14; migração 037): data de
+    // conclusão, responsáveis e registro final. Só em demanda encerrada.
+    ...(row.closed_at ? {
+      closure: {
+        closedAt: toIso(row.closed_at),
+        responsibles: text(row.closing_responsibles),
+        summary: text(row.closing_summary),
+      },
+    } : {}),
   };
 }
 
@@ -358,6 +368,8 @@ function redactSnapshot(snapshot) {
       : {}),
     // Histórico: só eventos públicos, sem ator e sem nota (T-05-10).
     ...(Array.isArray(snapshot.history) ? { history: redactHistory(snapshot.history) } : {}),
+    // Encerramento: os responsáveis podem ser nomes de pessoas (T-05-14).
+    ...(snapshot.closure ? { closure: { ...snapshot.closure, responsibles: null } } : {}),
   };
 }
 

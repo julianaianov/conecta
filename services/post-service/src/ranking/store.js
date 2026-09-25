@@ -442,7 +442,7 @@ const BADGE_VOLUNTEER_SQL = `
 
 const BADGE_AGENT_SQL = `
   SELECT d.author_id AS user_id,
-         count(DISTINCT d.id) FILTER (WHERE d.status IN ('concluida', 'prestacao_de_contas'))::int AS concluded,
+         count(DISTINCT d.id) FILTER (WHERE d.status IN ('concluida', 'prestacao_de_contas', 'encerrada'))::int AS concluded,
          min(e.created_at) FILTER (WHERE e.to_status = 'concluida') AS concluded_at,
          count(DISTINCT a.demand_id) FILTER (WHERE a.status = 'concluida')::int AS accountability,
          min(a.concluded_at) AS accountability_at,

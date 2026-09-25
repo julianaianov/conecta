@@ -191,6 +191,61 @@ test('transição fora da ordem: 409; ação da gestão: 403; desconhecida: 422'
   assert.ok(!pool.calls.some(({ text }) => text.startsWith('UPDATE')));
 });
 
+test('encerrar (§22, T-05-14): 409 sem prestação concluída, 422 sem registro final, depois grava e avisa as partes', async () => {
+  const PROCESS = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  const PARTNER = '33333333-3333-4333-8333-333333333333';
+  let concluded = false;
+  let current = demandRow({ status: 'prestacao_de_contas', review_state: 'aprovada', title: 'Praça do Recreio' });
+  const pool = fakePool((text, params) => {
+    if (/FROM demands d WHERE d.id = \$1/.test(text)) return { rows: [current] };
+    if (/FROM demand_accountability WHERE demand_id = \$1 AND status = 'concluida'/.test(text)) {
+      return { rows: concluded ? [{ '?column?': 1 }] : [], rowCount: concluded ? 1 : 0 };
+    }
+    if (/^UPDATE demands SET status = \$2, closing_summary = \$3, closing_responsibles = \$4/.test(text)) {
+      current = demandRow({
+        ...current, status: params[1], closing_summary: params[2], closing_responsibles: params[3],
+        closed_at: new Date('2026-11-30T12:00:00Z'),
+      });
+      return { rows: [], rowCount: 1 };
+    }
+    if (/FROM connection_processes/.test(text)) {
+      return { rows: [{ id: PROCESS, protocol: 'DM-2026-000001', party_kind: 'empresa', party_user_id: PARTNER, party_organization_id: null }] };
+    }
+    if (/SAVEPOINT/.test(text)) return { rows: [] };
+    if (/notification_create/.test(text)) return { rows: [{ id: 'n1' }] };
+    if (/FROM demand_|FROM posts|FROM uploads/.test(text)) return { rows: [] };
+    return null;
+  });
+  await withServer(pool, async (base) => {
+    const early = await send(base, 'POST', `/demands/${DEMAND}/transitions`, { action: 'encerrar' });
+    assert.equal(early.status, 409);
+    assert.equal((await early.json()).code, 'invalid_state');
+
+    concluded = true;
+    const missing = await send(base, 'POST', `/demands/${DEMAND}/transitions`, { action: 'encerrar', closingSummary: '  ' });
+    assert.equal(missing.status, 422);
+    const { fields } = await missing.json();
+    assert.ok(fields.closingSummary);
+    assert.ok(fields.closingResponsibles);
+    assert.ok(!pool.calls.some(({ text }) => text.startsWith('UPDATE')));
+
+    const ok = await send(base, 'POST', `/demands/${DEMAND}/transitions`, {
+      action: 'encerrar', closingSummary: ' Praça entregue e prestação aprovada. ', closingResponsibles: 'Associação Recreio Vivo',
+    });
+    assert.equal(ok.status, 200);
+    const body = await ok.json();
+    assert.equal(body.status, 'encerrada');
+    assert.equal(body.closingSummary, 'Praça entregue e prestação aprovada.');
+    assert.equal(body.closingResponsibles, 'Associação Recreio Vivo');
+    assert.equal(body.closedAt, '2026-11-30T12:00:00.000Z');
+    assert.deepEqual(body.availableActions, []);
+  });
+  const notifyCall = pool.calls.find(({ text }) => /notification_create/.test(text));
+  assert.ok(notifyCall, 'avisa a parte do processo');
+  assert.ok(notifyCall.params.includes(PARTNER));
+  assert.ok(notifyCall.params.includes('atualizacao_de_processo'));
+});
+
 test('lista pública: só status públicos, filtros parametrizados e keyset', async () => {
   const pool = fakePool((text) => (/FROM demands d/.test(text) ? { rows: [] } : null));
   await withServer(pool, async (base) => {

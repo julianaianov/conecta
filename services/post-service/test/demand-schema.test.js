@@ -25,7 +25,8 @@ test('enums da migração 007 = constantes do domínio', () => {
     [...enumValues('demand_category'), ...addedValues('031-demand-categories.sql', 'demand_category')],
     C.CATEGORIES,
   );
-  assert.deepEqual(enumValues('demand_status'), C.STATUSES);
+  // A 037 acrescenta `encerrada` (Modelo §22, decisão 16).
+  assert.deepEqual([...enumValues('demand_status'), ...addedValues('037-closure.sql', 'demand_status')], C.STATUSES);
   assert.deepEqual(enumValues('demand_review_state'), C.REVIEW_STATES);
   assert.deepEqual(enumValues('demand_priority'), C.PRIORITIES);
   // A 032 insere os marcos do §24 antes de `acompanhamento` (ADD VALUE ... BEFORE).

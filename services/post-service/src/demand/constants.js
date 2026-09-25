@@ -55,10 +55,12 @@ function mapClassOf(category) {
   return CATEGORY_MAP_CLASS[category] ?? null;
 }
 
-// Os 7 status canônicos do Agente (decisão 4) + `arquivada` (decisão 7).
+// Os 7 status canônicos do Agente (decisão 4) + `arquivada` (decisão 7) +
+// `encerrada`, o estado final depois da prestação de contas concluída
+// (Modelo de Conexão §22, decisão 16; migração 037).
 const STATUSES = [
   'em_analise', 'publicada', 'em_busca_de_parceiro', 'conectada',
-  'em_execucao', 'concluida', 'prestacao_de_contas', 'arquivada',
+  'em_execucao', 'concluida', 'prestacao_de_contas', 'arquivada', 'encerrada',
 ];
 
 const STATUS_LABELS = {
@@ -70,13 +72,27 @@ const STATUS_LABELS = {
   concluida: 'Concluída',
   prestacao_de_contas: 'Prestação de contas',
   arquivada: 'Arquivada',
+  encerrada: 'Concluído — encerrado',
 };
 
 // Status que aparecem em rota pública (da publicação em diante; `arquivada`
-// fica fora do fluxo público).
+// fica fora do fluxo público; `encerrada` "permanece disponível no
+// histórico", §22).
 const PUBLIC_STATUSES = [
   'publicada', 'em_busca_de_parceiro', 'conectada', 'em_execucao', 'concluida', 'prestacao_de_contas',
+  'encerrada',
 ];
+
+// Status que contam como "concluída" nos indicadores (governo, rankings,
+// eixos, pautas e perfil): a conclusão, a prestação de contas e o encerramento.
+const CONCLUDED_STATUSES = ['concluida', 'prestacao_de_contas', 'encerrada'];
+
+// Encerramento (Modelo de Conexão §22, T-05-14): registro final e responsáveis,
+// gravados junto da ação `encerrar`; limites iguais ao CHECK da migração 037.
+const CLOSING_SUMMARY_MAX = 8000;
+const CLOSING_RESPONSIBLES_MAX = 2000;
+// Evento público do encerramento (payload->'public': data e registro final).
+const CLOSURE_EVENT_TYPES = ['demanda_encerrada'];
 
 // Etapa da análise enquanto o status é `em_analise`. A devolução para ajustes
 // mantém `em_analise` (decisão 7); `aprovada` acompanha a publicação.
@@ -166,6 +182,10 @@ module.exports = {
   STATUSES,
   STATUS_LABELS,
   PUBLIC_STATUSES,
+  CONCLUDED_STATUSES,
+  CLOSING_SUMMARY_MAX,
+  CLOSING_RESPONSIBLES_MAX,
+  CLOSURE_EVENT_TYPES,
   REVIEW_STATES,
   PRIORITIES,
   RECORD_MILESTONES,

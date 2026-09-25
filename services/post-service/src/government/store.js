@@ -53,7 +53,7 @@ function baseClauses({ organizationId, profile, filters }) {
 const BASE_FLAGS = `
     (d.priority = 'urgente' OR d.category = 'problema_urgente') AS urgent,
     (d.status = 'em_execucao' OR t.status = 'em_execucao') AS in_execution,
-    (d.status IN ('concluida', 'prestacao_de_contas') OR t.status = 'concluida') AS concluded,
+    (d.status IN ('concluida', 'prestacao_de_contas', 'encerrada') OR t.status = 'concluida') AS concluded,
     (t.status IN ('encaminhada', 'encaminhada_ao_orgao_responsavel')
       OR EXISTS (SELECT 1 FROM demand_forwardings f
                   WHERE f.demand_id = d.id AND f.organization_id = $1)) AS forwarded,
@@ -239,7 +239,8 @@ async function loadImpact(db, { organizationId, filters }) {
             AND ($4::timestamptz IS NULL OR g.published_at >= $4::timestamptz)) AS actions
     )
     SELECT (SELECT count(*)::int FROM acted) AS demands_acted_on,
-           (SELECT count(*)::int FROM acted WHERE status IN ('concluida', 'prestacao_de_contas')) AS concluded,
+           (SELECT count(*)::int FROM acted
+             WHERE status IN ('concluida', 'prestacao_de_contas', 'encerrada')) AS concluded,
            (SELECT count(*)::int FROM supports s JOIN acted x ON x.id = s.demand_id
              WHERE s.canceled_at IS NULL AND s.status <> 'rejected') AS supports,
            (SELECT row_to_json(r) FROM reports r) AS reports,

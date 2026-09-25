@@ -6,8 +6,9 @@
 // - gestao: a equipe da plataforma no dm-gestao (sessão `gestao_app`);
 // - sistema: o próprio portal (ex.: conexão aceita marca `conectada`).
 //
-// É o espelho de demands_guard / demand_status_transition_allowed da migração
-// post-service/007-demands.sql: o banco recusa o que esta tabela recusa.
+// É o espelho de demands_guard / demand_status_transition_allowed das
+// migrações post-service/007-demands.sql e 037-closure.sql: o banco recusa o
+// que esta tabela recusa.
 //
 //   em_analise/rascunho ──enviar──▶ em_analise/aguardando_analise
 //   em_analise/devolvida ──enviar──▶ em_analise/aguardando_analise
@@ -17,6 +18,7 @@
 //   publicada | em_busca_de_parceiro ──conectar──▶ conectada
 //   conectada ──iniciar_execucao──▶ em_execucao ──concluir──▶ concluida
 //   concluida ──prestar_contas──▶ prestacao_de_contas
+//   prestacao_de_contas ──encerrar (prestação concluída, registro final)──▶ encerrada
 //   qualquer status (menos arquivada) ──arquivar (gestão, motivo)──▶ arquivada
 
 const { STATUSES, PUBLIC_STATUSES, ACTORS } = require('./constants');
@@ -72,13 +74,22 @@ const ACTIONS = {
     to: { status: 'concluida' },
     requires: [],
   },
-  // TODO(fonte-da-verdade): Modelo de Conexão §22 — o ciclo termina em prestacao_de_contas; falta um estado final de encerramento após a prestação de contas.
   prestar_contas: {
     label: 'Iniciar prestação de contas',
     actors: ['agente'],
     from: { status: ['concluida'] },
     to: { status: 'prestacao_de_contas' },
     requires: [],
+  },
+  // Encerramento (Modelo de Conexão §22, decisão 16): estado final, só com a
+  // prestação de contas concluída e com o registro final e os responsáveis
+  // (conferidos pela rota e por demands_closure_guard, migração 037).
+  encerrar: {
+    label: 'Encerrar a demanda',
+    actors: ['agente'],
+    from: { status: ['prestacao_de_contas'] },
+    to: { status: 'encerrada' },
+    requires: ['prestacao_concluida', 'registro_final'],
   },
   arquivar: {
     label: 'Arquivar',
@@ -121,8 +132,9 @@ function availableActions(demand, actor) {
  * Aplica a ação sem efeitos colaterais. Retorna
  * `{ ok: true, next: { status, reviewState }, event }` ou
  * `{ ok: false, code, error }`. `context`: `{ actor, reviewer, note, reason }`.
- * As exigências externas (`instituicao_validada`, `dados_completos`) são
- * verificadas por quem chama (gate.js e validation.js), antes de gravar.
+ * As exigências externas (`instituicao_validada`, `dados_completos`,
+ * `prestacao_concluida`, `registro_final`) são verificadas por quem chama
+ * (gate.js, validation.js e a rota de transições), antes de gravar.
  */
 function applyAction(demand, actionName, context = {}) {
   const action = ACTIONS[actionName];

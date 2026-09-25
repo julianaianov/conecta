@@ -20,6 +20,7 @@ test('ciclo completo da fonte: em análise → … → prestação de contas', (
     ['iniciar_execucao', AGENTE, 'em_execucao', 'aprovada'],
     ['concluir', AGENTE, 'concluida', 'aprovada'],
     ['prestar_contas', AGENTE, 'prestacao_de_contas', 'aprovada'],
+    ['encerrar', AGENTE, 'encerrada', 'aprovada'],
   ];
   for (const [action, ctx, status, reviewState] of steps) {
     const result = applyAction(demand, action, ctx);
@@ -54,6 +55,7 @@ test('quem pode cada ação', () => {
     iniciar_execucao: ['agente'],
     concluir: ['agente'],
     prestar_contas: ['agente'],
+    encerrar: ['agente'],
     arquivar: ['gestao'],
   };
   assert.deepEqual(Object.fromEntries(Object.entries(ACTIONS).map(([k, v]) => [k, v.actors])), expected);
@@ -73,6 +75,19 @@ test('não se pulam etapas', () => {
   assert.equal(applyAction(d('publicada', 'aprovada'), 'iniciar_execucao', AGENTE).code, 'invalid_transition');
   assert.equal(applyAction(d('em_execucao', 'aprovada'), 'prestar_contas', AGENTE).code, 'invalid_transition');
   assert.equal(applyAction(d('prestacao_de_contas', 'aprovada'), 'concluir', AGENTE).code, 'invalid_transition');
+  assert.equal(applyAction(d('concluida', 'aprovada'), 'encerrar', AGENTE).code, 'invalid_transition');
+  assert.equal(applyAction(d('em_execucao', 'aprovada'), 'encerrar', AGENTE).code, 'invalid_transition');
+});
+
+test('encerramento (§22): só o Agente, da prestação de contas; encerrada é final e pública', () => {
+  assert.equal(applyAction(d('prestacao_de_contas', 'aprovada'), 'encerrar', SISTEMA).code, 'forbidden_actor');
+  assert.equal(applyAction(d('prestacao_de_contas', 'aprovada'), 'encerrar', GESTAO).code, 'forbidden_actor');
+  assert.deepEqual(ACTIONS.encerrar.requires, ['prestacao_concluida', 'registro_final']);
+  assert.deepEqual(availableActions(d('prestacao_de_contas', 'aprovada'), 'agente'), ['encerrar']);
+  assert.deepEqual(availableActions(d('encerrada', 'aprovada'), 'agente'), []);
+  assert.deepEqual(availableActions(d('encerrada', 'aprovada'), 'sistema'), []);
+  assert.deepEqual(availableActions(d('encerrada', 'aprovada'), 'gestao'), ['arquivar']);
+  assert.ok(isPublic(d('encerrada', 'aprovada')));
 });
 
 test('conexão direto da publicação ou depois da busca de parceiro', () => {
@@ -114,12 +129,13 @@ test('edição só em rascunho ou devolvida; público da publicação em diante'
 });
 
 test('transições de status equivalentes a demand_status_transition_allowed do banco', () => {
-  // Tabela da migração 007 (fora da análise e do arquivamento).
+  // Tabela das migrações 007 e 037 (fora da análise e do arquivamento).
   const allowed = new Set([
     'publicada>em_busca_de_parceiro:agente', 'publicada>em_busca_de_parceiro:sistema',
     'publicada>conectada:agente', 'publicada>conectada:sistema',
     'em_busca_de_parceiro>conectada:agente', 'em_busca_de_parceiro>conectada:sistema',
     'conectada>em_execucao:agente', 'em_execucao>concluida:agente', 'concluida>prestacao_de_contas:agente',
+    'prestacao_de_contas>encerrada:agente',
   ]);
   for (const from of STATUSES) {
     for (const to of STATUSES) {

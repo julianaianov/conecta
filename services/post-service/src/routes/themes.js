@@ -44,7 +44,7 @@ function intelligenceSql(where, limitParam) {
     WITH base AS (
       SELECT d.id, d.territory, d.municipality, d.uf,
              (d.priority = 'urgente' OR d.category = 'problema_urgente') AS urgent,
-             (d.status IN ('concluida', 'prestacao_de_contas')) AS concluded
+             (d.status IN ('concluida', 'prestacao_de_contas', 'encerrada')) AS concluded
         FROM demands d
        WHERE ${where}
     ),

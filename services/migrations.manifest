@@ -71,6 +71,7 @@ post_db post-service/migrations/033-demand-fields.sql
 post_db post-service/migrations/034-execution-status.sql
 post_db post-service/migrations/035-execution-documents.sql
 post_db post-service/migrations/036-accountability-fields.sql
+post_db post-service/migrations/037-closure.sql
 post_db post-service/migrations/038-partner-offers.sql
 post_db post-service/migrations/039-notifications.sql
 post_db post-service/migrations/040-process-fees.sql

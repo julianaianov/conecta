@@ -117,6 +117,7 @@ const OWNER_DEMAND_SQL = `
   d.platform_fee_cents, d.total_amount_cents, d.status, d.review_state, d.review_note,
   d.reviewed_at, d.submitted_at, d.published_at, d.archive_reason, d.archived_at,
   d.record_waiver_reason, d.record_waiver_at, d.created_at, d.updated_at,
+  d.closed_at, d.closing_summary, d.closing_responsibles,
   (SELECT coalesce(array_agg(t.theme::text ORDER BY t.theme), '{}')
      FROM demand_themes t WHERE t.demand_id = d.id) AS themes,
   (SELECT p.id FROM posts p WHERE p.demand_id = d.id AND p.visibility = 'visible') AS post_id`;
@@ -130,7 +131,7 @@ const PUBLIC_DEMAND_SQL = `
   d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution, d.module_details,
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
   d.platform_fee_cents, d.total_amount_cents, d.status, d.published_at, d.updated_at,
-  d.record_waiver_reason, d.shares_count,
+  d.record_waiver_reason, d.shares_count, d.closed_at, d.closing_summary,
   (SELECT coalesce(array_agg(t.theme::text ORDER BY t.theme), '{}')
      FROM demand_themes t WHERE t.demand_id = d.id) AS themes,
   (SELECT p.id FROM posts p WHERE p.demand_id = d.id AND p.visibility = 'visible') AS post_id`;
@@ -320,6 +321,11 @@ function serializeOwnerDemand(row, items = null) {
     archiveReason: row.archive_reason ?? null,
     archivedAt: toIso(row.archived_at),
     recordWaiverAt: toIso(row.record_waiver_at),
+    // Encerramento (Modelo de Conexão §22, T-05-14): data de conclusão,
+    // registro final e responsáveis.
+    closedAt: toIso(row.closed_at),
+    closingSummary: row.closing_summary ?? null,
+    closingResponsibles: row.closing_responsibles ?? null,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
     postId: row.post_id ?? null,
@@ -349,6 +355,10 @@ function serializePublicDemand(row, items = null, { viewer = null } = {}) {
     postId: row.post_id ?? null,
     // Compartilhamentos registrados (T21): contador mantido pelo trigger.
     sharesCount: toNumber(row.shares_count) ?? 0,
+    // Encerramento (§22): data e registro final ficam no histórico público;
+    // os responsáveis (podem ser nomes de pessoas) ficam com o autor.
+    closedAt: toIso(row.closed_at),
+    closingSummary: row.closing_summary ?? null,
   };
   // Documento e autorização do imóvel ficam com o autor e a análise.
   if (demand.moduleDetails?.imovel) {
@@ -492,7 +502,12 @@ async function replaceThemes(db, demandId, themes) {
  * declarado com SET LOCAL dm.actor_type; `actorRef` vai para dm.actor). O
  * trigger demands_guard confere de novo e grava o evento.
  */
-async function transitionDemand(db, row, action, { actor = 'agente', actorRef = null } = {}) {
+/**
+ * Aplica a ação e grava o novo status. `closing` (`{ summary, responsibles }`,
+ * já validados) acompanha `encerrar`: o registro final é gravado no mesmo
+ * UPDATE, como exige demands_closure_guard (migração 037).
+ */
+async function transitionDemand(db, row, action, { actor = 'agente', actorRef = null, closing = null } = {}) {
   const result = applyAction({ status: row.status, reviewState: row.review_state }, action, { actor });
   if (!result.ok) {
     const status = result.code === 'forbidden_actor' ? 403
@@ -511,7 +526,14 @@ async function transitionDemand(db, row, action, { actor = 'agente', actorRef = 
     await db.query("SELECT set_config('dm.actor_type', 'sistema', true), set_config('dm.actor', $1, true)",
       [actorRef ?? 'sistema']);
   }
-  await db.query('UPDATE demands SET status = $2 WHERE id = $1', [row.id, result.next.status]);
+  if (closing) {
+    await db.query(
+      'UPDATE demands SET status = $2, closing_summary = $3, closing_responsibles = $4 WHERE id = $1',
+      [row.id, result.next.status, closing.summary, closing.responsibles],
+    );
+  } else {
+    await db.query('UPDATE demands SET status = $2 WHERE id = $1', [row.id, result.next.status]);
+  }
   return result;
 }
 

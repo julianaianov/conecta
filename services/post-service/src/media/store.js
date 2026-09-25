@@ -128,7 +128,7 @@ async function discover(db, userId) {
       `SELECT ${DEMAND_CANDIDATE_SQL}, (count(e.id) || ' registro(s) pareado(s)') AS detail
          FROM demands d
          JOIN demand_evidences e ON e.demand_id = d.id AND e.pair_evidence_id IS NOT NULL
-        WHERE d.status IN ('em_execucao', 'concluida', 'prestacao_de_contas')
+        WHERE d.status IN ('em_execucao', 'concluida', 'prestacao_de_contas', 'encerrada')
         GROUP BY d.id
         ORDER BY max(e.created_at) DESC LIMIT $1`,
       [DISCOVER_LIMIT],

@@ -121,12 +121,12 @@ function createDossierService({
       }
       // Conclusão da execução (T17): versão nova, integral e pública, com o
       // retrato da demanda no fim da execução.
-      if (['concluida', 'prestacao_de_contas'].includes(row.status)) {
+      if (['concluida', 'prestacao_de_contas', 'encerrada'].includes(row.status)) {
         origins.push({ key: 'conclusao', trigger: 'conclusao', variants: ['integral', 'publica'] });
       }
-      // Prestação de contas concluída (T18): a última versão, com o relatório
-      // de execução, os resultados por meta e os indicadores de impacto.
-      if (row.status === 'prestacao_de_contas') {
+      // Prestação de contas concluída (T18): a versão com o relatório de
+      // execução, os resultados por meta e os indicadores de impacto.
+      if (['prestacao_de_contas', 'encerrada'].includes(row.status)) {
         const { rows: [done] } = await client.query(
           "SELECT id FROM demand_accountability WHERE demand_id = $1 AND status = 'concluida'",
           [demandId],
@@ -134,6 +134,11 @@ function createDossierService({
         if (done) {
           origins.push({ key: 'prestacao_de_contas', trigger: 'prestacao_de_contas', variants: ['integral', 'publica'] });
         }
+      }
+      // Encerramento (Modelo de Conexão §22, T-05-14): a última versão, com a
+      // data de conclusão, os responsáveis e o registro final.
+      if (row.status === 'encerrada') {
+        origins.push({ key: 'encerramento', trigger: 'encerramento', variants: ['integral', 'publica'] });
       }
       if (!origins.length) return 0;
 
@@ -313,8 +318,10 @@ function createDossierService({
                AND NOT EXISTS (SELECT 1 FROM demand_dossiers x WHERE x.demand_id = d.id AND x.origin_key = ${SUBMISSION_KEY_SQL}))
            OR (d.published_at IS NOT NULL AND d.status = ANY($1::demand_status[])
                AND (SELECT count(*) FROM demand_dossiers x WHERE x.demand_id = d.id AND x.origin_key = 'publicacao') < 2)
-           OR (d.status IN ('concluida', 'prestacao_de_contas')
+           OR (d.status IN ('concluida', 'prestacao_de_contas', 'encerrada')
                AND (SELECT count(*) FROM demand_dossiers x WHERE x.demand_id = d.id AND x.origin_key = 'conclusao') < 2)
+           OR (d.status = 'encerrada'
+               AND (SELECT count(*) FROM demand_dossiers x WHERE x.demand_id = d.id AND x.origin_key = 'encerramento') < 2)
         ORDER BY d.updated_at
         LIMIT $2`,
       [PUBLIC_STATUSES, limit],

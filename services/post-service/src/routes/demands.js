@@ -25,7 +25,9 @@
 //   POST /:id/validate            validação completa de envio, erros por campo
 //   POST /:id/submit               envia para análise (instituição validada)
 //   POST /:id/transitions          { action }: buscar_parceiro, conectar,
-//                                  iniciar_execucao, concluir, prestar_contas
+//                                  iniciar_execucao, concluir, prestar_contas,
+//                                  encerrar (+ closingSummary, closingResponsibles;
+//                                  exige a prestação de contas concluída, T-05-14)
 //
 // Interesse, conexão e oportunidades de apoio (T15): src/routes/interests.js,
 // montada antes desta.
@@ -52,7 +54,9 @@ const { isUuid } = require('../security');
 const { requireDemandAuthorRole } = require('../demand/gate');
 const {
   CATEGORIES, PRIORITIES, PUBLIC_STATUSES, STATUSES, THEMES,
+  CLOSING_SUMMARY_MAX, CLOSING_RESPONSIBLES_MAX, CLOSURE_EVENT_TYPES,
 } = require('../demand/constants');
+const { notify } = require('../notifications');
 const { validateDemand, MAX_ITEMS } = require('../demand/validation');
 const { parseBudgetCsv, IMPORT_MODES, MAX_IMPORT_BYTES } = require('../demand/budget-import');
 const {
@@ -86,6 +90,8 @@ const DETAILED_EVENT_TYPES = [
   ...MEDIA_EVENT_TYPES,
   // Processo de Conexão formalizado e mudanças de status (T-05-01).
   ...PROCESS_EVENT_TYPES,
+  // Encerramento da demanda (T-05-14): data e registro final.
+  ...CLOSURE_EVENT_TYPES,
 ];
 const { assertDemandUpload, attachOwnerUploads } = require('../upload-policy');
 const { parseUploadRef, describeUploads } = require('../uploads');
@@ -247,6 +253,78 @@ async function assertExecutionRecord(db, row, action) {
     milestone,
     milestoneLabel: RECORD_MILESTONE_LABELS[milestone],
   });
+}
+
+/**
+ * Encerramento (Modelo de Conexão §22, decisão 16; T-05-14): só com a
+ * prestação de contas concluída (409 `invalid_state`), com o registro final
+ * (`closingSummary`) e os responsáveis (`closingResponsibles`) — 422 por campo.
+ * Devolve `{ summary, responsibles }` para `encerrar`; `null` nas demais ações
+ * (e fora de `prestacao_de_contas`, onde a máquina de estados responde).
+ */
+async function closingFor(db, row, action, body) {
+  if (action !== 'encerrar') return null;
+  if (!availableActions({ status: row.status, reviewState: row.review_state }, 'agente').includes(action)) return null;
+  const { rowCount } = await db.query(
+    "SELECT 1 FROM demand_accountability WHERE demand_id = $1 AND status = 'concluida'",
+    [row.id],
+  );
+  if (!rowCount) {
+    throw new HttpError(409, {
+      error: 'Conclua a prestação de contas antes de encerrar a demanda',
+      code: 'invalid_state',
+      action,
+    });
+  }
+  const summary = typeof body?.closingSummary === 'string' ? body.closingSummary.trim() : '';
+  const responsibles = typeof body?.closingResponsibles === 'string' ? body.closingResponsibles.trim() : '';
+  const fields = {};
+  if (!summary) fields.closingSummary = 'Informe o registro final do encerramento';
+  else if (summary.length > CLOSING_SUMMARY_MAX) fields.closingSummary = `Até ${CLOSING_SUMMARY_MAX} caracteres`;
+  if (!responsibles) fields.closingResponsibles = 'Informe os responsáveis pelo encerramento';
+  else if (responsibles.length > CLOSING_RESPONSIBLES_MAX) {
+    fields.closingResponsibles = `Até ${CLOSING_RESPONSIBLES_MAX} caracteres`;
+  }
+  if (Object.keys(fields).length) throw validationError(fields);
+  return { summary, responsibles };
+}
+
+/**
+ * Avisa as partes dos Processos de Conexão encerrados junto com a demanda
+ * (os que o trigger da migração 037 fechou agora e os já em prestação de
+ * contas). Falha no aviso não desfaz o encerramento (SAVEPOINT).
+ */
+async function notifyClosure(db, row) {
+  const { rows } = await db.query(
+    `SELECT id, protocol, party_kind::text AS party_kind, party_user_id, party_organization_id
+       FROM connection_processes
+      WHERE demand_id = $1 AND (closed_at = NOW() OR status = 'prestacao_de_contas')
+      ORDER BY sequence_in_demand`,
+    [row.id],
+  );
+  for (const p of rows) {
+    const recipient = p.party_kind === 'poder_publico'
+      ? { organizationId: p.party_organization_id }
+      : p.party_user_id ? { userId: p.party_user_id } : null;
+    if (!recipient) continue;
+    await db.query('SAVEPOINT demand_closure_notify');
+    try {
+      await notify(db, {
+        ...recipient,
+        kind: 'atualizacao_de_processo',
+        title: 'Demanda encerrada',
+        body: `«${row.title ?? 'Demanda'}» foi encerrada pelo Agente de Transformação, com o registro final.`,
+        href: `/processos/${p.protocol}`,
+        demandId: row.id,
+        processId: p.id,
+        dedupeKey: `demanda_encerrada:${p.id}`,
+      });
+      await db.query('RELEASE SAVEPOINT demand_closure_notify');
+    } catch (err) {
+      await db.query('ROLLBACK TO SAVEPOINT demand_closure_notify');
+      console.warn(`[demands] aviso de encerramento ${p.protocol}: ${err?.message ?? err}`);
+    }
+  }
 }
 
 /** Lista separada por vírgula, cada valor dentro de `allowed`. */
@@ -738,13 +816,16 @@ module.exports = ({ pool, auth, validatedAgent, uploadStorage = null, dossiers =
     const updated = await withTransaction(pool, async (client) => {
       const row = await store.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
       await assertExecutionRecord(client, row, action);
-      await store.transitionDemand(client, row, action, { actor: 'agente' });
+      const closing = await closingFor(client, row, action, req.body);
+      await store.transitionDemand(client, row, action, { actor: 'agente', closing });
+      if (closing) await notifyClosure(client, row);
       return ownerView(client, req.params.id, req.user.userId);
     });
     res.json(updated);
-    // Dossiê da Demanda (T10): a conclusão gera uma versão nova (integral e
-    // pública), fora do caminho crítico; falha não desfaz a transição.
-    if (dossiers && action === 'concluir') void dossiers.request(req.params.id);
+    // Dossiê da Demanda (T10): a conclusão e o encerramento (T-05-14) geram
+    // uma versão nova (integral e pública), fora do caminho crítico; falha não
+    // desfaz a transição.
+    if (dossiers && (action === 'concluir' || action === 'encerrar')) void dossiers.request(req.params.id);
   }));
 
   // ── Público ───────────────────────────────────────────────────────────────
