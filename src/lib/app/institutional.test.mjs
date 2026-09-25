@@ -101,7 +101,7 @@ test("encaminhamentos (T14): listas, transições e status da origem iguais aos 
   assert.equal(canForwardFrom(null, "encaminhada"), true);
   assert.equal(canForwardFrom("em_analise", "encaminhada_ao_orgao_responsavel"), true);
   assert.equal(canForwardFrom("encaminhada_ao_orgao_responsavel", "encaminhada_ao_orgao_responsavel"), true);
-  assert.equal(canForwardFrom("acao_programada", "encaminhada"), false);
+  assert.equal(canForwardFrom("aprovada_para_execucao", "encaminhada"), false);
   assert.equal(canForwardFrom("nao_e_de_competencia", "encaminhada_ao_orgao_responsavel"), false);
 });
 

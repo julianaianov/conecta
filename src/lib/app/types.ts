@@ -1696,8 +1696,9 @@ export interface DossierVerification {
 // src/lib/app/institutional.test.mjs compara as listas).
 
 export type InstitutionalStatus =
-  | "recebida" | "em_analise" | "encaminhada" | "em_articulacao" | "acao_programada"
-  | "em_execucao" | "concluida" | "nao_e_de_competencia" | "encaminhada_ao_orgao_responsavel";
+  | "recebida" | "em_analise" | "solicitacao_de_informacoes" | "encaminhada" | "em_articulacao"
+  | "aprovada_para_execucao" | "em_execucao" | "concluida" | "nao_e_de_competencia"
+  | "encaminhada_ao_orgao_responsavel" | "aguardando_documentacao" | "nao_aprovada" | "suspensa" | "cancelada";
 
 export type InstitutionalResponseType =
   | "recebimento" | "analise_em_andamento" | "orgao_ou_setor_responsavel" | "encaminhamento_realizado"
@@ -1834,6 +1835,8 @@ export interface InstitutionalDemandView {
   otherOrganizations: PublicInstitutionalTrack[];
   /** Encaminhamentos em que o órgão é origem ou destino (T14). */
   forwardings: Forwarding[];
+  /** Processo de Conexão do órgão (T-05-01), quando formalizado. */
+  process?: import("./process").ConnectionProcess | null;
 }
 
 export interface InstitutionalResponseInput {

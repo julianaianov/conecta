@@ -20,6 +20,7 @@ export const PRIVATE_PATH_PREFIXES = [
   "/cadastro-institucional",
   "/pautas",
   "/vinculos",
+  "/processos",
   "/notificacoes",
 ] as const;
 

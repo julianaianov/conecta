@@ -14,6 +14,7 @@ import type {
 import {
   INSTITUTIONAL_STATUS_COLORS,
   INSTITUTIONAL_STATUS_LABELS,
+  LEGACY_INSTITUTIONAL_STATUS_LABELS,
   RESPONSE_TYPE_LABELS,
   supportTypeLabel,
 } from "@/lib/app/institutional";
@@ -30,7 +31,7 @@ export function InstitutionalStatusBadge({ status }: { status: InstitutionalStat
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${color}1a`, color }}>
       <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
-      {INSTITUTIONAL_STATUS_LABELS[status] ?? status}
+      {INSTITUTIONAL_STATUS_LABELS[status] ?? LEGACY_INSTITUTIONAL_STATUS_LABELS[status] ?? status}
     </span>
   );
 }

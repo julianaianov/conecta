@@ -10,6 +10,7 @@ import { INSTITUTIONAL_AREA_PATH } from "@/lib/app/institutional";
 import { OPPORTUNITIES_PATH, canFilterOpportunities } from "@/lib/app/interest";
 import { AGENDA_PATH, canIdentifyAgenda } from "@/lib/app/media";
 import { MEMBERSHIPS_PATH, TEAM_PATH, managesTeam } from "@/lib/app/organization";
+import { PROCESSES_PATH } from "@/lib/app/process";
 import { PRIVACY_PATH } from "@/lib/app/privacy";
 import { normalizeRole } from "@/lib/app/types";
 import { DMLogo } from "./DMLogo";
@@ -299,6 +300,7 @@ function AccountMenu({
                 {isMember && <MenuItem icon="calendar" label="Minhas inscrições" onClick={() => go("/minhas-inscricoes")} />}
                 {organizesEvents && <MenuItem icon="calendar" label="Meus eventos" onClick={() => go("/meus-eventos")} />}
                 {isGovernment && <MenuItem icon="building" label="Atuação institucional" onClick={() => go(INSTITUTIONAL_AREA_PATH)} />}
+                {(isAgent || seesOpportunities) && <MenuItem icon="document" label="Processos de conexão" onClick={() => go(PROCESSES_PATH)} />}
                 {isMedia && <MenuItem icon="megaphone" label="Pautas" onClick={() => go(AGENDA_PATH)} />}
                 {managesOrganization && <MenuItem icon="users" label="Equipe da instituição" onClick={() => go(TEAM_PATH)} />}
                 <MenuItem icon="link" label="Meus vínculos" onClick={() => go(MEMBERSHIPS_PATH)} />

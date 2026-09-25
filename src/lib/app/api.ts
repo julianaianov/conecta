@@ -19,6 +19,9 @@ import { normalizeCoordinates } from "./location";
 import { buildPostQuery, type PostListFilter } from "./post-query";
 import { mapPublicInstitutionRecord, normalizeCep } from "./institution";
 import { resolveMediaUrl } from "./uploads";
+import type {
+  ProcessDetail, ProcessResponsibleInput, ProcessStatus, ProcessSummary, PublicProcess,
+} from "./process";
 import {
   buildNotificationQuery, completePreferences, groupIdsBySource, mergeNotificationFeeds,
 } from "./notifications";
@@ -987,6 +990,44 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ body }),
     }).then(mapConnectionMessage);
+  },
+
+  // ── PROCESSO DE CONEXÃO (T-05-01) ──────────────────────────
+  // Protocolo DM-AAAA-NNNNNN, status do Modelo §16, responsável atual e linha
+  // do tempo. `ref` = id ou protocolo; terceiros recebem 404.
+  myProcesses(): Promise<ProcessSummary[]> {
+    return request<{ processes: ProcessSummary[] }>("/api/posts/processes/mine")
+      .then((body) => (Array.isArray(body.processes) ? body.processes : []));
+  },
+  getProcess(ref: string): Promise<ProcessDetail> {
+    return request<ProcessDetail>(`/api/posts/processes/${encodeURIComponent(ref)}`);
+  },
+  processByConnection(connectionId: string): Promise<ProcessSummary | null> {
+    return request<{ process: ProcessSummary | null }>(`/api/posts/processes/by-connection/${encodeURIComponent(connectionId)}`)
+      .then((body) => body.process ?? null);
+  },
+  changeProcessStatus(ref: string, status: ProcessStatus, note?: string | null): Promise<ProcessDetail> {
+    return request<ProcessDetail>(`/api/posts/processes/${encodeURIComponent(ref)}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status, note: note ?? null }),
+    });
+  },
+  setProcessResponsible(ref: string, input: ProcessResponsibleInput): Promise<ProcessDetail> {
+    return request<ProcessDetail>(`/api/posts/processes/${encodeURIComponent(ref)}/responsible`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+  },
+  demandProcesses(demandId: string): Promise<PublicProcess[]> {
+    return request<{ processes: PublicProcess[] }>(`/api/posts/demands/${encodeURIComponent(demandId)}/processes`)
+      .then((body) => (Array.isArray(body.processes) ? body.processes : []));
+  },
+  /** Formalização pelo órgão do Poder Público (acompanhamento → processo). */
+  formalizeInstitutionalProcess(demandId: string): Promise<InstitutionalDemandView> {
+    return request<InstitutionalDemandView>(
+      `/api/posts/institutional/demands/${encodeURIComponent(demandId)}/formalize`,
+      { method: "POST", body: JSON.stringify({}) },
+    );
   },
 
   // ── PAUTAS DA COMUNICAÇÃO (T28) ──────────────────────────

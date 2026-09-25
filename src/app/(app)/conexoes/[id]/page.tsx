@@ -18,6 +18,7 @@ import { Icon, type IconName } from "@/components/app/Icon";
 import { Card, EmptyState } from "@/components/app/ui";
 import { ConnectionStatusBadge, ConnectionTypePill, partyLabel } from "@/components/app/ConnectionCard";
 import { ConnectionThread } from "@/components/app/ConnectionThread";
+import { ConnectionProcessLink } from "@/components/app/process/ProcessParts";
 import { AuthPrompt } from "@/components/app/AuthPrompt";
 
 export default function ConnectionDetailPage() {
@@ -154,6 +155,11 @@ export default function ConnectionDetailPage() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* conexão formalizada: o processo com protocolo (T-05-01, Modelo §11) */}
+      {(souDestinatario || souRemetente) && (
+        <div className="mt-4"><ConnectionProcessLink connectionId={c.id} /></div>
       )}
 
       {/* conversa entre as partes (T27: "Conversar com parceiros") */}

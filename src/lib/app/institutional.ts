@@ -20,21 +20,33 @@ export function institutionalDemandPath(id: string): string {
   return `${INSTITUTIONAL_AREA_PATH}/demandas/${encodeURIComponent(id)}`;
 }
 
+// Decisão 16: subconjunto compatível do status do Processo de Conexão (Modelo §16).
 export const INSTITUTIONAL_STATUSES: InstitutionalStatus[] = [
-  "recebida", "em_analise", "encaminhada", "em_articulacao", "acao_programada",
-  "em_execucao", "concluida", "nao_e_de_competencia", "encaminhada_ao_orgao_responsavel",
+  "recebida", "em_analise", "solicitacao_de_informacoes", "encaminhada", "em_articulacao",
+  "aprovada_para_execucao", "em_execucao", "concluida", "nao_e_de_competencia",
+  "encaminhada_ao_orgao_responsavel", "aguardando_documentacao", "nao_aprovada", "suspensa", "cancelada",
 ];
 
 export const INSTITUTIONAL_STATUS_LABELS: Record<InstitutionalStatus, string> = {
   recebida: "Recebida",
   em_analise: "Em análise",
+  solicitacao_de_informacoes: "Solicitação de informações",
   encaminhada: "Encaminhada",
   em_articulacao: "Em articulação",
-  acao_programada: "Ação programada",
+  aprovada_para_execucao: "Aprovada para execução",
   em_execucao: "Em execução",
   concluida: "Concluída",
   nao_e_de_competencia: "Não é de competência",
   encaminhada_ao_orgao_responsavel: "Encaminhada ao órgão responsável",
+  aguardando_documentacao: "Aguardando documentação",
+  nao_aprovada: "Não aprovada",
+  suspensa: "Suspensa",
+  cancelada: "Cancelada",
+};
+
+/** Rótulos de status antigos que ainda aparecem em eventos já gravados. */
+export const LEGACY_INSTITUTIONAL_STATUS_LABELS: Record<string, string> = {
+  acao_programada: "Aprovada para execução",
 };
 
 export const INSTITUTIONAL_STATUS_COLORS: Record<InstitutionalStatus, string> = {
@@ -42,29 +54,45 @@ export const INSTITUTIONAL_STATUS_COLORS: Record<InstitutionalStatus, string> = 
   em_analise: "#8e6bbf",
   encaminhada: "#1b4f72",
   em_articulacao: "#b8860b",
-  acao_programada: "#f4841a",
+  aprovada_para_execucao: "#f4841a",
   em_execucao: "#2e9e5b",
   concluida: "#1f7a45",
   nao_e_de_competencia: "#6b7c8a",
   encaminhada_ao_orgao_responsavel: "#4a6f88",
+  solicitacao_de_informacoes: "#7a5ea8",
+  aguardando_documentacao: "#a0701a",
+  nao_aprovada: "#8a4b4b",
+  suspensa: "#7d6f5f",
+  cancelada: "#5f5f5f",
 };
 
 /** Mudanças que exigem justificativa. */
-export const STATUSES_REQUIRING_NOTE: InstitutionalStatus[] = ["nao_e_de_competencia", "encaminhada_ao_orgao_responsavel"];
+export const STATUSES_REQUIRING_NOTE: InstitutionalStatus[] = [
+  "nao_e_de_competencia", "encaminhada_ao_orgao_responsavel", "nao_aprovada", "suspensa", "cancelada",
+];
 
 /** Mesmo mapa de state-machine.js (o servidor devolve `availableStatuses`). */
 export const INSTITUTIONAL_TRANSITIONS: Record<InstitutionalStatus, InstitutionalStatus[]> = {
-  recebida: ["em_analise", "encaminhada", "nao_e_de_competencia", "encaminhada_ao_orgao_responsavel"],
-  em_analise: ["encaminhada", "em_articulacao", "acao_programada", "em_execucao",
-    "nao_e_de_competencia", "encaminhada_ao_orgao_responsavel"],
-  encaminhada: ["em_analise", "em_articulacao", "acao_programada", "em_execucao",
-    "nao_e_de_competencia", "encaminhada_ao_orgao_responsavel"],
-  em_articulacao: ["encaminhada", "acao_programada", "em_execucao", "encaminhada_ao_orgao_responsavel"],
-  acao_programada: ["em_articulacao", "em_execucao"],
-  em_execucao: ["concluida"],
+  recebida: ["em_analise", "solicitacao_de_informacoes", "encaminhada", "nao_e_de_competencia",
+    "encaminhada_ao_orgao_responsavel"],
+  em_analise: ["solicitacao_de_informacoes", "encaminhada", "em_articulacao", "aprovada_para_execucao",
+    "em_execucao", "nao_e_de_competencia", "encaminhada_ao_orgao_responsavel", "aguardando_documentacao",
+    "nao_aprovada", "suspensa", "cancelada"],
+  solicitacao_de_informacoes: ["em_analise", "encaminhada", "em_articulacao", "aguardando_documentacao",
+    "nao_e_de_competencia", "nao_aprovada", "cancelada"],
+  encaminhada: ["em_analise", "solicitacao_de_informacoes", "em_articulacao", "aprovada_para_execucao",
+    "em_execucao", "nao_e_de_competencia", "encaminhada_ao_orgao_responsavel", "nao_aprovada"],
+  em_articulacao: ["solicitacao_de_informacoes", "encaminhada", "aprovada_para_execucao", "em_execucao",
+    "encaminhada_ao_orgao_responsavel", "nao_aprovada", "suspensa", "cancelada"],
+  aprovada_para_execucao: ["em_articulacao", "em_execucao", "suspensa", "cancelada"],
+  em_execucao: ["concluida", "suspensa"],
   concluida: [],
   nao_e_de_competencia: ["em_analise"],
   encaminhada_ao_orgao_responsavel: ["em_analise"],
+  aguardando_documentacao: ["em_analise", "nao_aprovada", "cancelada"],
+  nao_aprovada: ["em_analise"],
+  suspensa: ["em_analise", "em_articulacao", "aprovada_para_execucao", "em_execucao", "cancelada"],
+  cancelada: [],
 };
 
 export const RESPONSE_TYPES: InstitutionalResponseType[] = [
@@ -88,7 +116,7 @@ export const RESPONSE_TYPE_LABELS: Record<InstitutionalResponseType, string> = {
 export const RESPONSE_SUGGESTED_STATUS: Partial<Record<InstitutionalResponseType, InstitutionalStatus>> = {
   analise_em_andamento: "em_analise",
   encaminhamento_realizado: "encaminhada",
-  acao_prevista: "acao_programada",
+  acao_prevista: "aprovada_para_execucao",
   impossibilidade_com_encaminhamento: "nao_e_de_competencia",
 };
 

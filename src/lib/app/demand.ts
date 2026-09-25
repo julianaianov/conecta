@@ -40,6 +40,7 @@ import { supportTimelineLabel } from "./support.ts";
 import { executionTimelineLabel } from "./execution.ts";
 import { accountabilityTimelineLabel } from "./accountability.ts";
 import { mediaTimelineLabel } from "./media.ts";
+import { processTimelineLabel } from "./process.ts";
 
 // ── Rotas ──────────────────────────────────────────────────
 
@@ -983,6 +984,12 @@ export function timelineEventLabel(event: Pick<DemandTimelineEvent, "type" | "to
     details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
   });
   if (media) return media;
+  // Processo de Conexão formalizado e status do processo (T-05-01).
+  const process = processTimelineLabel({
+    type: event.type,
+    details: event.details ?? (event.payload?.public as DemandTimelineEvent["details"] | undefined),
+  });
+  if (process) return process;
   switch (event.type) {
     case "criada": return "Rascunho criado";
     case "enviada_para_analise": return event.payload?.reenvio === true ? "Reenviada para análise" : "Enviada para análise";

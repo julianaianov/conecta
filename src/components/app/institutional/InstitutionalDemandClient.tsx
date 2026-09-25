@@ -53,6 +53,7 @@ import { Checkbox, FormAlert, SelectInput, TextArea, TextInput } from "../demand
 import { InstitutionalStatusBadge, OfferList, OrganizationTrackList, ResponseList } from "./InstitutionalParts";
 import { ForwardingCard } from "./ForwardingParts";
 import { ForwardingActions, ForwardingForm } from "./ForwardingPanel";
+import { InstitutionalProcessPanel } from "../process/InstitutionalProcessPanel";
 
 type Fields = Record<string, string>;
 
@@ -482,6 +483,10 @@ export function InstitutionalDemandClient({ id }: { id: string }) {
             <Button type="button" icon="check" loading={opening} onClick={() => void open()}>Registrar recebimento</Button>
           </div>
         )}
+      </ReadSection>
+
+      <ReadSection title="Processo de conexão" icon="document">
+        <InstitutionalProcessPanel view={view} onSaved={setView} />
       </ReadSection>
 
       <ReadSection title="Resposta institucional" icon="message">

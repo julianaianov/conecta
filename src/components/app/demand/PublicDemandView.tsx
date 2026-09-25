@@ -29,6 +29,7 @@ import { executionTimelineDetail } from "@/lib/app/execution";
 import { accountabilityTimelineDetail } from "@/lib/app/accountability";
 import { mediaTimelineDetail } from "@/lib/app/media";
 import { DemandCoverageSection } from "../media/DemandCoverageSection";
+import { DemandProcessesSection } from "../process/ProcessParts";
 import { DemandExecutionSection } from "../execution/DemandExecutionSection";
 import { DemandAccountabilitySection } from "../accountability/DemandAccountabilitySection";
 import { DemandInterestPanel } from "../interest/DemandInterestPanel";
@@ -257,6 +258,9 @@ export function PublicDemandView({
       <PublicDossierSection demandId={demand.id} dossier={dossier} />
 
       <PublicInstitutionalSection data={institutional} />
+
+      {/* Processos de conexão formalizados, com protocolo (T-05-01, Modelo §11 e §28). */}
+      <DemandProcessesSection demandId={demand.id} />
 
       {/* Histórico visual antes/depois e acompanhamento da execução (T17). */}
       <DemandExecutionSection execution={execution} />
