@@ -62,6 +62,9 @@ test('execução: evidências antes/depois, andamento, orçamento executado e hi
       await admin.query('DO $$ BEGIN CREATE ROLE gestao_app LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$');
       await admin.query(`GRANT SELECT ON demands, demand_events, demand_evidences,
                            demand_progress_updates, demand_progress_expenses, posts TO gestao_app`);
+      // dm-infra 031 (T-05-11/T-05-12): atraso gravado, situação da etapa e ocorrências.
+      await admin.query(`GRANT SELECT ON demand_stage_delays, demand_stage_status,
+                           demand_execution_incidents TO gestao_app`);
       await admin.query(`GRANT UPDATE (status, review_state, review_note, reviewed_by, archive_reason, updated_at)
                            ON demands TO gestao_app`);
     } catch (err) {
@@ -428,6 +431,130 @@ test('execução: evidências antes/depois, andamento, orçamento executado e hi
       });
       assert.equal(cedo.status, 409);
       assert.equal(cedo.body.code, 'demand_not_open');
+
+      // ── Status Atrasada/Bloqueada, percentual e ocorrências (Modelo §18–19) ─
+      const quadra = await publishedDemand('Reforma da quadra');
+      assert.equal((await call('POST', `/demands/${quadra.id}/transitions`, { body: { action: 'conectar' } })).status, 200);
+      assert.equal((await call('POST', `/demands/mine/${quadra.id}/evidences`, {
+        body: {
+          reference: await confirmedUpload(quadra.id, 'demand_evidence_photo'),
+          milestone: 'antes', mediaKind: 'foto', recordedOn: daysAgo(10),
+        },
+      })).status, 201);
+      assert.equal((await call('POST', `/demands/${quadra.id}/transitions`, { body: { action: 'iniciar_execucao' } })).status, 200);
+
+      const semMotivo = await call('POST', `/demands/mine/${quadra.id}/progress`, {
+        body: { scheduleItemId: quadra.scheduleItemId, stageProgress: 'bloqueada' },
+      });
+      assert.equal(semMotivo.status, 422);
+      assert.ok(semMotivo.body.fields.blockReason);
+
+      // Prazo corrente no passado e etapa não concluída: atraso gravado na hora.
+      const vencida = await call('POST', `/demands/mine/${quadra.id}/progress`, {
+        body: {
+          scheduleItemId: quadra.scheduleItemId, stageProgress: 'em_andamento',
+          newEndsOn: daysAgo(2), deadlineReason: 'Prazo combinado com a escola.',
+        },
+      });
+      assert.equal(vencida.status, 201, JSON.stringify(vencida.body));
+      const { rows: atrasos } = await pool.query(
+        'SELECT due_on::text AS due_on, resolved_at FROM demand_stage_delays WHERE demand_id = $1', [quadra.id],
+      );
+      assert.equal(atrasos.length, 1, 'o atraso é gravado, não só calculado');
+      assert.equal(atrasos[0].due_on, daysAgo(2));
+      assert.equal(atrasos[0].resolved_at, null);
+      for (const [label, path, opts] of [
+        ['pública', `/demands/${quadra.id}/execution`, { auth: false }],
+        ['do autor', `/demands/mine/${quadra.id}/execution`, {}],
+      ]) {
+        const view = await call('GET', path, opts);
+        assert.equal(view.status, 200);
+        assert.equal(view.body.schedule[0].stageProgress, 'atrasada', `etapa atrasada na visão ${label}`);
+        assert.equal(view.body.schedule[0].late, true);
+        assert.ok(view.body.schedule[0].lateSince);
+        assert.equal(view.body.summary.stagesLate, 1);
+        assert.equal(view.body.summary.percentComplete, 0);
+      }
+      // O laço não duplica o atraso em aberto.
+      const { rows: [passada] } = await pool.query('SELECT demand_record_stage_delays(CURRENT_DATE) AS opened');
+      assert.equal(passada.opened, 0);
+
+      const bloqueio = await call('POST', `/demands/mine/${quadra.id}/progress`, {
+        body: { scheduleItemId: quadra.scheduleItemId, stageProgress: 'bloqueada', blockReason: 'Aguardando licença da prefeitura.' },
+      });
+      assert.equal(bloqueio.status, 201, JSON.stringify(bloqueio.body));
+      assert.equal(bloqueio.body.progress.blockReason, 'Aguardando licença da prefeitura.');
+      const bloqueada = await call('GET', `/demands/${quadra.id}/execution`, { auth: false });
+      assert.equal(bloqueada.body.schedule[0].stageProgress, 'bloqueada');
+      assert.equal(bloqueada.body.schedule[0].blockReason, 'Aguardando licença da prefeitura.');
+      assert.equal(bloqueada.body.summary.stagesBlocked, 1);
+      const { rows: [fechado] } = await pool.query(
+        'SELECT resolution FROM demand_stage_delays WHERE demand_id = $1', [quadra.id],
+      );
+      assert.equal(fechado.resolution, 'bloqueada');
+
+      // Ocorrências: registro, resolução uma vez, público sem autor.
+      const ocorrencia = await call('POST', `/demands/mine/${quadra.id}/incidents`, {
+        body: {
+          kind: 'clima', description: 'Chuva forte alagou a quadra.', occurredOn: daysAgo(3),
+          impact: 'prazo', scheduleItemId: quadra.scheduleItemId,
+        },
+      });
+      assert.equal(ocorrencia.status, 201, JSON.stringify(ocorrencia.body));
+      assert.equal(ocorrencia.body.incident.stage, 'Execução da obra');
+      assert.equal(ocorrencia.body.incident.resolved, false);
+      const incidentId = ocorrencia.body.incident.id;
+      const resolvida = await call('POST', `/demands/mine/${quadra.id}/incidents/${incidentId}/resolve`, {
+        body: { resolution: 'Drenagem refeita.' },
+      });
+      assert.equal(resolvida.status, 200, JSON.stringify(resolvida.body));
+      assert.equal(resolvida.body.incident.resolved, true);
+      assert.equal((await call('POST', `/demands/mine/${quadra.id}/incidents/${incidentId}/resolve`, {
+        body: { resolution: 'De novo.' },
+      })).body.code, 'incident_resolved');
+      assert.equal((await call('POST', `/demands/mine/${quadra.id}/incidents/${incidentId}/resolve`, {
+        as: OTHER_AGENT, body: { resolution: 'Alheia.' },
+      })).status, 404);
+      await assert.rejects(
+        pool.query("UPDATE demand_execution_incidents SET description = 'outra' WHERE id = $1", [incidentId]),
+        /não muda/,
+      );
+      await assert.rejects(pool.query('DELETE FROM demand_execution_incidents WHERE id = $1', [incidentId]),
+        /não são excluídas/);
+
+      const concluida = await call('POST', `/demands/mine/${quadra.id}/progress`, {
+        body: { scheduleItemId: quadra.scheduleItemId, stageProgress: 'concluida' },
+      });
+      assert.equal(concluida.status, 201);
+      const quadraPublica = await call('GET', `/demands/${quadra.id}/execution`, { auth: false });
+      assert.equal(quadraPublica.body.summary.percentComplete, 100);
+      assert.equal(quadraPublica.body.incidents.length, 1);
+      assert.equal(quadraPublica.body.incidents[0].author, undefined);
+      assert.equal(quadraPublica.body.incidents[0].kind, 'clima');
+      assert.equal(quadraPublica.body.incidents[0].resolved, true);
+
+      const quadraTimeline = await call('GET', `/demands/${quadra.id}/timeline`, { auth: false });
+      const quadraTipos = quadraTimeline.body.events.map((e) => e.type);
+      for (const tipo of ['etapa_atrasada', 'ocorrencia_registrada', 'ocorrencia_resolvida']) {
+        assert.ok(quadraTipos.includes(tipo), `evento ${tipo} ausente na linha do tempo`);
+      }
+      const atrasoEvt = quadraTimeline.body.events.find((e) => e.type === 'etapa_atrasada');
+      assert.equal(atrasoEvt.details.stage, 'Execução da obra');
+      const ocorrenciaEvt = quadraTimeline.body.events.find((e) => e.type === 'ocorrencia_registrada');
+      assert.equal(ocorrenciaEvt.details.kind, 'clima');
+      assert.equal(ocorrenciaEvt.details.impact, 'prazo');
+      assert.equal(ocorrenciaEvt.details.incident_id, undefined);
+
+      // A gestão lê a situação gravada e não escreve nem roda a gravação.
+      const { rows: situacao } = await gestao.query(
+        'SELECT status FROM demand_stage_status WHERE demand_id = $1', [quadra.id],
+      );
+      assert.equal(situacao[0].status, 'concluida');
+      await assert.rejects(gestao.query('SELECT demand_record_stage_delays(CURRENT_DATE)'), /permission denied/);
+      await assert.rejects(
+        gestao.query("UPDATE demand_execution_incidents SET resolution = 'gestão' WHERE demand_id = $1", [quadra.id]),
+        /permission denied|a gestão só lê/,
+      );
 
       // ── Visão do autor: pendências e permissões ───────────────────────────
       const minha = await call('GET', `/demands/mine/${naoIniciada.id}/execution`);

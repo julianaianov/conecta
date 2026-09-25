@@ -37,6 +37,7 @@ const notificationsRoutes = require('./routes/notifications');
 const { createMailer } = require('./notifications/mailer');
 const { createAiService } = require('./ai/service');
 const { createRankingService } = require('./ranking/service');
+const { createDelayRecorder } = require('./execution/delays');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
 /** Endereço público do portal (URL de verificação impressa no dossiê). */
@@ -156,6 +157,8 @@ const createApp = ({
   // Caixa de saída de e-mail (T-05-16): sem DM_MAIL_PROVIDER, marca `desligado`.
   app.locals.mailer = createMailer({ pool });
   app.locals.rankings = rankings === undefined ? createRankingService({ pool }) : rankings;
+  // Atraso gravado das etapas da execução (T-05-11, migração 034).
+  app.locals.executionDelays = createDelayRecorder({ pool });
   return app;
 };
 
@@ -168,6 +171,9 @@ if (require.main === module) {
   // Laço de recálculo dos rankings e selos (DM_RANKING_INTERVAL_MS; 0 desliga).
   const rankingInterval = Number(process.env.DM_RANKING_INTERVAL_MS ?? 300_000);
   app.locals.rankings?.start(Number.isFinite(rankingInterval) ? rankingInterval : 300_000);
+  // Laço que grava o atraso das etapas (DM_EXECUTION_DELAY_INTERVAL_MS; 0 desliga).
+  const delayInterval = Number(process.env.DM_EXECUTION_DELAY_INTERVAL_MS ?? 3_600_000);
+  app.locals.executionDelays?.start(Number.isFinite(delayInterval) ? delayInterval : 3_600_000);
   // Laço da caixa de saída de e-mail (DM_MAIL_INTERVAL_MS; 0 desliga).
   const mailInterval = Number(process.env.DM_MAIL_INTERVAL_MS ?? 60_000);
   app.locals.mailer?.start(Number.isFinite(mailInterval) ? mailInterval : 60_000);

@@ -1,6 +1,9 @@
 // Histórico visual (antes/depois) e acompanhamento público da execução (T17).
 // Sem estado: serve ao SSR da página da demanda (`/demandas/[id]`).
 //
+// Percentual de execução, status Atrasada/Bloqueada e ocorrências: Modelo de
+// Conexão §18–19 (T-05-11).
+//
 // Fonte: Fluxo 2, slide 23 (etapas concluídas e em andamento, cumprimento do
 // cronograma, alterações de prazo, execução orçamentária, resultados parciais
 // e evidências) e slide 24 (os registros de antes e depois ficam vinculados à
@@ -16,6 +19,7 @@ import {
 } from "@/lib/app/execution";
 import type { PublicDemandEvidence, PublicDemandExecution } from "@/lib/app/types";
 import { Icon } from "../Icon";
+import { ExecutionIncidentList, ExecutionProgressSummary } from "./ExecutionProgressSummary";
 import { ReadSection } from "../demand/DemandParts";
 
 function EvidenceFigure({ evidence, badge }: { evidence: PublicDemandEvidence; badge: string }) {
@@ -61,8 +65,10 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
   if (!execution) return null;
   const paired = new Set(execution.pairs.flatMap((p) => [p.before.id, p.after.id]));
   const loose = execution.evidences.filter((e) => !paired.has(e.id));
+  const incidents = execution.incidents ?? [];
   const hasContent = execution.evidences.length > 0
     || execution.progress.length > 0
+    || incidents.length > 0
     || Boolean(execution.recordWaiverReason);
   if (!hasContent) return null;
 
@@ -108,7 +114,7 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
         </ReadSection>
       )}
 
-      {(execution.progress.length > 0 || execution.budgetExecution.executedCents > 0) && (
+      {(execution.progress.length > 0 || execution.budgetExecution.executedCents > 0 || incidents.length > 0) && (
         <ReadSection title="Execução e acompanhamento" icon="clock">
           <dl className="mb-3 grid gap-2 sm:grid-cols-2">
             <div className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
@@ -125,25 +131,15 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
             </div>
           </dl>
 
-          {execution.schedule.length > 0 && (
-            <ul className="mb-3 space-y-1.5">
-              {execution.schedule.map((stage) => (
-                <li
-                  key={stage.scheduleItemId}
-                  className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-                  style={{ borderColor: "var(--th-border)" }}
-                >
-                  <span className="font-semibold" style={{ color: "var(--th-text)" }}>{stage.stage}</span>
-                  <span style={{ color: "var(--th-muted)" }}>
-                    {stage.stageProgress ? STAGE_PROGRESS_LABELS[stage.stageProgress] : "Sem atualização"}
-                  </span>
-                  <span className="ml-auto text-xs font-numeric" style={{ color: "var(--th-muted)" }}>
-                    {formatRecordDate(stage.startsOn)} → {formatRecordDate(stage.currentEndsOn)}
-                    {stage.rescheduledTo ? ` (prazo alterado, era ${formatRecordDate(stage.endsOn)})` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <div className="mb-3">
+            <ExecutionProgressSummary idPrefix="publico" summary={execution.summary} schedule={execution.schedule} />
+          </div>
+
+          {incidents.length > 0 && (
+            <div className="mb-3">
+              <h3 className="mb-1.5 text-sm font-bold" style={{ color: "var(--th-text)" }}>Ocorrências</h3>
+              <ExecutionIncidentList incidents={incidents} />
+            </div>
           )}
 
           {execution.progress.length > 0 ? (
@@ -159,6 +155,9 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
                     {update.stage ?? "Andamento da execução"}
                     {update.stageProgress ? ` · ${STAGE_PROGRESS_LABELS[update.stageProgress]}` : ""}
                   </p>
+                  {update.blockReason && (
+                    <p className="mt-0.5 text-xs" style={{ color: "var(--th-text)" }}>Motivo do bloqueio: {update.blockReason}</p>
+                  )}
                   {update.partialResults && (
                     <p className="mt-0.5 whitespace-pre-line text-sm" style={{ color: "var(--th-text)" }}>
                       {update.partialResults}

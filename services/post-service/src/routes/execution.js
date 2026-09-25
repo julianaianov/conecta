@@ -22,6 +22,13 @@
 //   POST /mine/:id/progress              atualização de andamento e execução
 //                                        orçamentária (só inserção)
 //   POST /mine/:id/record-waiver         justifica a ausência de execução física
+//   POST /mine/:id/incidents             registra ocorrência (Modelo §19)
+//   POST /mine/:id/incidents/:incidentId/resolve   resolução, gravada uma vez
+//
+// Status da etapa (Modelo §18): `schedule[].stageProgress` é Não iniciada, Em
+// andamento, Concluída, Atrasada ou Bloqueada; o atraso é gravado
+// (`demand_stage_delays`, migração 034) e `summary` traz o percentual de
+// execução, etapas atrasadas/bloqueadas e ocorrências em aberto.
 //
 // A evidência vale da publicação em diante (o "antes" precede o início da
 // execução); o andamento, do início da execução em diante. `em_execucao` exige
@@ -41,6 +48,7 @@ const {
 } = require('../execution/constants');
 const {
   validateEvidence, validateEvidenceUpdate, validateProgressUpdate, validateRecordWaiver,
+  validateIncident, validateIncidentResolution,
 } = require('../execution/validation');
 const store = require('../execution/store');
 const { listHelpers } = require('./demands');
@@ -53,6 +61,9 @@ function mapExecutionDbError(err) {
   const message = typeof err?.message === 'string' ? err.message : '';
   if (err?.code === '23514' && /registre a situação inicial|registre o resultado/.test(message)) {
     return new HttpError(409, { error: message, code: 'evidence_required' });
+  }
+  if (err?.code === '23514' && /resolução da ocorrência é gravada uma vez/.test(message)) {
+    return new HttpError(409, { error: message, code: 'incident_resolved' });
   }
   if (err?.code === '23514' && /só o Agente autor|justificativa de ausência|o andamento é registrado|a execução só é registrada/.test(message)) {
     return new HttpError(409, { error: message, code: 'invalid_state' });
@@ -87,6 +98,8 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
   router.param('id', (req, res, next, id) => (isUuid(id) ? next() : notFound(res)));
   router.param('evidenceId', (req, res, next, id) => (
     isUuid(id) ? next() : res.status(404).json({ error: 'Evidência não encontrada' })));
+  router.param('incidentId', (req, res, next, id) => (
+    isUuid(id) ? next() : res.status(404).json({ error: 'Ocorrência não encontrada' })));
 
   const handle = (fn) => async (req, res) => {
     try {
@@ -135,14 +148,16 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
   }
 
   /** Visão completa da execução, para o público e para o autor. */
-  async function executionView(db, demandId, { owner }) {
-    const [rawEvidences, progress, budget, schedule] = await Promise.all([
+  async function executionView(db, demandId, { owner, status }) {
+    const [rawEvidences, progress, budget, schedule, rawIncidents] = await Promise.all([
       store.listEvidences(db, demandId),
       store.listProgress(db, demandId),
       store.budgetExecution(db, demandId),
-      store.scheduleStatus(db, demandId),
+      store.scheduleStatus(db, demandId, { running: status === 'em_execucao' }),
+      store.listIncidents(db, demandId),
     ]);
     const evidences = rawEvidences.map(owner ? store.serializeEvidence : store.serializePublicEvidence);
+    const incidents = rawIncidents.map(owner ? store.serializeIncident : store.serializePublicIncident);
     return {
       evidences,
       pairs: store.pairsOf(evidences),
@@ -152,13 +167,15 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
         : store.serializePublicProgress(row, expenses))),
       budgetExecution: budget,
       schedule,
+      incidents,
+      summary: store.executionSummary(schedule, budget, incidents),
     };
   }
 
   // ── Histórico visual e acompanhamento públicos (slides 23 e 24) ───────────
   router.get('/:id/execution', handle(async (req, res) => {
     const demand = await loadPublicDemand(pool, req.params.id);
-    const view = await executionView(pool, demand.id, { owner: false });
+    const view = await executionView(pool, demand.id, { owner: false, status: demand.status });
     res.json({
       ...view,
       status: demand.status,
@@ -170,7 +187,7 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
   // ── Agente autor ──────────────────────────────────────────────────────────
   router.get('/mine/:id/execution', auth, requireAgent, handle(async (req, res) => {
     const demand = await demandStore.loadOwnDemand(pool, req.params.id, req.user.userId);
-    const view = await executionView(pool, demand.id, { owner: true });
+    const view = await executionView(pool, demand.id, { owner: true, status: demand.status });
     const waived = Boolean(demand.record_waiver_reason);
     res.json({
       ...view,
@@ -182,6 +199,7 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
         : demand.record_waiver_at ?? null,
       canRegisterEvidence: EVIDENCE_OPEN_STATUSES.includes(demand.status),
       canRegisterProgress: PROGRESS_OPEN_STATUSES.includes(demand.status),
+      canRegisterIncident: PROGRESS_OPEN_STATUSES.includes(demand.status),
       canWaiveRecord: !waived && WAIVER_OPEN_STATUSES.includes(demand.status),
       // Pendências das transições (`iniciar_execucao` e `concluir`).
       pending: {
@@ -287,13 +305,14 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
       }
       const { rows: [row] } = await client.query(
         `INSERT INTO demand_progress_updates
-           (demand_id, author_id, author_name, schedule_item_id, stage_progress, on_schedule,
+           (demand_id, author_id, author_name, schedule_item_id, stage_progress, block_reason, on_schedule,
             new_ends_on, deadline_reason, partial_results, note)
-         VALUES ($1, $2, $3, $4, $5::demand_stage_progress, $6, $7, $8, $9, $10)
+         VALUES ($1, $2, $3, $4, $5::demand_stage_progress, $6, $7, $8, $9, $10, $11)
          RETURNING id`,
         [
           demand.id, req.user.userId, req.user.name || null, value.scheduleItemId, value.stageProgress,
-          value.onSchedule, value.newEndsOn, value.deadlineReason, value.partialResults, value.note,
+          value.blockReason, value.onSchedule, value.newEndsOn, value.deadlineReason, value.partialResults,
+          value.note,
         ],
       );
       for (const expense of value.expenses) {
@@ -347,6 +366,73 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
         : waiver.record_waiver_at ?? null,
     });
   }));
+
+  // Ocorrências da execução (Modelo de Conexão §19): só inserção; entram na
+  // linha do tempo pública com tipo, etapa, data e impacto.
+  router.post('/mine/:id/incidents', auth, requireAgent, validatedAgent, handle(async (req, res) => {
+    const { value, errors } = validateIncident(req.body ?? {});
+    if (Object.keys(errors).length) throw validationError(errors);
+    const incident = await withTransaction(pool, async (client) => {
+      const demand = await demandStore.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
+      assertOpen(demand, PROGRESS_OPEN_STATUSES,
+        'As ocorrências são registradas a partir do início da execução');
+      if (value.scheduleItemId) {
+        const { rowCount } = await client.query(
+          'SELECT 1 FROM demand_schedule_items WHERE id = $1 AND demand_id = $2',
+          [value.scheduleItemId, demand.id],
+        );
+        if (!rowCount) throw validationError({ scheduleItemId: 'Escolha uma etapa do cronograma desta demanda' });
+      }
+      if (value.processId) {
+        // O Processo de Conexão (decisão 13) precisa ser desta demanda.
+        const { rows: [table] } = await client.query(
+          "SELECT to_regclass('public.connection_processes') IS NOT NULL AS ok",
+        );
+        const { rowCount } = table?.ok
+          ? await client.query('SELECT 1 FROM connection_processes WHERE id = $1 AND demand_id = $2',
+            [value.processId, demand.id])
+          : { rowCount: 0 };
+        if (!rowCount) throw validationError({ processId: 'Escolha um processo desta demanda' });
+      }
+      const { rows: [row] } = await client.query(
+        `INSERT INTO demand_execution_incidents
+           (demand_id, process_id, schedule_item_id, kind, description, occurred_on, impact,
+            author_id, author_name)
+         VALUES ($1, $2, $3, $4::demand_incident_kind, $5, $6, $7::demand_incident_impact, $8, $9)
+         RETURNING id`,
+        [
+          demand.id, value.processId, value.scheduleItemId, value.kind, value.description,
+          value.occurredOn, value.impact, req.user.userId, req.user.name || null,
+        ],
+      );
+      return store.loadIncident(client, demand.id, row.id);
+    });
+    res.status(201).json({ incident: store.serializeIncident(incident) });
+  }));
+
+  router.post('/mine/:id/incidents/:incidentId/resolve', auth, requireAgent, validatedAgent,
+    handle(async (req, res) => {
+      const { value, errors } = validateIncidentResolution(req.body ?? {});
+      if (Object.keys(errors).length) throw validationError(errors);
+      const incident = await withTransaction(pool, async (client) => {
+        const demand = await demandStore.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
+        assertOpen(demand, PROGRESS_OPEN_STATUSES,
+          'As ocorrências são resolvidas a partir do início da execução');
+        const row = await store.loadIncident(client, demand.id, req.params.incidentId, { forUpdate: true });
+        if (row.resolved_at) {
+          throw new HttpError(409, {
+            error: 'A resolução da ocorrência já foi registrada e não muda',
+            code: 'incident_resolved',
+          });
+        }
+        await client.query(
+          'UPDATE demand_execution_incidents SET resolved_at = NOW(), resolution = $2 WHERE id = $1',
+          [row.id, value.resolution],
+        );
+        return store.loadIncident(client, demand.id, row.id);
+      });
+      res.json({ incident: store.serializeIncident(incident) });
+    }));
 
   return router;
 };

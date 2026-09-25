@@ -4,6 +4,8 @@
 // evidências do antes, do acompanhamento e do depois (uploads da T08),
 // atualiza o andamento (etapas, cronograma, prazo, resultados parciais) e a
 // execução orçamentária, e pareia os registros para o histórico visual.
+// Modelo de Conexão §18–19 (T-05-11): percentual de execução, status Atrasada
+// e Bloqueada (com motivo) e registro de ocorrências.
 //
 // Fonte: Fluxo 2, slides 11, 12, 14, 23 e 24. O servidor é quem decide: as
 // mensagens de erro vêm de `fields` e dos códigos das rotas.
@@ -11,6 +13,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/app/api";
 import {
+  INCIDENT_IMPACTS,
+  INCIDENT_IMPACT_LABELS,
+  INCIDENT_KINDS,
+  INCIDENT_KIND_LABELS,
   EVIDENCE_MEDIA_KINDS,
   EVIDENCE_MEDIA_LABELS,
   EVIDENCE_PURPOSE_BY_MEDIA,
@@ -28,6 +34,8 @@ import type {
   DemandEvidence,
   DemandEvidenceMediaKind,
   DemandExecution,
+  DemandIncidentImpact,
+  DemandIncidentKind,
   DemandProgressExpenseInput,
   DemandRecordMilestone,
   DemandStageProgress,
@@ -36,6 +44,7 @@ import type {
 import { Button } from "../Button";
 import { FileUpload } from "../FileUpload";
 import { Checkbox, FormAlert, SelectInput, TextArea, TextInput } from "../demand/fields";
+import { ExecutionIncidentList, ExecutionProgressSummary } from "./ExecutionProgressSummary";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -43,7 +52,6 @@ type ExpenseRow = { id: number; target: string; amount: string; description: str
 
 const newExpense = (id: number): ExpenseRow => ({ id, target: "", amount: "", description: "" });
 
-// TODO(fonte-da-verdade): Modelo de Conexão §19 — faltam percentual de execução e registro de ocorrências (também em services/post-service/src/execution/store.js).
 export function DemandExecutionPanel({ demandId, onChanged }: {
   demandId: string;
   /** Avisa a lista quando algo muda (pendências das transições). */
@@ -66,12 +74,21 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
   // Andamento
   const [stage, setStage] = useState("");
   const [stageProgress, setStageProgress] = useState<DemandStageProgress | "">("");
+  const [blockReason, setBlockReason] = useState("");
   const [onSchedule, setOnSchedule] = useState<boolean | null>(null);
   const [newEndsOn, setNewEndsOn] = useState("");
   const [deadlineReason, setDeadlineReason] = useState("");
   const [partialResults, setPartialResults] = useState("");
   const [note, setNote] = useState("");
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+
+  // Ocorrências (Modelo §19)
+  const [incidentKind, setIncidentKind] = useState<DemandIncidentKind | "">("");
+  const [incidentImpact, setIncidentImpact] = useState<DemandIncidentImpact>("nenhum");
+  const [incidentStage, setIncidentStage] = useState("");
+  const [incidentOn, setIncidentOn] = useState(today);
+  const [incidentText, setIncidentText] = useState("");
+  const [resolutions, setResolutions] = useState<Record<string, string>>({});
 
   // Ausência de execução física
   const [waiverReason, setWaiverReason] = useState("");
@@ -156,6 +173,7 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
     await api.registerDemandProgress(demandId, {
       scheduleItemId: stage || null,
       stageProgress: stage ? (stageProgress || null) : null,
+      blockReason: stage && stageProgress === "bloqueada" ? (blockReason.trim() || null) : null,
       onSchedule,
       newEndsOn: newEndsOn || null,
       deadlineReason: newEndsOn ? (deadlineReason.trim() || null) : null,
@@ -165,6 +183,7 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
     });
     setStage("");
     setStageProgress("");
+    setBlockReason("");
     setOnSchedule(null);
     setNewEndsOn("");
     setDeadlineReason("");
@@ -175,6 +194,25 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
 
   const pair = (evidence: DemandEvidence, beforeId: string) => run(`pair-${evidence.id}`, async () => {
     await api.updateDemandEvidence(demandId, evidence.id, { pairEvidenceId: beforeId });
+  });
+
+  const addIncident = () => run("incident", async () => {
+    await api.registerDemandIncident(demandId, {
+      kind: incidentKind as DemandIncidentKind,
+      description: incidentText.trim(),
+      occurredOn: incidentOn,
+      impact: incidentImpact,
+      scheduleItemId: incidentStage || null,
+    });
+    setIncidentKind("");
+    setIncidentImpact("nenhum");
+    setIncidentStage("");
+    setIncidentText("");
+  });
+
+  const resolveIncident = (incidentId: string) => run(`resolve-${incidentId}`, async () => {
+    await api.resolveDemandIncident(demandId, incidentId, (resolutions[incidentId] ?? "").trim());
+    setResolutions((all) => ({ ...all, [incidentId]: "" }));
   });
 
   const waive = () => run("waiver", async () => {
@@ -196,6 +234,14 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
             : "Registre o resultado (\"depois\") para concluir a demanda."}
         />
       )}
+      {/* Percentual de execução e status das etapas (Modelo §18–19). */}
+      {(data.schedule.length > 0 || data.summary) && (
+        <section className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
+          <h3 className="mb-2 text-sm font-bold" style={{ color: "var(--th-text)" }}>Percentual de execução</h3>
+          <ExecutionProgressSummary idPrefix={`exec-${demandId}`} summary={data.summary} schedule={data.schedule} />
+        </section>
+      )}
+
       {data.recordWaiverReason && (
         <p className="rounded-xl border p-3 text-sm" style={{ borderColor: "var(--th-border)", background: "var(--th-card-alt)", color: "var(--th-text)" }}>
           <strong>Sem execução física a registrar.</strong> {data.recordWaiverReason}
@@ -383,6 +429,17 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
               error={fields.stageProgress}
               disabled={!stage}
             />
+            {stageProgress === "bloqueada" && (
+              <TextInput
+                name={`exec-${demandId}-block`}
+                label="O que bloqueia a etapa"
+                className="sm:col-span-2"
+                hint="Obrigatório para a situação Bloqueada; aparece no acompanhamento público."
+                value={blockReason}
+                onValue={setBlockReason}
+                error={fields.blockReason}
+              />
+            )}
             <TextInput
               name={`exec-${demandId}-newends`}
               label="Nova data de término"
@@ -497,6 +554,85 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
         </section>
       )}
 
+      {/* Ocorrências da execução (Modelo §19). */}
+      {(data.canRegisterIncident || (data.incidents ?? []).length > 0) && (
+        <section className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
+          <h3 className="mb-2 text-sm font-bold" style={{ color: "var(--th-text)" }}>Ocorrências</h3>
+          <ExecutionIncidentList
+            incidents={data.incidents ?? []}
+            renderAction={(incident) => (!incident.resolved && data.canRegisterIncident ? (
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <TextInput
+                  name={`exec-${demandId}-resolve-${incident.id}`}
+                  label="Como foi resolvida"
+                  className="min-w-[14rem] flex-1"
+                  value={resolutions[incident.id] ?? ""}
+                  onValue={(v) => setResolutions((all) => ({ ...all, [incident.id]: v }))}
+                  error={busy === null ? undefined : fields.resolution}
+                />
+                <Button type="button" size="sm" variant="outline" loading={busy === `resolve-${incident.id}`} onClick={() => resolveIncident(incident.id)}>
+                  Registrar resolução
+                </Button>
+              </div>
+            ) : null)}
+          />
+          {data.canRegisterIncident && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <SelectInput
+                name={`exec-${demandId}-inc-kind`}
+                label="Tipo de ocorrência"
+                placeholder="Escolha o tipo"
+                value={incidentKind}
+                onValue={(v) => setIncidentKind(v as DemandIncidentKind | "")}
+                options={INCIDENT_KINDS.map((k) => ({ value: k, label: INCIDENT_KIND_LABELS[k] }))}
+                error={fields.kind}
+              />
+              <SelectInput
+                name={`exec-${demandId}-inc-impact`}
+                label="Impacto"
+                value={incidentImpact}
+                onValue={(v) => setIncidentImpact(v as DemandIncidentImpact)}
+                options={INCIDENT_IMPACTS.map((k) => ({ value: k, label: INCIDENT_IMPACT_LABELS[k] }))}
+                error={fields.impact}
+              />
+              <TextInput
+                name={`exec-${demandId}-inc-date`}
+                label="Data da ocorrência"
+                type="date"
+                max={today()}
+                value={incidentOn}
+                onValue={setIncidentOn}
+                error={fields.occurredOn}
+              />
+              <SelectInput
+                name={`exec-${demandId}-inc-stage`}
+                label="Etapa do cronograma"
+                placeholder="Sem etapa específica"
+                value={incidentStage}
+                onValue={setIncidentStage}
+                options={stageOptions}
+                error={fields.scheduleItemId}
+              />
+              <TextArea
+                name={`exec-${demandId}-inc-text`}
+                label="O que aconteceu"
+                className="sm:col-span-2"
+                hint="Aparece no acompanhamento público da demanda."
+                rows={3}
+                value={incidentText}
+                onValue={setIncidentText}
+                error={fields.description}
+              />
+              <div className="sm:col-span-2">
+                <Button type="button" size="sm" icon="plus" loading={busy === "incident"} onClick={addIncident}>
+                  Registrar ocorrência
+                </Button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Planejado × executado. */}
       <section>
         <h3 className="mb-2 text-sm font-bold" style={{ color: "var(--th-text)" }}>
@@ -542,6 +678,7 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
                   {update.stage ?? "Andamento"}
                   {update.stageProgress ? ` · ${STAGE_PROGRESS_LABELS[update.stageProgress]}` : ""}
                 </p>
+                {update.blockReason && <p className="text-xs" style={{ color: "var(--th-text)" }}>Motivo do bloqueio: {update.blockReason}</p>}
                 {update.partialResults && <p className="whitespace-pre-line" style={{ color: "var(--th-text)" }}>{update.partialResults}</p>}
                 {update.newEndsOn && (
                   <p className="text-xs" style={{ color: "var(--th-text)" }}>

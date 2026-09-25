@@ -5,6 +5,7 @@
 const {
   RECORD_MILESTONES, EVIDENCE_MEDIA_KINDS, STAGE_PROGRESS, MAX_CAPTION, MAX_PARTIAL_RESULTS,
   MAX_NOTE, MAX_REASON, MAX_EXPENSE_DESCRIPTION, MAX_EXPENSES, MAX_EXECUTED_CENTS,
+  INCIDENT_KINDS, INCIDENT_IMPACTS, MAX_INCIDENT_TEXT,
 } = require('./constants');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -131,7 +132,7 @@ function validateEvidenceUpdate(input) {
 
 /**
  * Atualização de andamento (slide 23):
- * `{ scheduleItemId?, stageProgress?, onSchedule?, newEndsOn?, deadlineReason?,
+ * `{ scheduleItemId?, stageProgress?, blockReason?, onSchedule?, newEndsOn?, deadlineReason?,
  *    partialResults?, note?, expenses?: [{ budgetItemId?, scheduleItemId?, description?, executedAmountCents }] }`.
  */
 function validateProgressUpdate(input) {
@@ -148,7 +149,15 @@ function validateProgressUpdate(input) {
     }
   }
   if (scheduleItemId && !stageProgress && !errors.stageProgress) {
-    errors.stageProgress = 'Diga como está a etapa (não iniciada, em andamento ou concluída)';
+    errors.stageProgress = 'Diga como está a etapa (não iniciada, em andamento, concluída, atrasada ou bloqueada)';
+  }
+  // Etapa bloqueada (Modelo de Conexão §18): sempre com o motivo.
+  const blockReason = optionalText(body, 'blockReason', errors, MAX_REASON);
+  if (stageProgress === 'bloqueada' && !blockReason && !errors.blockReason) {
+    errors.blockReason = 'Explique o que bloqueia a etapa';
+  }
+  if (blockReason && stageProgress !== 'bloqueada' && !errors.blockReason) {
+    errors.blockReason = 'O motivo do bloqueio só acompanha a situação "Bloqueada"';
   }
   if (!scheduleItemId && stageProgress && !errors.scheduleItemId) {
     errors.scheduleItemId = 'Escolha a etapa do cronograma';
@@ -204,7 +213,7 @@ function validateProgressUpdate(input) {
 
   return {
     value: {
-      scheduleItemId, stageProgress, onSchedule, newEndsOn, deadlineReason,
+      scheduleItemId, stageProgress, blockReason, onSchedule, newEndsOn, deadlineReason,
       partialResults, note, expenses,
     },
     errors,
@@ -222,7 +231,46 @@ function validateRecordWaiver(input) {
   return { value: { reason }, errors };
 }
 
+/**
+ * Ocorrência da execução (Modelo de Conexão §19):
+ * `{ kind, description, occurredOn, impact?, scheduleItemId?, processId? }`.
+ */
+function validateIncident(input, { today = new Date() } = {}) {
+  const body = input && typeof input === 'object' ? input : {};
+  const errors = {};
+  const kind = typeof body.kind === 'string' ? body.kind : '';
+  if (!INCIDENT_KINDS.includes(kind)) errors.kind = `Tipos aceitos: ${INCIDENT_KINDS.join(', ')}`;
+  const description = optionalText(body, 'description', errors, MAX_INCIDENT_TEXT);
+  if (!description && !errors.description) errors.description = 'Descreva o que aconteceu';
+  const occurredOn = parseDate(body.occurredOn, errors, 'occurredOn', { required: true, future: false, today });
+  if (errors.occurredOn === 'A data do registro não fica no futuro') {
+    errors.occurredOn = 'A data da ocorrência não fica no futuro';
+  }
+  let impact = 'nenhum';
+  if (body.impact !== undefined && body.impact !== null && body.impact !== '') {
+    if (!INCIDENT_IMPACTS.includes(body.impact)) {
+      errors.impact = `Impactos aceitos: ${INCIDENT_IMPACTS.join(', ')}`;
+    } else {
+      impact = body.impact;
+    }
+  }
+  const scheduleItemId = optionalUuid(body, 'scheduleItemId', errors);
+  const processId = optionalUuid(body, 'processId', errors);
+  return { value: { kind, description, occurredOn, impact, scheduleItemId, processId }, errors };
+}
+
+/** Resolução da ocorrência, gravada uma vez: `{ resolution }`. */
+function validateIncidentResolution(input) {
+  const body = input && typeof input === 'object' ? input : {};
+  const errors = {};
+  const resolution = optionalText(body, 'resolution', errors, MAX_INCIDENT_TEXT);
+  if (!resolution && !errors.resolution) errors.resolution = 'Diga como a ocorrência foi resolvida';
+  return { value: { resolution }, errors };
+}
+
 module.exports = {
+  validateIncident,
+  validateIncidentResolution,
   validateEvidence,
   validateEvidenceUpdate,
   validateProgressUpdate,

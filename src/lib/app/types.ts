@@ -2185,7 +2185,57 @@ export interface SupportReceiptInput {
 
 export type DemandEvidenceMediaKind = "foto" | "video";
 
-export type DemandStageProgress = "nao_iniciada" | "em_andamento" | "concluida";
+/** Status da etapa (Modelo de Conexão §18; `atrasada` também é gravada pela plataforma). */
+export type DemandStageProgress = "nao_iniciada" | "em_andamento" | "concluida" | "atrasada" | "bloqueada";
+
+/** Ocorrência da execução (Modelo de Conexão §19, migração post 034). */
+export type DemandIncidentKind =
+  | "atraso" | "bloqueio" | "alteracao_de_escopo" | "problema_tecnico" | "seguranca" | "clima" | "fornecedor" | "outra";
+
+export type DemandIncidentImpact = "prazo" | "custo" | "escopo" | "nenhum";
+
+/** Ocorrência no acompanhamento público (sem autor). */
+export interface PublicDemandIncident {
+  id: string;
+  scheduleItemId: string | null;
+  stage: string | null;
+  kind: DemandIncidentKind;
+  description: string;
+  occurredOn: string | null;
+  impact: DemandIncidentImpact;
+  resolved: boolean;
+  resolvedAt: string | null;
+  resolution: string | null;
+  createdAt: string | null;
+}
+
+/** Ocorrência vista pelo Agente autor. */
+export interface DemandIncident extends PublicDemandIncident {
+  processId: string | null;
+  author: { userId: string; name: string | null };
+}
+
+export interface DemandIncidentInput {
+  kind: DemandIncidentKind;
+  description: string;
+  occurredOn: string;
+  impact?: DemandIncidentImpact | null;
+  scheduleItemId?: string | null;
+  processId?: string | null;
+}
+
+/** Percentual de execução e contagens do §18–19. `null` quando não há base. */
+export interface DemandExecutionSummary {
+  percentComplete: number | null;
+  percentByAmount: number | null;
+  stagesTotal: number;
+  stagesCompleted: number;
+  stagesInProgress: number;
+  stagesLate: number;
+  stagesBlocked: number;
+  incidentsOpen: number;
+  incidentsTotal: number;
+}
 
 /** Evidência no histórico visual público (sem autor nem id do arquivo). */
 export interface PublicDemandEvidence {
@@ -2237,6 +2287,8 @@ export interface PublicDemandProgressUpdate {
   id: string;
   stage: string | null;
   stageProgress: DemandStageProgress | null;
+  /** Motivo declarado quando a etapa é "Bloqueada". */
+  blockReason: string | null;
   onSchedule: boolean | null;
   newEndsOn: string | null;
   deadlineReason: string | null;
@@ -2276,7 +2328,14 @@ export interface DemandScheduleStatus {
   currentEndsOn: string | null;
   rescheduledTo: string | null;
   recordMilestones: DemandRecordMilestone[];
+  /** Status corrente (§18): o declarado, ou `atrasada` com atraso gravado ou prazo vencido. */
   stageProgress: DemandStageProgress | null;
+  /** Última situação declarada pelo Agente. */
+  declaredProgress?: DemandStageProgress | null;
+  blockReason?: string | null;
+  late?: boolean;
+  /** Dia em que o atraso em aberto foi gravado. */
+  lateSince?: string | null;
   updatedAt: string | null;
 }
 
@@ -2294,6 +2353,8 @@ export interface PublicDemandExecution {
   progress: PublicDemandProgressUpdate[];
   budgetExecution: DemandBudgetExecution;
   schedule: DemandScheduleStatus[];
+  incidents?: PublicDemandIncident[];
+  summary?: DemandExecutionSummary;
   status: DemandStatus;
   hasPhysicalExecution: boolean;
   recordWaiverReason: string | null;
@@ -2307,12 +2368,15 @@ export interface DemandExecution {
   progress: DemandProgressUpdate[];
   budgetExecution: DemandBudgetExecution;
   schedule: DemandScheduleStatus[];
+  incidents?: DemandIncident[];
+  summary?: DemandExecutionSummary;
   status: DemandStatus;
   hasPhysicalExecution: boolean;
   recordWaiverReason: string | null;
   recordWaiverAt: string | null;
   canRegisterEvidence: boolean;
   canRegisterProgress: boolean;
+  canRegisterIncident?: boolean;
   canWaiveRecord: boolean;
   /** Marcos que faltam para as transições `iniciar_execucao` e `concluir`. */
   pending: { antes: boolean; depois: boolean };
@@ -2338,6 +2402,7 @@ export interface DemandProgressExpenseInput {
 export interface DemandProgressInput {
   scheduleItemId?: string | null;
   stageProgress?: DemandStageProgress | null;
+  blockReason?: string | null;
   onSchedule?: boolean | null;
   newEndsOn?: string | null;
   deadlineReason?: string | null;

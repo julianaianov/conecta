@@ -133,3 +133,32 @@ test('o pareamento antes/depois não é desfeito pela rota de legenda', async ()
     assert.ok(res.body.fields.pairEvidenceId);
   });
 });
+
+test('etapa bloqueada sem motivo responde 422 antes do banco (Modelo §18)', async () => {
+  await withServer(async (base) => {
+    const res = await send(base, 'POST', `/demands/mine/${DEMAND}/progress`, {
+      scheduleItemId: '33333333-3333-4333-8333-333333333333',
+      stageProgress: 'bloqueada',
+    });
+    assert.equal(res.status, 422);
+    assert.match(res.body.fields.blockReason, /bloqueia a etapa/);
+  });
+});
+
+test('ocorrências: token, papel, validação e id inválido antes do banco (Modelo §19)', async () => {
+  await withServer(async (base) => {
+    const body = { kind: 'clima', description: 'Chuva forte', occurredOn: '2026-09-01' };
+    assert.equal((await send(base, 'POST', `/demands/mine/${DEMAND}/incidents`, body, {})).status, 401);
+    const member = await send(base, 'POST', `/demands/mine/${DEMAND}/incidents`, body, auth('member', 'morador'));
+    assert.equal(member.status, 403);
+    const invalid = await send(base, 'POST', `/demands/mine/${DEMAND}/incidents`, { kind: 'terremoto' });
+    assert.equal(invalid.status, 422);
+    assert.ok(invalid.body.fields.kind && invalid.body.fields.description && invalid.body.fields.occurredOn);
+    const resolve = await send(base, 'POST', `/demands/mine/${DEMAND}/incidents/${EVIDENCE}/resolve`, {});
+    assert.equal(resolve.status, 422);
+    assert.match(resolve.body.fields.resolution, /resolvida/);
+    const bad = await send(base, 'POST', `/demands/mine/${DEMAND}/incidents/nao-e-uuid/resolve`, { resolution: 'x' });
+    assert.equal(bad.status, 404);
+    assert.equal(bad.body.error, 'Ocorrência não encontrada');
+  });
+});

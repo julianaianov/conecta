@@ -772,6 +772,34 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
 - Contrato e pendências do dm-gestao em
   `dm-docs/gestao/04-modelagem-de-dados.md` §3.13.
 
+## Execução: status da etapa, atraso gravado e ocorrências (T-05-11)
+
+- Fonte: Modelo de Conexão §18 (status Não iniciada, Em andamento, Concluída,
+  Atrasada, Bloqueada) e §19 (percentual de execução, ocorrências); decisão 16
+  ("o atraso é gravado, não só calculado").
+- Migração post 034 (`034-execution-status.sql`): `demand_stage_progress` ganha
+  `atrasada`/`bloqueada`; `demand_progress_updates.block_reason` (obrigatório só
+  com `bloqueada`); visão `demand_stage_status` (situação corrente por etapa:
+  declarada, prazo corrente, motivo do bloqueio, atraso em aberto);
+  `demand_stage_delays` (atraso gravado, um em aberto por etapa, desfecho
+  `concluida`/`novo_prazo`/`bloqueada`/`fim_da_execucao`) gravado por
+  `demand_record_stage_delays(dia, demanda)` — no trigger diferido de cada
+  andamento e no laço `src/execution/delays.js`
+  (`DM_EXECUTION_DELAY_INTERVAL_MS`, padrão 1 h; 0 desliga), com evento público
+  `etapa_atrasada`; `demand_execution_incidents` (ocorrências: tipo, impacto,
+  etapa e processo opcionais, só inserção, resolução gravada uma vez; eventos
+  públicos `ocorrencia_registrada`/`ocorrencia_resolvida`). Gestão só lê
+  (dm-infra `031-gestao-app-post-execution.sql`).
+- API: `GET /:id/execution` e `GET /mine/:id/execution` trazem
+  `schedule[].stageProgress` com o status do §18 (`atrasada` também derivada
+  por `isLate` entre passadas do laço), `blockReason`, `lateSince`,
+  `incidents` e `summary` (`percentComplete`, `percentByAmount`, etapas
+  atrasadas/bloqueadas, ocorrências em aberto); `POST /mine/:id/incidents` e
+  `POST /mine/:id/incidents/:incidentId/resolve` (409 `incident_resolved`).
+- Portal: `ExecutionProgressSummary` (barras com `role="progressbar"` e tabela
+  de etapas) no painel e na seção pública; formulário de ocorrência e motivo do
+  bloqueio no `DemandExecutionPanel`.
+
 ## Mapa inteligente (T20)
 
 - Fonte: Apresentação Institucional, slide 19 (legenda literal e "leitura

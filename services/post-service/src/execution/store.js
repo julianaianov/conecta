@@ -7,6 +7,7 @@
 
 const { HttpError } = require('../demand/store');
 const { publicMediaUrl } = require('../upload-policy');
+const { stageStatus } = require('./constants');
 
 const EVIDENCE_SQL = `
   e.id, e.demand_id, e.progress_update_id, e.schedule_item_id, e.milestone::text AS milestone,
@@ -16,7 +17,7 @@ const EVIDENCE_SQL = `
 
 const PROGRESS_SQL = `
   u.id, u.demand_id, u.author_id, u.author_name, u.schedule_item_id,
-  u.stage_progress::text AS stage_progress, u.on_schedule, u.new_ends_on, u.deadline_reason,
+  u.stage_progress::text AS stage_progress, u.block_reason, u.on_schedule, u.new_ends_on, u.deadline_reason,
   u.partial_results, u.note, u.created_at,
   (SELECT s.stage FROM demand_schedule_items s WHERE s.id = u.schedule_item_id) AS stage`;
 
@@ -90,6 +91,7 @@ function serializeProgress(row, expenses = []) {
     scheduleItemId: row.schedule_item_id ?? null,
     stage: row.stage ?? null,
     stageProgress: row.stage_progress ?? null,
+    blockReason: row.block_reason ?? null,
     onSchedule: row.on_schedule === null || row.on_schedule === undefined ? null : row.on_schedule === true,
     newEndsOn: toDate(row.new_ends_on),
     deadlineReason: row.deadline_reason ?? null,
@@ -108,6 +110,7 @@ function serializePublicProgress(row, expenses = []) {
     id: row.id,
     stage: row.stage ?? null,
     stageProgress: row.stage_progress ?? null,
+    blockReason: row.block_reason ?? null,
     onSchedule: row.on_schedule === null || row.on_schedule === undefined ? null : row.on_schedule === true,
     newEndsOn: toDate(row.new_ends_on),
     deadlineReason: row.deadline_reason ?? null,
@@ -126,7 +129,6 @@ async function listEvidences(db, demandId) {
   return rows;
 }
 
-// TODO(fonte-da-verdade): Modelo de Conexão §19 — sem percentual de execução nem ocorrências; ver TODO em src/components/app/execution/DemandExecutionPanel.tsx.
 async function listProgress(db, demandId) {
   const { rows } = await db.query(
     `SELECT ${PROGRESS_SQL} FROM demand_progress_updates u
@@ -207,35 +209,122 @@ async function budgetExecution(db, demandId) {
   };
 }
 
-/** Situação corrente de cada etapa do cronograma: última atualização que a citou. */
-async function scheduleStatus(db, demandId) {
+/**
+ * Situação corrente de cada etapa do cronograma (visão `demand_stage_status`,
+ * migração 034): a última situação declarada, o prazo corrente, o motivo do
+ * bloqueio e o atraso gravado. `stageProgress` é o status do §18 — `atrasada`
+ * quando há atraso gravado em aberto ou o prazo corrente venceu com a demanda
+ * em execução (`isLate`), sem esperar a próxima passada do laço.
+ */
+async function scheduleStatus(db, demandId, { running = false, today = new Date() } = {}) {
   const { rows } = await db.query(
-    `SELECT s.id, s.position, s.stage, s.starts_on, s.ends_on, s.record_milestones,
-            last.stage_progress::text AS stage_progress, last.created_at AS updated_at,
-            COALESCE(deadline.ends_on, s.ends_on) AS current_ends_on,
-            deadline.ends_on AS rescheduled_to
-       FROM demand_schedule_items s
-       LEFT JOIN LATERAL (
-         SELECT u.stage_progress, u.created_at FROM demand_progress_updates u
-          WHERE u.schedule_item_id = s.id ORDER BY u.created_at DESC, u.id DESC LIMIT 1) last ON true
-       LEFT JOIN LATERAL (
-         SELECT u.new_ends_on AS ends_on FROM demand_progress_updates u
-          WHERE u.schedule_item_id = s.id AND u.new_ends_on IS NOT NULL
-          ORDER BY u.created_at DESC, u.id DESC LIMIT 1) deadline ON true
-      WHERE s.demand_id = $1 ORDER BY s.position, s.id`,
+    `SELECT st.schedule_item_id, st.position, st.stage, st.starts_on, st.ends_on, st.current_ends_on,
+            st.rescheduled_to, st.declared_progress, st.block_reason, st.progress_updated_at,
+            st.open_delay_id, st.late_due_on, st.late_since, s.record_milestones
+       FROM demand_stage_status st
+       JOIN demand_schedule_items s ON s.id = st.schedule_item_id
+      WHERE st.demand_id = $1 ORDER BY st.position, st.schedule_item_id`,
     [demandId],
   );
-  return rows.map((row) => ({
-    scheduleItemId: row.id,
-    stage: row.stage,
-    startsOn: toDate(row.starts_on),
-    endsOn: toDate(row.ends_on),
-    currentEndsOn: toDate(row.current_ends_on),
-    rescheduledTo: toDate(row.rescheduled_to),
-    recordMilestones: Array.isArray(row.record_milestones) ? row.record_milestones : [],
-    stageProgress: row.stage_progress ?? null,
-    updatedAt: toIso(row.updated_at),
-  }));
+  return rows.map((row) => {
+    const currentEndsOn = toDate(row.current_ends_on);
+    const declared = row.declared_progress ?? null;
+    const status = stageStatus({
+      declared, openDelay: Boolean(row.open_delay_id), currentEndsOn, running,
+    }, today);
+    return {
+      scheduleItemId: row.schedule_item_id,
+      stage: row.stage,
+      startsOn: toDate(row.starts_on),
+      endsOn: toDate(row.ends_on),
+      currentEndsOn,
+      rescheduledTo: toDate(row.rescheduled_to),
+      recordMilestones: Array.isArray(row.record_milestones) ? row.record_milestones : [],
+      stageProgress: status,
+      declaredProgress: declared,
+      blockReason: status === 'bloqueada' ? row.block_reason ?? null : null,
+      late: status === 'atrasada',
+      lateSince: row.open_delay_id ? toDate(row.late_since) : null,
+      updatedAt: toIso(row.progress_updated_at),
+    };
+  });
+}
+
+const INCIDENT_SQL = `
+  i.id, i.demand_id, i.process_id, i.schedule_item_id, i.kind::text AS kind, i.description,
+  i.occurred_on, i.impact::text AS impact, i.author_id, i.author_name, i.resolved_at, i.resolution,
+  i.created_at,
+  (SELECT s.stage FROM demand_schedule_items s WHERE s.id = i.schedule_item_id) AS stage`;
+
+/** Ocorrência vista pelo Agente autor. */
+function serializeIncident(row) {
+  return {
+    id: row.id,
+    processId: row.process_id ?? null,
+    scheduleItemId: row.schedule_item_id ?? null,
+    stage: row.stage ?? null,
+    kind: row.kind,
+    description: row.description,
+    occurredOn: toDate(row.occurred_on),
+    impact: row.impact,
+    resolved: Boolean(row.resolved_at),
+    resolvedAt: toIso(row.resolved_at),
+    resolution: row.resolution ?? null,
+    author: { userId: row.author_id, name: row.author_name ?? null },
+    createdAt: toIso(row.created_at),
+  };
+}
+
+/** Ocorrência no acompanhamento público: sem autor nem processo. */
+function serializePublicIncident(row) {
+  const { author, processId, ...rest } = serializeIncident(row);
+  void author;
+  void processId;
+  return rest;
+}
+
+async function listIncidents(db, demandId) {
+  const { rows } = await db.query(
+    `SELECT ${INCIDENT_SQL} FROM demand_execution_incidents i
+      WHERE i.demand_id = $1 ORDER BY i.occurred_on DESC, i.created_at DESC, i.id`,
+    [demandId],
+  );
+  return rows;
+}
+
+async function loadIncident(db, demandId, incidentId, { forUpdate = false } = {}) {
+  const { rows } = await db.query(
+    `SELECT ${INCIDENT_SQL} FROM demand_execution_incidents i
+      WHERE i.id = $1 AND i.demand_id = $2${forUpdate ? ' FOR UPDATE' : ''}`,
+    [incidentId, demandId],
+  );
+  if (!rows.length) throw new HttpError(404, { error: 'Ocorrência não encontrada' });
+  return rows[0];
+}
+
+const percent = (part, total) => (total > 0 ? Math.round((part / total) * 1000) / 10 : null);
+
+/**
+ * Percentual de execução (Modelo de Conexão §19): etapas concluídas sobre o
+ * total do cronograma e, quando há orçamento, o executado sobre o planejado.
+ * `null` quando não há base para o cálculo.
+ */
+function executionSummary(schedule = [], budget = null, incidents = []) {
+  const stagesTotal = schedule.length;
+  const stagesCompleted = schedule.filter((s) => s.stageProgress === 'concluida').length;
+  const planned = Number(budget?.plannedCents ?? 0);
+  const executed = Number(budget?.executedCents ?? 0);
+  return {
+    percentComplete: percent(stagesCompleted, stagesTotal),
+    percentByAmount: percent(executed, planned),
+    stagesTotal,
+    stagesCompleted,
+    stagesInProgress: schedule.filter((s) => s.stageProgress === 'em_andamento').length,
+    stagesLate: schedule.filter((s) => s.stageProgress === 'atrasada').length,
+    stagesBlocked: schedule.filter((s) => s.stageProgress === 'bloqueada').length,
+    incidentsOpen: incidents.filter((i) => !i.resolved).length,
+    incidentsTotal: incidents.length,
+  };
 }
 
 /** Quantas evidências há por marco (pendências das transições). */
@@ -272,6 +361,12 @@ module.exports = {
   pairsOf,
   budgetExecution,
   scheduleStatus,
+  INCIDENT_SQL,
+  serializeIncident,
+  serializePublicIncident,
+  listIncidents,
+  loadIncident,
+  executionSummary,
   milestoneCounts,
   loadEvidence,
 };

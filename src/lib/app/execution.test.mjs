@@ -10,7 +10,12 @@ import {
   EVIDENCE_OPEN_STATUSES,
   EVIDENCE_PURPOSE_BY_MEDIA,
   EXECUTION_EVENT_TYPES,
+  INCIDENT_IMPACTS,
+  INCIDENT_IMPACT_LABELS,
+  INCIDENT_KINDS,
+  INCIDENT_KIND_LABELS,
   MAX_CAPTION,
+  MAX_INCIDENT_TEXT,
   MAX_EXECUTED_CENTS,
   MAX_EXPENSES,
   MAX_NOTE,
@@ -29,7 +34,9 @@ import {
   executionTimelineDetail,
   executionTimelineLabel,
   formatCents,
+  formatPercent,
   formatRecordDate,
+  isLate,
 } from "./execution.ts";
 import { timelineEventLabel } from "./demand.ts";
 import { UPLOAD_PURPOSES } from "./uploads.ts";
@@ -110,4 +117,21 @@ test("os códigos de erro das rotas viram texto de tela", () => {
   assert.match(executionErrorMessage(withCode("pair_locked")), /não é desfeito/);
   assert.match(executionErrorMessage(withCode("record_waiver_exists")), /não muda/);
   assert.match(executionErrorMessage(new Error("network")), /Sem conexão/);
+});
+
+test("status Atrasada/Bloqueada e ocorrências seguem o post-service (Modelo §18–19)", () => {
+  assert.deepEqual(INCIDENT_KINDS, server.INCIDENT_KINDS);
+  assert.deepEqual(INCIDENT_KIND_LABELS, server.INCIDENT_KIND_LABELS);
+  assert.deepEqual(INCIDENT_IMPACTS, server.INCIDENT_IMPACTS);
+  assert.deepEqual(INCIDENT_IMPACT_LABELS, server.INCIDENT_IMPACT_LABELS);
+  assert.equal(MAX_INCIDENT_TEXT, server.MAX_INCIDENT_TEXT);
+  for (const [ends, progress] of [["2026-09-24", "em_andamento"], ["2026-09-24", null], ["2026-09-25", null],
+    ["2026-09-01", "concluida"], ["2026-09-01", "bloqueada"]]) {
+    assert.equal(isLate(ends, progress, "2026-09-25"), server.isLate(ends, progress, "2026-09-25"), `${ends} ${progress}`);
+  }
+  assert.equal(formatPercent(50), "50%");
+  assert.equal(formatPercent(null), "—");
+  assert.equal(executionTimelineLabel({ type: "etapa_atrasada", details: {} }), "Etapa atrasada");
+  assert.match(executionTimelineDetail({ type: "ocorrencia_registrada", details: { kind: "clima", impact: "prazo", stage: "Obra" } }) ?? "",
+    /Etapa: Obra · Clima · impacto: prazo/);
 });

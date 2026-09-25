@@ -67,7 +67,7 @@ import type {
 } from "./types";
 import type {
   DemandEvidence, DemandEvidenceInput, DemandExecution, DemandProgressInput,
-  DemandProgressUpdate, PublicDemandExecution,
+  DemandProgressUpdate, PublicDemandExecution, DemandIncident, DemandIncidentInput,
 } from "./types";
 import type {
   DemandAccountabilityDocumentInput, DemandAccountabilityInput, DemandAccountabilityResultInput,
@@ -1465,6 +1465,21 @@ export const api = {
     return (await demandRequired<{ progress: DemandProgressUpdate }>(
       `/mine/${encodeURIComponent(id)}/progress`, { method: "POST", ...json(input) },
     )).progress;
+  },
+
+  /** Registra uma ocorrência da execução (Modelo de Conexão §19). */
+  async registerDemandIncident(id: string, input: DemandIncidentInput): Promise<DemandIncident> {
+    return (await demandRequired<{ incident: DemandIncident }>(
+      `/mine/${encodeURIComponent(id)}/incidents`, { method: "POST", ...json(input) },
+    )).incident;
+  },
+
+  /** Resolução da ocorrência, gravada uma vez. */
+  async resolveDemandIncident(id: string, incidentId: string, resolution: string): Promise<DemandIncident> {
+    return (await demandRequired<{ incident: DemandIncident }>(
+      `/mine/${encodeURIComponent(id)}/incidents/${encodeURIComponent(incidentId)}/resolve`,
+      { method: "POST", ...json({ resolution }) },
+    )).incident;
   },
 
   /** Justifica que não há execução física a registrar (slide 12). */
