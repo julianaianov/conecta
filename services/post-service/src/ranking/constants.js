@@ -35,14 +35,22 @@ const ACTOR_CATEGORY_LABELS = {
 // Categoria excluída de todo ranking de pessoas.
 const EXCLUDED_CATEGORY = 'poder_publico';
 
-// Papel do token (auth_db.users.role) → categoria do ranking.
+// Papel do token (auth_db.users.role) → categoria do ranking. A Comunicação é
+// gravada como `media` (Imprensa, Veículos de Comunicação, Jornalistas) e conta
+// no engajamento (decisão 18).
 const ROLE_TO_CATEGORY = {
   agent: 'agente',
   member: 'comunidade',
   partner: 'parceiro',
-  communication: 'comunicacao',
+  media: 'comunicacao',
   government: 'poder_publico',
 };
+
+// Categorias fora dos quadros de apoio ("Maiores apoiadores", "Empresas em
+// destaque", "Maiores patrocinadores"): esses quadros são por apoio, e a
+// Comunicação apoia divulgando (decisão 18). Ela continua em "Usuários mais
+// ativos" e recebe o selo `divulgador`.
+const SUPPORT_BOARD_EXCLUDED_CATEGORIES = ['comunicacao'];
 
 // Categoria gravada em `supports.supporter_category` / `demand_interests.user_category`.
 const SUPPORTER_CATEGORY_TO_CATEGORY = {
@@ -231,6 +239,7 @@ module.exports = {
   ACTOR_CATEGORY_LABELS,
   EXCLUDED_CATEGORY,
   ROLE_TO_CATEGORY,
+  SUPPORT_BOARD_EXCLUDED_CATEGORIES,
   SUPPORTER_CATEGORY_TO_CATEGORY,
   normalizeActorCategory,
   COMPANY_PROFILE_TYPES,

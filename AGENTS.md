@@ -855,6 +855,10 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `content_shares`). Apoio do Poder Público não pontua em nenhum ranking, nem
   no da demanda nem no do bairro. `GET /profiles/:userId/impact` devolve
   `ranked: false`, sem selo, com os cinco indicadores de atuação e o aviso.
+- Comunicação (decisão 18): o papel `media` vira a categoria `comunicacao`
+  (`ROLE_TO_CATEGORY`), conta em "Usuários mais ativos" e no selo
+  `divulgador`, e fica fora dos quadros de apoio
+  (`SUPPORT_BOARD_EXCLUDED_CATEGORIES`).
 - LGPD: só aparece com nome quem consentiu. Nos rankings de apoio vale o
   `display_consent` do próprio apoio (T16); nos demais, `ranking_consents`
   (opção no perfil). Sem consentimento a linha **continua contando** — os

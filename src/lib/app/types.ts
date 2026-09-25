@@ -171,7 +171,7 @@ export type Permission =
   | "express_interest"        // demonstrar interesse
   | "support"                 // apoiar projetos / oferecer recursos, produtos ou serviços
   | "volunteer"               // oferecer voluntariado, inscrever-se em eventos
-  | "ranking"                 // aparecer no ranking de apoiadores e impacto
+  | "ranking"                 // aparecer nos rankings de engajamento e impacto
   | "agenda";                 // identificar pautas e registrar divulgação (Comunicação, T28)
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -182,7 +182,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   // não por um ranking competitivo de apoiadores (neutralidade institucional).
   government: ["institutional_response", "interact", "share", "connect", "express_interest", "support"],
   // "Identificar pautas" e "Divulgar projetos e resultados" são as pautas da T28.
-  media: ["interact", "share", "connect", "agenda"],
+  // Com "ranking": a Comunicação conta no engajamento ("Usuários mais ativos",
+  // selo "Divulgador") e fica fora dos quadros de apoio, que são por apoio
+  // (decisão 18).
+  media: ["interact", "share", "connect", "agenda", "ranking"],
 };
 
 export function can(role: string | null | undefined, permission: Permission, profileType?: string | null): boolean {
@@ -448,8 +451,8 @@ export interface SupportRecord {
 
 // ── Ranking ────────────────────────────────────────────────
 /**
- * As abas do ranking: reconhecimento de apoio e impacto. O Poder Público e a
- * Comunicação não entram — ver a permissão "ranking" em ROLE_PERMISSIONS.
+ * As abas do ranking: reconhecimento de apoio e impacto. O Poder Público não
+ * entra — ver a permissão "ranking" em ROLE_PERMISSIONS.
  */
 export type RankCategory = "partner" | "agent" | "volunteer";
 

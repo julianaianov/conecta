@@ -53,7 +53,7 @@ para todos os perfis.
 | `express_interest` — demonstrar interesse | | ✓ | ✓ | ✓ | |
 | `support` — apoiar projetos, oferecer recursos, produtos ou serviços | | ✓ | ✓ | ✓ | |
 | `volunteer` — voluntariado e inscrição em eventos | | ✓ | | | |
-| `ranking` — ranking de apoiadores e impacto | | ✓ | ✓ | | |
+| `ranking` — rankings de engajamento e impacto | | ✓ | ✓ | | ✓ |
 | `agenda` — identificar pautas e registrar divulgação (T28) | | | | | ✓ |
 
 O cadastro lista "Curtir/apoiar" como na fonte (§3.2). No produto, essa ação é
@@ -91,10 +91,13 @@ Comunicação contribuem com **Divulgação** (`sharing`).
   `GET /me/institution/status`; papel efetivo em `lib/app/organization.ts` e
   `post-service/src/delegation.js`). Uma conta atua em nome de uma instituição
   por vez.
-- Poder Público e Comunicação não participam do ranking competitivo de
-  apoiadores, preservando a neutralidade institucional. O Poder Público é
-  acompanhado por indicadores de atuação, respostas, encaminhamentos e
-  resultados.
+- O Poder Público não participa de ranking competitivo, preservando a
+  neutralidade institucional; é acompanhado por indicadores de atuação,
+  respostas, encaminhamentos e resultados.
+- A Comunicação (papel `media`) conta no engajamento: entra em "Usuários mais
+  ativos" e recebe o selo "Divulgador". Fica fora dos quadros de apoio
+  ("Maiores apoiadores", "Empresas em destaque", "Maiores patrocinadores"),
+  que são por apoio (decisão 18).
 - A interface esconde o que o perfil não pode fazer; o `post-service` recusa com
   `403` publicações e apoios fora da permissão do perfil.
 

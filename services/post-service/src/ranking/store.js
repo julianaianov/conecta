@@ -13,7 +13,7 @@
 
 const {
   BOARDS, BADGES, EXCLUDED_CATEGORY, COMPANY_PROFILE_TYPES,
-  normalizeActorCategory,
+  SUPPORT_BOARD_EXCLUDED_CATEGORIES, normalizeActorCategory,
 } = require('./constants');
 const { PERIODS } = require('./constants');
 const { periodStart, pointsFor, rankEntries } = require('./scoring');
@@ -313,6 +313,7 @@ function buildBoards(actors, metrics) {
   for (const row of metrics.supporters.rows) {
     const actor = actors.get(row.user_id);
     if (!eligible(actor)) continue;
+    if (SUPPORT_BOARD_EXCLUDED_CATEGORIES.includes(actor.category)) continue;
     const base = {
       confirmedSupports: asCount(row.confirmed_supports),
       supportedDemands: asCount(row.supported_demands),
@@ -731,6 +732,7 @@ module.exports = {
   recordShare,
   loadActors,
   buildBoards,
+  loadBadges,
   placeKey,
   placeLabel,
   BADGES,

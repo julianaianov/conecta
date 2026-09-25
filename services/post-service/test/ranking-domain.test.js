@@ -9,7 +9,7 @@ const {
   normalizeActorCategory, GOVERNMENT_NOTICE, CONSENT_NOTICE, COMPANY_PROFILE_TYPES,
 } = require('../src/ranking/constants');
 const { normalizePeriod, periodStart, pointsFor, rankEntries } = require('../src/ranking/scoring');
-const { buildBoards, placeKey, placeLabel } = require('../src/ranking/store');
+const { buildBoards, loadBadges, placeKey, placeLabel } = require('../src/ranking/store');
 
 test('os sete rankings são os do slide 22, na ordem da fonte', () => {
   assert.deepEqual(BOARD_IDS, [
@@ -51,6 +51,9 @@ test('as categorias do token e do apoio viram a categoria do ranking', () => {
   assert.equal(normalizeActorCategory('partner'), 'parceiro');
   assert.equal(normalizeActorCategory('member'), 'comunidade');
   assert.equal(normalizeActorCategory('agent'), 'agente');
+  // A Comunicação é gravada como `media` no token e no retrato (decisão 18).
+  assert.equal(normalizeActorCategory('media'), 'comunicacao');
+  assert.equal(normalizeActorCategory('communication'), null);
   assert.equal(normalizeActorCategory('desconhecido'), null);
   assert.equal(normalizeActorCategory(null), null);
 });
@@ -245,4 +248,47 @@ test('os selos têm regra objetiva e verificável, sem nada fictício', () => {
     assert.ok(badge.rule.length > 30, badge.id);
     assert.ok(Number.isInteger(badge.threshold) && badge.threshold >= 1, badge.id);
   }
+});
+
+// ── Comunicação no engajamento (decisão 18) ────────────────────────────────
+
+const MEDIA = '44444444-4444-4444-8444-444444444444';
+const mediaActor = {
+  userId: MEDIA, government: false, category: normalizeActorCategory('media'), name: 'Rádio do Bairro',
+  avatar: null, profileType: 'imprensa', supportConsent: false, profileConsent: true,
+};
+
+test('Comunicação entra em "Usuários mais ativos" e fica fora dos quadros de apoio', () => {
+  const boards = buildBoards(actors({ [MEDIA]: mediaActor }), metrics({
+    activity: { rows: [{ user_id: MEDIA, kind: 'shares', total: 4 }] },
+    supporters: {
+      rows: [{
+        user_id: MEDIA, confirmed_supports: 3, supported_demands: 2, modalities: 1,
+        volunteering_supports: 0, sponsor_supports: 1, sponsor_amount: '500', display_consent: true,
+      }],
+    },
+  }));
+  const [active] = boards.get('usuarios_mais_ativos');
+  assert.equal(active.subjectId, MEDIA);
+  assert.equal(active.category, 'comunicacao');
+  assert.equal(active.points, 20);
+  assert.equal(boards.get('maiores_apoiadores').length, 0);
+  assert.equal(boards.get('empresas_em_destaque').length, 0);
+  assert.equal(boards.get('maiores_patrocinadores').length, 0);
+});
+
+test('Comunicação com dez compartilhamentos recebe o selo divulgador e a categoria no engajamento', async () => {
+  const db = {
+    async query(text) {
+      if (text.includes('FROM content_shares')) {
+        return { rows: [{ user_id: MEDIA, total: 10, tenth_at: '2026-09-20T10:00:00.000Z' }] };
+      }
+      return { rows: [] };
+    },
+  };
+  const { badges, engagement } = await loadBadges(db, new Map([[MEDIA, mediaActor]]));
+  assert.deepEqual(badges.map((b) => [b.userId, b.badge, b.evidenceCount]), [[MEDIA, 'divulgador', 10]]);
+  const entry = engagement.find((e) => e.userId === MEDIA);
+  assert.equal(entry.category, 'comunicacao');
+  assert.equal(entry.metrics.shares, 10);
 });

@@ -50,11 +50,12 @@ test("só Agentes publicam demandas e projetos; Poder Público publica respostas
   assert.ok(!can("partner", "publish"));
 });
 
-test("ranking exclui Poder Público e Comunicação", () => {
+test("ranking exclui o Poder Público; Comunicação conta no engajamento (decisão 18)", () => {
   assert.ok(can("partner", "ranking"));
   assert.ok(can("member", "ranking"));
   assert.ok(!can("government", "ranking"));
-  assert.ok(!can("media", "ranking"));
+  assert.ok(can("media", "ranking"));
+  assert.ok(can("media", "ranking", "jornalista"));
 });
 
 test("Comunicação e Agentes apoiam só com divulgação", () => {
