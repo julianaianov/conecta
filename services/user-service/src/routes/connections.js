@@ -47,7 +47,10 @@ const DETAIL_SQL = `SELECT
          WHERE c.id = $1`;
 
 // Espelha ConnectionType em src/lib/app/types.ts.
-// TODO(fonte-da-verdade): Modelo de Conexão §11/§28/§35 — conexão não vira Processo de Conexão com protocolo DM-AAAA-NNNNNN ao formalizar; faltam vários processos por demanda com a contribuição de cada conectado e comunicação, encaminhamentos, documentos, prazos, execução, resultados e linha do tempo vinculados ao processo.
+// A conexão é a Camada 2 (pedido e aceite). Formalizada, vira Processo de
+// Conexão com protocolo DM-AAAA-NNNNNN no post_db (connection_processes,
+// migração post 026, decisão 13); o post-service cria o processo no aceite.
+// TODO(fonte-da-verdade): Modelo de Conexão §12/§15/§17 — comunicação, prazos e documentos do processo (T-05-02, T-05-03, T-05-04).
 const CONNECTION_TYPES = ['support', 'sponsorship', 'partnership', 'meeting', 'resources', 'outreach'];
 const MAX_MESSAGE_LENGTH = 2000;
 
