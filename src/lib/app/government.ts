@@ -7,7 +7,7 @@
 // servidor. O cliente HTTP fica em `government-client.ts`, porque a exportação
 // CSV/PDF baixa um arquivo (Blob) e não JSON.
 
-import { DEMAND_CATEGORY_LABELS, type DemandCategory, type DemandPriority } from "./types.ts";
+import { DEMAND_CATEGORY_LABELS, type DemandCategory, type DemandPriority, type DemandTheme } from "./types.ts";
 
 export const GOVERNMENT_AREA_PATH = "/governo";
 export const GOVERNMENT_INDICATORS_PATH = "/governo/indicadores";
@@ -155,6 +155,8 @@ export interface PriorityArea {
 export interface PriorityReport extends IndicatorEnvelope {
   territories: PriorityArea[];
   categories: PriorityArea[];
+  /** Priorização por eixo temático (T26, slide 26); `label` é o id do eixo. */
+  themes?: PriorityArea[];
 }
 
 export interface GovernmentImpact {
@@ -218,6 +220,8 @@ export interface IndicatorFilter {
   to?: string;
   category?: DemandCategory[];
   priority?: DemandPriority[];
+  /** Eixos temáticos (T26, T-01-04): a demanda entra se tiver algum deles. */
+  theme?: DemandTheme[];
   territory?: string;
 }
 
@@ -230,9 +234,30 @@ export function buildIndicatorQuery(filter: IndicatorFilter = {}): string {
   if (!filter.from && filter.period) q.set("period", filter.period);
   if (filter.category?.length) q.set("category", filter.category.join(","));
   if (filter.priority?.length) q.set("priority", filter.priority.join(","));
+  if (filter.theme?.length) q.set("theme", filter.theme.join(","));
   if (filter.territory) q.set("territory", filter.territory);
   return q.toString();
 }
+
+/** Rótulo do eixo temático (o servidor devolve o id em `PriorityArea.label`). */
+export function themeLabel(theme: string): string {
+  return THEME_LABELS[theme as DemandTheme] ?? theme;
+}
+
+// Os nove eixos do slide 26 (espelho de THEME_LABELS do post-service;
+// `government.test.mjs` compara).
+const THEME_LABELS: Record<DemandTheme, string> = {
+  iluminacao: "Iluminação",
+  seguranca: "Segurança",
+  saneamento: "Saneamento",
+  limpeza: "Limpeza",
+  esporte: "Esporte",
+  educacao: "Educação",
+  mobilidade: "Mobilidade",
+  cultura: "Cultura",
+  meio_ambiente: "Meio Ambiente",
+};
+export const GOVERNMENT_THEMES = Object.keys(THEME_LABELS) as DemandTheme[];
 
 // ── Apresentação ───────────────────────────────────────────
 

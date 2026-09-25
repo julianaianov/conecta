@@ -120,7 +120,8 @@ test("toda coluna escalar do servidor tem etapa (a foto grava no upload)", () =>
   const covered = new Set(Object.values(STEP_FIELDS).flat());
   const missing = Object.keys(store.SCALAR_COLUMNS).filter((key) => !covered.has(key) && key !== "photoRef");
   assert.deepEqual(missing, []);
-  for (const field of covered) assert.ok(field in store.SCALAR_COLUMNS, field);
+  // `themes` não é coluna: o PUT regrava a lista em `demand_themes` (T26, T-01-04).
+  for (const field of covered) assert.ok(field in store.SCALAR_COLUMNS || field === "themes", field);
 });
 
 test("vocabulário igual ao do post-service", () => {
@@ -149,10 +150,10 @@ test("ações do Agente com os rótulos e destinos da máquina de estados", () =
 test("formulário → PUT da etapa: só os campos dela, brancos viram null", () => {
   const form = { ...emptyDemandForm(), category: "projeto_social", title: "  Horta  ", cep: "20040-020", uf: "rj", beneficiariesEstimate: "1.500" };
   // A classificação leva também as informações do módulo derivado (T-05-08).
-  assert.deepEqual(stepInput("classificacao", form), { category: "projeto_social", moduleDetails: {} });
+  assert.deepEqual(stepInput("classificacao", form), { category: "projeto_social", moduleDetails: {}, themes: [] });
   assert.deepEqual(
     stepInput("classificacao", { ...form, category: "recuperacao_ambiental", moduleDetails: { area_m2: "1.200,5", equipe: "fora do módulo" } }),
-    { category: "recuperacao_ambiental", moduleDetails: { area_m2: 1200.5 } },
+    { category: "recuperacao_ambiental", moduleDetails: { area_m2: 1200.5 }, themes: [] },
   );
   const descricao = stepInput("descricao", form);
   assert.equal(descricao.title, "Horta");
@@ -367,14 +368,15 @@ test("avisos do envio: rótulo humano, etapa de correção e ordem das etapas", 
     priorityCriteria: "Indique o critério",
     recordMilestones: "Considere o acompanhamento",
   });
+  // Os eixos temáticos (T-01-04) são marcados na etapa 1: o aviso tem atalho.
   assert.deepEqual(list.map((w) => [w.key, w.step]), [
+    ["themes", "classificacao"],
     ["priorityCriteria", "publico"],
     ["physicalFinancial", "cronograma"],
     ["recordMilestones", "cronograma"],
-    ["themes", null],
   ]);
-  assert.equal(list[1].label, "Cronograma físico-financeiro");
-  assert.equal(list[3].label, "Eixos temáticos");
+  assert.equal(list[2].label, "Cronograma físico-financeiro");
+  assert.equal(list[0].label, "Eixos temáticos");
   assert.deepEqual(demandWarnings({}), []);
   assert.deepEqual(demandWarnings(undefined), []);
   // Toda chave de aviso do post-service tem rótulo e etapa conhecidos.
@@ -436,4 +438,23 @@ test("§04/§05: item, fornecedor, recursos e valor da etapa; prazo em dias igua
   assert.equal(rows[0].declaredCents, 900_000);
   assert.deepEqual(budgetImportErrorLines([{ line: 3, fields: { valor_unitario: "Valor inválido", descricao: "Descreva" } }]),
     ["Linha 3 · valor_unitario: Valor inválido", "Linha 3 · descricao: Descreva"]);
+});
+
+// ── Eixos temáticos no assistente (T-01-04; Apresentação, slide 26) ─────────
+import { DEMAND_THEMES, sortThemes, toggleTheme } from "./demand.ts";
+
+test("eixos: marcados na etapa 1, na ordem da fonte, como o normalizeThemes do servidor", () => {
+  const { normalizeThemes } = createRequire(import.meta.url)("../../../services/post-service/src/demand/validation.js");
+  assert.ok(STEP_FIELDS.classificacao.includes("themes"));
+  assert.equal(stepForErrorKey("themes"), "classificacao");
+  const picked = ["cultura", "inventado", "iluminacao", "cultura"];
+  assert.deepEqual(sortThemes(picked), normalizeThemes({}, picked.filter((t) => DEMAND_THEMES.includes(t))));
+  assert.deepEqual(toggleTheme(["cultura"], "iluminacao"), ["iluminacao", "cultura"]);
+  assert.deepEqual(toggleTheme(["cultura", "iluminacao"], "cultura"), ["iluminacao"]);
+  const form = { ...emptyDemandForm(), category: "problema_urbano", themes: ["mobilidade", "iluminacao"] };
+  assert.deepEqual(stepInput("classificacao", form).themes, ["iluminacao", "mobilidade"]);
+  assert.deepEqual(validateDemand(stepInput("classificacao", form)).errors, {});
+  assert.deepEqual(formFromDemand({ themes: ["seguranca"] }).themes, ["seguranca"]);
+  assert.deepEqual(formFromDemand({}).themes, []);
+  assert.equal(isStepDirty("classificacao", { ...form, themes: ["cultura"] }, form), true);
 });

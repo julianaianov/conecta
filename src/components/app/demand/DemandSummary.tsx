@@ -15,6 +15,7 @@ import {
   ResourcesSummary,
   ScheduleList,
   TextBlock,
+  ThemeChips,
   ModuleDetailsBlock,
 } from "./DemandParts";
 
@@ -48,6 +49,11 @@ export function DemandSummary({ demand, onEdit }: { demand: Demand; onEdit?: (st
           <div className="space-y-3">
             <TextBlock label="Categoria">{demand.category ? DEMAND_CATEGORY_LABELS[demand.category] : <Missing />}</TextBlock>
             <ModuleDetailsBlock module={demand.module} moduleLabel={demand.moduleLabel} moduleDetails={demand.moduleDetails} />
+            <TextBlock label="Eixos temáticos">
+              {demand.themes?.length
+                ? <ThemeChips themes={demand.themes} linkToMap={false} />
+                : <span style={{ color: "var(--th-muted)" }}>Nenhum eixo marcado (opcional)</span>}
+            </TextBlock>
             <TextBlock label="Título">{value(demand.title)}</TextBlock>
             <TextBlock label="Descrição detalhada">{value(demand.description)}</TextBlock>
             <TextBlock label="Problema identificado">{value(demand.problemIdentified)}</TextBlock>

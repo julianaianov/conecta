@@ -86,3 +86,19 @@ test("erros do painel viram mensagem para o representante", () => {
   assert.equal(governmentErrorMessage(new Error("Filtro inválido")), "Filtro inválido");
   assert.match(governmentErrorMessage(null), /Não foi possível carregar/);
 });
+
+// ── Eixos temáticos nos indicadores (T-01-04; slide 26) ─────────────────────
+import { GOVERNMENT_THEMES, themeLabel } from "./government.ts";
+
+test("indicadores: filtro e priorização por eixo com os nove eixos do post-service", () => {
+  const constants = createRequire(import.meta.url)("../../../services/post-service/src/demand/constants.js");
+  assert.deepEqual(GOVERNMENT_THEMES, constants.THEMES);
+  for (const theme of constants.THEMES) assert.equal(themeLabel(theme), constants.THEME_LABELS[theme]);
+  assert.equal(themeLabel("desconhecido"), "desconhecido");
+  const query = buildIndicatorQuery({ scope: "jurisdicao", theme: ["saneamento", "limpeza"] });
+  assert.equal(new URLSearchParams(query).get("theme"), "saneamento,limpeza");
+  const { validateIndicatorQuery } = createRequire(import.meta.url)("../../../services/post-service/src/government/indicators.js");
+  const parsed = validateIndicatorQuery(Object.fromEntries(new URLSearchParams(query)));
+  assert.deepEqual(parsed.errors, {});
+  assert.deepEqual(parsed.value.themes, ["saneamento", "limpeza"]);
+});

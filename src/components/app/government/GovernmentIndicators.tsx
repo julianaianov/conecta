@@ -11,12 +11,14 @@ import {
   GOVERNMENT_ACTIONS_PATH,
   GOVERNMENT_SCOPES,
   GOVERNMENT_SCOPE_LABELS,
+  GOVERNMENT_THEMES,
   INDICATOR_PERIODS,
   INDICATOR_PERIOD_LABELS,
   categoryLabel,
   formatIndicator,
   generatedAtLabel,
   governmentErrorMessage,
+  themeLabel,
   waitLabel,
   type GovernmentScope,
   type ImpactReport,
@@ -26,7 +28,7 @@ import {
   type PriorityReport,
 } from "@/lib/app/government";
 import { governmentApi, type ExportFormat } from "@/lib/app/government-client";
-import type { InstitutionValidationStatus } from "@/lib/app/types";
+import type { DemandTheme, InstitutionValidationStatus } from "@/lib/app/types";
 import { AuthPrompt } from "../AuthPrompt";
 import { Button } from "../Button";
 import { Card, EmptyState, SectionTitle } from "../ui";
@@ -34,14 +36,15 @@ import { InstitutionGateNotice } from "../institution/InstitutionStatus";
 import { FormAlert, SelectInput, TextInput } from "../demand/fields";
 import { IndicatorBarChart, IndicatorCard } from "./IndicatorCharts";
 
-type Filters = { scope: GovernmentScope; period: IndicatorPeriod; territory: string };
+type Filters = { scope: GovernmentScope; period: IndicatorPeriod; territory: string; theme: DemandTheme[] };
 
-const EMPTY: Filters = { scope: "jurisdicao", period: "30d", territory: "" };
+const EMPTY: Filters = { scope: "jurisdicao", period: "30d", territory: "", theme: [] };
 
 const toQuery = (f: Filters): IndicatorFilter => ({
   scope: f.scope,
   period: f.period,
   ...(f.territory.trim() ? { territory: f.territory.trim() } : {}),
+  ...(f.theme.length ? { theme: f.theme } : {}),
 });
 
 /**
@@ -192,6 +195,31 @@ export function GovernmentIndicators() {
           <Button type="submit" icon="filter">Aplicar</Button>
           <Button type="button" variant="ghost" onClick={() => { setFilters(EMPTY); setApplied(EMPTY); }}>Limpar</Button>
         </div>
+        {/* Eixo temático (T26, slide 26; T-01-04): recorte opcional do painel. */}
+        <fieldset className="sm:col-span-2 lg:col-span-4">
+          <legend className="text-xs font-semibold uppercase" style={{ color: "var(--th-muted)" }}>Eixo temático</legend>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {GOVERNMENT_THEMES.map((theme) => {
+              const active = filters.theme.includes(theme);
+              return (
+                <li key={theme}>
+                  <button
+                    type="button"
+                    className="app-chip"
+                    data-active={active}
+                    aria-pressed={active}
+                    onClick={() => setFilters({
+                      ...filters,
+                      theme: GOVERNMENT_THEMES.filter((t) => (t === theme ? !active : filters.theme.includes(t))),
+                    })}
+                  >
+                    {themeLabel(theme)}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
       </form>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -309,6 +337,25 @@ export function GovernmentIndicators() {
                   }))}
                   columns={[{ key: "urgent", label: "Urgentes" }, { key: "withoutResponse", label: "Sem resposta" }]}
                 />
+              </div>
+              {/* Priorização por eixo temático (T26, slide 26; T-01-04). */}
+              <div className="app-card rounded-2xl p-4">
+                {(priority.themes ?? []).length === 0 ? (
+                  <p className="text-sm" style={{ color: "var(--th-muted)" }}>
+                    Nenhuma demanda do recorte tem eixo temático marcado pelo Agente. O eixo é opcional na demanda.
+                  </p>
+                ) : (
+                  <IndicatorBarChart
+                    id="prioridade-eixo"
+                    caption="Priorização por eixo temático"
+                    rows={(priority.themes ?? []).map((t) => ({
+                      label: themeLabel(t.label),
+                      value: t.total,
+                      extras: { urgent: t.urgent, withoutResponse: t.withoutResponse },
+                    }))}
+                    columns={[{ key: "urgent", label: "Urgentes" }, { key: "withoutResponse", label: "Sem resposta" }]}
+                  />
+                )}
               </div>
             </section>
           )}

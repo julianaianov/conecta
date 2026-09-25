@@ -16,6 +16,7 @@ import {
   type DossierVerification,
   type PublicDossierInfo,
   type MapTerritory,
+  type ThemeIntelligence,
   type MapView,
   type PublicInstitution,
   type RankCategory,
@@ -381,6 +382,13 @@ export async function getPublicMapTerritories(filter?: MapFilterState): Promise<
   const query = filter ? `?${buildMapQuery(filter)}` : "";
   const data = await fetchPublicJson<{ territories?: MapTerritory[] }>("posts", `/demands/map/territories${query}`);
   return Array.isArray(data?.territories) ? data.territories : [];
+}
+
+/** Inteligência territorial por eixo temático (T26, slide 26); `null` sem resposta. */
+export async function getPublicThemeIntelligence(filter?: MapFilterState): Promise<ThemeIntelligence | null> {
+  const query = filter ? `?${buildMapQuery(filter)}` : "";
+  const data = await fetchPublicJson<ThemeIntelligence>("posts", `/demands/themes/intelligence${query}`);
+  return data && Array.isArray(data.themes) ? { ...data, byTerritory: Array.isArray(data.byTerritory) ? data.byTerritory : [] } : null;
 }
 
 // ── Engajamento, rankings e selos (T21) ────────────────────

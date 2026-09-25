@@ -12,6 +12,8 @@ import {
   DEMAND_CATEGORY_HELP,
   DEMAND_PRIORITIES,
   DEMAND_PRIORITY_CRITERIA,
+  DEMAND_THEMES,
+  DEMAND_THEME_LABELS,
   MY_DEMANDS_PATH,
   PRIORITIES_EXPECTING_CRITERIA,
   UFS,
@@ -35,6 +37,7 @@ import {
   stepForErrorKey,
   stepInput,
   togglePriorityCriterion,
+  toggleTheme,
   type DemandFormState,
   type DemandStepId,
 } from "@/lib/app/demand";
@@ -481,6 +484,28 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
               errors={stepFields}
               disabled={demand ? !demand.editable : false}
             />
+          )}
+          {step === "classificacao" && (
+            // Eixos temáticos do território (Apresentação, slide 26; T-01-04): opcionais.
+            <fieldset className="mt-5" aria-describedby="themes-help">
+              <legend className="mb-1.5 text-sm font-semibold" style={{ color: "var(--th-text)" }}>Eixos temáticos</legend>
+              <p id="themes-help" className="mb-2 text-xs" style={{ color: "var(--th-muted)" }}>
+                Opcional. Marque os eixos a que a demanda se refere: é assim que ela entra na leitura por tema do território,
+                no mapa e nos indicadores do Poder Público.
+              </p>
+              <div className="flex flex-wrap gap-2" id={demandFieldId("themes")}>
+                {DEMAND_THEMES.map((theme) => {
+                  const checked = form.themes.includes(theme);
+                  return (
+                    <label key={theme} className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold focus-within:ring-2 focus-within:ring-[#f4841a]" style={{ borderColor: checked ? "#f4841a" : "var(--th-border)", background: checked ? "rgba(244,132,26,0.08)" : "var(--th-card)", color: "var(--th-text)" }}>
+                      <input type="checkbox" name="themes" value={theme} checked={checked} onChange={() => set("themes", toggleTheme(form.themes, theme))} className="accent-[#f4841a]" disabled={demand ? !demand.editable : false} />
+                      {DEMAND_THEME_LABELS[theme]}
+                    </label>
+                  );
+                })}
+              </div>
+              {stepFields.themes && <p className="mt-1 text-xs font-semibold" style={{ color: "#e53935" }}>{stepFields.themes}</p>}
+            </fieldset>
           )}
 
           {step === "descricao" && demand && (

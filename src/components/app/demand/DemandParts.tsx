@@ -4,6 +4,7 @@
  * projeção pública do post-service já tira os dados privados.
  */
 import type { ReactNode } from "react";
+import Link from "next/link";
 import {
   DEMAND_CATEGORY_LABELS,
   DEMAND_PRIORITY_LABELS,
@@ -20,9 +21,12 @@ import {
   type DemandReviewState,
   type DemandStatus,
   type DemandDocumentType,
+  type DemandTheme,
 } from "@/lib/app/types";
 import {
   DEMAND_PRIORITY_COLORS,
+  DEMAND_THEME_LABELS,
+  sortThemes,
   DEMAND_REVIEW_STATE_COLORS,
   DEMAND_STATUS_COLORS,
   DOCUMENT_TYPE_LABELS,
@@ -77,6 +81,32 @@ export function DemandStatusBadge({ status, reviewState }: { status: DemandStatu
 export function CategoryBadge({ category }: { category: DemandCategory | null }) {
   if (!category || !DEMAND_CATEGORY_LABELS[category]) return null;
   return <Pill color="#1b4f72" icon={categoryIcon(category)}>{DEMAND_CATEGORY_LABELS[category]}</Pill>;
+}
+
+/**
+ * Eixos temáticos marcados pelo Agente (T26, slide 26; T-01-04), com link para
+ * o mapa recortado pelo eixo. Sem eixo, nada aparece.
+ */
+export function ThemeChips({ themes, linkToMap = true }: { themes?: DemandTheme[] | null; linkToMap?: boolean }) {
+  const list = sortThemes(themes ?? []);
+  if (!list.length) return null;
+  return (
+    <ul className="flex flex-wrap gap-1.5" aria-label="Eixos temáticos">
+      {list.map((theme) => (
+        <li key={theme}>
+          {linkToMap ? (
+            <Link href={`/mapa?theme=${theme}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold hover:underline" style={{ background: "rgba(46,123,168,0.10)", color: "#2e7ba8" }}>
+              <Icon name="tag" size={11} /> {DEMAND_THEME_LABELS[theme]}
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: "rgba(46,123,168,0.10)", color: "#2e7ba8" }}>
+              <Icon name="tag" size={11} /> {DEMAND_THEME_LABELS[theme]}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function PriorityBadge({ priority }: { priority: DemandPriority | null }) {

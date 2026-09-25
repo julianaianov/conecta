@@ -159,6 +159,8 @@ export interface DemandFormState {
   hasPhysicalExecution: boolean;
   /** Informações do módulo derivado da categoria (T-05-08). */
   moduleDetails: ModuleDetailsForm;
+  /** Eixos temáticos (T26, slide 26; T-01-04): opcionais, na ordem da fonte. */
+  themes: DemandTheme[];
 }
 
 export type DemandFormField = keyof DemandFormState;
@@ -168,7 +170,9 @@ export type DemandFormField = keyof DemandFormState;
  * gravada assim que o upload termina; os itens, pelas rotas próprias.
  */
 export const STEP_FIELDS: Record<DemandStepId, DemandFormField[]> = {
-  classificacao: ["category", "moduleDetails"],
+  // Os eixos temáticos (T-01-04) ficam com a classificação; não são coluna
+  // escalar: o PUT regrava a lista em `demand_themes`.
+  classificacao: ["category", "moduleDetails", "themes"],
   descricao: [
     "title", "description", "problemIdentified", "cep", "street", "addressNumber", "addressComplement", "district",
     "municipality", "uf", "latitude", "longitude", "territory", "coverageArea",
@@ -188,6 +192,7 @@ export function emptyDemandForm(): DemandFormState {
     addressComplement: "", district: "", municipality: "", uf: "", latitude: null, longitude: null,
     territory: "", beneficiariesEstimate: "", beneficiariesProfile: "", objective: "",
     justification: "", priority: "", priorityCriteria: [], hasPhysicalExecution: true, moduleDetails: {},
+    themes: [],
   };
 }
 
@@ -223,6 +228,7 @@ export function formFromDemand(demand: Demand): DemandFormState {
     priorityCriteria: sortPriorityCriteria(demand.priorityCriteria ?? []),
     hasPhysicalExecution: demand.hasPhysicalExecution ?? true,
     moduleDetails: moduleDetailsFormFrom(demand.moduleDetails),
+    themes: sortThemes(demand.themes ?? []),
   };
 }
 
@@ -257,6 +263,8 @@ function fieldValue(form: DemandFormState, field: DemandFormField): unknown {
       return sortPriorityCriteria(form.priorityCriteria);
     case "moduleDetails":
       return moduleDetailsInput(form.category, form.moduleDetails);
+    case "themes":
+      return sortThemes(form.themes);
     default:
       return blankToNull(form[field] as string);
   }
@@ -277,7 +285,7 @@ export function isStepDirty(step: DemandStepId, form: DemandFormState, saved: De
 // ── Erros do servidor por etapa ─────────────────────────────
 
 const FIELD_STEP: Record<string, DemandStepId> = {
-  category: "classificacao", moduleDetails: "classificacao",
+  category: "classificacao", moduleDetails: "classificacao", themes: "classificacao",
   title: "descricao", description: "descricao", problemIdentified: "descricao", coverageArea: "descricao",
   photoRef: "descricao", cep: "descricao", street: "descricao",
   addressNumber: "descricao", addressComplement: "descricao", district: "descricao", municipality: "descricao",
@@ -311,15 +319,14 @@ export interface DemandWarning {
   key: string;
   label: string;
   message: string;
-  /** Etapa onde o Agente resolve; null quando o assistente ainda não tem o campo. */
+  /** Etapa onde o Agente resolve; null quando o assistente não tem o campo. */
   step: DemandStepId | null;
 }
 
 /**
  * Avisos de `POST /:id/validate` (`warnings`) na ordem das etapas, com o
  * rótulo humano e a etapa de correção. Não bloqueiam o envio (T-02-05).
- * Chave sem etapa no assistente (ex.: `themes`, até a interface da T26) fica
- * sem link.
+ * `themes` leva à etapa 1 (T-01-04); chave sem etapa fica sem link.
  */
 export function demandWarnings(warnings: DemandFieldErrors | null | undefined): DemandWarning[] {
   const order = (step: DemandStepId | null) => (step ? demandStep(step).number : Number.MAX_SAFE_INTEGER);
@@ -934,6 +941,16 @@ export const DEMAND_THEME_LABELS: Record<DemandTheme, string> = {
   cultura: "Cultura",
   meio_ambiente: "Meio Ambiente",
 };
+
+/** Eixos conhecidos, sem repetição, na ordem da fonte (como `normalizeThemes`). */
+export function sortThemes(values: readonly string[]): DemandTheme[] {
+  return DEMAND_THEMES.filter((theme) => values.includes(theme));
+}
+
+/** Liga ou desliga um eixo na lista do formulário. */
+export function toggleTheme(values: readonly DemandTheme[], theme: DemandTheme): DemandTheme[] {
+  return sortThemes(values.includes(theme) ? values.filter((v) => v !== theme) : [...values, theme]);
+}
 
 /**
  * Critérios de prioridade definidos pela plataforma (Fluxo 2, slide 8;

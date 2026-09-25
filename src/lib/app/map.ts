@@ -8,7 +8,7 @@
 //
 // `src/lib/app/map.test.mjs` compara este arquivo com o do post-service.
 
-import type { DemandCategory, DemandMapClass, DemandPriority, DemandStatus } from "./types.ts";
+import type { DemandCategory, DemandMapClass, DemandPriority, DemandStatus, DemandTheme } from "./types.ts";
 
 export type MapLegendId = DemandMapClass;
 
@@ -79,6 +79,29 @@ export const MAP_SHAPE_LABELS: Record<MapShape, string> = {
   estrela: "estrela",
   ponto: "ponto",
 };
+
+/**
+ * Eixos temáticos como filtro do mapa (T26, slide 26), espelho de
+ * `THEME_FILTERS` do post-service. Não são uma sexta classe da legenda: o eixo
+ * é um recorte que se cruza com as cinco classes do slide 19.
+ */
+export const MAP_THEME_FILTERS: { id: DemandTheme; label: string }[] = [
+  { id: "iluminacao", label: "Iluminação" },
+  { id: "seguranca", label: "Segurança" },
+  { id: "saneamento", label: "Saneamento" },
+  { id: "limpeza", label: "Limpeza" },
+  { id: "esporte", label: "Esporte" },
+  { id: "educacao", label: "Educação" },
+  { id: "mobilidade", label: "Mobilidade" },
+  { id: "cultura", label: "Cultura" },
+  { id: "meio_ambiente", label: "Meio Ambiente" },
+];
+
+/** `?theme=iluminacao,cultura` → eixos conhecidos, na ordem da fonte. */
+export function parseMapThemes(raw: string | string[] | null | undefined): DemandTheme[] {
+  const values = (Array.isArray(raw) ? raw.join(",") : raw ?? "").split(",").map((v) => v.trim());
+  return MAP_THEME_FILTERS.map((t) => t.id).filter((id) => values.includes(id));
+}
 
 export type MapAudienceId = "governo" | "empresas" | "imprensa" | "comunidade";
 
@@ -163,6 +186,8 @@ export interface MapFilterState {
   category: DemandCategory[];
   priority: DemandPriority[];
   status: DemandStatus[];
+  /** Eixos temáticos (T26): a demanda entra se tiver algum deles. */
+  theme: DemandTheme[];
   territory: string;
   municipality: string;
   uf: string;
@@ -173,7 +198,7 @@ export interface MapFilterState {
 
 export function emptyMapFilter(): MapFilterState {
   return {
-    category: [], priority: [], status: [], territory: "", municipality: "", uf: "",
+    category: [], priority: [], status: [], theme: [], territory: "", municipality: "", uf: "",
     from: "", to: "", layers: { demands: true, feed: false },
   };
 }
@@ -194,6 +219,7 @@ export function matchesAudience(filter: MapFilterState, audience: MapAudience): 
   return same(filter.category, audience.filter.category)
     && same(filter.priority, audience.filter.priority)
     && same(filter.status, audience.filter.status)
+    && (filter.theme ?? []).length === 0
     && filter.layers.demands === audience.layers.demands
     && filter.layers.feed === audience.layers.feed
     && !filter.territory && !filter.municipality && !filter.uf && !filter.from && !filter.to;
@@ -239,6 +265,7 @@ export function buildMapQuery(filter: MapFilterState, options: MapQueryOptions =
   if (filter.category.length) q.set("category", filter.category.join(","));
   if (filter.priority.length) q.set("priority", filter.priority.join(","));
   if (filter.status.length) q.set("status", filter.status.join(","));
+  if (filter.theme?.length) q.set("theme", filter.theme.join(","));
   if (filter.territory.trim()) q.set("territory", filter.territory.trim());
   if (filter.municipality.trim()) q.set("municipality", filter.municipality.trim());
   if (filter.uf.trim()) q.set("uf", filter.uf.trim().toUpperCase());

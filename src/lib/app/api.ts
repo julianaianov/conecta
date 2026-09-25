@@ -41,7 +41,7 @@ import type {
   DemandBudgetImportResult, DemandBudgetImportRowError,
 } from "./types";
 import type { UploadedFile, UploadPurpose, UploadService, UploadTicket } from "./types";
-import type { MapTerritory, MapView } from "./types";
+import type { MapTerritory, MapView, ThemeIntelligence } from "./types";
 import { buildMapQuery, type MapFilterState, type MapQueryOptions } from "./map";
 import {
   normalizeRankingPeriod,
@@ -479,7 +479,6 @@ export class DemandRequestError extends Error {
   }
 }
 
-const DEMANDS = "/api/posts/demands";
 /** Planilha do orçamento recusada (T-05-09): `rows` com a linha e as colunas com erro. */
 export class BudgetImportError extends DemandRequestError {
   constructor(message: string, status: number, code: string | null, fields: DemandFieldErrors, readonly rows: DemandBudgetImportRowError[]) {
@@ -487,6 +486,7 @@ export class BudgetImportError extends DemandRequestError {
   }
 }
 
+const DEMANDS = "/api/posts/demands";
 /** Eventos e inscrições (T25): outra base do post-service. */
 const EVENTS = "/api/posts/events";
 /** Inteligência artificial (T23): rotas na raiz do post-service. */
@@ -541,6 +541,7 @@ export function buildDemandQuery(filter: DemandListFilter = {}): string {
   const q = new URLSearchParams();
   if (filter.category?.length) q.set("category", filter.category.join(","));
   if (filter.priority?.length) q.set("priority", filter.priority.join(","));
+  if (filter.theme?.length) q.set("theme", filter.theme.join(","));
   if (filter.status?.length) q.set("status", filter.status.join(","));
   if (filter.territory) q.set("territory", filter.territory);
   if (filter.municipality) q.set("municipality", filter.municipality);
@@ -1356,7 +1357,6 @@ export const api = {
     return demandRequired(`/${encodeURIComponent(id)}/${kind}/${encodeURIComponent(itemId)}`, { method: "DELETE" });
   },
 
-  /** Composição 4%/6% da planilha antes de gravar. */
   /**
    * Importa a planilha do orçamento em CSV (Modelo §04, T-05-09): o texto do
    * arquivo vai cru (`text/csv`). Tudo ou nada; recusa → `BudgetImportError`
@@ -1390,6 +1390,7 @@ export const api = {
     }
   },
 
+  /** Composição 4%/6% da planilha antes de gravar. */
   previewDemandComposition(
     budgetItems: DemandBudgetItemInput[],
   ): Promise<{ items: { totalCents: number }[]; composition: DemandComposition }> {
@@ -1807,6 +1808,12 @@ export const api = {
     const query = filter ? `?${buildMapQuery(filter)}` : "";
     const body = await demandRequest<{ territories: MapTerritory[] }>(`/map/territories${query}`);
     return body?.territories ?? [];
+  },
+
+  /** Inteligência territorial por eixo temático (T26, slide 26), com os filtros do mapa. */
+  themeIntelligence(filter?: MapFilterState): Promise<ThemeIntelligence | null> {
+    const query = filter ? `?${buildMapQuery(filter)}` : "";
+    return demandRequest<ThemeIntelligence>(`/themes/intelligence${query}`);
   },
 
   // ── DENÚNCIA DE CONTEÚDO E DE PERFIL (T6.3) ──────────────

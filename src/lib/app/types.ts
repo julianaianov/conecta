@@ -1426,6 +1426,8 @@ export interface DemandInput {
   hasPhysicalExecution?: boolean;
   /** Informações do módulo (T-05-08); substitui o objeto inteiro. */
   moduleDetails?: DemandModuleDetails | null;
+  /** Eixos temáticos (T26, slide 26; opcionais); substitui a lista inteira. */
+  themes?: DemandTheme[];
 }
 
 /** Demanda vista pelo autor (GET /demands/mine/:id). */
@@ -1502,6 +1504,8 @@ export interface PublicDemand {
   module?: DemandModule | null;
   moduleLabel?: string | null;
   moduleDetails?: DemandModuleDetails;
+  /** Eixos temáticos marcados pelo Agente (T26); lista vazia quando nenhum. */
+  themes?: DemandTheme[];
   composition: DemandComposition;
   status: DemandStatus;
   publishedAt: string | null;
@@ -1538,6 +1542,8 @@ export interface PublicDemandSummary {
   latitude: number | null;
   longitude: number | null;
   territory: string | null;
+  /** Eixos temáticos (T26). */
+  themes?: DemandTheme[];
   beneficiariesEstimate: number | null;
   budgetAmountCents: number;
   totalAmountCents: number;
@@ -1554,6 +1560,8 @@ export type DemandTheme =
 export interface DemandListFilter {
   category?: DemandCategory[];
   priority?: DemandPriority[];
+  /** Eixos temáticos (T26): a demanda entra se tiver algum deles. */
+  theme?: DemandTheme[];
   status?: DemandStatus[];
   territory?: string;
   municipality?: string;
@@ -2911,6 +2919,23 @@ export interface MapCounts {
   mapClass: Record<DemandMapClass, number>;
   priority: Record<DemandPriority, number>;
   status: Record<DemandStatus, number>;
+  /** Contagem por eixo temático (T26, slide 26) e quantas do recorte têm eixo. */
+  theme?: Record<DemandTheme, number>;
+  themed?: number;
+}
+
+/** GET /demands/themes/intelligence: leitura eixo × território (T26, slide 26). */
+export interface ThemeIntelligence {
+  source: string;
+  generatedAt: string;
+  demandsTotal: number;
+  demandsWithTheme: number;
+  themes: { theme: DemandTheme; label: string; total: number; urgent: number; concluded: number; territories: number }[];
+  byTerritory: {
+    theme: DemandTheme; label: string; territory: string; municipality: string | null; uf: string | null;
+    slug: string; total: number; urgent: number; concluded: number;
+  }[];
+  truncated: boolean;
 }
 
 export interface MapView {
@@ -2936,6 +2961,8 @@ export interface MapTerritory {
   lastPublishedAt: string | null;
   category: Record<DemandCategory, number>;
   mapClass: Record<DemandMapClass, number>;
+  /** Demandas do território por eixo temático (T26). */
+  theme?: Record<DemandTheme, number>;
 }
 
 // ── PRIVACIDADE E DIREITOS DO TITULAR (T24) ─────────────────────────────────

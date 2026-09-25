@@ -17,16 +17,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/app/api";
 import {
   audienceFilter, buildMapQuery, emptyMapFilter, mapLegendFor, matchesAudience,
-  MAP_AUDIENCES, MAP_FEED_LAYER, MAP_LEGEND, MAP_POINTS_MAX, toggleValue,
+  MAP_AUDIENCES, MAP_FEED_LAYER, MAP_LEGEND, MAP_POINTS_MAX, MAP_THEME_FILTERS, toggleValue,
   countsByLegend, isLegendSelected, toggleLegendClass,
   type MapFilterState,
 } from "@/lib/app/map";
 import {
   DEMAND_CATEGORY_LABELS, DEMAND_PRIORITY_LABELS, DEMAND_STATUS_LABELS,
   type DemandPriority, type DemandStatus,
-  type MapTerritory, type MapView, type Post,
+  type MapTerritory, type MapView, type Post, type ThemeIntelligence as ThemeIntelligenceData,
 } from "@/lib/app/types";
 import { MapLegend } from "./MapLegend";
+import { ThemeIntelligence } from "./ThemeIntelligence";
 import { swatchSvg } from "./pins";
 import type { Viewport } from "./SmartMapView";
 
@@ -55,12 +56,14 @@ export interface SmartMapClientProps {
   initialFilter?: MapFilterState;
   /** Território fixo: some dos campos editáveis e vira contexto da página. */
   lockedTerritory?: MapTerritory | null;
+  /** Leitura por eixo temático do recorte inicial (T26, slide 26), do SSR. */
+  initialIntelligence?: ThemeIntelligenceData | null;
   title: string;
   intro: string;
 }
 
 export function SmartMapClient({
-  initialView, initialPosts, territories, initialFilter, lockedTerritory = null, title, intro,
+  initialView, initialPosts, territories, initialFilter, lockedTerritory = null, initialIntelligence = null, title, intro,
 }: SmartMapClientProps) {
   const base = useMemo(() => initialFilter ?? emptyMapFilter(), [initialFilter]);
   const [filter, setFilter] = useState<MapFilterState>(base);
@@ -105,6 +108,21 @@ export function SmartMapClient({
     // `initialView` só serve de molde para a camada desligada.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, bboxKey, filter.layers.demands, filter.layers.feed]);
+
+  // Inteligência por eixo (T26): acompanha os filtros, não o enquadramento do mapa.
+  const [intelligence, setIntelligence] = useState<ThemeIntelligenceData | null>(initialIntelligence);
+  const initialIntelligenceKey = useRef(filterKey);
+  useEffect(() => {
+    if (filterKey === initialIntelligenceKey.current) return;
+    initialIntelligenceKey.current = "";
+    let alive = true;
+    const timer = setTimeout(() => {
+      api.themeIntelligence(filter).then((next) => { if (alive && next) setIntelligence(next); }).catch(() => {});
+    }, 350);
+    return () => { alive = false; clearTimeout(timer); };
+    // `filter` muda junto com `filterKey`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
 
   const onViewport = useCallback((next: Viewport) => setViewport(next), []);
   const update = (patch: Partial<MapFilterState>) => setFilter((current) => ({ ...current, ...patch }));
@@ -182,6 +200,35 @@ export function SmartMapClient({
               );
             })}
           </ul>
+        </fieldset>
+
+        {/* Eixos temáticos (T26, slide 26): recorte que se cruza com a legenda. */}
+        <fieldset>
+          <legend className="text-xs font-semibold uppercase" style={{ color: "var(--th-muted)" }}>Eixo temático</legend>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {MAP_THEME_FILTERS.map((theme) => {
+              const active = filter.theme.includes(theme.id);
+              return (
+                <li key={theme.id}>
+                  <button
+                    type="button"
+                    className="app-chip"
+                    data-active={active}
+                    aria-pressed={active}
+                    onClick={() => update({ theme: MAP_THEME_FILTERS.map((t) => t.id).filter((id) => id === theme.id ? !active : filter.theme.includes(id)) })}
+                  >
+                    {theme.label}
+                    <span className="font-numeric"> ({(view.counts.theme?.[theme.id] ?? 0).toLocaleString("pt-BR")})</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {view.counts.themed !== undefined && (
+            <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>
+              {view.counts.themed.toLocaleString("pt-BR")} de {view.counts.total.toLocaleString("pt-BR")} demandas do recorte têm eixo marcado.
+            </p>
+          )}
         </fieldset>
 
         <fieldset>
@@ -371,6 +418,8 @@ export function SmartMapClient({
           </ul>
         )}
       </section>
+
+      <ThemeIntelligence data={intelligence} />
 
       {territories.length === 0 ? null : (
         <section className="app-card rounded-2xl p-4" aria-labelledby="map-territories-title">

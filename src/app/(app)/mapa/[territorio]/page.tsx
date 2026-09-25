@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SmartMapClient } from "@/components/app/map/SmartMapClient";
-import { getPublicDemandMap, getPublicMapTerritories } from "@/lib/server/public-data";
+import { getPublicDemandMap, getPublicMapTerritories, getPublicThemeIntelligence } from "@/lib/server/public-data";
 import { emptyMapFilter, MAP_LEGEND, type MapFilterState } from "@/lib/app/map";
 import type { MapTerritory } from "@/lib/app/types";
 import { metadataForPage } from "@/lib/seo/site";
@@ -56,9 +56,10 @@ export default async function TerritoryMapPage({ params }: { params: Promise<{ t
   if (!territory) notFound();
 
   const filter = filterFor(territory);
-  const [view, territories] = await Promise.all([
+  const [view, territories, intelligence] = await Promise.all([
     getPublicDemandMap(filter),
     getPublicMapTerritories(),
+    getPublicThemeIntelligence(filter),
   ]);
   const place = placeName(territory);
   const breakdown = MAP_LEGEND
@@ -74,6 +75,7 @@ export default async function TerritoryMapPage({ params }: { params: Promise<{ t
       territories={territories}
       initialFilter={filter}
       lockedTerritory={territory}
+      initialIntelligence={intelligence}
       title={`Mapa de demandas em ${place}`}
       intro={`${territory.total} demanda${territory.total === 1 ? "" : "s"} publicada${territory.total === 1 ? "" : "s"} neste território.${breakdown ? ` ${breakdown}.` : ""}`}
     />

@@ -168,3 +168,25 @@ test("o agrupamento ganha cor da classe dominante e raio pelo tamanho", () => {
   assert.equal(clusterLegend({ problema_urgente: 2, apoio_tecnico: 1, apoio_com_servicos: 1, apoio_com_materiais: 1 }).id, "necessidades");
   assert.ok(clusterRadius(900) > clusterRadius(10));
 });
+
+// ── Eixos temáticos no mapa (T-01-04; Apresentação, slide 26) ───────────────
+import { MAP_THEME_FILTERS, parseMapThemes } from "./map.ts";
+
+test("eixos do mapa: espelho de THEME_FILTERS, ?theme= na URL e filtro na query", () => {
+  assert.deepEqual(MAP_THEME_FILTERS, server.THEME_FILTERS);
+  assert.deepEqual(parseMapThemes("iluminacao"), ["iluminacao"]);
+  assert.deepEqual(parseMapThemes("cultura,xyz,iluminacao"), ["iluminacao", "cultura"]);
+  assert.deepEqual(parseMapThemes(["meio_ambiente", "limpeza"]), ["limpeza", "meio_ambiente"]);
+  assert.deepEqual(parseMapThemes(undefined), []);
+  const filter = { ...emptyMapFilter(), theme: ["iluminacao", "seguranca"] };
+  assert.equal(new URLSearchParams(buildMapQuery(filter)).get("theme"), "iluminacao,seguranca");
+  assert.equal(new URLSearchParams(buildMapQuery(emptyMapFilter())).get("theme"), null);
+  // Atalho de leitura rápida não fica ativo com eixo marcado.
+  const audience = MAP_AUDIENCES[0];
+  assert.equal(matchesAudience(audienceFilter(audience), audience), true);
+  assert.equal(matchesAudience({ ...audienceFilter(audience), theme: ["cultura"] }, audience), false);
+  // O post-service aceita o que o portal manda.
+  const { mapFilter } = require("../../../services/post-service/src/map/query.js");
+  const parsed = mapFilter(Object.fromEntries(new URLSearchParams(buildMapQuery(filter))));
+  assert.ok(parsed.params.some((p) => Array.isArray(p) && p.join() === "iluminacao,seguranca"));
+});

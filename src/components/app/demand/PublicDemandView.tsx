@@ -48,6 +48,7 @@ import {
   ScheduleList,
   StatusTrack,
   TextBlock,
+  ThemeChips,
 } from "./DemandParts";
 
 function schedulePeriod(items: PublicDemand["scheduleItems"]): string {
@@ -142,6 +143,8 @@ export function PublicDemandView({
             <DemandStatusBadge status={demand.status} />
             <PriorityBadge priority={demand.priority} />
           </div>
+          {/* Eixos temáticos do território (slide 26; T-01-04). */}
+          <div className="mt-2"><ThemeChips themes={demand.themes} /></div>
           <h1 id="demand-title" className="mt-3 text-2xl font-bold leading-tight sm:text-3xl" style={{ color: "var(--th-text)" }}>{demand.title}</h1>
           <div className="mt-3 flex items-center gap-3">
             <Link href={profileHref} aria-label={`Perfil de ${demand.authorName ?? "quem publicou"}`}>
