@@ -138,8 +138,8 @@ test('Poder Público: fila, acompanhamento, respostas, status, oferta de apoio e
     }
 
     try {
-      const rio = await publishedDemand({});
-      const sp = await publishedDemand({ title: 'Biblioteca comunitária', municipality: 'São Paulo', uf: 'SP', cep: '01001-000', territory: 'Sé' });
+      const rio = await publishedDemand({ themes: ['meio_ambiente'] });
+      const sp = await publishedDemand({ title: 'Biblioteca comunitária', municipality: 'São Paulo', uf: 'SP', cep: '01001-000', territory: 'Sé', themes: ['cultura', 'educacao'] });
       const draft = await call('POST', '/demands', { as: AGENT, body: { title: 'Rascunho' } });
       assert.equal(draft.status, 201);
 
@@ -168,6 +168,11 @@ test('Poder Público: fila, acompanhamento, respostas, status, oferta de apoio e
       const filtered = await call('GET', '/institutional/demands?scope=todas&category=projeto_social');
       assert.deepEqual(filtered.body.demands, []);
       assert.equal((await call('GET', '/institutional/demands?institutionalStatus=xyz')).status, 422);
+      // Eixo temático (T-03-01).
+      const byTheme = await call('GET', '/institutional/demands?scope=todas&theme=cultura,saneamento');
+      assert.deepEqual(byTheme.body.demands.map((d) => d.id), [sp]);
+      assert.deepEqual(byTheme.body.demands[0].themes, ['educacao', 'cultura']);
+      assert.equal((await call('GET', '/institutional/demands?theme=saude')).status, 422);
       assert.equal((await call('GET', `/institutional/demands/${draft.body.id}`)).status, 404);
 
       const before = await call('GET', `/institutional/demands/${rio}`);
@@ -268,6 +273,7 @@ test('Poder Público: fila, acompanhamento, respostas, status, oferta de apoio e
       assert.equal(me.status, 200);
       assert.equal(me.body.counts.aprovada_para_execucao, 1);
       assert.equal(me.body.jurisdiction.municipality, 'Rio de Janeiro');
+      assert.deepEqual(me.body.suggestedThemes, ['meio_ambiente'], 'competência "Meio ambiente"');
 
       // ── Público ───────────────────────────────────────────────────────────
       const pub = await call('GET', `/demands/${rio}/institutional`, { auth: false });

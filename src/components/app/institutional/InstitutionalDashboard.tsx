@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/app/api";
 import { useAuth } from "@/lib/app/auth";
 import { useEffectiveRole } from "../institution/useInstitutionAccess";
-import { DEMAND_CATEGORIES, DEMAND_PRIORITIES } from "@/lib/app/demand";
+import { DEMAND_CATEGORIES, DEMAND_PRIORITIES, DEMAND_THEMES, DEMAND_THEME_LABELS } from "@/lib/app/demand";
 import { GOVERNMENT_ACTIONS_PATH, GOVERNMENT_INDICATORS_PATH } from "@/lib/app/government";
 import { gateStatusFrom, isInstitutionNotValidated } from "@/lib/app/institution";
 import {
@@ -25,6 +25,7 @@ import {
   type DemandCategory,
   type DemandPriority,
   type DemandStatus,
+  type DemandTheme,
   type InstitutionalContext,
   type InstitutionalDemandFilter,
   type InstitutionalDemandSummary,
@@ -51,12 +52,16 @@ type Filters = {
   institutionalStatus: InstitutionalStatus | typeof WITHOUT_TRACK | "";
   category: DemandCategory | "";
   priority: DemandPriority | "";
+  /** Eixos temáticos (T-03-01); vários ao mesmo tempo. */
+  theme: DemandTheme[];
   status: DemandStatus | "";
   territory: string;
   q: string;
 };
 
-const EMPTY_FILTERS: Filters = { scope: "jurisdicao", institutionalStatus: "", category: "", priority: "", status: "", territory: "", q: "" };
+const EMPTY_FILTERS: Filters = { scope: "jurisdicao", institutionalStatus: "", category: "", priority: "", theme: [], status: "", territory: "", q: "" };
+
+const sameThemes = (a: DemandTheme[], b: DemandTheme[]) => a.length === b.length && a.every((t) => b.includes(t));
 
 function toQuery(f: Filters, cursor?: string | null): InstitutionalDemandFilter {
   return {
@@ -64,6 +69,7 @@ function toQuery(f: Filters, cursor?: string | null): InstitutionalDemandFilter 
     ...(f.institutionalStatus ? { institutionalStatus: [f.institutionalStatus] } : {}),
     ...(f.category ? { category: [f.category] } : {}),
     ...(f.priority ? { priority: [f.priority] } : {}),
+    ...(f.theme.length ? { theme: f.theme } : {}),
     ...(f.status ? { status: [f.status] } : {}),
     ...(f.territory.trim() ? { territory: f.territory.trim() } : {}),
     ...(f.q.trim() ? { q: f.q.trim() } : {}),
@@ -213,6 +219,12 @@ export function InstitutionalDashboard() {
 
   const received = ctx?.counts.recebida ?? 0;
   const followed = ctx ? Object.values(ctx.counts).reduce((a, b) => a + b, 0) : 0;
+  const competenceThemes = ctx?.suggestedThemes ?? [];
+  const competenceActive = competenceThemes.length > 0 && sameThemes(applied.theme, competenceThemes);
+  const toggleTheme = (theme: DemandTheme) => setFilters({
+    ...filters,
+    theme: filters.theme.includes(theme) ? filters.theme.filter((t) => t !== theme) : DEMAND_THEMES.filter((t) => t === theme || filters.theme.includes(t)),
+  });
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -256,6 +268,20 @@ export function InstitutionalDashboard() {
             <span className="block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Ainda sem acompanhamento</span>
             <span className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>Ver novas demandas</span>
           </button>
+          {/* Fluxo 3, slide 7 item 5: eixos derivados das áreas de competência do cadastro (T-03-01). */}
+          {competenceThemes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => apply({ ...filters, theme: competenceThemes })}
+              aria-pressed={competenceActive}
+              className="rounded-xl border px-3 py-2 text-left"
+              style={{ borderColor: competenceActive ? "#f4841a" : "var(--th-border)", background: "var(--th-card)" }}
+              title={competenceThemes.map((t) => DEMAND_THEME_LABELS[t]).join(", ")}
+            >
+              <span className="block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Sua competência</span>
+              <span className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>Demandas da minha competência</span>
+            </button>
+          )}
           <div className="rounded-xl border px-3 py-2" style={{ borderColor: "var(--th-border)", background: "var(--th-card)" }}>
             <span className="block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Acompanhadas pelo órgão</span>
             <span className="font-numeric text-xl font-bold" style={{ color: "var(--th-text)" }}>{followed}</span>
@@ -315,6 +341,24 @@ export function InstitutionalDashboard() {
           onValue={(v) => setFilters({ ...filters, status: v as DemandStatus | "" })}
           options={DEMAND_PUBLIC_STATUSES.map((s) => ({ value: s, label: DEMAND_STATUS_LABELS[s] }))}
         />
+        <fieldset className="sm:col-span-2 lg:col-span-4">
+          <legend className="mb-1.5 text-sm font-semibold" style={{ color: "var(--th-text)" }}>Eixo temático</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {DEMAND_THEMES.map((t) => {
+              const on = filters.theme.includes(t);
+              return (
+                <label
+                  key={t}
+                  className="cursor-pointer rounded-full border px-3 py-1 text-xs font-semibold focus-within:ring-2 focus-within:ring-orange-400"
+                  style={{ borderColor: on ? "#f4841a" : "var(--th-border)", color: on ? "#f4841a" : "var(--th-muted)", background: on ? "rgba(244,132,26,0.10)" : "transparent" }}
+                >
+                  <input type="checkbox" name="theme" value={t} checked={on} onChange={() => toggleTheme(t)} className="sr-only" />
+                  {DEMAND_THEME_LABELS[t]}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
         <TextInput name="territory" label="Território" value={filters.territory} maxLength={255} onValue={(v) => setFilters({ ...filters, territory: v })} />
         <TextInput name="q" label="Buscar" value={filters.q} maxLength={200} onValue={(v) => setFilters({ ...filters, q: v })} placeholder="Título ou descrição" />
         <div className="flex items-end gap-2">

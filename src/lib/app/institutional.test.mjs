@@ -33,7 +33,7 @@ import {
   nextInstitutionalStatuses,
   statusRequiresNote,
 } from "./institutional.ts";
-import { timelineEventLabel } from "./demand.ts";
+import { DEMAND_THEMES, DEMAND_THEME_LABELS, timelineEventLabel } from "./demand.ts";
 
 const require = createRequire(import.meta.url);
 const server = require("../../../services/post-service/src/institutional");
@@ -117,4 +117,13 @@ test("linha do tempo e sino: encaminhamento com órgão, destino e status, sem r
   const update = { type: "encaminhamento_atualizado", details: { organizationName: "Companhia Y", updateKind: "providencia", excerpt: "Equipe designada" } };
   assert.equal(institutionalTimelineLabel(update), "Companhia Y registrou providência no encaminhamento");
   assert.equal(forwardingDestinationLabel({ destinationKind: "orgao_externo", destinationOrganizationName: "Cedae" }), "Cedae");
+});
+
+test("filtro por eixo temático (T-03-01): eixos iguais aos do post-service e query `theme`", () => {
+  const constants = require("../../../services/post-service/src/demand/constants");
+  assert.deepEqual(DEMAND_THEMES, constants.THEMES);
+  assert.deepEqual(DEMAND_THEME_LABELS, constants.THEME_LABELS);
+  const q = new URLSearchParams(buildInstitutionalQuery({ theme: ["saneamento", "meio_ambiente"] }));
+  assert.equal(q.get("theme"), "saneamento,meio_ambiente");
+  assert.equal(new URLSearchParams(buildInstitutionalQuery({ theme: [] })).has("theme"), false);
 });

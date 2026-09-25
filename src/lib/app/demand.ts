@@ -33,6 +33,7 @@ import {
   type DemandScheduleItem,
   type DemandScheduleItemInput,
   type DemandStatus,
+  type DemandTheme,
   type DemandTimelineEvent,
 } from "./types.ts";
 import { institutionalTimelineLabel } from "./institutional.ts";
@@ -839,6 +840,29 @@ export const DEMAND_CATEGORY_HELP: Record<DemandCategory, string> = {
 };
 
 export const DEMAND_PRIORITIES: DemandPriority[] = ["baixa", "media", "alta", "urgente"];
+
+/**
+ * Eixos temáticos (T26; Apresentação, slide 19), espelho de `THEMES` e
+ * `THEME_LABELS` de `services/post-service/src/demand/constants.js` (o teste
+ * `institutional.test.mjs` compara). Usados no filtro da lista institucional
+ * (T-03-01).
+ */
+export const DEMAND_THEMES: DemandTheme[] = [
+  "iluminacao", "seguranca", "saneamento", "limpeza", "esporte",
+  "educacao", "mobilidade", "cultura", "meio_ambiente",
+];
+
+export const DEMAND_THEME_LABELS: Record<DemandTheme, string> = {
+  iluminacao: "Iluminação",
+  seguranca: "Segurança",
+  saneamento: "Saneamento",
+  limpeza: "Limpeza",
+  esporte: "Esporte",
+  educacao: "Educação",
+  mobilidade: "Mobilidade",
+  cultura: "Cultura",
+  meio_ambiente: "Meio Ambiente",
+};
 
 /**
  * Critérios de prioridade definidos pela plataforma (Fluxo 2, slide 8;

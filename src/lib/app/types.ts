@@ -1495,6 +1495,11 @@ export interface PublicDemandSummary {
   postId: string | null;
 }
 
+/** Eixo temático da demanda (T26, enum `demand_theme` da migração post 023). */
+export type DemandTheme =
+  | "iluminacao" | "seguranca" | "saneamento" | "limpeza" | "esporte"
+  | "educacao" | "mobilidade" | "cultura" | "meio_ambiente";
+
 export interface DemandListFilter {
   category?: DemandCategory[];
   priority?: DemandPriority[];
@@ -1849,6 +1854,8 @@ export interface InstitutionalContext {
   };
   jurisdiction: { governmentSphere: GovernmentSphere | null; municipality: string | null; uf: string | null };
   counts: Record<InstitutionalStatus, number>;
+  /** Eixos derivados das áreas de competência do órgão (T-03-01); vazio sem correspondência. */
+  suggestedThemes?: DemandTheme[];
   /** Encaminhamentos (T14): recebidos sem resposta e enviados em aberto. */
   forwardings: { pendingReceived: number; openSent: number };
 }
@@ -1858,6 +1865,8 @@ export type InstitutionalScope = "jurisdicao" | "todas";
 export interface InstitutionalDemandFilter extends DemandListFilter {
   scope?: InstitutionalScope;
   /** Inclui `sem_acompanhamento`. */
+  /** Eixos temáticos (T26), para as demandas da competência do órgão (T-03-01). */
+  theme?: DemandTheme[];
   institutionalStatus?: (InstitutionalStatus | "sem_acompanhamento")[];
 }
 

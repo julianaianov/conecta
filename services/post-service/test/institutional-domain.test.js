@@ -126,3 +126,21 @@ test('identificação do órgão: projeção pública, só poder_publico, com ca
   assert.equal(calls, 1);
   assert.equal(await client('ong'), null);
 });
+
+test('competência → eixos temáticos (T-03-01, decisão 17): mapa sobre os eixos da T26', () => {
+  const { THEMES } = require('../src/demand/constants');
+  const { COMPETENCE_AREA_SUGGESTIONS } = require('../../user-service/src/institution');
+  for (const [key, themes] of Object.entries(I.COMPETENCE_THEME_MAP)) {
+    assert.equal(key, I.normalizeCompetence(key), key);
+    for (const theme of themes) assert.ok(THEMES.includes(theme), `${key} → ${theme}`);
+  }
+  // Toda sugestão do cadastro com eixo correspondente está no mapa.
+  const mapped = COMPETENCE_AREA_SUGGESTIONS.filter((s) => I.suggestedThemesFor([s]).length);
+  assert.deepEqual(mapped, [
+    'Cultura', 'Educação', 'Esporte e lazer', 'Infraestrutura urbana', 'Meio ambiente',
+    'Mobilidade e transporte', 'Saneamento', 'Segurança pública',
+  ]);
+  assert.deepEqual(I.suggestedThemesFor(['  MEIO   AMBIENTE ', 'educacao', 'Educação']), ['educacao', 'meio_ambiente']);
+  assert.deepEqual(I.suggestedThemesFor(['Saúde', 'Habitação']), []);
+  assert.deepEqual(I.suggestedThemesFor(null), []);
+});

@@ -9,4 +9,5 @@ module.exports = {
   ...require('./validation'),
   ...require('./gate'),
   ...require('./forwardings'),
+  ...require('./competence'),
 };

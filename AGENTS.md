@@ -453,6 +453,13 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   público `GET /demands/:id/institutional`. A identificação do órgão vem da
   projeção pública do user-service (`createGovernmentProfileClient`, cache
   60 s). Respostas, status e ofertas abrem o acompanhamento se preciso.
+- Competência (T-03-01, decisão 17; Fluxo 3, slide 7 item 5): a lista aceita
+  `theme` (eixos T26, `EXISTS` em `demand_themes`; 422 para eixo
+  desconhecido) e `GET /institutional/me` devolve `suggestedThemes`, derivado
+  das áreas de competência (texto livre do cadastro) por
+  `src/institutional/competence.js` (`COMPETENCE_THEME_MAP`, comparação sem
+  acento nem caixa; sem correspondência, lista vazia). O `/governo` tem o
+  filtro "Eixo temático" (vários) e o atalho "Demandas da minha competência".
 - Neutralidade: ordem cronológica, sem pontuação, ranking ou comparação entre
   órgãos. O público vê o órgão, nunca o representante nem o responsável.
 - Frontend: `/governo` (painel com fila "Recebidas", filtros, lista e mapa;

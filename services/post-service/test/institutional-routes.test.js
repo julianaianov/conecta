@@ -187,3 +187,36 @@ test('lista: recorte pela esfera do órgão e filtro "sem acompanhamento"', () =
   // Neutralidade: ordem cronológica da publicação, nunca por órgão ou contagem.
   assert.match(all.sql, /ORDER BY d.published_at DESC, d.id DESC/);
 });
+
+test('lista: filtro por eixo temático (T-03-01); eixo desconhecido é 422', async () => {
+  const { sql, params } = governmentListQuery({ theme: 'saneamento,meio_ambiente' }, ORG, PROFILE);
+  assert.match(sql, /EXISTS \(SELECT 1 FROM demand_themes dt\s+WHERE dt.demand_id = d.id AND dt.theme = ANY\(\$\d+::demand_theme\[\]\)\)/);
+  assert.ok(params.some((p) => Array.isArray(p) && p.join(',') === 'saneamento,meio_ambiente'));
+  assert.doesNotMatch(governmentListQuery({}, ORG, PROFILE).sql, /demand_themes dt/);
+  assert.throws(() => governmentListQuery({ theme: 'saude' }, ORG, PROFILE), (err) => err.status === 422);
+
+  const pool = fakePool(() => null);
+  await withServer(pool, async (base) => {
+    const res = await send(base, 'GET', '/institutional/demands?theme=saude');
+    assert.equal(res.status, 422);
+    assert.ok((await res.json()).fields.theme);
+    assert.equal(pool.calls.length, 0);
+  });
+});
+
+test('GET /institutional/me: eixos sugeridos pelas áreas de competência (T-03-01)', async () => {
+  const pool = fakePool((text) => {
+    if (/FROM demand_institutional_tracks\s+WHERE organization_id = \$1 GROUP BY status/.test(text)) return { rows: [] };
+    if (/FROM demand_forwardings f/.test(text)) return { rows: [{ received: 0, sent: 0 }] };
+    return null;
+  });
+  const profile = { ...PROFILE, competenceAreas: ['Saneamento', 'Infraestrutura urbana', 'Saúde'] };
+  await withServer(pool, async (base) => {
+    const res = await send(base, 'GET', '/institutional/me');
+    assert.equal(res.status, 200);
+    assert.deepEqual((await res.json()).suggestedThemes, ['iluminacao', 'saneamento', 'limpeza']);
+  }, { profile });
+  await withServer(pool, async (base) => {
+    assert.deepEqual((await (await send(base, 'GET', '/institutional/me')).json()).suggestedThemes, []);
+  });
+});

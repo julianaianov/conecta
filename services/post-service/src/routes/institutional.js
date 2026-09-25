@@ -4,9 +4,10 @@
 //
 // Poder Público com cadastro validado (token + requireGovernmentActor; 403
 // `not_government` / `institution_not_validated`, 503 sem confirmação):
-//   GET  /institutional/me                       órgão, recorte territorial e contagem por status
+//   GET  /institutional/me                       órgão, recorte territorial, contagem por status e
+//                                                `suggestedThemes` (eixos da competência, T-03-01)
 //   GET  /institutional/demands                  demandas publicadas com o acompanhamento do órgão
-//                                                (filtros: category, priority, status, territory,
+//                                                (filtros: category, priority, theme, status, territory,
 //                                                municipality, uf, q, bbox, institutionalStatus
 //                                                com `sem_acompanhamento`, scope=jurisdicao|todas;
 //                                                keyset por published_at, id)
@@ -46,11 +47,11 @@
 
 const express = require('express');
 const { isUuid } = require('../security');
-const { CATEGORIES, PRIORITIES, PUBLIC_STATUSES } = require('../demand/constants');
+const { CATEGORIES, PRIORITIES, PUBLIC_STATUSES, THEMES } = require('../demand/constants');
 const demandStore = require('../demand/store');
 const { listHelpers } = require('./demands');
 const {
-  INSTITUTIONAL_STATUSES, WITHOUT_TRACK, SCOPES,
+  INSTITUTIONAL_STATUSES, WITHOUT_TRACK, SCOPES, suggestedThemesFor,
   checkTransition, validateStatusChange, validateResponse, validateResponsible, validateOffer,
 } = require('../institutional');
 const store = require('../institutional/store');
@@ -95,6 +96,12 @@ function governmentListQuery(query, organizationId, profile) {
   if (categories) add('d.category = ANY(?::demand_category[])', categories);
   const priorities = parseList(query.priority, PRIORITIES, 'priority', fields);
   if (priorities) add('d.priority = ANY(?::demand_priority[])', priorities);
+  // Eixo temático (T26), para "demandas relacionadas à sua competência" (T-03-01).
+  const themes = parseList(query.theme, THEMES, 'theme', fields);
+  if (themes) {
+    add(`EXISTS (SELECT 1 FROM demand_themes dt
+                   WHERE dt.demand_id = d.id AND dt.theme = ANY(?::demand_theme[]))`, themes);
+  }
 
   const institutional = parseList(query.institutionalStatus, [...INSTITUTIONAL_STATUSES, WITHOUT_TRACK], 'institutionalStatus', fields);
   if (institutional) {
@@ -280,6 +287,8 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
         municipality: profile.governmentSphere === 'municipal' ? profile.municipality : null,
         uf: profile.governmentSphere === 'federal' ? null : profile.uf,
       },
+      // Eixos derivados das áreas de competência (T-03-01, decisão 17).
+      suggestedThemes: suggestedThemesFor(profile.competenceAreas),
       counts,
       forwardings: { pendingReceived: pending?.received ?? 0, openSent: pending?.sent ?? 0 },
     });

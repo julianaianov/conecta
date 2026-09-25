@@ -237,6 +237,7 @@ export function buildInstitutionalQuery(filter: InstitutionalDemandFilter = {}):
   if (filter.institutionalStatus?.length) q.set("institutionalStatus", filter.institutionalStatus.join(","));
   if (filter.category?.length) q.set("category", filter.category.join(","));
   if (filter.priority?.length) q.set("priority", filter.priority.join(","));
+  if (filter.theme?.length) q.set("theme", filter.theme.join(","));
   if (filter.status?.length) q.set("status", filter.status.join(","));
   if (filter.territory) q.set("territory", filter.territory);
   if (filter.municipality) q.set("municipality", filter.municipality);
