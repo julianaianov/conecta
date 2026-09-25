@@ -485,6 +485,8 @@ const UNAVAILABLE = {
  *   resolveTarget(db, user, purpose, body) → id do alvo (lança UploadError);
  *     `null` nas finalidades com `deferredTarget` (o vínculo vem depois);
  *   isPublic(db, row) → o alvo está publicado?
+ * `institutionalAccess(db, row, req)` (opcional; `req` nulo na leitura sem
+ * token): decide as finalidades `institutional` além do dono e da operação.
  */
 function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = new Set(), institutionalAccess = null }) {
   const express = require('express');
@@ -495,8 +497,6 @@ function createUploadRoutes({ pool, auth, storage, policy, operationUserIds = ne
   const columnFor = (purpose) => policy.targetColumnFor?.(purpose) ?? targetColumn;
   const select = uploadSelect(targetColumns);
 
- * `institutionalAccess(db, row, req)` (opcional; `req` nulo na leitura sem
- * token): decide as finalidades `institutional` além do dono e da operação.
   const handle = (fn) => async (req, res) => {
     try {
       await fn(req, res);
