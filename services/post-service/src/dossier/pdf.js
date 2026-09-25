@@ -436,54 +436,23 @@ function renderBody(doc, content) {
     formatCents(i.totalCents),
   ]));
 
-  // Decisão 14 (Modelo de Conexão §04 Obs.): o orçamento de execução vale para
-  // qualquer apoio; 4% + 6% só quando o apoio vem de Parceiros, Investidores
-  // ou Empresas, e o valor real é o de cada processo de conexão.
+  // TODO(fonte-da-verdade): Modelo de Conexão §04 Obs. — 4% + 6% não se aplica a conexões com o Poder Público; ver TODO em services/post-service/migrations/007-demands.sql.
+  subTitle(doc, 'Composição financeira');
   const c = budget.composition;
-  field(doc, 'Orçamento de execução', formatCents(c.budgetAmountCents), { numeric: true });
-  field(doc, 'Previsão de custos de fotografia e filmagem', formatCents(content.audiovisualCents), { numeric: true });
-  subTitle(doc, 'Composição quando o apoio vem de Parceiros, Investidores ou Empresas (não se aplica ao Poder Público)');
   table(doc, [
     { header: 'Parcela', width: 0.7 },
     { header: 'Valor', width: 0.3, align: 'right', numeric: true },
   ], [
-    ['Orçamento de execução', formatCents(c.budgetAmountCents)],
-    [`Agente de Transformação (+${(c.agentFeeBps ?? 400) / 100}% sobre o orçamento)`, formatCents(c.agentFeeCents)],
-    [`Plataforma DM Conecta (+${(c.platformFeeBps ?? 600) / 100}% sobre o orçamento)`, formatCents(c.platformFeeCents)],
-    ['Valor total se apoiada por Parceiros/Empresas', formatCents(c.totalAmountCents)],
+    ['Orçamento original (execução)', formatCents(c.budgetAmountCents)],
+    [`Agente de Transformação (+${(c.agentFeeBps ?? 400) / 100}% sobre o original)`, formatCents(c.agentFeeCents)],
+    [`Plataforma DM Conecta (+${(c.platformFeeBps ?? 600) / 100}% sobre o original)`, formatCents(c.platformFeeCents)],
+    ['Valor total da demanda', formatCents(c.totalAmountCents)],
   ]);
   doc.font('regular').fontSize(7.5).fillColor(COLOR.cinza)
-    .text(`${FEE_OBSERVATION} Os percentuais são somados ao orçamento, sem descontar do recurso de execução. `
+    .text('Os percentuais são somados ao orçamento original, sem descontar do recurso de execução. '
       + 'A plataforma não processa pagamentos: a composição é informativa.', MARGIN.left, doc.y, { width: CONTENT_WIDTH });
   doc.moveDown(0.3);
-
-  // Processos de Conexão: contribuição e taxas de cada um (T-05-06).
-  if (Array.isArray(content.processes) && content.processes.length) {
-    subTitle(doc, 'Contribuições por processo de conexão');
-    table(doc, [
-      { header: 'Processo', width: 0.2, numeric: true },
-      { header: 'Parte', width: 0.24 },
-      { header: 'Contribuição', width: 0.16, align: 'right', numeric: true },
-      { header: '4% + 6%', width: 0.18, align: 'right', numeric: true },
-      { header: 'Total', width: 0.22, align: 'right', numeric: true },
-    ], content.processes.map((p) => {
-      const party = [PARTY_KIND_LABELS[p.partyKind] ?? p.partyKind, p.partyName].filter(Boolean).join('\n');
-      const amount = p.contributionAmountCents;
-      const fees = amount === null ? null
-        : p.feeApplies ? formatCents((p.agentFeeCents ?? 0) + (p.platformFeeCents ?? 0)) : 'Não se aplica';
-      return [`${p.protocol}\n${PROCESS_STATUS_LABELS[p.status] ?? p.status}`, party,
-        amount === null ? 'Sem valor financeiro' : formatCents(amount), fees,
-        amount === null ? null : formatCents(p.totalWithFeesCents)];
-    }));
-    const f = content.connectionFinance;
-    if (f) {
-      field(doc, 'Orçamento de execução', formatCents(f.executionBudgetCents), { numeric: true });
-      field(doc, 'Apoio de Parceiros/Empresas', `${formatCents(f.withFees.contributionCents)} + 4% `
-        + `(${formatCents(f.withFees.agentFeeCents)}) + 6% (${formatCents(f.withFees.platformFeeCents)}) = `
-        + `${formatCents(f.withFees.totalWithFeesCents)}`, { numeric: true });
-      field(doc, 'Recursos do Poder Público', `${formatCents(f.government.contributionCents)} (sem 4% + 6%)`, { numeric: true });
-    }
-  }
+  field(doc, 'Previsão de custos de fotografia e filmagem', formatCents(content.audiovisualCents), { numeric: true });
 
   sectionTitle(doc, ++n, 'Planejamento');
   subTitle(doc, 'Cronograma');
