@@ -998,10 +998,14 @@ export function formatCnae(value: string): string {
 // Espelho do contrato de services/post-service/src/routes/demands.js
 // (JSON em camelCase). Valores e rótulos iguais a src/demand/constants.js.
 
-// TODO(fonte-da-verdade): Modelo de Conexão §03 — faltam 7 tipos de demanda; ver TODO em services/post-service/migrations/007-demands.sql.
+// Os 12 tipos de demanda do Modelo de Conexão §03 (decisão 15), na ordem e com
+// o texto da fonte. Cada um cai numa das 5 classes da legenda do mapa
+// (`DEMAND_CATEGORY_MAP_CLASS` em `demand.ts`).
 export type DemandCategory =
   | "projeto_social" | "projeto_ambiental" | "necessidade_de_patrocinio"
-  | "problema_urbano" | "problema_urgente";
+  | "problema_urbano" | "problema_urgente"
+  | "obra_ou_melhoria_de_infraestrutura" | "revitalizacao_de_espaco" | "recuperacao_ambiental"
+  | "apoio_tecnico" | "apoio_com_servicos" | "apoio_com_materiais" | "outras_demandas_territoriais";
 
 export const DEMAND_CATEGORY_LABELS: Record<DemandCategory, string> = {
   projeto_social: "Projeto Social",
@@ -1009,7 +1013,22 @@ export const DEMAND_CATEGORY_LABELS: Record<DemandCategory, string> = {
   necessidade_de_patrocinio: "Necessidade de Patrocínio",
   problema_urbano: "Problema Urbano",
   problema_urgente: "Problema Urgente",
+  obra_ou_melhoria_de_infraestrutura: "Obra ou melhoria de infraestrutura",
+  revitalizacao_de_espaco: "Revitalização de espaço",
+  recuperacao_ambiental: "Recuperação ambiental",
+  apoio_tecnico: "Apoio técnico",
+  apoio_com_servicos: "Apoio com serviços",
+  apoio_com_materiais: "Apoio com materiais",
+  outras_demandas_territoriais: "Outras demandas territoriais",
 };
+
+/** Classe da legenda do mapa (Apresentação, slide 19). */
+export type DemandMapClass =
+  | "problemas_urgentes"
+  | "problemas_urbanos"
+  | "projetos_sociais"
+  | "acoes_ambientais"
+  | "necessidades";
 
 export type DemandStatus =
   | "em_analise" | "publicada" | "em_busca_de_parceiro" | "conectada"
@@ -2453,6 +2472,8 @@ export interface DemandAccountabilityDocumentInput {
 export interface MapPoint {
   id: string;
   category: DemandCategory;
+  /** Classe da legenda (slide 19) da categoria. */
+  mapClass: DemandMapClass | null;
   priority: DemandPriority;
   status: DemandStatus;
   title: string;
@@ -2475,11 +2496,14 @@ export interface MapCluster {
   longitude: number;
   cellSize: number;
   category: Record<DemandCategory, number>;
+  mapClass: Record<DemandMapClass, number>;
 }
 
 export interface MapCounts {
   total: number;
   category: Record<DemandCategory, number>;
+  /** Soma por classe da legenda (5), a partir das 12 categorias. */
+  mapClass: Record<DemandMapClass, number>;
   priority: Record<DemandPriority, number>;
   status: Record<DemandStatus, number>;
 }
@@ -2506,6 +2530,7 @@ export interface MapTerritory {
   longitude: number | null;
   lastPublishedAt: string | null;
   category: Record<DemandCategory, number>;
+  mapClass: Record<DemandMapClass, number>;
 }
 
 // ── PRIVACIDADE E DIREITOS DO TITULAR (T24) ─────────────────────────────────
