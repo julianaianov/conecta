@@ -252,6 +252,42 @@ test('Processo de Conexão: protocolo anual, número na demanda, status §16, es
       assert.equal(byConnection.body.process.protocol, first.protocol);
       assert.equal((await call('GET', `/processes/by-connection/${partnerConnection}`, { as: OTHER })).body.process, null);
 
+      // ── 5b. 4% + 6% por processo, nunca com o Poder Público (T-05-06, migração 040) ──
+      const empresaFees = await call('PUT', `/processes/${first.id}/contribution`, {
+        body: { contributionKinds: ['apoio_financeiro', 'materiais'], contributionAmountCents: 1_000_000 },
+      });
+      assert.equal(empresaFees.status, 200, JSON.stringify(empresaFees.body));
+      assert.equal(empresaFees.body.process.feeApplies, true);
+      assert.deepEqual(empresaFees.body.process.fees, {
+        applies: true, contributionAmountCents: 1_000_000, agentFeeCents: 40_000, platformFeeCents: 60_000,
+        totalWithFeesCents: 1_100_000,
+      });
+      const govFees = await call('PUT', `/processes/${second.id}/contribution`, {
+        as: GOV, body: { contributionKinds: ['apoio_financeiro', 'infraestrutura'], contributionAmountCents: 1_000_000 },
+      });
+      assert.equal(govFees.status, 200, JSON.stringify(govFees.body));
+      assert.equal(govFees.body.process.feeApplies, false);
+      assert.deepEqual(govFees.body.process.fees, {
+        applies: false, contributionAmountCents: 1_000_000, agentFeeCents: 0, platformFeeCents: 0, totalWithFeesCents: 1_000_000,
+      });
+      const { rows: feeRows } = await pool.query(
+        `SELECT party_kind::text AS k, fee_applies, agent_fee_cents::int AS a, platform_fee_cents::int AS p,
+                total_with_fees_cents::int AS t FROM connection_processes WHERE demand_id = $1 ORDER BY sequence_in_demand`,
+        [demand],
+      );
+      assert.deepEqual(feeRows.slice(0, 2), [
+        { k: 'empresa', fee_applies: true, a: 40_000, p: 60_000, t: 1_100_000 },
+        { k: 'poder_publico', fee_applies: false, a: 0, p: 0, t: 1_000_000 },
+      ]);
+      assert.equal(feeRows[2].t, null, 'sem contribuição financeira, sem taxas');
+      const pubFees = (await call('GET', `/demands/${demand}/processes`, { auth: false })).body.processes;
+      assert.equal(pubFees[0].fees.totalWithFeesCents, 1_100_000);
+      assert.equal(pubFees[1].fees.applies, false);
+      // A visão do órgão não traz a composição da demanda com 4% + 6%.
+      const organView = await call('GET', `/institutional/demands/${demand}`, { as: GOV });
+      assert.equal(organView.status, 200, JSON.stringify(organView.body));
+      assert.deepEqual(Object.keys(organView.body.demand.composition), ['budgetAmountCents']);
+
       // ── 6. Status do §16: quem pode, motivo obrigatório, pausa e retomada ──
       const status = (ref, as, body) => call('POST', `/processes/${ref}/status`, { as, body });
       assert.equal((await status(first.id, AGENT, { status: 'em_analise' })).status, 403, 'análise é da parte');
