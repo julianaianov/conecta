@@ -46,7 +46,7 @@ DO $$ BEGIN
   CREATE TYPE forwarding_update_kind AS ENUM ('providencia', 'atualizacao', 'status');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- TODO(fonte-da-verdade): Modelo de Conexão §13 — encaminhamento sem prazo.
+-- Prazo do encaminhamento (Modelo de Conexão §13, `due_on`): migração 028.
 CREATE TABLE IF NOT EXISTS demand_forwardings (
   id                              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   -- Acompanhamento do órgão de origem (quem encaminha).

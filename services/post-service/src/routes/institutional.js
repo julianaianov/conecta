@@ -246,7 +246,8 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
     const forwardings = await forwardingStore.loadDemandForwardings(db, demandId, { organizationId });
     const process = track?.process_id ? await processStore.findProcess(db, track.process_id) : null;
     return {
-      demand: demandStore.serializePublicDemand(rows[0], items),
+      // Decisão 14: o órgão vê o orçamento de execução, sem a composição 4% + 6%.
+      demand: demandStore.serializePublicDemand(rows[0], items, { viewer: 'poder_publico' }),
       track: track ? store.serializeTrack(track) : null,
       process: process ? processStore.serializeProcess(process, { viewerRole: 'parte' }) : null,
       responses: own.responses.map((r) => store.serializeResponse(r)),
@@ -398,10 +399,17 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
     const profile = await profileOf(req);
     const { view } = await withTrack(req, profile, async (client, track) => {
       await client.query("SELECT set_config('dm.actor', $1, true)", [req.user.userId]);
-      await client.query(
-        'UPDATE demand_institutional_tracks SET responsible_name = $2, responsible_role = $3 WHERE id = $1',
-        [track.id, value.responsibleName, value.responsibleRole],
-      );
+      // Só os campos enviados (§14: nome, cargo, setor e data limite).
+      const columns = {
+        responsibleName: 'responsible_name', responsibleRole: 'responsible_role',
+        responsibleSector: 'responsible_sector', responsibleDueOn: 'responsible_due_on',
+      };
+      const params = [track.id];
+      const sets = Object.entries(columns).filter(([key]) => key in value).map(([key, column]) => {
+        params.push(value[key]);
+        return `${column} = $${params.length}${key === 'responsibleDueOn' ? '::date' : ''}`;
+      });
+      await client.query(`UPDATE demand_institutional_tracks SET ${sets.join(', ')} WHERE id = $1`, params);
     });
     res.json(view);
   }));

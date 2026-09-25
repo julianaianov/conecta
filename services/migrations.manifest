@@ -30,6 +30,7 @@ user_db user-service/migrations/010-partner-profiles.sql
 user_db user-service/migrations/011-lgpd-titular.sql
 user_db user-service/migrations/012-connection-messages.sql
 user_db user-service/migrations/013-organization-members.sql
+user_db user-service/migrations/014-connection-message-author.sql
 user_db user-service/migrations/015-partner-categories.sql
 user_db user-service/migrations/016-notifications.sql
 user_db user-service/migrations/017-partner-media-profiles.sql
@@ -62,11 +63,16 @@ post_db post-service/migrations/023-demand-themes.sql
 post_db post-service/migrations/024-post-photos.sql
 post_db post-service/migrations/025-media-agenda.sql
 post_db post-service/migrations/026-connection-processes.sql
+post_db post-service/migrations/027-process-messages.sql
+post_db post-service/migrations/028-deadlines.sql
 post_db post-service/migrations/031-demand-categories.sql
 post_db post-service/migrations/032-demand-modules.sql
+post_db post-service/migrations/033-demand-fields.sql
 post_db post-service/migrations/034-execution-status.sql
 post_db post-service/migrations/035-execution-documents.sql
 post_db post-service/migrations/036-accountability-fields.sql
 post_db post-service/migrations/039-notifications.sql
+post_db post-service/migrations/040-process-fees.sql
 post_db post-service/migrations/041-member-support.sql
 post_db post-service/migrations/042-priority-criteria.sql
+post_db post-service/migrations/043-institutional-visibility.sql

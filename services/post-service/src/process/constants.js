@@ -108,6 +108,13 @@ const INTEREST_OFFER_CONTRIBUTION = {
   servicos: 'servicos',
   conhecimento: 'conhecimento_tecnico',
   estrutura: 'infraestrutura',
+  // Modelo §27 (T-05-15, migração 038): o mesmo vocabulário do processo.
+  materiais: 'materiais',
+  equipamentos: 'equipamentos',
+  equipe: 'equipe',
+  execucao_de_etapa: 'execucao_de_etapa',
+  patrocinio: 'patrocinio',
+  parceria: 'articulacao',
 };
 // Forma de apoio do órgão (T13, Fluxo 3 slide 12) → contribuição do processo.
 const SUPPORT_TYPE_CONTRIBUTION = {
@@ -130,7 +137,47 @@ const ORIGIN_KINDS = ['interesse', 'oferta_institucional', 'acompanhamento_insti
 // Os públicos expõem só payload->'public' (protocolo, número, tipo de parte,
 // contribuição, status; o nome só quando a parte é órgão público).
 const PROCESS_EVENT_TYPES = ['processo_formalizado', 'processo_status_alterado'];
-const PROCESS_PRIVATE_EVENT_TYPES = ['responsavel_do_processo_definido'];
+const PROCESS_PRIVATE_EVENT_TYPES = [
+  'responsavel_do_processo_definido', 'prazo_definido', 'prazo_cumprido', 'prazo_vencido',
+];
+
+// Prazos por etapa (§15, T-05-03; migração 028). A sugestão de dias é a da
+// tabela da fonte; `outra` exige o nome da etapa e os dias ou a data.
+const DEADLINE_STAGES = [
+  'analise_inicial', 'envio_de_documentacao', 'analise_tecnica', 'elaboracao_do_plano', 'execucao', 'outra',
+];
+const DEADLINE_STAGE_LABELS = {
+  analise_inicial: 'Análise inicial',
+  envio_de_documentacao: 'Envio de documentação',
+  analise_tecnica: 'Análise técnica',
+  elaboracao_do_plano: 'Elaboração do plano',
+  execucao: 'Execução',
+  outra: 'Outra etapa',
+};
+const DEADLINE_DEFAULT_DAYS = {
+  analise_inicial: 5,
+  envio_de_documentacao: 3,
+  analise_tecnica: 10,
+  elaboracao_do_plano: 7,
+  execucao: 60,
+};
+// Quem responde pela etapa e define o prazo dela: a parte conectada
+// (Poder Público/Parceiro) na análise; o Agente na documentação, no plano e
+// na execução. Em `outra`, quem define escolhe o lado responsável.
+const DEADLINE_STAGE_SIDE = {
+  analise_inicial: 'parte',
+  envio_de_documentacao: 'agente',
+  analise_tecnica: 'parte',
+  elaboracao_do_plano: 'agente',
+  execucao: 'agente',
+};
+const DEADLINE_SIDES = ['agente', 'parte'];
+const DEADLINE_STATUSES = ['aberto', 'cumprido', 'vencido'];
+const DEADLINE_STATUS_LABELS = { aberto: 'Em aberto', cumprido: 'Cumprido', vencido: 'Vencido' };
+// "Prazos próximos": aviso a partir de 3 dias antes da data limite.
+const DEADLINE_WARNING_DAYS = 3;
+const DEADLINE_MAX_DAYS = 365;
+const DEADLINE_EVENT_TYPES = ['prazo_definido', 'prazo_cumprido', 'prazo_vencido'];
 
 const PROTOCOL_RE = /^DM-\d{4}-\d{6}$/;
 
@@ -163,6 +210,16 @@ module.exports = {
   ORIGIN_KINDS,
   PROCESS_EVENT_TYPES,
   PROCESS_PRIVATE_EVENT_TYPES,
+  DEADLINE_STAGES,
+  DEADLINE_STAGE_LABELS,
+  DEADLINE_DEFAULT_DAYS,
+  DEADLINE_STAGE_SIDE,
+  DEADLINE_SIDES,
+  DEADLINE_STATUSES,
+  DEADLINE_STATUS_LABELS,
+  DEADLINE_WARNING_DAYS,
+  DEADLINE_MAX_DAYS,
+  DEADLINE_EVENT_TYPES,
   PROTOCOL_RE,
   LIMITS,
 };

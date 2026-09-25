@@ -18,6 +18,13 @@
 //   PUT  /processes/:ref/responsible        responsável atual (§14)
 //   PUT  /processes/:ref/contribution       { contributionKinds, contributionDescription,
 //                                           contributionAmountCents }
+//   GET  /processes/:ref/deadlines          prazos por etapa (§15, T-05-03; vigentes e histórico)
+//   POST /processes/:ref/deadlines          { stage, stageLabel?, dueDays? | dueOn?, responsibleSide?, note? }
+//                                           (sem prazo: a sugestão da fonte; só o lado responsável
+//                                           pela etapa define; redefinir guarda o anterior)
+//   POST /processes/:ref/deadlines/:did/fulfill  { note? } prazo cumprido (as duas partes)
+//   GET  /processes/pending                 pendências de prazo de quem pede (processos, e para o
+//                                           órgão, encaminhamentos e acompanhamentos com data limite)
 // Agente autor:
 //   GET  /demands/mine/:id/processes        processos da demanda
 //   POST /demands/mine/:id/processes        formaliza a partir do interesse de apoio com a
@@ -39,9 +46,11 @@ const demandStore = require('../demand/store');
 const { requireDemandAuthorRole, evaluateDemandAuthor } = require('../demand/gate');
 const {
   checkTransition, validateStatusChange, validateResponsible, validateContribution, validateFormalize,
-  RESPONSIBLE_FIELDS,
+  validateDeadline, validateFulfill, RESPONSIBLE_FIELDS, DEADLINE_STAGE_LABELS,
 } = require('../process');
 const store = require('../process/store');
+const deadlines = require('../process/deadlines');
+const { notify } = require('../notifications');
 const { listHelpers } = require('./demands');
 
 const { HttpError, withTransaction } = demandStore;
@@ -55,6 +64,7 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus }) => {
   router.param('id', (req, res, next, id) => (isUuid(id) ? next() : res.status(404).json({ error: 'Demanda não encontrada' })));
   router.param('ref', (req, res, next, ref) => (store.isProcessRef(ref) ? next() : res.status(404).json({ error: 'Processo não encontrado' })));
   router.param('connectionId', (req, res, next, id) => (isUuid(id) ? next() : res.status(404).json({ error: 'Conexão não encontrada' })));
+  router.param('deadlineId', (req, res, next, id) => (isUuid(id) ? next() : res.status(404).json({ error: 'Prazo não encontrado' })));
 
   const handle = (fn) => async (req, res) => {
     try {
@@ -86,8 +96,17 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus }) => {
     const { row, role } = await store.loadVisibleProcess(db, req, ref, institutionStatus);
     return {
       process: store.serializeProcess(row, { viewerRole: role }),
+      deadlines: await deadlines.listDeadlines(db, row.id),
       timeline: await store.processTimeline(db, row.id, { full: true }),
     };
+  }
+
+  /** Aviso ao outro lado do processo (Agente autor ↔ parte), na transação da ação. */
+  async function notifyOtherSide(client, row, actor, message) {
+    const base = { demandId: row.demand_id, processId: row.id, href: `/processos/${row.protocol}`, ...message };
+    if (actor === 'parte') return notify(client, { ...base, userId: row.demand_author_id });
+    if (row.party_kind === 'poder_publico') return notify(client, { ...base, organizationId: row.party_organization_id });
+    return row.party_user_id ? notify(client, { ...base, userId: row.party_user_id }) : null;
   }
 
   /** Escrita no processo: transação com o processo travado e o papel de quem escreve. */
@@ -121,6 +140,13 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus }) => {
         viewerRole: row.demand_author_id === req.user.userId ? 'agente' : 'parte',
       })),
     });
+  }));
+
+  // Pendências (§15): prazos em aberto e vencidos de quem pede, antes de `/processes/:ref`.
+  router.get('/processes/pending', auth, handle(async (req, res) => {
+    const organizationId = await store.governmentOrganizationOf(req, institutionStatus);
+    const today = deadlines.saoPauloDay();
+    res.json({ today, pending: await deadlines.pendingFor(pool, { userId: req.user.userId, organizationId, today }) });
   }));
 
   router.get('/processes/by-connection/:connectionId', auth, handle(async (req, res) => {
@@ -190,6 +216,47 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus }) => {
         sets.push(`responsible_due_on = $${params.length}::date`);
       }
       await client.query(`UPDATE connection_processes SET ${sets.join(', ')} WHERE id = $1`, params);
+    });
+    res.json(view);
+  }));
+
+  // ── Prazos por etapa (§15, T-05-03) ─────────────────────────────────────────
+  router.get('/processes/:ref/deadlines', auth, handle(async (req, res) => {
+    const { row } = await store.loadVisibleProcess(pool, req, req.params.ref, institutionStatus);
+    res.json({ deadlines: await deadlines.listDeadlines(pool, row.id) });
+  }));
+
+  router.post('/processes/:ref/deadlines', auth, handle(async (req, res) => {
+    const view = await writeProcess(req, async (client, row, role) => {
+      const { value, errors, forbidden } = validateDeadline(req.body, role);
+      if (value.dueOn && value.dueOn < deadlines.saoPauloDay()) errors.dueOn = 'A data limite não pode ser antes de hoje';
+      if (Object.keys(errors).length) throw validationError(errors);
+      if (forbidden) {
+        throw new HttpError(403, {
+          error: value.responsibleSide === 'agente'
+            ? 'O prazo desta etapa é definido pelo Agente de Transformação'
+            : 'O prazo desta etapa é definido pela parte conectada',
+          code: 'deadline_forbidden',
+        });
+      }
+      await deadlines.setDeadline(client, { processId: row.id, value, userId: req.user.userId, actor: role });
+      await notifyOtherSide(client, row, role, {
+        kind: 'atualizacao_de_processo',
+        title: 'Prazo definido no processo',
+        body: `${row.protocol} · ${value.stage === 'outra' ? value.stageLabel : DEADLINE_STAGE_LABELS[value.stage]}`,
+      });
+    });
+    res.status(201).json(view);
+  }));
+
+  router.post('/processes/:ref/deadlines/:deadlineId/fulfill', auth, handle(async (req, res) => {
+    const { value, errors } = validateFulfill(req.body);
+    if (Object.keys(errors).length) throw validationError(errors);
+    const view = await writeProcess(req, async (client, row, role) => {
+      const done = await deadlines.fulfillDeadline(client, {
+        processId: row.id, deadlineId: req.params.deadlineId, userId: req.user.userId, actor: role, note: value.note,
+      });
+      if (!done) throw new HttpError(409, { error: 'Este prazo não está em aberto', code: 'deadline_closed' });
     });
     res.json(view);
   }));

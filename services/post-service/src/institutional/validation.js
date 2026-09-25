@@ -116,16 +116,24 @@ function validateResponse(body) {
   };
 }
 
-/** Responsável pelo acompanhamento no órgão (nome e cargo/setor; ambos opcionais). */
+/**
+ * Responsável pelo acompanhamento no órgão (Modelo de Conexão §14): nome,
+ * cargo, setor e data limite da próxima ação. Campo ausente mantém o valor
+ * gravado; vazio apaga.
+ */
 function validateResponsible(body) {
   const input = isObject(body) ? body : {};
   const errors = {};
-  if (!has(input, 'responsibleName') && !has(input, 'responsibleRole')) {
-    errors.responsibleName = 'Informe o responsável';
+  const keys = ['responsibleName', 'responsibleRole', 'responsibleSector', 'responsibleDueOn'];
+  if (!keys.some((k) => has(input, k))) errors.responsibleName = 'Informe o responsável';
+  const value = {};
+  if (has(input, 'responsibleName')) value.responsibleName = optionalText(input.responsibleName, 'responsibleName', LIMITS.name, errors);
+  if (has(input, 'responsibleRole')) value.responsibleRole = optionalText(input.responsibleRole, 'responsibleRole', LIMITS.name, errors);
+  if (has(input, 'responsibleSector')) {
+    value.responsibleSector = optionalText(input.responsibleSector, 'responsibleSector', LIMITS.name, errors);
   }
-  const responsibleName = optionalText(input.responsibleName, 'responsibleName', LIMITS.name, errors);
-  const responsibleRole = optionalText(input.responsibleRole, 'responsibleRole', LIMITS.name, errors);
-  return { value: { responsibleName, responsibleRole }, errors };
+  if (has(input, 'responsibleDueOn')) value.responsibleDueOn = isoDate(input.responsibleDueOn, 'responsibleDueOn', errors);
+  return { value, errors };
 }
 
 /** Interesse em apoiar / oferta de recursos, com a conexão pedida ao Agente (opcional). */

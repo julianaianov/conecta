@@ -4,6 +4,7 @@
 
 const {
   PROCESS_STATUSES, CONTRIBUTION_KINDS, FINANCIAL_CONTRIBUTIONS, LIMITS,
+  DEADLINE_STAGES, DEADLINE_DEFAULT_DAYS, DEADLINE_STAGE_SIDE, DEADLINE_SIDES, DEADLINE_MAX_DAYS,
 } = require('./constants');
 const { requiresNote } = require('./state-machine');
 
@@ -145,7 +146,71 @@ function validateFormalize(body) {
   };
 }
 
+/** Dias de prazo: inteiro de 1 a `DEADLINE_MAX_DAYS` (ausente → null). */
+function dueDays(raw, field, errors) {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const n = typeof raw === 'string' && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : raw;
+  if (!Number.isInteger(n) || n < 1 || n > DEADLINE_MAX_DAYS) {
+    errors[field] = `Prazo em dias, de 1 a ${DEADLINE_MAX_DAYS}`;
+    return null;
+  }
+  return n;
+}
+
+/**
+ * Prazo de uma etapa (§15): `{ stage, stageLabel?, dueDays? | dueOn?,
+ * responsibleSide?, note? }`. Sem dias nem data, vale a sugestão da fonte
+ * (`DEADLINE_DEFAULT_DAYS`); em `outra`, nome da etapa e prazo são
+ * obrigatórios. `actor` (`agente` | `parte`) é quem define: só o lado
+ * responsável pela etapa define o prazo dela.
+ */
+function validateDeadline(body, actor) {
+  const input = isObject(body) ? body : {};
+  const errors = {};
+  const stage = typeof input.stage === 'string' ? input.stage : '';
+  if (!DEADLINE_STAGES.includes(stage)) errors.stage = 'Escolha a etapa';
+  const stageLabel = stage === 'outra' ? optionalText(input.stageLabel, 'stageLabel', 120, errors) : null;
+  if (stage === 'outra' && !stageLabel && !errors.stageLabel) errors.stageLabel = 'Informe o nome da etapa';
+  const days = dueDays(input.dueDays, 'dueDays', errors);
+  const dueOn = isoDate(input.dueOn, 'dueOn', errors);
+  if (days !== null && dueOn) errors.dueOn = 'Informe os dias ou a data, não os dois';
+  let responsibleSide = DEADLINE_STAGE_SIDE[stage] ?? null;
+  if (stage === 'outra') {
+    const side = input.responsibleSide ?? actor;
+    if (!DEADLINE_SIDES.includes(side)) errors.responsibleSide = 'Escolha quem responde pela etapa';
+    else responsibleSide = side;
+  }
+  if (stage === 'outra' && days === null && !dueOn && !errors.dueDays && !errors.dueOn) {
+    errors.dueDays = 'Informe o prazo em dias ou a data limite';
+  }
+  const note = optionalText(input.note, 'note', 1000, errors);
+  const forbidden = !errors.stage && stage !== 'outra' && DEADLINE_SIDES.includes(actor) && responsibleSide !== actor;
+  return {
+    value: {
+      stage,
+      stageLabel,
+      responsibleSide,
+      dueOn,
+      days: dueOn ? null : days ?? DEADLINE_DEFAULT_DAYS[stage] ?? null,
+      note,
+    },
+    errors,
+    forbidden,
+  };
+}
+
+/** Prazo cumprido: `{ note? }`. */
+function validateFulfill(body) {
+  const input = isObject(body) ? body : {};
+  const errors = {};
+  const note = optionalText(input.note, 'note', 1000, errors);
+  return { value: { note }, errors };
+}
+
 module.exports = {
+  dueDays,
+  validateDeadline,
+  validateFulfill,
   RESPONSIBLE_FIELDS,
   validateStatusChange,
   validateResponsible,

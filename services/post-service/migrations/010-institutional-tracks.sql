@@ -111,8 +111,8 @@ CREATE TABLE IF NOT EXISTS demand_institutional_tracks (
   status             institutional_status NOT NULL DEFAULT 'recebida',
   status_note        TEXT CHECK (status_note IS NULL OR char_length(status_note) <= 2000),
   status_changed_by  UUID,
-  -- Responsável pelo acompanhamento no órgão (nome e cargo/setor). Privado.
-  -- TODO(fonte-da-verdade): Modelo de Conexão §14 — faltam data limite e setor do responsável atual.
+  -- Responsável pelo acompanhamento no órgão (nome e cargo). Privado. Setor e
+  -- data limite (Modelo de Conexão §14) entram na migração 028.
   responsible_name   VARCHAR(255),
   responsible_role   VARCHAR(255),
   received_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -349,8 +349,12 @@ BEGIN
           'organizationName', NEW.organization_name, 'fromInstitutionalStatus', OLD.status,
           'institutionalStatus', NEW.status, 'note', NEW.status_note)),
       true, clock_timestamp());
-  ELSIF (NEW.responsible_name, NEW.responsible_role) IS DISTINCT FROM (OLD.responsible_name, OLD.responsible_role) THEN
+  ELSIF (NEW.responsible_name, NEW.responsible_role) IS DISTINCT FROM (OLD.responsible_name, OLD.responsible_role)
+        OR to_jsonb(NEW) -> 'responsible_sector' IS DISTINCT FROM to_jsonb(OLD) -> 'responsible_sector'
+        OR to_jsonb(NEW) -> 'responsible_due_on' IS DISTINCT FROM to_jsonb(OLD) -> 'responsible_due_on' THEN
     -- Responsável é dado interno do órgão: evento privado (autor e gestão).
+    -- Setor e data limite são da migração 028 (lidos por to_jsonb, porque
+    -- este arquivo é reaplicado antes dela).
     INSERT INTO demand_events (demand_id, event_type, actor_type, actor, payload, is_public, created_at)
     VALUES (
       NEW.demand_id, 'responsavel_institucional_definido', 'poder_publico',

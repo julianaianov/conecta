@@ -5,6 +5,7 @@
 // post-service/011-forwardings.sql; test/forwardings-domain.test.js confere.
 
 const { LIMITS } = require('./constants');
+const { dueDays: processDueDays } = require('../process/validation');
 
 // Para onde vai o encaminhamento: outro órgão validado na plataforma (abre o
 // acompanhamento dele), setor do próprio órgão ou órgão fora da plataforma.
@@ -154,6 +155,17 @@ function validateForwarding(body) {
   const responsibleName = optionalText(input.responsibleName, 'responsibleName', FORWARDING_LIMITS.name, errors);
   const responsibleRole = optionalText(input.responsibleRole, 'responsibleRole', FORWARDING_LIMITS.name, errors);
 
+  // Prazo (Modelo de Conexão §13, "Prazo: 10 dias"): dias a partir do envio ou a data limite.
+  const dueDays = processDueDays(input.dueDays, 'dueDays', errors);
+  let dueOn = null;
+  if (input.dueOn !== undefined && input.dueOn !== null && input.dueOn !== '') {
+    const m = typeof input.dueOn === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.dueOn) : null;
+    const d = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+    if (!m || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) errors.dueOn = 'Data no formato AAAA-MM-DD';
+    else dueOn = input.dueOn;
+  }
+  if (dueDays !== null && dueOn) errors.dueOn = 'Informe os dias ou a data, não os dois';
+
   let trackStatus = null;
   if (input.trackStatus !== undefined && input.trackStatus !== null && input.trackStatus !== '') {
     if (ORIGIN_TRACK_STATUSES.includes(input.trackStatus)) trackStatus = input.trackStatus;
@@ -165,6 +177,7 @@ function validateForwarding(body) {
     value: {
       destinationKind: kind, destinationOrganizationId, destinationOrganizationName, destinationSector,
       destinationSphere, destinationMunicipality, destinationUf, reason, responsibleName, responsibleRole, trackStatus,
+      dueDays, dueOn,
     },
     errors,
   };

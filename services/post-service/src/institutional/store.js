@@ -46,8 +46,9 @@ function createGovernmentProfileClient({ fetchInstitution, ttlMs = 60_000, now =
 const TRACK_SQL = `
   t.id, t.demand_id, t.organization_id, t.organization_name, t.government_sphere, t.department,
   t.municipality, t.uf, t.opened_by, t.opened_by_name, t.status, t.status_note, t.status_changed_by,
-  t.responsible_name, t.responsible_role, t.received_at, t.status_changed_at, t.concluded_at,
-  t.created_at, t.updated_at, t.process_id`;
+  t.responsible_name, t.responsible_role, t.responsible_sector,
+  to_char(t.responsible_due_on, 'YYYY-MM-DD') AS responsible_due_on, t.received_at, t.status_changed_at,
+  t.concluded_at, t.created_at, t.updated_at, t.process_id`;
 
 // Visão pública: órgão, status e datas (sem representante, responsável nem ids de conta).
 const PUBLIC_TRACK_SQL = `
@@ -80,6 +81,9 @@ function serializeTrack(row) {
     statusChangedBy: row.status_changed_by ?? null,
     responsibleName: row.responsible_name ?? null,
     responsibleRole: row.responsible_role ?? null,
+    // Setor e data limite da próxima ação (Modelo de Conexão §14, migração 028).
+    responsibleSector: row.responsible_sector ?? null,
+    responsibleDueOn: row.responsible_due_on ?? null,
     receivedAt: toIso(row.received_at),
     statusChangedAt: toIso(row.status_changed_at),
     concludedAt: toIso(row.concluded_at),

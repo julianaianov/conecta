@@ -12,6 +12,8 @@ const {
 const { uploadsConfig, createUploadStorage, createUploadRoutes } = require('./uploads');
 const { createPostUploadPolicy } = require('./upload-policy');
 const dossierRoutes = require('./routes/dossiers');
+const documentAccessRoutes = require('./routes/document-access');
+const { createInstitutionalUploadAccess } = require('./access/documents');
 const { createDossierService } = require('./dossier/service');
 const { createPublicInstitutionClient } = require('./dossier/institution');
 const institutionalRoutes = require('./routes/institutional');
@@ -22,6 +24,7 @@ const { createGovernmentProfileClient } = require('./institutional/store');
 const { createGovernmentDirectoryClient } = require('./institutional/directory');
 const interestsRoutes = require('./routes/interests');
 const processesRoutes = require('./routes/processes');
+const processCommunicationRoutes = require('./routes/process-communication');
 const supportsRoutes = require('./routes/supports');
 const executionRoutes = require('./routes/execution');
 const accountabilityRoutes = require('./routes/accountability');
@@ -39,6 +42,7 @@ const { createMailer } = require('./notifications/mailer');
 const { createAiService } = require('./ai/service');
 const { createRankingService } = require('./ranking/service');
 const { createDelayRecorder } = require('./execution/delays');
+const { createDeadlineMonitor } = require('./process/deadlines');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
 
 /** Endereço público do portal (URL de verificação impressa no dossiê). */
@@ -102,7 +106,7 @@ const createApp = ({
   app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'post-service' }));
   // Antes das rotas de posts, cujo `/:id` só aceita UUID. Público: /api/posts/demands.
   app.use('/uploads', createUploadRoutes({
-    pool, auth, storage: uploadStorage, policy: createPostUploadPolicy(), operationUserIds,
+    pool, auth, storage: uploadStorage, policy: createPostUploadPolicy({ institutionStatus }), operationUserIds,
   }));
   // Atuação institucional do Poder Público (T13) e encaminhamentos (T14):
   // /institutional/* e /demands/:id/institutional.
@@ -112,6 +116,9 @@ const createApp = ({
   // divulgação de ações. Antes das rotas de demanda e de posts.
   app.use('/', governmentRoutes({ pool, auth, governmentActor, governmentProfile, cache: governmentCache }));
   if (dossiers) app.use('/demands', dossierRoutes({ pool, auth, dossiers, operationUserIds }));
+  // Nível Institucional (T-05-18): documentos e dossiê integral para quem é
+  // envolvido no processo; antes do `/:id` da demanda.
+  app.use('/demands', documentAccessRoutes({ pool, auth, institutionStatus, uploadStorage, dossiers, operationUserIds }));
   // Interesse, conexão e oportunidades de apoio (T15): antes do `/:id` da demanda.
   app.use('/demands', interestsRoutes({
     pool, auth, validatedAgent, governmentGate: institutional, institutionStatus, partnerProfile, connections,
@@ -119,6 +126,8 @@ const createApp = ({
   // Processo de Conexão com protocolo DM-AAAA-NNNNNN (T-05-01): /processes/* e
   // /demands[/mine]/:id/processes. Antes das rotas da demanda.
   app.use('/', processesRoutes({ pool, auth, validatedAgent, institutionStatus }));
+  // Comunicação do processo (T-05-02): /processes/:ref/messages, com anexos do bucket de uploads.
+  app.use('/', processCommunicationRoutes({ pool, auth, institutionStatus, uploadStorage }));
   // Registro de apoio realizado, dupla confirmação e histórico de apoio (T16).
   app.use('/demands', supportsRoutes({ pool, auth, governmentGate: institutional, institutionStatus }));
   // Execução, evidências do antes/depois e acompanhamento (T17).
@@ -163,6 +172,8 @@ const createApp = ({
   app.locals.rankings = rankings === undefined ? createRankingService({ pool }) : rankings;
   // Atraso gravado das etapas da execução (T-05-11, migração 034).
   app.locals.executionDelays = createDelayRecorder({ pool });
+  // Prazos vencidos e alertas de prazo próximo/vencido (T-05-03, migração 028).
+  app.locals.deadlines = createDeadlineMonitor({ pool });
   return app;
 };
 
@@ -178,6 +189,9 @@ if (require.main === module) {
   // Laço que grava o atraso das etapas (DM_EXECUTION_DELAY_INTERVAL_MS; 0 desliga).
   const delayInterval = Number(process.env.DM_EXECUTION_DELAY_INTERVAL_MS ?? 3_600_000);
   app.locals.executionDelays?.start(Number.isFinite(delayInterval) ? delayInterval : 3_600_000);
+  // Laço dos alertas de prazo (DM_DEADLINE_INTERVAL_MS; 0 desliga).
+  const deadlineInterval = Number(process.env.DM_DEADLINE_INTERVAL_MS ?? 3_600_000);
+  app.locals.deadlines?.start(Number.isFinite(deadlineInterval) ? deadlineInterval : 3_600_000);
   // Laço da caixa de saída de e-mail (DM_MAIL_INTERVAL_MS; 0 desliga).
   const mailInterval = Number(process.env.DM_MAIL_INTERVAL_MS ?? 60_000);
   app.locals.mailer?.start(Number.isFinite(mailInterval) ? mailInterval : 60_000);

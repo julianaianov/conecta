@@ -8,7 +8,8 @@
 //                                                  destinationOrganizationId | destinationOrganizationName,
 //                                                  destinationSector, destinationSphere,
 //                                                  destinationMunicipality, destinationUf, reason,
-//                                                  responsibleName, responsibleRole, trackStatus? }
+//                                                  responsibleName, responsibleRole, trackStatus?,
+//                                                  dueDays? | dueOn? } (prazo do §13: envio + N dias)
 //   GET  /institutional/forwardings                 caixa do órgão: direction=recebidos|enviados, status
 //   GET  /institutional/forwardings/:fid            um encaminhamento com a tramitação
 //   POST /institutional/forwardings/:fid/status     { status: recebido|aceito|devolvido, note }
@@ -34,6 +35,7 @@ const {
   checkTransition, checkForwardingTransition, validateForwarding, validateForwardingStatus, validateForwardingUpdate,
 } = require('../institutional');
 const forwardingStore = require('../institutional/forwarding-store');
+const { saoPauloDay } = require('../process/deadlines');
 
 const { HttpError, withTransaction } = demandStore;
 const { parseList, validationError } = listHelpers;
@@ -106,6 +108,7 @@ function registerForwardingRoutes(router, ctx) {
   // ── Encaminhar ───────────────────────────────────────────────────────────
   router.post('/institutional/demands/:id/forwardings', ...gov, handle(async (req, res) => {
     const { value, errors } = validateForwarding(req.body);
+    if (value.dueOn && value.dueOn < saoPauloDay()) errors.dueOn = 'A data limite não pode ser antes de hoje';
     if (Object.keys(errors).length) throw validationError(errors);
     const organizationId = req.government.organizationId;
     if (value.destinationOrganizationId === organizationId) {
@@ -156,8 +159,9 @@ function registerForwardingRoutes(router, ctx) {
            (track_id, demand_id, organization_id, origin_organization_name, destination_kind,
             destination_organization_id, destination_track_id, destination_organization_name, destination_sector,
             destination_sphere, destination_municipality, destination_uf, reason, forwarded_by, forwarded_by_name,
-            responsible_name, responsible_role)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            responsible_name, responsible_role, due_on)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+                 coalesce($18::date, dm_today() + $19::int))
          RETURNING id`,
         [
           track.id, track.demand_id, organizationId, track.organization_name, value.destinationKind,
@@ -165,6 +169,7 @@ function registerForwardingRoutes(router, ctx) {
           value.destinationSector, value.destinationSphere, value.destinationMunicipality, value.destinationUf,
           value.reason, req.user.userId, authorName(req.user),
           value.responsibleName ?? authorName(req.user), value.responsibleRole,
+          value.dueOn ?? null, value.dueDays ?? null,
         ],
       );
       createdId = rows[0].id;

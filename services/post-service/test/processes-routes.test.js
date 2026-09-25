@@ -36,6 +36,7 @@ function fakePool(row = baseRow) {
     if (/SELECT 1 FROM demands WHERE id = \$1 AND status/.test(text)) return { rows: [{ '?column?': 1 }] };
     if (/WHERE p\.demand_id = \$1 ORDER BY p\.sequence_in_demand/.test(text)) return { rows: [row] };
     if (/FROM demand_events/.test(text)) return { rows: [] };
+    if (/FROM connection_process_deadlines dl\s+WHERE dl\.process_id/.test(text)) return { rows: [] };
     throw new Error(`Consulta inesperada: ${text}`);
   };
   return { calls, query, async connect() { return { query, release() {} }; } };

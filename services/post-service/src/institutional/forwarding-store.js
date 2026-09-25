@@ -16,7 +16,8 @@ const FORWARDING_SQL = `
   f.destination_sector, f.destination_sphere, f.destination_municipality, f.destination_uf, f.reason,
   f.forwarded_by, f.forwarded_by_name, f.responsible_name, f.responsible_role, f.status, f.status_note,
   f.status_changed_by, f.status_changed_by_organization, f.status_changed_at, f.forwarded_at,
-  f.received_at, f.accepted_at, f.returned_at, f.created_at, f.updated_at`;
+  f.received_at, f.accepted_at, f.returned_at, f.created_at, f.updated_at,
+  to_char(f.due_on, 'YYYY-MM-DD') AS due_on`;
 
 const UPDATE_SQL = `
   u.id, u.forwarding_id, u.demand_id, u.organization_id, u.organization_name, u.side, u.kind, u.body,
@@ -60,6 +61,8 @@ function serializeForwarding(row, updates = [], { viewerOrganizationId = null, i
     receivedAt: toIso(row.received_at),
     acceptedAt: toIso(row.accepted_at),
     returnedAt: toIso(row.returned_at),
+    // Prazo do encaminhamento (Modelo de Conexão §13; o Agente acompanha).
+    dueOn: row.due_on ?? null,
     updates: updates.map((u) => serializeUpdate(u, { isPublic })),
   };
   if (isPublic) return base;
