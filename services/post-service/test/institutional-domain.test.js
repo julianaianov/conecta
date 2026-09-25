@@ -19,10 +19,13 @@ test('enums da migração 010 = constantes do domínio (fonte: slides 10, 12 e 1
   assert.deepEqual(enumValues('institutional_status'), I.INSTITUTIONAL_STATUSES);
   assert.deepEqual(enumValues('institutional_response_type'), I.RESPONSE_TYPES);
   assert.deepEqual(enumValues('institutional_support_type'), I.SUPPORT_TYPES);
-  assert.equal(I.INSTITUTIONAL_STATUSES.length, 9);
-  assert.deepEqual(I.INSTITUTIONAL_STATUSES.slice(0, 7), [
-    'recebida', 'em_analise', 'encaminhada', 'em_articulacao', 'acao_programada', 'em_execucao', 'concluida',
-  ]);
+  assert.equal(I.INSTITUTIONAL_STATUSES.length, 14);
+  // Decisão 16: subconjunto compatível do status do processo (Modelo §16).
+  assert.ok(!I.INSTITUTIONAL_STATUSES.includes('acao_programada'));
+  for (const s of ['aprovada_para_execucao', 'solicitacao_de_informacoes', 'aguardando_documentacao', 'nao_aprovada',
+    'suspensa', 'cancelada', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel']) {
+    assert.ok(I.INSTITUTIONAL_STATUSES.includes(s), s);
+  }
   assert.equal(I.RESPONSE_TYPES.length, 8);
   assert.equal(I.SUPPORT_TYPES.length, 11);
   for (const list of [I.INSTITUTIONAL_STATUSES, I.RESPONSE_TYPES, I.SUPPORT_TYPES]) {
@@ -33,20 +36,21 @@ test('enums da migração 010 = constantes do domínio (fonte: slides 10, 12 e 1
 });
 
 test('transições do SQL = TRANSITIONS do domínio', () => {
-  const body = /institutional_status_transition_allowed\([\s\S]*?SELECT CASE from_status([\s\S]*?)ELSE false/.exec(sql)[1];
+  const body = /institutional_status_transition_allowed\([\s\S]*?SELECT CASE from_status::text([\s\S]*?)ELSE false/.exec(sql)[1];
   const fromSql = {};
-  for (const m of body.matchAll(/WHEN '([a-z_]+)' THEN to_status IN \(([^)]*)\)/g)) {
+  for (const m of body.matchAll(/WHEN '([a-z_]+)' THEN to_status::text IN \(([^)]*)\)/g)) {
     fromSql[m[1]] = [...m[2].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]);
   }
   const fromJs = Object.fromEntries(Object.entries(I.TRANSITIONS).filter(([, to]) => to.length));
   assert.deepEqual(fromSql, fromJs);
   assert.deepEqual(I.TRANSITIONS.concluida, [], 'concluída é final');
-  const requiresNote = /institutional_status_requires_note[\s\S]*?to_status IN \(([^)]*)\)/.exec(sql)[1];
+  assert.deepEqual(I.TRANSITIONS.cancelada, [], 'cancelada é final');
+  const requiresNote = /institutional_status_requires_note[\s\S]*?to_status::text IN \(([^)]*)\)/.exec(sql)[1];
   assert.deepEqual([...requiresNote.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]), I.STATUSES_REQUIRING_NOTE);
 });
 
 test('checkTransition: caminho da fonte, saltos recusados e justificativa obrigatória', () => {
-  const path7 = ['recebida', 'em_analise', 'encaminhada', 'em_articulacao', 'acao_programada', 'em_execucao', 'concluida'];
+  const path7 = ['recebida', 'em_analise', 'encaminhada', 'em_articulacao', 'aprovada_para_execucao', 'em_execucao', 'concluida'];
   for (let i = 1; i < path7.length; i += 1) assert.ok(I.checkTransition(path7[i - 1], path7[i]).ok, path7[i]);
   assert.equal(I.checkTransition('recebida', 'concluida').code, 'invalid_transition');
   assert.equal(I.checkTransition('concluida', 'em_analise').code, 'invalid_transition');
@@ -55,6 +59,9 @@ test('checkTransition: caminho da fonte, saltos recusados e justificativa obriga
   assert.equal(I.checkTransition('em_analise', 'nao_e_de_competencia').code, 'note_required');
   assert.ok(I.checkTransition('em_analise', 'nao_e_de_competencia', 'Competência estadual').ok);
   assert.ok(I.checkTransition('nao_e_de_competencia', 'em_analise').ok, 'volta à análise diante de fato novo');
+  assert.equal(I.checkTransition('em_analise', 'nao_aprovada').code, 'note_required', 'recusa informa o motivo');
+  assert.ok(I.checkTransition('em_analise', 'suspensa', 'Aguardando orçamento').ok);
+  assert.ok(I.checkTransition('suspensa', 'em_execucao').ok);
 });
 
 test('validateResponse: tipo, texto e campos exigidos por tipo', () => {

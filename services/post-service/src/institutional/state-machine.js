@@ -3,25 +3,34 @@
 // vale no banco; test/institutional-domain.test.js compara as duas.
 //
 // O fluxo da fonte é Recebida → Em análise → Encaminhada → Em articulação →
-// Ação programada → Em execução → Concluída. "Não é de competência" e
-// "Encaminhada ao órgão responsável" podem ser registradas enquanto o órgão
-// ainda não programou a ação, e voltam à análise diante de fato novo.
-// Concluída é final.
+// Aprovada para execução → Em execução → Concluída (Modelo de Conexão §16,
+// decisão 16). "Não é de competência", "Encaminhada ao órgão responsável" e
+// "Não aprovada" voltam à análise diante de fato novo; "Aguardando
+// documentação" e "Suspensa" retomam o fluxo. Concluída e Cancelada são finais.
 
 const { INSTITUTIONAL_STATUSES, STATUSES_REQUIRING_NOTE } = require('./constants');
 
 const TRANSITIONS = {
-  recebida: ['em_analise', 'encaminhada', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel'],
-  em_analise: ['encaminhada', 'em_articulacao', 'acao_programada', 'em_execucao',
-    'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel'],
-  encaminhada: ['em_analise', 'em_articulacao', 'acao_programada', 'em_execucao',
-    'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel'],
-  em_articulacao: ['encaminhada', 'acao_programada', 'em_execucao', 'encaminhada_ao_orgao_responsavel'],
-  acao_programada: ['em_articulacao', 'em_execucao'],
-  em_execucao: ['concluida'],
+  recebida: ['em_analise', 'solicitacao_de_informacoes', 'encaminhada', 'nao_e_de_competencia',
+    'encaminhada_ao_orgao_responsavel'],
+  em_analise: ['solicitacao_de_informacoes', 'encaminhada', 'em_articulacao', 'aprovada_para_execucao',
+    'em_execucao', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel', 'aguardando_documentacao',
+    'nao_aprovada', 'suspensa', 'cancelada'],
+  solicitacao_de_informacoes: ['em_analise', 'encaminhada', 'em_articulacao', 'aguardando_documentacao',
+    'nao_e_de_competencia', 'nao_aprovada', 'cancelada'],
+  encaminhada: ['em_analise', 'solicitacao_de_informacoes', 'em_articulacao', 'aprovada_para_execucao',
+    'em_execucao', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel', 'nao_aprovada'],
+  em_articulacao: ['solicitacao_de_informacoes', 'encaminhada', 'aprovada_para_execucao', 'em_execucao',
+    'encaminhada_ao_orgao_responsavel', 'nao_aprovada', 'suspensa', 'cancelada'],
+  aprovada_para_execucao: ['em_articulacao', 'em_execucao', 'suspensa', 'cancelada'],
+  em_execucao: ['concluida', 'suspensa'],
   concluida: [],
   nao_e_de_competencia: ['em_analise'],
   encaminhada_ao_orgao_responsavel: ['em_analise'],
+  aguardando_documentacao: ['em_analise', 'nao_aprovada', 'cancelada'],
+  nao_aprovada: ['em_analise'],
+  suspensa: ['em_analise', 'em_articulacao', 'aprovada_para_execucao', 'em_execucao', 'cancelada'],
+  cancelada: [],
 };
 
 const INITIAL_STATUS = 'recebida';

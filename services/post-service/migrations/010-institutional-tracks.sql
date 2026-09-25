@@ -9,9 +9,11 @@
 --
 -- - `demand_institutional_tracks`: um acompanhamento por (demanda, órgão do
 --   Poder Público com cadastro validado), com o status institucional canônico
---   (Recebida → Em análise → Encaminhada → Em articulação → Ação programada →
---   Em execução → Concluída, mais Não é de competência e Encaminhada ao órgão
---   responsável), responsável, datas e a nota da última mudança. Nasce
+--   (Recebida → Em análise → Encaminhada → Em articulação → Aprovada para
+--   execução → Em execução → Concluída, mais Não é de competência e Encaminhada
+--   ao órgão responsável e, desde a decisão 16, Solicitação de informações,
+--   Aguardando documentação, Não aprovada, Suspensa e Cancelada), responsável,
+--   datas e a nota da última mudança. Nasce
 --   `recebida`; as transições ficam em institutional_status_transition_allowed
 --   (espelho: services/post-service/src/institutional/state-machine.js).
 -- - `demand_institutional_responses`: respostas institucionais (tipos da
@@ -36,14 +38,20 @@
 --
 -- Idempotente: pode rodar de novo (o deploy reaplica o manifesto inteiro).
 
--- TODO(fonte-da-verdade): Modelo de Conexão §16 — falta o status padronizado do processo
--- (Solicitação de informações, Aprovada para execução, Prestação de contas/Resultados, Aguardando
--- documentação, Aguardando recurso, Não aprovada, Suspensa, Cancelada); conciliar com o Fluxo do
--- Poder Público. Espelho: src/institutional/constants.js.
+-- Decisão 16 (Modelo de Conexão §16): o status institucional é subconjunto
+-- compatível do status do Processo de Conexão. `acao_programada` virou
+-- `aprovada_para_execucao` e entraram `solicitacao_de_informacoes`,
+-- `aguardando_documentacao`, `nao_aprovada`, `suspensa` e `cancelada`. Banco
+-- novo já nasce assim; banco existente é migrado pela 026
+-- (026-connection-processes.sql: RENAME VALUE e ADD VALUE). Por isso as funções
+-- SQL abaixo comparam o texto do status: esta migração é reaplicada a cada
+-- deploy antes da 026 e não pode citar um rótulo que o enum ainda não tem.
+-- Espelho: src/institutional/constants.js.
 DO $$ BEGIN
   CREATE TYPE institutional_status AS ENUM (
-    'recebida', 'em_analise', 'encaminhada', 'em_articulacao', 'acao_programada',
-    'em_execucao', 'concluida', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel'
+    'recebida', 'em_analise', 'solicitacao_de_informacoes', 'encaminhada', 'em_articulacao',
+    'aprovada_para_execucao', 'em_execucao', 'concluida', 'nao_e_de_competencia',
+    'encaminhada_ao_orgao_responsavel', 'aguardando_documentacao', 'nao_aprovada', 'suspensa', 'cancelada'
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
@@ -82,8 +90,9 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- TODO(fonte-da-verdade): Modelo de Conexão §11/§28/§35 — o acompanhamento não é um Processo de
--- Conexão com protocolo DM-AAAA-NNNNNN; ver TODO em user-service/src/routes/connections.js.
+-- O acompanhamento é a análise do órgão antes da formalização (decisão 13); o
+-- Processo de Conexão com protocolo DM-AAAA-NNNNNN é `connection_processes`
+-- (migração 026), que grava `process_id` aqui quando o órgão formaliza.
 CREATE TABLE IF NOT EXISTS demand_institutional_tracks (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   demand_id          UUID NOT NULL REFERENCES demands(id) ON DELETE RESTRICT,
@@ -179,35 +188,51 @@ CREATE INDEX IF NOT EXISTS idx_institutional_offers_track
 
 -- ---------------------------------------------------------------------------
 -- Transições do status institucional (espelha TRANSITIONS em
--- src/institutional/state-machine.js). Concluída é final; "Não é de
--- competência" e "Encaminhada ao órgão responsável" podem voltar à análise
--- (fato novo, retorno do encaminhamento).
+-- src/institutional/state-machine.js). Concluída e Cancelada são finais; "Não
+-- é de competência", "Encaminhada ao órgão responsável" e "Não aprovada" podem
+-- voltar à análise (fato novo, retorno do encaminhamento, reconsideração);
+-- Aguardando documentação e Suspensa retomam o fluxo. Compara texto (ver o
+-- comentário do enum acima).
 CREATE OR REPLACE FUNCTION institutional_status_transition_allowed(
   from_status institutional_status, to_status institutional_status
 ) RETURNS BOOLEAN
 LANGUAGE sql IMMUTABLE AS $$
-  SELECT CASE from_status
-    WHEN 'recebida' THEN to_status IN ('em_analise', 'encaminhada', 'nao_e_de_competencia',
-                                       'encaminhada_ao_orgao_responsavel')
-    WHEN 'em_analise' THEN to_status IN ('encaminhada', 'em_articulacao', 'acao_programada', 'em_execucao',
-                                         'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel')
-    WHEN 'encaminhada' THEN to_status IN ('em_analise', 'em_articulacao', 'acao_programada', 'em_execucao',
-                                          'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel')
-    WHEN 'em_articulacao' THEN to_status IN ('encaminhada', 'acao_programada', 'em_execucao',
-                                             'encaminhada_ao_orgao_responsavel')
-    WHEN 'acao_programada' THEN to_status IN ('em_articulacao', 'em_execucao')
-    WHEN 'em_execucao' THEN to_status IN ('concluida')
-    WHEN 'nao_e_de_competencia' THEN to_status IN ('em_analise')
-    WHEN 'encaminhada_ao_orgao_responsavel' THEN to_status IN ('em_analise')
+  SELECT CASE from_status::text
+    WHEN 'recebida' THEN to_status::text IN ('em_analise', 'solicitacao_de_informacoes', 'encaminhada',
+                                             'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel')
+    WHEN 'em_analise' THEN to_status::text IN ('solicitacao_de_informacoes', 'encaminhada', 'em_articulacao',
+                                               'aprovada_para_execucao', 'em_execucao', 'nao_e_de_competencia',
+                                               'encaminhada_ao_orgao_responsavel', 'aguardando_documentacao',
+                                               'nao_aprovada', 'suspensa', 'cancelada')
+    WHEN 'solicitacao_de_informacoes' THEN to_status::text IN ('em_analise', 'encaminhada', 'em_articulacao',
+                                                               'aguardando_documentacao', 'nao_e_de_competencia',
+                                                               'nao_aprovada', 'cancelada')
+    WHEN 'encaminhada' THEN to_status::text IN ('em_analise', 'solicitacao_de_informacoes', 'em_articulacao',
+                                                'aprovada_para_execucao', 'em_execucao', 'nao_e_de_competencia',
+                                                'encaminhada_ao_orgao_responsavel', 'nao_aprovada')
+    WHEN 'em_articulacao' THEN to_status::text IN ('solicitacao_de_informacoes', 'encaminhada',
+                                                   'aprovada_para_execucao', 'em_execucao',
+                                                   'encaminhada_ao_orgao_responsavel', 'nao_aprovada', 'suspensa',
+                                                   'cancelada')
+    WHEN 'aprovada_para_execucao' THEN to_status::text IN ('em_articulacao', 'em_execucao', 'suspensa', 'cancelada')
+    WHEN 'em_execucao' THEN to_status::text IN ('concluida', 'suspensa')
+    WHEN 'nao_e_de_competencia' THEN to_status::text IN ('em_analise')
+    WHEN 'encaminhada_ao_orgao_responsavel' THEN to_status::text IN ('em_analise')
+    WHEN 'aguardando_documentacao' THEN to_status::text IN ('em_analise', 'nao_aprovada', 'cancelada')
+    WHEN 'nao_aprovada' THEN to_status::text IN ('em_analise')
+    WHEN 'suspensa' THEN to_status::text IN ('em_analise', 'em_articulacao', 'aprovada_para_execucao', 'em_execucao',
+                                             'cancelada')
     ELSE false
   END
 $$;
 
 -- Status que exigem justificativa na mudança (fonte: "impossibilidade de
--- atendimento dentro daquela competência, com o devido encaminhamento").
+-- atendimento dentro daquela competência, com o devido encaminhamento";
+-- Modelo de Conexão §10: "recusar a demanda informando o motivo").
 CREATE OR REPLACE FUNCTION institutional_status_requires_note(to_status institutional_status) RETURNS BOOLEAN
 LANGUAGE sql IMMUTABLE AS $$
-  SELECT to_status IN ('nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel')
+  SELECT to_status::text IN ('nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel', 'nao_aprovada', 'suspensa',
+                             'cancelada')
 $$;
 
 -- A atuação institucional vale para demanda publicada em diante, fora `arquivada`.
@@ -265,7 +290,11 @@ BEGIN
   PERFORM institutional_assert_demand_open(NEW.demand_id);
 
   IF NEW.status IS DISTINCT FROM OLD.status THEN
-    IF NOT institutional_status_transition_allowed(OLD.status, NEW.status) THEN
+    -- Com Processo de Conexão, o status do acompanhamento espelha o do processo
+    -- (decisão 16): o trigger do processo (migração 026) liga `dm.process_mirror`
+    -- na própria transação e o salto do processo vale aqui.
+    IF NOT institutional_status_transition_allowed(OLD.status, NEW.status)
+       AND coalesce(current_setting('dm.process_mirror', true), '') <> 'on' THEN
       RAISE EXCEPTION 'transição institucional não permitida: % → %', OLD.status, NEW.status
         USING ERRCODE = 'check_violation';
     END IF;

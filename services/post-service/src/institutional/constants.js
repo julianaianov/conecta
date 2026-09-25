@@ -5,28 +5,40 @@
 // confere as listas.
 
 // Status institucional, por órgão e por demanda (slide 13): os 7 do fluxo e as
-// duas situações de fora da competência.
-// TODO(fonte-da-verdade): Modelo de Conexão §16 — faltam os status padronizados do processo; ver TODO em migrations/010-institutional-tracks.sql.
+// duas situações de fora da competência, alinhados ao status do Processo de
+// Conexão (Modelo de Conexão §16, decisão 16): `acao_programada` virou
+// `aprovada_para_execucao` e entraram solicitação de informações, aguardando
+// documentação, não aprovada, suspensa e cancelada. Quando o acompanhamento
+// tem processo, o status dele espelha o do processo (migração 026).
 const INSTITUTIONAL_STATUSES = [
-  'recebida', 'em_analise', 'encaminhada', 'em_articulacao', 'acao_programada',
-  'em_execucao', 'concluida', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel',
+  'recebida', 'em_analise', 'solicitacao_de_informacoes', 'encaminhada', 'em_articulacao',
+  'aprovada_para_execucao', 'em_execucao', 'concluida', 'nao_e_de_competencia',
+  'encaminhada_ao_orgao_responsavel', 'aguardando_documentacao', 'nao_aprovada', 'suspensa', 'cancelada',
 ];
 
 const INSTITUTIONAL_STATUS_LABELS = {
   recebida: 'Recebida',
   em_analise: 'Em análise',
+  solicitacao_de_informacoes: 'Solicitação de informações',
   encaminhada: 'Encaminhada',
   em_articulacao: 'Em articulação',
-  acao_programada: 'Ação programada',
+  aprovada_para_execucao: 'Aprovada para execução',
   em_execucao: 'Em execução',
   concluida: 'Concluída',
   nao_e_de_competencia: 'Não é de competência',
   encaminhada_ao_orgao_responsavel: 'Encaminhada ao órgão responsável',
+  aguardando_documentacao: 'Aguardando documentação',
+  nao_aprovada: 'Não aprovada',
+  suspensa: 'Suspensa',
+  cancelada: 'Cancelada',
 };
 
 // Mudanças que exigem justificativa ("impossibilidade de atendimento dentro
-// daquela competência, com o devido encaminhamento quando aplicável").
-const STATUSES_REQUIRING_NOTE = ['nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel'];
+// daquela competência, com o devido encaminhamento quando aplicável"; Modelo de
+// Conexão §10, "recusar a demanda informando o motivo").
+const STATUSES_REQUIRING_NOTE = [
+  'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel', 'nao_aprovada', 'suspensa', 'cancelada',
+];
 
 // "A resposta poderá informar" (slide 10).
 const RESPONSE_TYPES = [

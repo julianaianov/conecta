@@ -182,7 +182,7 @@ test('Poder Público: fila, acompanhamento, respostas, status, oferta de apoio e
       assert.equal(opened.body.track.status, 'recebida');
       assert.equal(opened.body.track.organizationName, 'Secretaria Municipal de Meio Ambiente');
       assert.deepEqual(opened.body.track.availableStatuses,
-        ['em_analise', 'encaminhada', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel']);
+        ['em_analise', 'solicitacao_de_informacoes', 'encaminhada', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel']);
       assert.equal((await call('POST', `/institutional/demands/${rio}/track`)).status, 200, 'abrir de novo não duplica');
       assert.equal((await call('POST', `/institutional/demands/${draft.body.id}/track`)).status, 404);
 
@@ -225,10 +225,10 @@ test('Poder Público: fila, acompanhamento, respostas, status, oferta de apoio e
       });
       assert.equal(program.status, 201);
       const programmed = await call('POST', `/institutional/demands/${rio}/responses`, {
-        body: { type: 'acao_prevista', body: 'Vistoria técnica programada.', plannedFor: '2026-10-20', status: 'acao_programada' },
+        body: { type: 'acao_prevista', body: 'Vistoria técnica programada.', plannedFor: '2026-10-20', status: 'aprovada_para_execucao' },
       });
       assert.equal(programmed.status, 201, JSON.stringify(programmed.body));
-      assert.equal(programmed.body.track.status, 'acao_programada');
+      assert.equal(programmed.body.track.status, 'aprovada_para_execucao');
       assert.deepEqual(programmed.body.responses.map((r) => r.type),
         ['recebimento', 'programa_publico_relacionado', 'acao_prevista']);
 
@@ -266,14 +266,14 @@ test('Poder Público: fila, acompanhamento, respostas, status, oferta de apoio e
 
       const me = await call('GET', '/institutional/me');
       assert.equal(me.status, 200);
-      assert.equal(me.body.counts.acao_programada, 1);
+      assert.equal(me.body.counts.aprovada_para_execucao, 1);
       assert.equal(me.body.jurisdiction.municipality, 'Rio de Janeiro');
 
       // ── Público ───────────────────────────────────────────────────────────
       const pub = await call('GET', `/demands/${rio}/institutional`, { auth: false });
       assert.equal(pub.status, 200);
       assert.deepEqual(pub.body.organizations.map((o) => [o.organizationName, o.status]), [
-        ['Secretaria Municipal de Meio Ambiente', 'acao_programada'],
+        ['Secretaria Municipal de Meio Ambiente', 'aprovada_para_execucao'],
         ['Secretaria Estadual de Cultura', 'nao_e_de_competencia'],
       ]);
       for (const o of pub.body.organizations) {

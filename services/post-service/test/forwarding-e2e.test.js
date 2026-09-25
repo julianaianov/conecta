@@ -298,7 +298,7 @@ test('encaminhamentos: setor interno, órgão da plataforma e órgão externo, s
 
       // Encaminhar exige transição válida do acompanhamento de origem.
       assert.equal((await call('POST', `/institutional/demands/${demand}/status`, { as: GOV_STATE, body: { status: 'em_analise' } })).status, 200);
-      assert.equal((await call('POST', `/institutional/demands/${demand}/status`, { as: GOV_STATE, body: { status: 'acao_programada' } })).status, 200);
+      assert.equal((await call('POST', `/institutional/demands/${demand}/status`, { as: GOV_STATE, body: { status: 'aprovada_para_execucao' } })).status, 200);
       const blocked = await forward({ destinationKind: 'setor_interno', destinationSector: 'Gabinete', reason: 'x' }, GOV_STATE);
       assert.equal(blocked.status, 409);
       assert.equal(blocked.body.code, 'invalid_transition');
