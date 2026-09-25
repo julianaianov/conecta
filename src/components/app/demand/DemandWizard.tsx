@@ -62,6 +62,7 @@ import { DemandProgress } from "./DemandProgress";
 import { DemandSummary } from "./DemandSummary";
 import { DossierPanel } from "./DossierPanel";
 import { DocumentsEditor, GoalsEditor, ResourcesEditor } from "./ItemEditors";
+import { ModuleDetailsFields } from "./ModuleDetailsFields";
 import { ScheduleEditor } from "./ScheduleEditor";
 import { FieldShell, FormAlert, SelectInput, TextArea, TextInput, demandFieldId } from "./fields";
 
@@ -197,7 +198,7 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
       setSaving(true);
       setSaveError(null);
       try {
-        const created = await api.createDemand({ category: form.category });
+        const created = await api.createDemand(stepInput("classificacao", form));
         router.replace(demandEditPath(created.id, "descricao"));
         return false; // a página nova carrega o rascunho
       } catch (err) {
@@ -471,6 +472,15 @@ export function DemandWizard({ demandId }: { demandId: string | null }) {
                 <p id={`${demandFieldId("category")}-error`} className="mt-2 text-xs font-semibold" style={{ color: "#e53935" }}>{stepFields.category}</p>
               )}
             </fieldset>
+          )}
+          {step === "classificacao" && (
+            <ModuleDetailsFields
+              category={form.category}
+              value={form.moduleDetails}
+              onValue={(v) => set("moduleDetails", v)}
+              errors={stepFields}
+              disabled={demand ? !demand.editable : false}
+            />
           )}
 
           {step === "descricao" && demand && (

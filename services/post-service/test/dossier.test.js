@@ -316,3 +316,35 @@ test('migração 015: prestação congelada, gestão só lê e novo gatilho do d
   const manifest = fs.readFileSync(path.join(__dirname, '../../migrations.manifest'), 'utf8');
   assert.match(manifest, /^post_db post-service\/migrations\/015-accountability\.sql$/m);
 });
+
+test('módulo específico (T-05-08): dossiê mostra o módulo e as informações; a versão pública omite o imóvel', async () => {
+  const ambiental = content.demandSnapshot({
+    ...ROW,
+    category: 'recuperacao_ambiental',
+    module_details: {
+      area_m2: 1200.5, diagnostico: 'Restinga degradada',
+      responsavel_tecnico: { nome: 'Ana Souza', registro: 'CRBio 12345' },
+      imovel: { documento: 'não é deste módulo' },
+    },
+  }, ITEMS);
+  assert.equal(ambiental.demand.module, 'ambiental');
+  assert.equal(ambiental.demand.moduleLabel, 'Módulo Ambiental');
+  assert.equal(ambiental.demand.moduleDetails.imovel, undefined, 'só as chaves do módulo');
+  const lines = Object.fromEntries(content.moduleDetailLines(ambiental.demand));
+  assert.equal(lines['Área (m²)'], '1.200,5 m²');
+  assert.equal(lines['Responsável técnico'], 'Nome: Ana Souza\nRegistro profissional (CREA, CAU, CRBio ou outro): CRBio 12345');
+  const c = content.buildDossierContent({ snapshot: ambiental, institution: INSTITUTION, meta: meta('integral') });
+  const hash = content.contentHash(c);
+  const pdf = await renderDossierPdf(c, { verifyUrl: 'https://dmconecta.org/x', contentSha256: hash });
+  assert.equal(pdf.subarray(0, 5).toString('latin1'), '%PDF-');
+
+  const obra = content.demandSnapshot({
+    ...ROW,
+    category: 'obra_ou_melhoria_de_infraestrutura',
+    module_details: { imovel: { documento: 'Matrícula 123' }, area_m2: 80 },
+  }, ITEMS);
+  assert.equal(obra.demand.moduleDetails.imovel.documento, 'Matrícula 123');
+  const redacted = content.redactSnapshot(obra);
+  assert.equal(redacted.demand.moduleDetails.imovel, undefined);
+  assert.equal(redacted.demand.moduleDetails.area_m2, 80);
+});

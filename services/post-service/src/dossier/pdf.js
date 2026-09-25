@@ -13,7 +13,7 @@ const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const {
   CATEGORY_LABELS, STATUS_LABELS, PRIORITY_LABELS, RESOURCE_TYPE_LABELS,
-  DOCUMENT_TYPE_LABELS, TRIGGER_LABELS, DOCUMENT_TITLE,
+  DOCUMENT_TYPE_LABELS, TRIGGER_LABELS, DOCUMENT_TITLE, moduleDetailLines,
 } = require('./content');
 const { DM_MARK_PATH, DM_MARK_VIEWBOX } = require('./brand');
 
@@ -91,7 +91,10 @@ function formatCep(value) {
   return c.length === 8 ? `${c.slice(0, 5)}-${c.slice(5)}` : value ?? '—';
 }
 
-const MILESTONE_SHORT = { antes: 'Antes', acompanhamento: 'Acompanhamento', depois: 'Depois' };
+const MILESTONE_SHORT = {
+  antes: 'Antes', diagnostico: 'Diagnóstico', intervencao: 'Intervenção', monitoramento: 'Monitoramento',
+  acompanhamento: 'Acompanhamento', depois: 'Depois',
+};
 
 const orDash = (v) => (v === null || v === undefined || v === '' ? '—' : String(v));
 
@@ -383,6 +386,9 @@ function renderBody(doc, content) {
 
   sectionTitle(doc, ++n, 'Demanda');
   field(doc, 'Categoria da demanda', CATEGORY_LABELS[demand.category] ?? demand.category);
+  // Módulo específico (Modelo §29, T-05-08): derivado da categoria.
+  if (demand.moduleLabel) field(doc, 'Módulo específico', demand.moduleLabel);
+  for (const [label, value] of moduleDetailLines(demand)) field(doc, label, value);
   field(doc, 'Nível de prioridade', PRIORITY_LABELS[demand.priority] ?? demand.priority);
   field(doc, 'Execução física', demand.hasPhysicalExecution ? 'Sim (exige registro do antes e do depois)' : 'Não');
   labeledParagraph(doc, 'Descrição', demand.description);

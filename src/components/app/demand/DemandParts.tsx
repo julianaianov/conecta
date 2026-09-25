@@ -13,7 +13,9 @@ import {
   type DemandComposition,
   type DemandGoal,
   type DemandPriority,
-  type DemandRecordMilestone,
+  type DemandScheduleMilestone,
+  type DemandModule,
+  type DemandModuleDetails,
   type DemandResource,
   type DemandReviewState,
   type DemandStatus,
@@ -34,6 +36,7 @@ import {
   physicalFinancialRows,
 } from "@/lib/app/demand";
 import { Icon, type IconName } from "../Icon";
+import { moduleDetailLines } from "@/lib/app/demand-modules";
 
 const CATEGORY_ICONS: Record<DemandCategory, IconName> = {
   projeto_social: "groups",
@@ -196,10 +199,10 @@ export function BudgetTable({ items, actions, caption = "Orçamento detalhado", 
 
 type ScheduleLike = {
   id: string; stage: string; activities: string; startsOn: string; endsOn: string;
-  responsible?: string | null; recordMilestones: DemandRecordMilestone[];
+  responsible?: string | null; recordMilestones: DemandScheduleMilestone[];
 };
 
-export function MilestoneChips({ milestones }: { milestones: DemandRecordMilestone[] }) {
+export function MilestoneChips({ milestones }: { milestones: DemandScheduleMilestone[] }) {
   if (!milestones.length) return null;
   return (
     <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Registro fotográfico e audiovisual previsto">
@@ -339,6 +342,33 @@ export function ReadSection({ title, icon, children, action }: { title: string; 
       </div>
       {children}
     </section>
+  );
+}
+
+/**
+ * Módulo específico (T-05-08, Modelo §29) e as suas informações, derivados da
+ * categoria. Sem módulo ou sem informação, mostra só o nome do módulo.
+ */
+export function ModuleDetailsBlock({ module: demandModule, moduleLabel, moduleDetails }: {
+  module?: DemandModule | null; moduleLabel?: string | null; moduleDetails?: DemandModuleDetails | null;
+}) {
+  if (!demandModule || !moduleLabel) return null;
+  const lines = moduleDetailLines(demandModule, moduleDetails);
+  return (
+    <div>
+      <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--th-muted)" }}>Módulo específico</h3>
+      <p className="mt-1 text-[15px] font-semibold" style={{ color: "var(--th-text)" }}>{moduleLabel}</p>
+      {lines.length > 0 && (
+        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+          {lines.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-xs font-semibold" style={{ color: "var(--th-muted)" }}>{label}</dt>
+              <dd className="whitespace-pre-line text-sm" style={{ color: "var(--th-text)" }}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }
 

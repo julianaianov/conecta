@@ -12,6 +12,7 @@
 
 const crypto = require('node:crypto');
 const { CATEGORY_LABELS, STATUS_LABELS } = require('../demand/constants');
+const { MODULE_LABELS, MODULE_FIELDS, moduleOf, detailsForCategory } = require('../demand/modules');
 
 const DOCUMENT_TITLE = 'Documento Oficial da Demanda — Dossiê da Demanda';
 const SCHEMA_VERSION = 1;
@@ -20,6 +21,9 @@ const PRIORITY_LABELS = { baixa: 'Baixa', media: 'Média', alta: 'Alta', urgente
 
 const MILESTONE_LABELS = {
   antes: 'Situação inicial (antes)',
+  diagnostico: 'Diagnóstico',
+  intervencao: 'Intervenção',
+  monitoramento: 'Monitoramento',
   acompanhamento: 'Acompanhamento',
   depois: 'Resultado final (depois)',
 };
@@ -50,6 +54,22 @@ const DOCUMENT_TYPE_LABELS = {
   projetos_tecnicos: 'Projetos técnicos',
   fotografias: 'Fotografias',
   outros: 'Outros documentos',
+  // Módulos específicos (Modelo §23–§25, T-05-08).
+  documento_do_imovel: 'Documento do imóvel',
+  projeto_arquitetonico: 'Projeto arquitetônico',
+  art_rrt: 'ART/RRT',
+  licencas_ou_autorizacoes: 'Licenças ou autorizações',
+  contratos: 'Contratos',
+  notas_fiscais: 'Notas fiscais',
+  comprovantes: 'Comprovantes',
+  relatorio_de_execucao: 'Relatório de execução',
+  plano_de_trabalho: 'Plano de trabalho',
+  metodologia: 'Metodologia',
+  equipe: 'Equipe',
+  publico_alvo: 'Público-alvo',
+  plano_de_recuperacao: 'Plano de recuperação',
+  plano_de_monitoramento: 'Plano de monitoramento',
+  relatorio_ambiental: 'Relatório ambiental',
 };
 
 const TRIGGER_LABELS = {
@@ -119,6 +139,10 @@ function demandSnapshot(row, items, { accountability = null } = {}) {
       beneficiariesProfile: row.beneficiaries_profile ?? null,
       priority: row.priority ?? null,
       hasPhysicalExecution: Boolean(row.has_physical_execution),
+      // Módulo específico derivado da categoria (T-05-08) e as suas informações.
+      module: moduleOf(row.category),
+      moduleLabel: MODULE_LABELS[moduleOf(row.category)] ?? null,
+      moduleDetails: detailsForCategory(row.category, row.module_details),
       photoRef: row.photo_ref ?? null,
       status: row.status,
       submittedAt: toIso(row.submitted_at),
@@ -224,7 +248,14 @@ function redactSnapshot(snapshot) {
   return {
     ...snapshot,
     // A foto é descrita em `photo` (sem a referência interna do upload).
-    demand: { ...demand, authorId: null, organizationId: null, photoRef: null },
+    // O imóvel (documento e autorização) fica fora da versão pública.
+    demand: {
+      ...demand,
+      authorId: null,
+      organizationId: null,
+      photoRef: null,
+      moduleDetails: demand.moduleDetails ? (({ imovel: _imovel, ...rest }) => rest)(demand.moduleDetails) : {},
+    },
     location: {
       cep: null,
       street: null,
@@ -338,7 +369,30 @@ function formatDossierNumber(year, sequence) {
   return `DMC-${year}-${String(sequence).padStart(6, '0')}`;
 }
 
+/**
+ * Informações do módulo em pares [rótulo, valor], na ordem de MODULE_FIELDS
+ * (o grupo vira "Nome — registro"; a área, "1.200,5 m²").
+ */
+function moduleDetailLines(demand) {
+  const details = demand?.moduleDetails ?? {};
+  const lines = [];
+  for (const field of MODULE_FIELDS[demand?.module] ?? []) {
+    const value = details[field.key];
+    if (value === undefined || value === null) continue;
+    if (field.type === 'number') {
+      lines.push([field.label, `${Number(value).toLocaleString('pt-BR')} m²`]);
+    } else if (field.type === 'group') {
+      const parts = field.fields.map((sub) => (value[sub.key] ? `${sub.label}: ${value[sub.key]}` : null)).filter(Boolean);
+      if (parts.length) lines.push([field.label, parts.join('\n')]);
+    } else {
+      lines.push([field.label, value]);
+    }
+  }
+  return lines;
+}
+
 module.exports = {
+  moduleDetailLines,
   DOCUMENT_TITLE,
   SCHEMA_VERSION,
   CATEGORY_LABELS,

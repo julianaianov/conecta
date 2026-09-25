@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const C = require('../src/demand/constants');
+const M = require('../src/demand/modules');
 
 // Os enums da migração 007 e as listas do domínio precisam ser as mesmas.
 const sql = fs.readFileSync(path.join(__dirname, '../migrations/007-demands.sql'), 'utf8');
@@ -27,9 +28,16 @@ test('enums da migração 007 = constantes do domínio', () => {
   assert.deepEqual(enumValues('demand_status'), C.STATUSES);
   assert.deepEqual(enumValues('demand_review_state'), C.REVIEW_STATES);
   assert.deepEqual(enumValues('demand_priority'), C.PRIORITIES);
-  assert.deepEqual(enumValues('demand_record_milestone'), C.RECORD_MILESTONES);
+  // A 032 insere os marcos do §24 antes de `acompanhamento` (ADD VALUE ... BEFORE).
+  const milestones = enumValues('demand_record_milestone');
+  milestones.splice(milestones.indexOf('acompanhamento'), 0,
+    ...addedValues('032-demand-modules.sql', 'demand_record_milestone'));
+  assert.deepEqual(milestones, C.RECORD_MILESTONES);
   assert.deepEqual(enumValues('demand_resource_kind'), C.RESOURCE_KINDS);
-  assert.deepEqual(enumValues('demand_document_type'), C.DOCUMENT_TYPES);
+  assert.deepEqual(
+    [...enumValues('demand_document_type'), ...addedValues('032-demand-modules.sql', 'demand_document_type')],
+    C.DOCUMENT_TYPES,
+  );
   assert.deepEqual(
     [...enumValues('demand_resource_type')].sort(),
     [...new Set([...C.NEEDED_RESOURCE_TYPES, ...C.COUNTERPART_RESOURCE_TYPES])].sort(),
@@ -72,7 +80,7 @@ test('fonte: 7 status canônicos + arquivada, 9 recursos e 8 contrapartidas', ()
   assert.equal(C.STATUSES[7], 'arquivada');
   assert.equal(C.NEEDED_RESOURCE_TYPES.length, 9);
   assert.equal(C.COUNTERPART_RESOURCE_TYPES.length, 8);
-  assert.equal(C.DOCUMENT_TYPES.length, 8);
+  assert.equal(C.DOCUMENT_TYPES.length, 8 + 15);
   assert.deepEqual([C.AGENT_FEE_BPS, C.PLATFORM_FEE_BPS], [400, 600]);
 });
 
@@ -89,4 +97,36 @@ test('trilha só inserção e demanda sem exclusão', () => {
   assert.match(sql, /BEFORE INSERT OR UPDATE OR DELETE ON demands/);
   assert.match(sql, /ADD COLUMN IF NOT EXISTS demand_id UUID REFERENCES demands\(id\)/);
   assert.match(sql, /BEFORE UPDATE OR DELETE ON posts/, 'post-vitrine protegido');
+});
+
+test('Modelo §29: módulo derivado das 12 categorias, igual a demand_module (migração 032)', () => {
+  assert.deepEqual(Object.keys(M.MODULE_BY_CATEGORY).sort(), [...C.CATEGORIES].sort());
+  assert.deepEqual(new Set(Object.values(M.MODULE_BY_CATEGORY)), new Set(M.MODULES));
+  const text = fs.readFileSync(path.join(__dirname, '../migrations/032-demand-modules.sql'), 'utf8');
+  const body = /FUNCTION demand_module[\s\S]*?\$\$([\s\S]*?)\$\$/.exec(text)[1];
+  const pairs = Object.fromEntries([...body.matchAll(/WHEN '([a-z_]+)' THEN '([a-z_]+)'/g)].map((m) => [m[1], m[2]]));
+  assert.deepEqual(pairs, M.MODULE_BY_CATEGORY);
+  assert.equal(M.moduleOf('recuperacao_ambiental'), 'ambiental');
+  assert.equal(M.MODULE_LABELS[M.moduleOf('recuperacao_ambiental')], 'Módulo Ambiental');
+  assert.equal(M.moduleOf('obra_ou_melhoria_de_infraestrutura'), 'obras');
+  assert.equal(M.moduleOf(null), null);
+  assert.match(text, /ADD COLUMN IF NOT EXISTS module_details JSONB NOT NULL DEFAULT/);
+});
+
+test('módulos: documentos, indicadores, marcos e campos só com valores conhecidos', () => {
+  for (const module of M.MODULES) {
+    for (const type of M.MODULE_DOCUMENT_TYPES[module]) assert.ok(C.DOCUMENT_TYPES.includes(type), `${module}: ${type}`);
+    for (const m of M.MODULE_MILESTONES[module]) assert.ok(C.RECORD_MILESTONES.includes(m), `${module}: ${m}`);
+    assert.ok(Array.isArray(M.MODULE_INDICATORS[module]));
+    assert.ok(Array.isArray(M.MODULE_FIELDS[module]));
+  }
+  assert.ok(M.MODULE_DOCUMENT_TYPES.obras.includes('art_rrt'));
+  assert.ok(M.MODULE_DOCUMENT_TYPES.obras.includes('documento_do_imovel'));
+  assert.deepEqual(M.MODULE_MILESTONES.ambiental, ['antes', 'diagnostico', 'intervencao', 'monitoramento', 'depois']);
+  assert.deepEqual(M.MODULE_INDICATORS.ambiental.slice(0, 2), ['Área recuperada', 'Número de mudas']);
+  assert.ok(M.MODULE_FIELDS.ambiental.some((f) => f.key === 'responsavel_tecnico'));
+  // Chave repetida entre módulos precisa ter a mesma definição (FIELD_BY_KEY).
+  for (const field of Object.values(M.MODULE_FIELDS).flat()) {
+    assert.deepEqual(M.FIELD_BY_KEY[field.key].type, field.type, field.key);
+  }
 });

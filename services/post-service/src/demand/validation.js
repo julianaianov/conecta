@@ -25,6 +25,9 @@ const {
 } = require('./constants');
 const { quantityToMilli, lineTotalCents, computeComposition, MAX_BUDGET_CENTS } = require('./finance');
 const { PRIORITY_CRITERIA_IDS, PRIORITIES_EXPECTING_CRITERIA } = require('./priority');
+const {
+  FIELD_BY_KEY, MAX_AREA_M2, MODULE_FIELDS, MODULE_LABELS, BASE_MILESTONES, moduleOf, milestonesFor,
+} = require('./modules');
 const { parseUploadRef, formatUploadRef } = require('../uploads');
 
 const UFS = [
@@ -216,7 +219,8 @@ function normalizeScheduleItem(errors, raw, i) {
   }
   const milestones = raw.recordMilestones ?? [];
   if (!Array.isArray(milestones) || milestones.some((m) => !RECORD_MILESTONES.includes(m))) {
-    errors[key('recordMilestones')] = 'Marcos de registro: antes, acompanhamento ou depois';
+    errors[key('recordMilestones')] = 'Marcos de registro: antes, acompanhamento ou depois '
+      + '(no módulo ambiental também diagnóstico, intervenção e monitoramento)';
   } else {
     item.recordMilestones = RECORD_MILESTONES.filter((m) => milestones.includes(m));
   }
@@ -317,6 +321,68 @@ function normalizePriorityCriteria(errors, raw) {
   return PRIORITY_CRITERIA_IDS.filter((c) => raw.includes(c));
 }
 
+/**
+ * Informações específicas do módulo (T-05-08, `demands.module_details`).
+ * Aceita as chaves de qualquer módulo (a etapa pode gravar antes da
+ * categoria); a leitura mostra só as do módulo da categoria. Texto vazio é
+ * omitido; `null` apaga a chave.
+ */
+function normalizeModuleDetails(errors, raw) {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    errors.moduleDetails = 'Informações do módulo inválidas';
+    return {};
+  }
+  const out = {};
+  const cleanText = (value, max, key) => {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== 'string') {
+      errors[key] = 'Texto inválido';
+      return null;
+    }
+    const trimmed = value.replace(/\r\n/g, '\n').trim();
+    if (trimmed.length > max) errors[key] = `Até ${max} caracteres`;
+    return trimmed || null;
+  };
+  for (const [name, value] of Object.entries(raw)) {
+    const field = FIELD_BY_KEY[name];
+    const key = `moduleDetails.${name}`;
+    if (!field) {
+      errors[key] = 'Campo fora dos módulos da plataforma';
+      continue;
+    }
+    if (value === null || value === undefined || value === '') continue;
+    if (field.type === 'number') {
+      const number = typeof value === 'string' ? Number(value.replace(',', '.')) : value;
+      if (typeof number !== 'number' || !Number.isFinite(number) || number < 0 || number > MAX_AREA_M2) {
+        errors[key] = 'Informe um número válido (m²)';
+      } else {
+        out[name] = Math.round(number * 100) / 100;
+      }
+    } else if (field.type === 'group') {
+      if (typeof value !== 'object' || Array.isArray(value)) {
+        errors[key] = 'Informações inválidas';
+        continue;
+      }
+      const group = {};
+      for (const [sub, subValue] of Object.entries(value)) {
+        const def = field.fields.find((f) => f.key === sub);
+        if (!def) {
+          errors[`${key}.${sub}`] = 'Campo fora do módulo';
+          continue;
+        }
+        const text = cleanText(subValue, def.max, `${key}.${sub}`);
+        if (text) group[sub] = text;
+      }
+      if (Object.keys(group).length) out[name] = group;
+    } else {
+      const text = cleanText(value, field.max, key);
+      if (text) out[name] = text;
+    }
+  }
+  return out;
+}
+
 function normalizeCep(errors, raw) {
   if (isBlank(raw)) return null;
   const digits = typeof raw === 'string' || typeof raw === 'number' ? String(raw).replace(/\D/g, '') : '';
@@ -347,7 +413,7 @@ function validateDemand(input, { forSubmission = false } = {}) {
   const warnings = {};
 
   const value = {
-    category: oneOf(errors, 'category', body.category, CATEGORIES, 'Categoria fora das cinco da plataforma'),
+    category: oneOf(errors, 'category', body.category, CATEGORIES, 'Categoria fora dos doze tipos da plataforma'),
     title: text(errors, 'title', body.title, LIMITS.title),
     description: text(errors, 'description', body.description, LIMITS.description, { multiline: true }),
     objective: text(errors, 'objective', body.objective, LIMITS.objective, { multiline: true }),
@@ -368,6 +434,7 @@ function validateDemand(input, { forSubmission = false } = {}) {
     longitude: coordinate(errors, 'longitude', body.longitude, 180),
     territory: text(errors, 'territory', body.territory, LIMITS.territory),
     themes: normalizeThemes(errors, body.themes),
+    moduleDetails: normalizeModuleDetails(errors, body.moduleDetails),
     hasPhysicalExecution: body.hasPhysicalExecution === undefined ? true : body.hasPhysicalExecution,
     budgetItems: [],
     scheduleItems: [],
@@ -432,9 +499,26 @@ function validateDemand(input, { forSubmission = false } = {}) {
       const milestones = new Set(value.scheduleItems.flatMap((item) => item.recordMilestones));
       if (value.scheduleItems.length > 0 && (!milestones.has('antes') || !milestones.has('depois'))) {
         errors.recordMilestones = 'Com execução física, o cronograma deve prever o registro do antes e do depois';
-      } else if (value.scheduleItems.length > 0 && !milestones.has('acompanhamento')) {
-        warnings.recordMilestones = 'Considere prever também o registro de acompanhamento da execução';
+      } else if (value.scheduleItems.length > 0 && !milestones.has('acompanhamento') && !milestones.has('monitoramento')) {
+        warnings.recordMilestones = moduleOf(value.category) === 'ambiental'
+          ? 'Considere prever os registros do diagnóstico, da intervenção e do monitoramento (antes → diagnóstico → intervenção → monitoramento → resultado)'
+          : 'Considere prever também o registro de acompanhamento da execução';
       }
+    }
+
+    // Marcos próprios do módulo ambiental (§24) só valem nele (T-05-08).
+    const allowed = new Set([...BASE_MILESTONES, ...milestonesFor(value.category)]);
+    const outside = value.scheduleItems.flatMap((item) => item.recordMilestones).filter((m) => !allowed.has(m));
+    if (outside.length && !errors.recordMilestones) {
+      errors.recordMilestones = 'Diagnóstico, intervenção e monitoramento são marcos do módulo ambiental';
+    }
+
+    // Informações específicas do módulo (§23–§25): a fonte lista o que o
+    // módulo pede; o que falta vira aviso, nunca bloqueio.
+    const module = moduleOf(value.category);
+    const missing = (MODULE_FIELDS[module] ?? []).filter((field) => value.moduleDetails[field.key] === undefined);
+    if (missing.length) {
+      warnings.moduleDetails = `${MODULE_LABELS[module]}: informe também ${missing.map((f) => f.label.toLowerCase()).join(', ')}`;
     }
   }
 
@@ -464,5 +548,5 @@ function validateDemand(input, { forSubmission = false } = {}) {
 }
 
 module.exports = {
-  validateDemand, normalizeThemes, normalizePriorityCriteria, LIMITS, UFS, MAX_ITEMS,
+  validateDemand, normalizeThemes, normalizePriorityCriteria, normalizeModuleDetails, LIMITS, UFS, MAX_ITEMS,
 };

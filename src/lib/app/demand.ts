@@ -9,6 +9,7 @@
  * está aqui só antecipa o aviso e mostra a composição enquanto o Agente
  * digita. `demand.test.mjs` compara este módulo com o do post-service.
  */
+import { moduleDetailsFormFrom, moduleDetailsInput, type ModuleDetailsForm } from "./demand-modules.ts";
 import {
   DEMAND_REVIEW_STATE_LABELS,
   DEMAND_STATUS_LABELS,
@@ -26,7 +27,7 @@ import {
   type DemandMapClass,
   type DemandPriority,
   type DemandPriorityCriterion,
-  type DemandRecordMilestone,
+  type DemandScheduleMilestone,
   type DemandResourceType,
   type DemandReviewState,
   type DemandScheduleItem,
@@ -152,6 +153,8 @@ export interface DemandFormState {
   priority: DemandPriority | "";
   priorityCriteria: DemandPriorityCriterion[];
   hasPhysicalExecution: boolean;
+  /** Informações do módulo derivado da categoria (T-05-08). */
+  moduleDetails: ModuleDetailsForm;
 }
 
 export type DemandFormField = keyof DemandFormState;
@@ -161,7 +164,7 @@ export type DemandFormField = keyof DemandFormState;
  * gravada assim que o upload termina; os itens, pelas rotas próprias.
  */
 export const STEP_FIELDS: Record<DemandStepId, DemandFormField[]> = {
-  classificacao: ["category"],
+  classificacao: ["category", "moduleDetails"],
   descricao: [
     "title", "description", "cep", "street", "addressNumber", "addressComplement", "district",
     "municipality", "uf", "latitude", "longitude", "territory",
@@ -180,7 +183,7 @@ export function emptyDemandForm(): DemandFormState {
     category: "", title: "", description: "", cep: "", street: "", addressNumber: "",
     addressComplement: "", district: "", municipality: "", uf: "", latitude: null, longitude: null,
     territory: "", beneficiariesEstimate: "", beneficiariesProfile: "", objective: "",
-    justification: "", priority: "", priorityCriteria: [], hasPhysicalExecution: true,
+    justification: "", priority: "", priorityCriteria: [], hasPhysicalExecution: true, moduleDetails: {},
   };
 }
 
@@ -213,6 +216,7 @@ export function formFromDemand(demand: Demand): DemandFormState {
     priority: demand.priority ?? "",
     priorityCriteria: sortPriorityCriteria(demand.priorityCriteria ?? []),
     hasPhysicalExecution: demand.hasPhysicalExecution ?? true,
+    moduleDetails: moduleDetailsFormFrom(demand.moduleDetails),
   };
 }
 
@@ -245,6 +249,8 @@ function fieldValue(form: DemandFormState, field: DemandFormField): unknown {
       return estimateValue(form.beneficiariesEstimate);
     case "priorityCriteria":
       return sortPriorityCriteria(form.priorityCriteria);
+    case "moduleDetails":
+      return moduleDetailsInput(form.category, form.moduleDetails);
     default:
       return blankToNull(form[field] as string);
   }
@@ -265,7 +271,7 @@ export function isStepDirty(step: DemandStepId, form: DemandFormState, saved: De
 // ── Erros do servidor por etapa ─────────────────────────────
 
 const FIELD_STEP: Record<string, DemandStepId> = {
-  category: "classificacao",
+  category: "classificacao", moduleDetails: "classificacao",
   title: "descricao", description: "descricao", photoRef: "descricao", cep: "descricao", street: "descricao",
   addressNumber: "descricao", addressComplement: "descricao", district: "descricao", municipality: "descricao",
   uf: "descricao", latitude: "descricao", longitude: "descricao", territory: "descricao",
@@ -320,6 +326,7 @@ export function demandWarnings(warnings: DemandFieldErrors | null | undefined): 
 
 export const DEMAND_FIELD_LABELS: Record<string, string> = {
   category: "Categoria",
+  moduleDetails: "Informações do módulo",
   title: "Título",
   description: "Descrição detalhada",
   photoRef: "Fotografia",
@@ -614,7 +621,7 @@ export interface ScheduleItemForm {
   startsOn: string;
   endsOn: string;
   responsible: string;
-  recordMilestones: DemandRecordMilestone[];
+  recordMilestones: DemandScheduleMilestone[];
 }
 
 export function emptyScheduleItemForm(): ScheduleItemForm {
@@ -726,10 +733,17 @@ export function formatIsoDate(value: string | null | undefined): string {
 
 // ── Rótulos ────────────────────────────────────────────────
 
-export const RECORD_MILESTONES: DemandRecordMilestone[] = ["antes", "acompanhamento", "depois"];
+// Na ordem do enum (post-service RECORD_MILESTONES); os três do meio são do
+// módulo ambiental (§24, T-05-08) e só aparecem nele (MODULE_MILESTONES).
+export const RECORD_MILESTONES: DemandScheduleMilestone[] = [
+  "antes", "diagnostico", "intervencao", "monitoramento", "acompanhamento", "depois",
+];
 
-export const RECORD_MILESTONE_LABELS: Record<DemandRecordMilestone, string> = {
+export const RECORD_MILESTONE_LABELS: Record<DemandScheduleMilestone, string> = {
   antes: "Situação inicial (antes)",
+  diagnostico: "Diagnóstico",
+  intervencao: "Intervenção",
+  monitoramento: "Monitoramento",
   acompanhamento: "Acompanhamento",
   depois: "Resultado final (depois)",
 };
@@ -753,6 +767,9 @@ export const RESOURCE_TYPE_LABELS: Record<DemandResourceType, string> = {
 export const DOCUMENT_TYPES: DemandDocumentType[] = [
   "documentos_institucionais", "estatuto", "documentos_de_representacao", "autorizacoes",
   "orcamentos_e_cotacoes", "projetos_tecnicos", "fotografias", "outros",
+  "documento_do_imovel", "projeto_arquitetonico", "art_rrt", "licencas_ou_autorizacoes", "contratos",
+  "notas_fiscais", "comprovantes", "relatorio_de_execucao", "plano_de_trabalho", "metodologia", "equipe",
+  "publico_alvo", "plano_de_recuperacao", "plano_de_monitoramento", "relatorio_ambiental",
 ];
 
 export const DOCUMENT_TYPE_LABELS: Record<DemandDocumentType, string> = {
@@ -764,6 +781,21 @@ export const DOCUMENT_TYPE_LABELS: Record<DemandDocumentType, string> = {
   projetos_tecnicos: "Projetos técnicos",
   fotografias: "Fotografias",
   outros: "Outros documentos",
+  documento_do_imovel: "Documento do imóvel",
+  projeto_arquitetonico: "Projeto arquitetônico",
+  art_rrt: "ART/RRT",
+  licencas_ou_autorizacoes: "Licenças ou autorizações",
+  contratos: "Contratos",
+  notas_fiscais: "Notas fiscais",
+  comprovantes: "Comprovantes",
+  relatorio_de_execucao: "Relatório de execução",
+  plano_de_trabalho: "Plano de trabalho",
+  metodologia: "Metodologia",
+  equipe: "Equipe",
+  publico_alvo: "Público-alvo",
+  plano_de_recuperacao: "Plano de recuperação",
+  plano_de_monitoramento: "Plano de monitoramento",
+  relatorio_ambiental: "Relatório ambiental",
 };
 
 // Os 12 tipos de demanda do Modelo de Conexão §03, na ordem da fonte

@@ -285,3 +285,36 @@ test('erros do banco: estado → 409, dado → 422, desconhecido → 500', () =>
   assert.equal(mapDbError(pg('23503', 'fk')).status, 422);
   assert.equal(mapDbError(new Error('rede')), null);
 });
+
+test('módulo (T-05-08): PUT grava moduleDetails como JSONB; leitura traz o módulo derivado da categoria', async () => {
+  let details = {};
+  let update = null;
+  const pool = fakePool((text, params) => {
+    if (/^\s*UPDATE demands SET/.test(text)) {
+      update = { text, params };
+      details = params[1];
+      return { rows: [], rowCount: 1 };
+    }
+    if (/FROM demands d WHERE d.id = \$1/.test(text)) {
+      return { rows: [demandRow({ category: 'recuperacao_ambiental', module_details: details })] };
+    }
+    return { rows: [] };
+  });
+  await withServer(pool, async (base) => {
+    const bad = await send(base, 'PUT', `/demands/${DEMAND}`, { moduleDetails: { area_m2: 'muito', cor: 'azul' } });
+    assert.equal(bad.status, 422);
+    assert.deepEqual(Object.keys((await bad.json()).fields).sort(), ['moduleDetails.area_m2', 'moduleDetails.cor']);
+
+    const res = await send(base, 'PUT', `/demands/${DEMAND}`, {
+      moduleDetails: { area_m2: 800, diagnostico: 'Duna sem vegetação', responsavel_tecnico: { nome: 'Ana', registro: 'CRBio 1' } },
+    });
+    assert.equal(res.status, 200, await res.clone().text());
+    const body = await res.json();
+    assert.equal(body.module, 'ambiental');
+    assert.equal(body.moduleLabel, 'Módulo Ambiental');
+    assert.deepEqual(body.moduleDetails, {
+      area_m2: 800, diagnostico: 'Duna sem vegetação', responsavel_tecnico: { nome: 'Ana', registro: 'CRBio 1' },
+    });
+  });
+  assert.match(update.text, /module_details = \$2/);
+});

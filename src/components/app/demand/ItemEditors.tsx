@@ -23,6 +23,7 @@ import {
   type UploadedFile,
 } from "@/lib/app/types";
 import { formatBytes } from "@/lib/app/uploads";
+import { DEMAND_MODULE_LABELS, MODULE_DOCUMENT_TYPES, MODULE_INDICATORS, documentTypesFor, moduleOf } from "@/lib/app/demand-modules";
 import { Button } from "../Button";
 import { FileUpload } from "../FileUpload";
 import { Icon } from "../Icon";
@@ -41,6 +42,10 @@ type EditorProps = {
 const EMPTY_GOAL: DemandGoalInput = { goal: "", expectedResult: "", indicator: "", measurementMethod: "" };
 
 export function GoalsEditor({ demand, onDemand, disabled, stepErrors }: EditorProps) {
+  // Indicadores sugeridos do módulo (T-05-08): atalhos; o indicador segue texto livre.
+  const goalModule = moduleOf(demand.category);
+  const indicatorSuggestions = goalModule ? MODULE_INDICATORS[goalModule] : [];
+  const moduleLabel = goalModule ? DEMAND_MODULE_LABELS[goalModule] : "";
   const goals = demand.goals ?? [];
   const [form, setForm] = useState<DemandGoalInput>(EMPTY_GOAL);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -131,7 +136,23 @@ export function GoalsEditor({ demand, onDemand, disabled, stepErrors }: EditorPr
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextArea name="goal-goal" label="Meta a ser alcançada" required rows={2} value={form.goal} onValue={(v) => set("goal", v)} error={errors.goal} maxLength={2000} />
             <TextArea name="goal-expectedResult" label="Resultado esperado" required rows={2} value={form.expectedResult} onValue={(v) => set("expectedResult", v)} error={errors.expectedResult} maxLength={2000} />
-            <TextArea name="goal-indicator" label="Indicador de acompanhamento" required rows={2} value={form.indicator} onValue={(v) => set("indicator", v)} error={errors.indicator} maxLength={2000} />
+            <div>
+              <TextArea name="goal-indicator" label="Indicador de acompanhamento" required rows={2} value={form.indicator} onValue={(v) => set("indicator", v)} error={errors.indicator} maxLength={2000} />
+              {indicatorSuggestions.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs" style={{ color: "var(--th-muted)" }}>Indicadores sugeridos do {moduleLabel}:</p>
+                  <ul className="mt-1 flex flex-wrap gap-1.5">
+                    {indicatorSuggestions.map((indicator) => (
+                      <li key={indicator}>
+                        <button type="button" className="app-chip text-xs" data-active={form.indicator === indicator} aria-pressed={form.indicator === indicator} onClick={() => set("indicator", indicator)}>
+                          {indicator}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
             <TextArea name="goal-measurementMethod" label="Forma de mensuração dos resultados" required rows={2} value={form.measurementMethod} onValue={(v) => set("measurementMethod", v)} error={errors.measurementMethod} maxLength={2000} />
           </div>
           <p className="mt-2 text-xs" style={{ color: "var(--th-muted)" }}>
@@ -286,6 +307,8 @@ export function ResourcesEditor({ demand, onDemand, disabled, stepErrors }: Edit
 // ── Etapa 07 · Documentação comprobatória (slide 17) ───────
 
 export function DocumentsEditor({ demand, onDemand, disabled, stepErrors }: EditorProps) {
+  const docModule = moduleOf(demand.category);
+  const moduleDocuments = docModule ? MODULE_DOCUMENT_TYPES[docModule] : [];
   const documents = demand.documents ?? [];
   const [type, setType] = useState<DemandDocumentType | "">("");
   const [title, setTitle] = useState("");
@@ -379,7 +402,8 @@ export function DocumentsEditor({ demand, onDemand, disabled, stepErrors }: Edit
             <SelectInput
               name="doc-type" label="Tipo" required value={type} placeholder="Selecione"
               onValue={(v) => { setType(v as DemandDocumentType | ""); setErrors((e) => ({ ...e, type: "" })); }}
-              options={DOCUMENT_TYPES.map((t) => ({ value: t, label: DOCUMENT_TYPE_LABELS[t] }))}
+              options={documentTypesFor(demand.category, DOCUMENT_TYPES).map((t) => ({ value: t, label: DOCUMENT_TYPE_LABELS[t] }))}
+              hint={moduleDocuments.length ? `Os primeiros são os documentos possíveis do ${DEMAND_MODULE_LABELS[moduleOf(demand.category)!]}.` : undefined}
               error={errors.type || undefined}
             />
             <TextInput name="doc-title" label="Nome do documento" required value={title} onValue={(v) => { setTitle(v); setErrors((e) => ({ ...e, title: "" })); }} error={errors.title || undefined} maxLength={255} />

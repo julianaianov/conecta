@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import { api } from "@/lib/app/api";
+import { scheduleMilestonesFor } from "@/lib/app/demand-modules";
 import {
-  RECORD_MILESTONES,
   RECORD_MILESTONE_LABELS,
   budgetItemToInput,
   demandErrorMessage,
@@ -35,6 +35,9 @@ export function ScheduleEditor({ demand, onDemand, disabled, hasPhysicalExecutio
   stepErrors: Record<string, string>;
   warnings: Record<string, string>;
 }) {
+  // Módulo ambiental (§24, T-05-08): diagnóstico, intervenção e monitoramento
+  // somam-se aos marcos comuns; nos demais módulos, só os três comuns.
+  const milestoneOptions = scheduleMilestonesFor(demand.category);
   const items = demand.scheduleItems ?? [];
   const budget = demand.budgetItems ?? [];
   const [form, setForm] = useState<ScheduleItemForm>(emptyScheduleItemForm);
@@ -138,9 +141,9 @@ export function ScheduleEditor({ demand, onDemand, disabled, hasPhysicalExecutio
         <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "rgba(46,123,168,0.35)", background: "rgba(46,123,168,0.06)", color: "var(--th-text)" }}>
           <p>O cronograma deve prever os momentos de registro fotográfico e audiovisual:</p>
           <ul className="mt-2 flex flex-wrap gap-2">
-            {RECORD_MILESTONES.map((m) => (
+            {milestoneOptions.map((m) => (
               <li key={m} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold" style={{ background: milestones.has(m) ? "rgba(46,158,91,0.12)" : "var(--th-card)", color: milestones.has(m) ? "#2e9e5b" : "var(--th-muted)" }}>
-                {milestones.has(m) ? "✓" : "○"} {RECORD_MILESTONE_LABELS[m]}{m === "acompanhamento" ? " (recomendado)" : " (obrigatório)"}
+                {milestones.has(m) ? "✓" : "○"} {RECORD_MILESTONE_LABELS[m]}{m === "antes" || m === "depois" ? " (obrigatório)" : " (recomendado)"}
               </li>
             ))}
           </ul>
@@ -173,7 +176,7 @@ export function ScheduleEditor({ demand, onDemand, disabled, hasPhysicalExecutio
             <fieldset className="sm:col-span-2">
               <legend className="mb-1.5 text-sm font-semibold" style={{ color: "var(--th-text)" }}>Registro fotográfico e audiovisual nesta etapa</legend>
               <div className="flex flex-col gap-2 sm:flex-row sm:gap-5">
-                {RECORD_MILESTONES.map((m) => (
+                {milestoneOptions.map((m) => (
                   <Checkbox
                     key={m}
                     name={`schedule-milestone-${m}`}

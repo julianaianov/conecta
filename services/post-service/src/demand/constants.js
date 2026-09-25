@@ -86,7 +86,10 @@ const REVIEW_STATES = ['rascunho', 'aguardando_analise', 'devolvida', 'aprovada'
 // níveis: estes quatro são a escolha da T06.
 const PRIORITIES = ['baixa', 'media', 'alta', 'urgente'];
 
-const RECORD_MILESTONES = ['antes', 'acompanhamento', 'depois'];
+// Marcos do registro no cronograma, na ordem do enum: os três do núcleo comum
+// (007) e os do módulo ambiental (§24, migração 032), entre `antes` e
+// `acompanhamento`. Quais valem para cada demanda: src/demand/modules.js.
+const RECORD_MILESTONES = ['antes', 'diagnostico', 'intervencao', 'monitoramento', 'acompanhamento', 'depois'];
 
 const RESOURCE_KINDS = ['necessario', 'contrapartida'];
 
@@ -105,10 +108,15 @@ const RESOURCE_TYPES_BY_KIND = {
   contrapartida: COUNTERPART_RESOURCE_TYPES,
 };
 
-// TODO(fonte-da-verdade): Modelo de Conexão §29 — faltam módulos por tipo (Obras, Ambiental, Social, Apoio/Investimento, Articulação Pública) com documentos próprios (ART/RRT, documento do imóvel, licenças, projeto arquitetônico) e indicadores próprios.
+// Documentação comprobatória: os 8 do slide 17 (007) e os 15 dos módulos
+// específicos (Modelo §23–§25, migração 032). Quais aparecem primeiro para
+// cada demanda: MODULE_DOCUMENT_TYPES em src/demand/modules.js.
 const DOCUMENT_TYPES = [
   'documentos_institucionais', 'estatuto', 'documentos_de_representacao',
   'autorizacoes', 'orcamentos_e_cotacoes', 'projetos_tecnicos', 'fotografias', 'outros',
+  'documento_do_imovel', 'projeto_arquitetonico', 'art_rrt', 'licencas_ou_autorizacoes', 'contratos',
+  'notas_fiscais', 'comprovantes', 'relatorio_de_execucao', 'plano_de_trabalho', 'metodologia', 'equipe',
+  'publico_alvo', 'plano_de_recuperacao', 'plano_de_monitoramento', 'relatorio_ambiental',
 ];
 
 // Eixos temáticos do território (T26). Fonte: Apresentação Institucional,

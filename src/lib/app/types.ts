@@ -1175,6 +1175,12 @@ export const DEMAND_PRIORITY_LABELS: Record<DemandPriority, string> = {
 };
 
 export type DemandRecordMilestone = "antes" | "acompanhamento" | "depois";
+
+/**
+ * Marcos do registro no cronograma: os três comuns e os do módulo ambiental
+ * (§24, T-05-08: diagnóstico, intervenção, monitoramento).
+ */
+export type DemandScheduleMilestone = DemandRecordMilestone | "diagnostico" | "intervencao" | "monitoramento";
 export type DemandResourceKind = "necessario" | "contrapartida";
 
 export type DemandNeededResourceType =
@@ -1200,7 +1206,37 @@ export const DEMAND_RESOURCE_TYPES: Record<DemandResourceKind, DemandResourceTyp
 
 export type DemandDocumentType =
   | "documentos_institucionais" | "estatuto" | "documentos_de_representacao"
-  | "autorizacoes" | "orcamentos_e_cotacoes" | "projetos_tecnicos" | "fotografias" | "outros";
+  | "autorizacoes" | "orcamentos_e_cotacoes" | "projetos_tecnicos" | "fotografias" | "outros"
+  // Módulos específicos (Modelo §23–§25, T-05-08).
+  | "documento_do_imovel" | "projeto_arquitetonico" | "art_rrt" | "licencas_ou_autorizacoes" | "contratos"
+  | "notas_fiscais" | "comprovantes" | "relatorio_de_execucao" | "plano_de_trabalho" | "metodologia" | "equipe"
+  | "publico_alvo" | "plano_de_recuperacao" | "plano_de_monitoramento" | "relatorio_ambiental";
+
+/** Módulo específico (Modelo §29), derivado da categoria (decisão 15). */
+export type DemandModule = "obras" | "ambiental" | "social" | "apoio_investimento" | "articulacao_publica";
+
+/** Pessoa com registro (responsável técnico). */
+export interface DemandModulePerson {
+  nome?: string;
+  registro?: string;
+}
+
+/**
+ * Informações específicas do módulo (`demands.module_details`, T-05-08).
+ * Chaves em snake_case, como gravadas; só as do módulo da categoria voltam.
+ */
+export interface DemandModuleDetails {
+  area_m2?: number;
+  imovel?: { documento?: string; autorizacao?: string };
+  responsavel_tecnico?: DemandModulePerson;
+  diagnostico?: string;
+  situacao_atual?: string;
+  vegetacao?: string;
+  metodologia?: string;
+  plano_de_monitoramento?: string;
+  equipe?: string;
+  publico_alvo?: string;
+}
 
 /** Ações do Agente depois da publicação (POST /demands/:id/transitions). */
 export type DemandAgentAction =
@@ -1246,14 +1282,14 @@ export interface DemandScheduleItemInput {
   startsOn: string;
   endsOn: string;
   responsible?: string | null;
-  recordMilestones?: DemandRecordMilestone[];
+  recordMilestones?: DemandScheduleMilestone[];
   position?: number;
 }
 
 export interface DemandScheduleItem extends DemandScheduleItemInput {
   id: string;
   position: number;
-  recordMilestones: DemandRecordMilestone[];
+  recordMilestones: DemandScheduleMilestone[];
 }
 
 export interface DemandGoalInput {
@@ -1347,11 +1383,16 @@ export interface DemandInput {
   longitude?: number | null;
   territory?: string | null;
   hasPhysicalExecution?: boolean;
+  /** Informações do módulo (T-05-08); substitui o objeto inteiro. */
+  moduleDetails?: DemandModuleDetails | null;
 }
 
 /** Demanda vista pelo autor (GET /demands/mine/:id). */
 export interface Demand extends Required<DemandInput> {
   id: string;
+  /** Módulo derivado da categoria (null sem categoria). */
+  module?: DemandModule | null;
+  moduleLabel?: string | null;
   authorId: string;
   organizationId: string | null;
   authorName: string | null;
@@ -1409,6 +1450,10 @@ export interface PublicDemand {
   longitude: number | null;
   territory: string | null;
   hasPhysicalExecution: boolean;
+  /** Módulo derivado da categoria e as suas informações (sem o imóvel). */
+  module?: DemandModule | null;
+  moduleLabel?: string | null;
+  moduleDetails?: DemandModuleDetails;
   composition: DemandComposition;
   status: DemandStatus;
   publishedAt: string | null;

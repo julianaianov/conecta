@@ -144,7 +144,12 @@ test("ações do Agente com os rótulos e destinos da máquina de estados", () =
 
 test("formulário → PUT da etapa: só os campos dela, brancos viram null", () => {
   const form = { ...emptyDemandForm(), category: "projeto_social", title: "  Horta  ", cep: "20040-020", uf: "rj", beneficiariesEstimate: "1.500" };
-  assert.deepEqual(stepInput("classificacao", form), { category: "projeto_social" });
+  // A classificação leva também as informações do módulo derivado (T-05-08).
+  assert.deepEqual(stepInput("classificacao", form), { category: "projeto_social", moduleDetails: {} });
+  assert.deepEqual(
+    stepInput("classificacao", { ...form, category: "recuperacao_ambiental", moduleDetails: { area_m2: "1.200,5", equipe: "fora do módulo" } }),
+    { category: "recuperacao_ambiental", moduleDetails: { area_m2: 1200.5 } },
+  );
   const descricao = stepInput("descricao", form);
   assert.equal(descricao.title, "Horta");
   assert.equal(descricao.cep, "20040020");

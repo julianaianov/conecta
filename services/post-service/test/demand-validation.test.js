@@ -27,6 +27,8 @@ function complete(overrides = {}) {
     longitude: -43.2,
     territory: 'Centro',
     themes: ['iluminacao', 'esporte'],
+    // Módulo Social (§25), derivado de projeto_social.
+    moduleDetails: { equipe: 'Coordenação e dez voluntários', publico_alvo: 'Famílias do entorno', metodologia: 'Mutirões mensais' },
     hasPhysicalExecution: true,
     scheduleItems: [
       { id: S1, stage: 'Preparação', activities: 'Registro inicial e compras', startsOn: '2026-10-01', endsOn: '2026-10-05', recordMilestones: ['antes'] },
@@ -259,4 +261,51 @@ test('entrada que não é objeto vira rascunho vazio', () => {
     assert.deepEqual(errors, {});
     assert.equal(value.hasPhysicalExecution, true, 'execução física é o padrão');
   }
+});
+
+test('módulo específico (T-05-08): informações validadas, marcos do ambiental e avisos por módulo', () => {
+  const S = 'aaaaaaaa-0000-0000-0000-00000000000';
+  const ambiental = complete({
+    category: 'recuperacao_ambiental',
+    moduleDetails: {
+      area_m2: '1500,5', diagnostico: 'Restinga degradada', situacao_atual: 'Lixo e espécies exóticas',
+      vegetacao: 'Restinga arbustiva', metodologia: 'Plantio de nativas',
+      responsavel_tecnico: { nome: 'Ana Souza', registro: 'CRBio 12345' }, plano_de_monitoramento: 'Visitas mensais',
+    },
+    scheduleItems: [
+      { id: `${S}1`, stage: 'Diagnóstico', activities: 'Levantamento', startsOn: '2026-10-01', endsOn: '2026-10-05', recordMilestones: ['antes', 'diagnostico'] },
+      { id: `${S}2`, stage: 'Plantio', activities: 'Intervenção e monitoramento', startsOn: '2026-10-06', endsOn: '2026-11-30', recordMilestones: ['intervencao', 'monitoramento', 'depois'] },
+    ],
+    budgetItems: [
+      { description: 'Mudas', quantity: 1, unit: 'lote', unitPriceCents: 900_000, scheduleItemId: `${S}2` },
+      { description: 'Registro do antes e do depois', quantity: 1, unit: 'serviço', unitPriceCents: 100_000, isAudiovisualRecord: true, scheduleItemId: `${S}1` },
+    ],
+  });
+  const ok = validateDemand(ambiental, { forSubmission: true });
+  assert.deepEqual(ok.errors, {});
+  assert.equal(ok.value.moduleDetails.area_m2, 1500.5);
+  assert.deepEqual(ok.value.moduleDetails.responsavel_tecnico, { nome: 'Ana Souza', registro: 'CRBio 12345' });
+  assert.deepEqual(ok.value.scheduleItems[0].recordMilestones, ['antes', 'diagnostico']);
+  assert.equal(ok.warnings.moduleDetails, undefined);
+  assert.equal(ok.warnings.recordMilestones, undefined);
+
+  // Marcos do ambiental fora dele: erro no envio.
+  const social = validateDemand({ ...ambiental, category: 'projeto_social' }, { forSubmission: true });
+  assert.match(social.errors.recordMilestones, /módulo ambiental/);
+
+  // Obra sem informações do módulo: aviso, não erro.
+  const obra = validateDemand(complete({ category: 'obra_ou_melhoria_de_infraestrutura', moduleDetails: {} }), { forSubmission: true });
+  assert.equal(obra.errors.moduleDetails, undefined);
+  assert.match(obra.warnings.moduleDetails, /Módulo de Obras: informe também área/);
+
+  // Apoio/Investimento não pede campos próprios.
+  const apoio = validateDemand(complete({ category: 'apoio_tecnico', moduleDetails: {} }), { forSubmission: true });
+  assert.equal(apoio.warnings.moduleDetails, undefined);
+
+  // Formato: chave desconhecida, área inválida, subcampo fora do grupo.
+  const bad = validateDemand({ moduleDetails: { x: 1, area_m2: -3, responsavel_tecnico: { cpf: '1' } } });
+  assert.deepEqual(Object.keys(bad.errors).sort(), [
+    'moduleDetails.area_m2', 'moduleDetails.responsavel_tecnico.cpf', 'moduleDetails.x',
+  ]);
+  assert.equal(validateDemand({ moduleDetails: [] }).errors.moduleDetails, 'Informações do módulo inválidas');
 });

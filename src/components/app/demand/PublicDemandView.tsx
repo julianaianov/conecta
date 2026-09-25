@@ -37,6 +37,7 @@ import { DemandSupportBlock } from "../support/DemandSupportPanel";
 import {
   BudgetTable,
   CategoryBadge,
+  ModuleDetailsBlock,
   CompositionCard,
   DemandStatusBadge,
   DocumentsSummary,
@@ -184,6 +185,7 @@ export function PublicDemandView({
             <TextBlock label="Descrição">{demand.description}</TextBlock>
             <TextBlock label="Objetivo">{demand.objective}</TextBlock>
             <TextBlock label="Justificativa">{demand.justification}</TextBlock>
+            <ModuleDetailsBlock module={demand.module} moduleLabel={demand.moduleLabel} moduleDetails={demand.moduleDetails} />
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
             {demand.postId && (

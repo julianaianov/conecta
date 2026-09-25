@@ -9,6 +9,7 @@ const { computeComposition, MAX_BUDGET_CENTS } = require('./finance');
 const { applyAction, isEditable, availableActions } = require('./state-machine');
 const { UploadError } = require('../uploads');
 const { publicMediaUrl } = require('../upload-policy');
+const { MODULE_LABELS, moduleOf, detailsForCategory } = require('./modules');
 
 /** Erro com status e corpo HTTP, lançado de dentro da transação. */
 class HttpError extends Error {
@@ -98,6 +99,8 @@ const SCALAR_COLUMNS = {
   longitude: 'longitude',
   territory: 'territory',
   hasPhysicalExecution: 'has_physical_execution',
+  // Informações específicas do módulo (T-05-08, migração 032), JSONB.
+  moduleDetails: 'module_details',
 };
 
 // Projeção do autor: tudo menos `reviewed_by` e `archived_by` (nomes da equipe).
@@ -106,7 +109,7 @@ const OWNER_DEMAND_SQL = `
   d.category, d.title, d.description, d.objective, d.justification,
   d.beneficiaries_estimate, d.beneficiaries_profile, d.priority, d.priority_criteria, d.photo_ref,
   d.cep, d.street, d.address_number, d.address_complement, d.district,
-  d.municipality, d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution,
+  d.municipality, d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution, d.module_details,
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
   d.platform_fee_cents, d.total_amount_cents, d.status, d.review_state, d.review_note,
   d.reviewed_at, d.submitted_at, d.published_at, d.archive_reason, d.archived_at,
@@ -121,7 +124,7 @@ const PUBLIC_DEMAND_SQL = `
   d.id, d.author_id, d.author_name, d.author_avatar, d.category, d.title,
   d.description, d.objective, d.justification, d.beneficiaries_estimate,
   d.beneficiaries_profile, d.priority, d.priority_criteria, d.photo_ref, d.district, d.municipality,
-  d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution,
+  d.uf, d.latitude, d.longitude, d.territory, d.has_physical_execution, d.module_details,
   d.budget_amount_cents, d.agent_fee_bps, d.platform_fee_bps, d.agent_fee_cents,
   d.platform_fee_cents, d.total_amount_cents, d.status, d.published_at, d.updated_at,
   d.record_waiver_reason, d.shares_count,
@@ -246,6 +249,11 @@ function serializeScalars(row) {
     // lista (vazia quando o Agente ainda não marcou nenhum).
     themes: Array.isArray(row.themes) ? row.themes : [],
     hasPhysicalExecution: row.has_physical_execution,
+    // Módulo específico (T-05-08, decisão 15): derivado da categoria, nunca
+    // escolhido; as informações mostradas são só as do módulo.
+    module: moduleOf(row.category),
+    moduleLabel: MODULE_LABELS[moduleOf(row.category)] ?? null,
+    moduleDetails: detailsForCategory(row.category, row.module_details),
     // Justificativa de que não há execução física a registrar (T17); pública,
     // porque explica a ausência do antes e do depois no histórico visual.
     recordWaiverReason: row.record_waiver_reason ?? null,
@@ -301,6 +309,11 @@ function serializePublicDemand(row, items = null) {
     // Compartilhamentos registrados (T21): contador mantido pelo trigger.
     sharesCount: toNumber(row.shares_count) ?? 0,
   };
+  // Documento e autorização do imóvel ficam com o autor e a análise.
+  if (demand.moduleDetails?.imovel) {
+    const { imovel: _imovel, ...rest } = demand.moduleDetails;
+    demand.moduleDetails = rest;
+  }
   if (items) Object.assign(demand, serializeItems(items, { isPublic: true }));
   return demand;
 }

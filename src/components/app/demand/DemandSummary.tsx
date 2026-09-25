@@ -15,6 +15,7 @@ import {
   ResourcesSummary,
   ScheduleList,
   TextBlock,
+  ModuleDetailsBlock,
 } from "./DemandParts";
 
 function Missing() {
@@ -46,6 +47,7 @@ export function DemandSummary({ demand, onEdit }: { demand: Demand; onEdit?: (st
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
           <div className="space-y-3">
             <TextBlock label="Categoria">{demand.category ? DEMAND_CATEGORY_LABELS[demand.category] : <Missing />}</TextBlock>
+            <ModuleDetailsBlock module={demand.module} moduleLabel={demand.moduleLabel} moduleDetails={demand.moduleDetails} />
             <TextBlock label="Título">{value(demand.title)}</TextBlock>
             <TextBlock label="Descrição detalhada">{value(demand.description)}</TextBlock>
           </div>
