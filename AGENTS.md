@@ -354,6 +354,25 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   imprime o módulo e as informações. O uso dos marcos do ambiental nas
   evidências da execução (`src/execution/*`) ainda não foi feito: a definição
   está em `MODULE_MILESTONES`.
+- Campos do Modelo de Conexão §04/§05 (T-05-09, migração post 033): a etapa 2
+  pede **problema identificado** e **área de abrangência** (`problemIdentified`,
+  `coverageArea`; obrigatórios no envio em `REQUIRED_ON_SUBMIT` e
+  `demand_assert_submittable`); o item do orçamento ganha **Item** e
+  **Fornecedor ou referência** (`item`, `supplierReference`, este fora da rota
+  pública e da versão pública do dossiê); a etapa do cronograma ganha
+  **recursos necessários** e **valor associado** (`resourcesNeeded`,
+  `amountCents`, informativo: a composição continua sendo a soma dos itens) e a
+  projeção traz `deadlineDays` (término − início + 1). O status da etapa é o da
+  execução (T-05-11). Importação da planilha: `POST /demands/:id/budget-items/import`
+  com o CSV cru (`Content-Type: text/csv`, até 512 KB, separador `;`, `,` ou
+  tabulação, decimal com vírgula; cabeçalho
+  `item;descricao;quantidade;unidade;valor_unitario;fornecedor`, opcional
+  `registro_audiovisual`), `?mode=acrescentar|substituir`, tudo ou nada: 422
+  `import_failed` com `rows` (linha → coluna → mensagem), senão 201 com os itens
+  e a composição recalculada; teto de 200 itens por demanda
+  (`src/demand/budget-import.js`, sem biblioteca). XLSX não é lido (exige
+  escolher uma biblioteca de parsing; o portal pede salvar como CSV e oferece o
+  modelo para baixar em `BudgetEditor`).
 - Avisos do envio (T-02-05, slide 14 "sempre que possível"): a revisão
   (etapa 9) lista os `warnings` do `validate` no bloco "Recomendações antes de
   enviar" (`demandWarnings` em `demand.ts`: rótulo humano, etapa de correção,
