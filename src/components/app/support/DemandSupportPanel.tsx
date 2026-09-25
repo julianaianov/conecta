@@ -11,6 +11,7 @@ import {
   DEMAND_SUPPORT_TYPES,
   MY_SUPPORTS_PATH,
   RECEIPT_STATUS_COLORS,
+  SCHEDULE_ITEM_MODALITY,
   RECEIPT_STATUS_LABELS,
   SUPPORT_MODALITIES,
   SUPPORT_MODALITY_HINTS,
@@ -27,6 +28,7 @@ import type {
   DemandSupportContext,
   DemandSupportHistory,
   InstitutionValidationStatus,
+  ScheduleItemOption,
   SupportModality,
   SupportType,
 } from "@/lib/app/types";
@@ -39,15 +41,17 @@ import { Checkbox, FormAlert, SelectInput, TextArea, TextInput } from "../demand
 import { formatDate } from "@/lib/app/format";
 
 /** Formulário do registro de apoio realizado (as 6 modalidades da fonte). */
-function SupportForm({ modality, supportTypes, busy, onSubmit, onCancel }: {
+function SupportForm({ modality, supportTypes, scheduleItems, busy, onSubmit, onCancel }: {
   modality: SupportModality;
   /** O que o perfil pode oferecer (`allowedSupportTypes` do servidor). */
   supportTypes: SupportType[];
+  /** Etapas do cronograma para "Executar determinada etapa" (T-05-15). */
+  scheduleItems: ScheduleItemOption[];
   busy: boolean;
   onSubmit: (input: {
     supportType: SupportType; description: string; amountCents: number | null;
     amountPublic: boolean; occurredOn: string | null; message: string | null;
-    displayConsent: boolean; publicName: string | null;
+    displayConsent: boolean; publicName: string | null; scheduleItemId: string | null;
   }) => void;
   onCancel: () => void;
 }) {
@@ -59,7 +63,9 @@ function SupportForm({ modality, supportTypes, busy, onSubmit, onCancel }: {
   const [message, setMessage] = useState("");
   const [consent, setConsent] = useState(false);
   const [publicName, setPublicName] = useState("");
+  const [scheduleItemId, setScheduleItemId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const needsStage = modality === SCHEDULE_ITEM_MODALITY;
 
   return (
     <form
@@ -72,6 +78,7 @@ function SupportForm({ modality, supportTypes, busy, onSubmit, onCancel }: {
         const cents = supportReaisToCents(amount);
         if (Number.isNaN(cents)) { setError("Informe um valor declarado válido."); return; }
         if (supportType === "financial" && !cents) { setError("O apoio financeiro precisa do valor declarado."); return; }
+        if (needsStage && !scheduleItemId) { setError("Escolha a etapa do cronograma executada."); return; }
         setError(null);
         onSubmit({
           supportType: supportType as SupportType,
@@ -82,10 +89,27 @@ function SupportForm({ modality, supportTypes, busy, onSubmit, onCancel }: {
           message: message.trim() || null,
           displayConsent: consent,
           publicName: consent ? (publicName.trim() || null) : null,
+          scheduleItemId: needsStage ? scheduleItemId : null,
         });
       }}
     >
       <p className="text-xs" style={{ color: "var(--th-muted)" }}>{SUPPORT_MODALITY_HINTS[modality]}</p>
+      {needsStage && (
+        <SelectInput
+          name="etapa-apoio"
+          label="Etapa do cronograma"
+          required
+          value={scheduleItemId}
+          onValue={setScheduleItemId}
+          placeholder="Escolha a etapa"
+          options={scheduleItems.map((item) => ({
+            value: item.id,
+            label: item.startsOn && item.endsOn
+              ? `${item.stage} (${formatDate(item.startsOn)} a ${formatDate(item.endsOn)})`
+              : item.stage,
+          }))}
+        />
+      )}
       <SelectInput
         name="tipo-apoio"
         label="O que foi oferecido"
@@ -138,6 +162,9 @@ function OwnSupportCard({ support, busy, onConsent, onCancel }: {
         {support.occurredOn ? ` · ${formatDate(support.occurredOn)}` : ""}
       </p>
       <p className="mt-1 text-sm" style={{ color: "var(--th-text)" }}>{support.description}</p>
+      {support.scheduleItem?.stage && (
+        <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>Etapa: {support.scheduleItem.stage}</p>
+      )}
       <p className="mt-1 text-xs font-semibold" style={{ color: canceled ? "var(--th-muted)" : RECEIPT_STATUS_COLORS[support.receiptStatus] }}>
         {canceled ? "Apoio cancelado" : RECEIPT_STATUS_LABELS[support.receiptStatus]}
       </p>
@@ -232,9 +259,9 @@ export function DemandSupportPanel({ demandId, authorId, history, onChange }: {
         </p>
       ) : (
         <p className="text-sm" style={{ color: "var(--th-muted)" }}>
-          Patrocinar projetos, doar recursos, financiar eventos, adotar espaços públicos, apoiar ações ambientais ou
-          contratar serviços locais. A plataforma não processa pagamento: o valor financeiro é declarado e confirmado
-          pelo Agente de Transformação.
+          Patrocinar projetos, doar recursos, financiar eventos, adotar espaços públicos, apoiar ações ambientais,
+          contratar serviços locais, disponibilizar equipe ou executar determinada etapa do cronograma. A plataforma
+          não processa pagamento: o valor financeiro é declarado e confirmado pelo Agente de Transformação.
         </p>
       )}
       {totals && totals.total > 0 && (
@@ -281,7 +308,8 @@ export function DemandSupportPanel({ demandId, authorId, history, onChange }: {
           )}
           {allowed.length > 0 && open && (
             <div className="flex flex-wrap gap-2">
-              {SUPPORT_MODALITIES.filter((m) => allowed.includes(m)).map((modality) => (
+              {SUPPORT_MODALITIES.filter((m) => allowed.includes(m)
+                && (m !== SCHEDULE_ITEM_MODALITY || (context?.scheduleItems?.length ?? 0) > 0)).map((modality) => (
                 <Button
                   key={modality}
                   type="button"
@@ -300,6 +328,7 @@ export function DemandSupportPanel({ demandId, authorId, history, onChange }: {
             <SupportForm
               modality={opening}
               supportTypes={allowedTypes}
+              scheduleItems={context?.scheduleItems ?? []}
               busy={busy}
               onCancel={() => setOpening(null)}
               onSubmit={(input) => void act(
@@ -372,6 +401,7 @@ export function DemandSupportHistorySection({ history }: { history: DemandSuppor
                 <p className="mt-1 text-sm" style={{ color: "var(--th-text)" }}>{support.description}</p>
                 <p className="mt-1 text-xs font-numeric" style={{ color: "var(--th-muted)" }}>
                   {SUPPORT_TYPE_LABELS[support.supportType]}
+                  {support.scheduleItem?.stage ? ` · etapa: ${support.scheduleItem.stage}` : ""}
                   {support.amountCents !== null ? ` · ${formatCents(support.amountCents)} declarados` : ""}
                   {` · ${formatDate(support.occurredOn ?? support.createdAt)}`}
                   {support.hasEvidence ? " · com evidência registrada" : ""}

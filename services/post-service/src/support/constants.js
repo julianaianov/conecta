@@ -9,10 +9,13 @@
 // post-service/013-support-modalities.sql; test/support-domain.test.js confere
 // as listas, e src/lib/app/support.ts as repete no frontend.
 
-// As 6 modalidades da fonte (slide 20).
+// As 6 modalidades da fonte (slide 20) e, pela migração 038 (T-05-15), as
+// duas do Modelo de Conexão §27 que não cabiam nelas: "Disponibilizar equipe"
+// e "Executar determinada etapa" (esta aponta a etapa do cronograma).
 const SUPPORT_MODALITIES = [
   'patrocinar_projeto', 'doar_recursos', 'financiar_evento',
   'adotar_espaco_publico', 'apoiar_acao_ambiental', 'contratar_servicos_locais',
+  'disponibilizar_equipe', 'executar_etapa',
 ];
 
 const SUPPORT_MODALITY_LABELS = {
@@ -22,7 +25,12 @@ const SUPPORT_MODALITY_LABELS = {
   adotar_espaco_publico: 'Adotar espaços públicos',
   apoiar_acao_ambiental: 'Apoiar ações ambientais',
   contratar_servicos_locais: 'Contratar serviços locais',
+  disponibilizar_equipe: 'Disponibilizar equipe',
+  executar_etapa: 'Executar determinada etapa',
 };
+
+// Modalidade que exige a etapa do cronograma (`supports.schedule_item_id`).
+const SCHEDULE_ITEM_MODALITY = 'executar_etapa';
 
 // O que é oferecido (coluna `supports.type`, enum support_type do init.sql).
 // `sharing` (divulgação) é amplificação, e não apoio a uma demanda.
@@ -155,6 +163,7 @@ const PRIVATE_SUPPORT_EVENT_TYPES = ['apoio_cancelado', 'apoio_revisado_gestao']
 module.exports = {
   SUPPORT_MODALITIES,
   SUPPORT_MODALITY_LABELS,
+  SCHEDULE_ITEM_MODALITY,
   SUPPORT_TYPES,
   DEMAND_SUPPORT_TYPES,
   SUPPORT_TYPE_LABELS,

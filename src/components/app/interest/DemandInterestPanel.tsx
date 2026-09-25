@@ -12,6 +12,7 @@ import {
   OFFER_TYPES,
   OFFER_TYPE_LABELS,
   OPPORTUNITIES_PATH,
+  SCHEDULE_ITEM_OFFER,
   canFilterOpportunities,
   interestErrorMessage,
 } from "@/lib/app/interest";
@@ -25,7 +26,9 @@ import {
   type InterestKind,
   type InterestOfferType,
   type InterestSummary,
+  type ScheduleItemOption,
 } from "@/lib/app/types";
+import { formatDate } from "@/lib/app/format";
 import { AuthPrompt } from "../AuthPrompt";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
@@ -47,16 +50,22 @@ function summaryText(summary: InterestSummary): string {
 type Gate = { status: InstitutionValidationStatus | null } | null;
 
 /** Formulário da manifestação (oferta só no apoio). */
-function InterestForm({ kind, busy, onSubmit, onCancel }: {
+function InterestForm({ kind, busy, scheduleItems, onSubmit, onCancel }: {
   kind: InterestKind;
   busy: boolean;
-  onSubmit: (offerTypes: InterestOfferType[], message: string) => void;
+  /** Etapas do cronograma para "Executar determinada etapa" (Modelo §27, T-05-15). */
+  scheduleItems: ScheduleItemOption[];
+  onSubmit: (offerTypes: InterestOfferType[], message: string, scheduleItemId: string | null) => void;
   onCancel: () => void;
 }) {
   const [offers, setOffers] = useState<InterestOfferType[]>([]);
   const [message, setMessage] = useState("");
+  const [scheduleItemId, setScheduleItemId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const toggle = (offer: InterestOfferType, on: boolean) => setOffers((list) => (on ? [...list, offer] : list.filter((o) => o !== offer)));
+  const executesStage = offers.includes(SCHEDULE_ITEM_OFFER);
+  // Sem etapa no cronograma, não há o que executar.
+  const offerOptions = scheduleItems.length ? OFFER_TYPES : OFFER_TYPES.filter((o) => o !== SCHEDULE_ITEM_OFFER);
 
   return (
     <form
@@ -68,19 +77,39 @@ function InterestForm({ kind, busy, onSubmit, onCancel }: {
           setError("Marque pelo menos uma forma de apoio.");
           return;
         }
+        if (executesStage && !scheduleItemId) {
+          setError("Escolha a etapa do cronograma que pretende executar.");
+          return;
+        }
         setError(null);
-        onSubmit(offers, message);
+        onSubmit(offers, message, executesStage ? scheduleItemId : null);
       }}
     >
       {kind === "apoio" && (
         <fieldset>
           <legend className="mb-2 text-sm font-semibold" style={{ color: "var(--th-text)" }}>O que você pretende oferecer?</legend>
           <div className="grid gap-2 sm:grid-cols-3">
-            {OFFER_TYPES.map((offer) => (
+            {offerOptions.map((offer) => (
               <Checkbox key={offer} name={`oferta-${offer}`} label={OFFER_TYPE_LABELS[offer]} checked={offers.includes(offer)} onChecked={(on) => toggle(offer, on)} />
             ))}
           </div>
         </fieldset>
+      )}
+      {kind === "apoio" && executesStage && (
+        <SelectInput
+          name="etapa-oferecida"
+          label="Etapa do cronograma"
+          required
+          value={scheduleItemId}
+          onValue={setScheduleItemId}
+          placeholder="Escolha a etapa"
+          options={scheduleItems.map((item) => ({
+            value: item.id,
+            label: item.startsOn && item.endsOn
+              ? `${item.stage} (${formatDate(item.startsOn)} a ${formatDate(item.endsOn)})`
+              : item.stage,
+          }))}
+        />
       )}
       <TextArea
         name={`mensagem-${kind}`}
@@ -156,6 +185,9 @@ function OwnInterestCard({ interest, busy, onConnect, onWithdraw, open }: {
       </p>
       {interest.offerTypes.length > 0 && (
         <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>Oferta: {interest.offerTypes.map((o) => OFFER_TYPE_LABELS[o]).join(", ")}</p>
+      )}
+      {interest.scheduleItem?.stage && (
+        <p className="mt-1 text-xs" style={{ color: "var(--th-muted)" }}>Etapa: {interest.scheduleItem.stage}</p>
       )}
       {interest.connectionStatus && (
         <p className="mt-1 text-xs font-semibold" style={{ color: "var(--th-text)" }}>
@@ -305,9 +337,10 @@ export function DemandInterestPanel({ demandId, authorId, postId }: {
             <InterestForm
               kind={opening}
               busy={busy}
+              scheduleItems={context.scheduleItems ?? []}
               onCancel={() => setOpening(null)}
-              onSubmit={(offerTypes, message) => void act(
-                () => api.registerInterest(demandId, { kind: opening, offerTypes, message: message.trim() || null }),
+              onSubmit={(offerTypes, message, scheduleItemId) => void act(
+                () => api.registerInterest(demandId, { kind: opening, offerTypes, message: message.trim() || null, scheduleItemId }),
                 "Interesse registrado. Agora você pode solicitar a conexão com o Agente.",
               )}
             />

@@ -28,6 +28,8 @@ export const SUPPORT_MODALITIES: SupportModality[] = [
   "adotar_espaco_publico",
   "apoiar_acao_ambiental",
   "contratar_servicos_locais",
+  "disponibilizar_equipe",
+  "executar_etapa",
 ];
 
 export const SUPPORT_MODALITY_LABELS: Record<SupportModality, string> = {
@@ -37,7 +39,12 @@ export const SUPPORT_MODALITY_LABELS: Record<SupportModality, string> = {
   adotar_espaco_publico: "Adotar espaços públicos",
   apoiar_acao_ambiental: "Apoiar ações ambientais",
   contratar_servicos_locais: "Contratar serviços locais",
+  disponibilizar_equipe: "Disponibilizar equipe",
+  executar_etapa: "Executar determinada etapa",
 };
+
+/** "Executar determinada etapa" aponta a etapa do cronograma (Modelo §27, T-05-15). */
+export const SCHEDULE_ITEM_MODALITY: SupportModality = "executar_etapa";
 
 export const SUPPORT_MODALITY_HINTS: Record<SupportModality, string> = {
   patrocinar_projeto: "Patrocínio da execução, com valor declarado ou contrapartida.",
@@ -46,6 +53,8 @@ export const SUPPORT_MODALITY_HINTS: Record<SupportModality, string> = {
   adotar_espaco_publico: "Manutenção e cuidado de uma praça, canteiro ou equipamento público.",
   apoiar_acao_ambiental: "Plantio, limpeza, coleta, educação ambiental.",
   contratar_servicos_locais: "Contratação de serviços e mão de obra do território.",
+  disponibilizar_equipe: "Equipe própria cedida para a demanda (técnicos, mão de obra, profissionais).",
+  executar_etapa: "Execução de uma etapa do cronograma da demanda.",
 };
 
 export const SUPPORT_MODALITY_ICONS: Record<SupportModality, string> = {
@@ -55,6 +64,8 @@ export const SUPPORT_MODALITY_ICONS: Record<SupportModality, string> = {
   adotar_espaco_publico: "home_work",
   apoiar_acao_ambiental: "leaf",
   contratar_servicos_locais: "construction",
+  disponibilizar_equipe: "groups",
+  executar_etapa: "handyman",
 };
 
 /** O que é oferecido (supports.type). Divulgação fica fora do apoio à demanda. */
@@ -201,6 +212,7 @@ export function supportTimelineDetail(event: Pick<DemandTimelineEvent, "type" | 
   const parts: string[] = [];
   const type = d.supportType as SupportType | undefined;
   if (type && type in SUPPORT_TYPE_LABELS) parts.push(SUPPORT_TYPE_LABELS[type]);
+  if (typeof d.scheduleStage === "string" && d.scheduleStage) parts.push(`etapa: ${d.scheduleStage}`);
   const amount = typeof d.amount === "string" || typeof d.amount === "number" ? Number(d.amount) : null;
   if (amount !== null && Number.isFinite(amount) && amount > 0) {
     parts.push(`valor declarado ${amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`);

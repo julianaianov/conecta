@@ -4,8 +4,9 @@
 
 const {
   SUPPORT_MODALITIES, SUPPORT_MODALITY_LABELS, DEMAND_SUPPORT_TYPES, MODALITIES_BY_ROLE, SUPPORT_TYPES_BY_ROLE,
-  MAX_DESCRIPTION, MAX_MESSAGE, MAX_NOTE, MAX_PUBLIC_NAME, MAX_AMOUNT_CENTS, MAX_EVIDENCE,
+  SCHEDULE_ITEM_MODALITY, MAX_DESCRIPTION, MAX_MESSAGE, MAX_NOTE, MAX_PUBLIC_NAME, MAX_AMOUNT_CENTS, MAX_EVIDENCE,
 } = require('./constants');
+const { isUuid } = require('../security');
 
 const text = (value) => (typeof value === 'string' ? value.trim() : '');
 
@@ -80,6 +81,19 @@ function validateSupport(input, { today = new Date(), role = null } = {}) {
   const supportType = typeof body.supportType === 'string' ? body.supportType : '';
   if (!supportTypes.includes(supportType)) errors.supportType = `Valores aceitos: ${supportTypes.join(', ')}`;
 
+  // "Executar determinada etapa" (Modelo §27, T-05-15): etapa do cronograma
+  // obrigatória com esta modalidade e ausente sem ela; a rota confere a demanda.
+  let scheduleItemId = null;
+  const rawItem = body.scheduleItemId;
+  const informed = rawItem !== undefined && rawItem !== null && rawItem !== '';
+  if (modality === SCHEDULE_ITEM_MODALITY) {
+    if (!informed) errors.scheduleItemId = 'Escolha a etapa do cronograma executada';
+    else if (!isUuid(rawItem)) errors.scheduleItemId = 'Etapa inválida';
+    else scheduleItemId = rawItem;
+  } else if (informed) {
+    errors.scheduleItemId = 'A etapa só acompanha a modalidade "Executar determinada etapa"';
+  }
+
   const description = text(body.description);
   if (!description) errors.description = 'Descreva o que foi oferecido';
   else if (description.length > MAX_DESCRIPTION) errors.description = `Use no máximo ${MAX_DESCRIPTION} caracteres`;
@@ -117,6 +131,7 @@ function validateSupport(input, { today = new Date(), role = null } = {}) {
       message,
       displayConsent: consent.value.displayConsent,
       publicName: consent.value.publicName,
+      scheduleItemId,
     },
     errors,
   };

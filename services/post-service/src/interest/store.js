@@ -13,7 +13,9 @@ const INTEREST_SQL = `
   i.connection_answered_at, i.withdrawn_at, i.created_at, i.updated_at,
   -- Evento da mesma demanda a que o voluntariado/participação se liga (T25).
   i.event_id, (SELECT ev.title FROM events ev WHERE ev.id = i.event_id) AS event_title,
-  (SELECT ev.starts_at FROM events ev WHERE ev.id = i.event_id) AS event_starts_at`;
+  (SELECT ev.starts_at FROM events ev WHERE ev.id = i.event_id) AS event_starts_at,
+  -- Etapa do cronograma em "Executar determinada etapa" (T-05-15).
+  i.schedule_item_id, (SELECT si.stage FROM demand_schedule_items si WHERE si.id = i.schedule_item_id) AS schedule_stage`;
 
 const toIso = (value) => (value instanceof Date ? value.toISOString() : value ?? null);
 
@@ -35,7 +37,39 @@ function serializeOwnInterest(row) {
     event: row.event_id
       ? { id: row.event_id, title: row.event_title ?? null, startsAt: toIso(row.event_starts_at) }
       : null,
+    // Etapa que a parte se oferece a executar (T-05-15); null fora dessa oferta.
+    scheduleItem: row.schedule_item_id ? { id: row.schedule_item_id, stage: row.schedule_stage ?? null } : null,
   };
+}
+
+/**
+ * Etapas do cronograma da demanda, para "Executar determinada etapa"
+ * (Modelo §27, T-05-15). Só leitura: o módulo de execução não muda.
+ */
+async function scheduleItemsOf(db, demandId) {
+  const { rows } = await db.query(
+    `SELECT id, stage, starts_on, ends_on FROM demand_schedule_items
+      WHERE demand_id = $1 ORDER BY position, starts_on, id`,
+    [demandId],
+  );
+  const day = (value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value ?? null);
+  return rows.map((row) => ({ id: row.id, stage: row.stage, startsOn: day(row.starts_on), endsOn: day(row.ends_on) }));
+}
+
+/** 422 quando a etapa não é do cronograma desta demanda. */
+async function assertScheduleItem(db, demandId, scheduleItemId) {
+  if (!scheduleItemId) return;
+  const { rows } = await db.query(
+    'SELECT 1 FROM demand_schedule_items WHERE id = $1 AND demand_id = $2',
+    [scheduleItemId, demandId],
+  );
+  if (!rows.length) {
+    throw new HttpError(422, {
+      error: 'Confira os campos destacados',
+      code: 'validation_failed',
+      fields: { scheduleItemId: 'A etapa não é do cronograma desta demanda' },
+    });
+  }
 }
 
 /** Manifestação vista pelo Agente autor da demanda. */
@@ -124,4 +158,6 @@ module.exports = {
   loadOwnInterest,
   neededResourcesByDemand,
   openInterestsByDemand,
+  scheduleItemsOf,
+  assertScheduleItem,
 };

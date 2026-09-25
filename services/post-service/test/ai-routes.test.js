@@ -69,6 +69,8 @@ function fakePool({ interests = [], editais = [], suggestion = null, author = AG
     if (/FROM demands d WHERE d\.id/.test(text)) {
       return { rows: [{ ...DEMAND_ROW, author_id: author }] };
     }
+    // Antes do cronograma: a projeção do interesse lê a etapa oferecida (T-05-15).
+    if (/FROM demand_interests i/.test(text)) return { rows: interests };
     if (/FROM demand_budget_items/.test(text) || /FROM demand_schedule_items/.test(text)
         || /FROM demand_goals/.test(text) || /FROM demand_documents/.test(text)) return { rows: [] };
     if (/FROM demand_resources/.test(text)) {

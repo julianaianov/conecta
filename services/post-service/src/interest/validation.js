@@ -1,7 +1,7 @@
 // Validação das manifestações de interesse e do pedido de conexão (T15).
 // Erros por campo, no formato das demais rotas da demanda.
 
-const { INTEREST_KINDS, OFFER_TYPES, KINDS_BY_ROLE } = require('./constants');
+const { INTEREST_KINDS, OFFER_TYPES, KINDS_BY_ROLE, SCHEDULE_ITEM_OFFER } = require('./constants');
 const { EVENT_INTEREST_KINDS } = require('../event/constants');
 const { isUuid } = require('../security');
 
@@ -38,6 +38,20 @@ function validateInterest(input, role) {
     errors.offerTypes = 'Participação e voluntariado não têm oferta de recursos';
   }
 
+  // "Executar determinada etapa" (Modelo §27, T-05-15): a etapa do cronograma
+  // é obrigatória com esta oferta e ausente sem ela. A rota confere que é
+  // desta demanda.
+  let scheduleItemId = null;
+  const raw = body.scheduleItemId;
+  const informed = raw !== undefined && raw !== null && raw !== '';
+  if (offerTypes.includes(SCHEDULE_ITEM_OFFER)) {
+    if (!informed) errors.scheduleItemId = 'Escolha a etapa do cronograma que pretende executar';
+    else if (!isUuid(raw)) errors.scheduleItemId = 'Etapa inválida';
+    else scheduleItemId = raw;
+  } else if (informed) {
+    errors.scheduleItemId = 'A etapa só acompanha a oferta "Executar determinada etapa"';
+  }
+
   let message = null;
   if (body.message !== undefined && body.message !== null) {
     if (typeof body.message !== 'string') errors.message = 'Texto inválido';
@@ -55,7 +69,7 @@ function validateInterest(input, role) {
       eventId = body.eventId;
     }
   }
-  return { value: { kind, offerTypes, message, eventId }, errors };
+  return { value: { kind, offerTypes, message, eventId, scheduleItemId }, errors };
 }
 
 /** Pedido de conexão com o Agente: `{ type?, message }`. */
@@ -73,8 +87,8 @@ function validateConnectionRequest(input, fallbackType = 'support') {
 /** Tipo de conexão sugerido pela manifestação. */
 function connectionTypeFor(kind, offerTypes = []) {
   if (kind !== 'apoio') return 'support';
-  if (offerTypes.includes('investimento')) return 'sponsorship';
-  if (offerTypes.includes('recursos') || offerTypes.includes('produtos') || offerTypes.includes('estrutura')) return 'resources';
+  if (offerTypes.includes('investimento') || offerTypes.includes('patrocinio')) return 'sponsorship';
+  if (['recursos', 'produtos', 'estrutura', 'materiais', 'equipamentos'].some((t) => offerTypes.includes(t))) return 'resources';
   return 'partnership';
 }
 

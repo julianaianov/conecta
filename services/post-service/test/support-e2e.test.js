@@ -283,7 +283,7 @@ test('apoio: modalidades da fonte, dupla confirmação, transparência e meus ap
       assert.equal(mine.body.supports[0].receiptStatus, 'confirmado');
       const mineOnDemand = await call('GET', `/demands/${demand}/supports/mine`, { as: PARTNER_TWO });
       assert.equal(mineOnDemand.body.supports.length, 1);
-      assert.equal(mineOnDemand.body.allowedModalities.length, 6);
+      assert.equal(mineOnDemand.body.allowedModalities.length, 8, 'as 6 do slide 20 e as 2 do Modelo §27');
       assert.equal((await call('GET', `/demands/${demand}/supports/mine`, { as: AGENT })).body.isAuthor, true);
 
       // ── Imutabilidade e contrato com o dm-gestao ──────────────────────────
@@ -354,6 +354,54 @@ test('apoio: modalidades da fonte, dupla confirmação, transparência e meus ap
       assert.equal(gardenHistory.body.supports[0].supporterCategory, 'comunidade');
       assert.equal(gardenHistory.body.supports[0].supporterName, 'Joana');
       assert.equal((await call('GET', '/demands/supports/mine', { as: MEMBER })).body.supports.length, 1);
+
+      // ── Oferta de equipe e execução de etapa (T-05-15, Modelo §27) ─────────
+      const { rows: [stage] } = await pool.query(
+        'SELECT id, stage FROM demand_schedule_items WHERE demand_id = $1 ORDER BY position LIMIT 1', [garden],
+      );
+      const { rows: [otherStage] } = await pool.query(
+        'SELECT id FROM demand_schedule_items WHERE demand_id = $1 LIMIT 1', [demand],
+      );
+      const interestContext = await call('GET', `/demands/${garden}/interests/mine`);
+      assert.deepEqual(interestContext.body.scheduleItems.map((i) => i.id), [stage.id]);
+      const offer = (body) => call('POST', `/demands/${garden}/interests`, { body: { kind: 'apoio', ...body } });
+      const semEtapa = await offer({ offerTypes: ['execucao_de_etapa'] });
+      assert.equal(semEtapa.status, 422);
+      assert.ok(semEtapa.body.fields.scheduleItemId);
+      const etapaAlheia = await offer({ offerTypes: ['execucao_de_etapa'], scheduleItemId: otherStage.id });
+      assert.equal(etapaAlheia.status, 422, 'a etapa é do cronograma desta demanda');
+      const execucao = await offer({ offerTypes: ['equipe', 'execucao_de_etapa'], scheduleItemId: stage.id });
+      assert.equal(execucao.status, 201, JSON.stringify(execucao.body));
+      assert.deepEqual(execucao.body.interest.scheduleItem, { id: stage.id, stage: stage.stage });
+      await assert.rejects(
+        pool.query('UPDATE demand_interests SET schedule_item_id = NULL WHERE id = $1', [execucao.body.interest.id]),
+        /não muda|demand_interests_schedule_item/,
+      );
+      const stageEvent = (await call('GET', `/demands/${garden}/timeline`, { auth: false })).body.events
+        .find((e) => e.type === 'interesse_registrado' && e.details?.scheduleStage);
+      assert.equal(stageEvent.details.scheduleStage, stage.stage, 'a linha do tempo pública mostra a etapa');
+      assert.deepEqual(stageEvent.details.offerTypes, ['equipe', 'execucao_de_etapa']);
+
+      const supportContext = await call('GET', `/demands/${garden}/supports/mine`);
+      assert.ok(supportContext.body.allowedModalities.includes('executar_etapa'));
+      assert.equal(supportContext.body.scheduleItems.length, 1);
+      const executed = await register({
+        modality: 'executar_etapa', supportType: 'labor', description: 'Equipe executou o preparo dos canteiros',
+        scheduleItemId: stage.id,
+      }, PARTNER, garden);
+      assert.equal(executed.status, 201, JSON.stringify(executed.body));
+      assert.equal(executed.body.support.scheduleItem.stage, stage.stage);
+      assert.equal((await register({
+        modality: 'executar_etapa', supportType: 'labor', description: 'Sem etapa',
+      }, PARTNER, garden)).status, 422);
+      assert.equal((await register({
+        modality: 'disponibilizar_equipe', supportType: 'labor', description: 'Dois técnicos por um mês',
+      }, PARTNER_TWO, garden)).status, 201);
+      const gardenAfter = await call('GET', `/demands/${garden}/supports`, { auth: false });
+      assert.equal(gardenAfter.body.supports.find((s) => s.modality === 'executar_etapa').scheduleItem.stage, stage.stage);
+      const supportEvent = (await call('GET', `/demands/${garden}/timeline`, { auth: false })).body.events
+        .find((e) => e.type === 'apoio_declarado' && e.details?.modality === 'executar_etapa');
+      assert.equal(supportEvent.details.scheduleStage, stage.stage);
     } finally {
       await new Promise((resolve) => server.close(resolve));
       await gestao.end();

@@ -19,9 +19,15 @@ const INTEREST_KIND_LABELS = {
   voluntariado: 'Oferta de voluntariado',
 };
 
-// "Recursos, produtos, serviços, conhecimento, estrutura ou investimento" (slide 10).
-// TODO(fonte-da-verdade): Modelo de Conexão §27 — faltam oferta de equipe e execução de etapa vinculada ao cronograma.
-const OFFER_TYPES = ['recursos', 'produtos', 'servicos', 'conhecimento', 'estrutura', 'investimento'];
+// "Recursos, produtos, serviços, conhecimento, estrutura ou investimento"
+// (slide 10) e, pela migração 038 (T-05-15), o que faltava do Modelo de
+// Conexão §27 ("Doar materiais, Fornecer equipamentos, Disponibilizar equipe,
+// Executar determinada etapa, Patrocinar, Estabelecer parceria"), com os
+// rótulos literais da fonte.
+const OFFER_TYPES = [
+  'recursos', 'produtos', 'servicos', 'conhecimento', 'estrutura', 'investimento',
+  'materiais', 'equipamentos', 'equipe', 'execucao_de_etapa', 'patrocinio', 'parceria',
+];
 
 const OFFER_TYPE_LABELS = {
   recursos: 'Recursos',
@@ -30,7 +36,17 @@ const OFFER_TYPE_LABELS = {
   conhecimento: 'Conhecimento',
   estrutura: 'Estrutura',
   investimento: 'Investimento',
+  materiais: 'Doar materiais',
+  equipamentos: 'Fornecer equipamentos',
+  equipe: 'Disponibilizar equipe',
+  execucao_de_etapa: 'Executar determinada etapa',
+  patrocinio: 'Patrocinar',
+  parceria: 'Estabelecer parceria',
 };
+
+// "Executar determinada etapa" aponta a etapa do cronograma da demanda
+// (`demand_interests.schedule_item_id`, obrigatória com esta oferta).
+const SCHEDULE_ITEM_OFFER = 'execucao_de_etapa';
 
 const CONNECTION_STATUSES = ['pendente', 'aceita', 'recusada', 'cancelada'];
 
@@ -103,6 +119,7 @@ module.exports = {
   INTEREST_KIND_LABELS,
   OFFER_TYPES,
   OFFER_TYPE_LABELS,
+  SCHEDULE_ITEM_OFFER,
   CONNECTION_STATUSES,
   ROLE_CATEGORY,
   KINDS_BY_ROLE,

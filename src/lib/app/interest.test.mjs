@@ -17,6 +17,7 @@ import {
   OPPORTUNITY_ROLES,
   POTENTIAL_PARTNERS_MAX,
   POTENTIAL_PARTNERS_STATUSES,
+  SCHEDULE_ITEM_OFFER,
   UFS,
   buildOpportunityQuery,
   canFilterOpportunities,
@@ -39,6 +40,7 @@ test("listas e rótulos iguais aos do post-service", () => {
   assert.deepEqual(INTEREST_KIND_LABELS, server.INTEREST_KIND_LABELS);
   assert.deepEqual(OFFER_TYPES, server.OFFER_TYPES);
   assert.deepEqual(OFFER_TYPE_LABELS, server.OFFER_TYPE_LABELS);
+  assert.equal(SCHEDULE_ITEM_OFFER, server.SCHEDULE_ITEM_OFFER);
   assert.deepEqual(INTEREST_CONNECTION_STATUSES, server.CONNECTION_STATUSES);
   assert.deepEqual(INTEREST_OPEN_STATUSES, server.INTEREST_OPEN_STATUSES);
   assert.deepEqual(INTEREST_EVENT_TYPES, server.INTEREST_EVENT_TYPES);
@@ -97,6 +99,11 @@ test("linha do tempo: categoria da conta e ofertas, nunca nome", () => {
   const details = { interestKind: "apoio", userCategory: "parceiro", offerTypes: ["recursos", "servicos"] };
   assert.equal(interestTimelineLabel({ type: "interesse_registrado", details }), "Parceiro demonstrou interesse em apoiar");
   assert.equal(interestTimelineDetail({ type: "interesse_registrado", details }), "Pode oferecer: Recursos, Serviços");
+  // "Executar determinada etapa" mostra a etapa do cronograma (T-05-15).
+  assert.equal(
+    interestTimelineDetail({ type: "interesse_registrado", details: { ...details, offerTypes: ["equipe", "execucao_de_etapa"], scheduleStage: "Fundação" } }),
+    "Pode oferecer: Disponibilizar equipe, Executar determinada etapa — etapa: Fundação",
+  );
   assert.equal(interestTimelineLabel({ type: "interesse_registrado", details: { interestKind: "voluntariado", userCategory: "comunidade" } }),
     "Membro da Comunidade ofereceu voluntariado");
   assert.equal(interestTimelineLabel({ type: "conexao_aceita", details: { userCategory: "poder_publico" } }), "Conexão aceita pelo Agente (Poder Público)");

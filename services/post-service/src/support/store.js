@@ -9,20 +9,27 @@
 const { HttpError } = require('../demand/store');
 const { publicMediaUrl } = require('../upload-policy');
 
+// Etapa do cronograma em "Executar determinada etapa" (T-05-15, migração 038).
+const SCHEDULE_ITEM_SQL = `s.schedule_item_id,
+  (SELECT si.stage FROM demand_schedule_items si WHERE si.id = s.schedule_item_id) AS schedule_stage`;
+
+const scheduleItemOf = (row) => (row.schedule_item_id
+  ? { id: row.schedule_item_id, stage: row.schedule_stage ?? null } : null);
+
 // Colunas do apoio de demanda (visão do apoiador e do Agente).
 const SUPPORT_SQL = `
   s.id, s.demand_id, s.post_id, s.user_id, s.user_name, s.supporter_category, s.profile_type,
   s.organization_id, s.modality::text AS modality, s.type::text AS support_type, s.description,
   s.amount, s.occurred_on, s.message, s.receipt_status::text AS receipt_status, s.receipt_note,
   s.receipt_evidence, s.receipt_answered_at, s.display_consent, s.public_name, s.amount_public,
-  s.status, s.canceled_at, s.created_at, s.updated_at`;
+  s.status, s.canceled_at, s.created_at, s.updated_at, ${SCHEDULE_ITEM_SQL}`;
 
 // Histórico público: nada de conta, mensagem ou nota do Agente.
 const PUBLIC_SUPPORT_SQL = `
   s.id, s.modality::text AS modality, s.type::text AS support_type, s.description,
   s.amount, s.amount_public, s.display_consent, s.public_name, s.user_name,
   s.supporter_category, s.receipt_status::text AS receipt_status, s.receipt_answered_at,
-  s.occurred_on, s.created_at, cardinality(s.receipt_evidence) AS evidence_count`;
+  s.occurred_on, s.created_at, cardinality(s.receipt_evidence) AS evidence_count, ${SCHEDULE_ITEM_SQL}`;
 
 // Apoio de demanda que conta para o público e para os totais.
 const VISIBLE_SUPPORT = "s.canceled_at IS NULL AND s.status <> 'rejected'";
@@ -69,6 +76,7 @@ function serializeOwnSupport(row) {
     canceledAt: toIso(row.canceled_at),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
+    scheduleItem: scheduleItemOf(row),
   };
 }
 
@@ -103,6 +111,7 @@ function serializePublicSupport(row) {
     hasEvidence: Number(row.evidence_count ?? 0) > 0,
     occurredOn: toDate(row.occurred_on),
     createdAt: toIso(row.created_at),
+    scheduleItem: scheduleItemOf(row),
   };
 }
 

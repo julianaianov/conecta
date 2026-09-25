@@ -16,7 +16,8 @@
 //   GET  /interests/mine                as próprias manifestações
 //   GET  /:id/interests/mine            manifestações nesta demanda, tipos
 //                                       permitidos e compatibilidade
-//   POST /:id/interests                 { kind, offerTypes[], message?, eventId? }
+//   POST /:id/interests                 { kind, offerTypes[], message?, eventId?,
+//                                         scheduleItemId? (com execucao_de_etapa) }
 //                                       (`eventId`: evento publicado desta
 //                                       demanda ao qual o voluntariado ou a
 //                                       participação se liga, T25)
@@ -314,12 +315,15 @@ module.exports = ({
         compatibility = computeCompatibility(profile, { ...demand, neededResources: needed.get(demand.id) ?? [] });
       }
     }
+    const allowedKinds = demand.author_id === req.user.userId ? [] : KINDS_BY_ROLE[role] ?? [];
     res.json({
       interests: rows.map(store.serializeOwnInterest),
-      allowedKinds: demand.author_id === req.user.userId ? [] : KINDS_BY_ROLE[role] ?? [],
+      allowedKinds,
       isAuthor: demand.author_id === req.user.userId,
       open: INTEREST_OPEN_STATUSES.includes(demand.status),
       compatibility,
+      // Etapas para "Executar determinada etapa" (T-05-15), só a quem oferece apoio.
+      scheduleItems: allowedKinds.includes('apoio') ? await store.scheduleItemsOf(pool, demand.id) : [],
     });
   }));
 
@@ -332,19 +336,21 @@ module.exports = ({
       throw new HttpError(403, { error: 'O autor não manifesta interesse na própria demanda', code: 'own_demand' });
     }
     assertOpen(demand);
+    await store.assertScheduleItem(pool, demand.id, value.scheduleItemId);
     let organizationId = null;
     if (role === 'government' && institutionStatus) {
       organizationId = (await institutionStatus(req)).organizationId ?? null;
     }
     const { rows } = await pool.query(
       `INSERT INTO demand_interests
-         (demand_id, user_id, user_name, user_avatar, user_category, profile_type, organization_id, kind, offer_types, message, event_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::demand_interest_offer[], $10, $11)
+         (demand_id, user_id, user_name, user_avatar, user_category, profile_type, organization_id, kind, offer_types, message, event_id,
+          schedule_item_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::demand_interest_offer[], $10, $11, $12)
        RETURNING id`,
       [
         req.params.id, req.user.userId, req.user.name || req.user.email || null, req.user.avatarUrl || null,
         ROLE_CATEGORY[role], req.user.profileType || null, organizationId, value.kind, value.offerTypes, value.message,
-        value.eventId,
+        value.eventId, value.scheduleItemId,
       ],
     );
     const interest = await store.loadOwnInterest(pool, req.params.id, rows[0].id, req.user.userId);

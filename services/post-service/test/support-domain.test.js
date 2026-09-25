@@ -16,11 +16,14 @@ function enumValues(text, type) {
   return [...match[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 }
 
-test('as 6 modalidades da fonte (slide 20) são o enum da migração 013', () => {
-  assert.deepEqual(enumValues(sql, 'support_modality'), S.SUPPORT_MODALITIES);
+test('as 6 modalidades da fonte (slide 20) são o enum da migração 013, mais as 2 do Modelo §27 (038)', () => {
+  const offers = fs.readFileSync(path.join(__dirname, '../migrations/038-partner-offers.sql'), 'utf8');
+  const added = [...offers.matchAll(/ALTER TYPE support_modality ADD VALUE IF NOT EXISTS '([a-z_]+)'/g)].map((m) => m[1]);
+  assert.deepEqual([...enumValues(sql, 'support_modality'), ...added], S.SUPPORT_MODALITIES);
   assert.deepEqual(S.SUPPORT_MODALITIES, [
     'patrocinar_projeto', 'doar_recursos', 'financiar_evento',
     'adotar_espaco_publico', 'apoiar_acao_ambiental', 'contratar_servicos_locais',
+    'disponibilizar_equipe', 'executar_etapa',
   ]);
   assert.deepEqual(Object.keys(S.SUPPORT_MODALITY_LABELS), S.SUPPORT_MODALITIES);
   assert.deepEqual(enumValues(sql, 'support_receipt_status'), S.RECEIPT_STATUSES);
@@ -114,7 +117,7 @@ test('validateSupport: modalidade, oferta, descrição e valor declarado', () =>
   assert.deepEqual(ok.value, {
     modality: 'doar_recursos', supportType: 'materials', description: '20 sacos de cimento',
     amountCents: 150000, amountPublic: true, occurredOn: '2026-09-01', message: 'Entregue na obra.',
-    displayConsent: true, publicName: 'Construtora Horizonte',
+    displayConsent: true, publicName: 'Construtora Horizonte', scheduleItemId: null,
   });
 
   assert.ok(S.validateSupport({ supportType: 'materials', description: 'x' }).errors.modality);
@@ -135,6 +138,23 @@ test('validateSupport: modalidade, oferta, descrição e valor declarado', () =>
   assert.ok(S.validateSupport({
     modality: 'doar_recursos', supportType: 'materials', description: 'x'.repeat(2001),
   }).errors.description);
+});
+
+test('Executar determinada etapa exige a etapa do cronograma (T-05-15)', () => {
+  const ITEM = '22222222-2222-4222-8222-222222222222';
+  const base = { supportType: 'labor', description: 'Equipe de pedreiros na fundação' };
+  assert.ok(S.validateSupport({ ...base, modality: 'executar_etapa' }, { role: 'partner' }).errors.scheduleItemId);
+  const ok = S.validateSupport({ ...base, modality: 'executar_etapa', scheduleItemId: ITEM }, { role: 'partner' });
+  assert.deepEqual(ok.errors, {});
+  assert.equal(ok.value.scheduleItemId, ITEM);
+  assert.ok(S.validateSupport({ ...base, modality: 'disponibilizar_equipe', scheduleItemId: ITEM }, { role: 'partner' })
+    .errors.scheduleItemId, 'etapa só com executar_etapa');
+  assert.deepEqual(S.validateSupport({ ...base, modality: 'disponibilizar_equipe' }, { role: 'partner' }).errors, {});
+  // O Membro da Comunidade não tem essas modalidades (decisão 18).
+  assert.ok(S.validateSupport({ ...base, modality: 'executar_etapa', scheduleItemId: ITEM }, { role: 'member' }).errors.modality);
+  const offers = fs.readFileSync(path.join(__dirname, '../migrations/038-partner-offers.sql'), 'utf8');
+  assert.match(offers, /\(modality::text = 'executar_etapa'\) = \(schedule_item_id IS NOT NULL\)/);
+  assert.match(member, /'scheduleStage'/, 'a linha do tempo pública do apoio mostra a etapa');
 });
 
 test('consentimento de exibição é opcional e revogável', () => {

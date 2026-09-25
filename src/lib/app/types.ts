@@ -1592,6 +1592,9 @@ export interface DemandTimelineDetails {
   supporterCategory?: string | null;
   supporterName?: string | null;
   amount?: string | number | null;
+  /** Etapa oferecida/executada em "Executar determinada etapa" (T-05-15, migração post 038). */
+  scheduleItemId?: string | null;
+  scheduleStage?: string | null;
   /** Execução e evidências (T17, migração post 014). */
   milestone?: string | null;
   mediaKind?: string | null;
@@ -2064,7 +2067,22 @@ export interface ForwardingView {
 // services/user-service/src/routes/partner-profile.js (JSON em camelCase).
 
 export type InterestKind = "apoio" | "participacao" | "voluntariado";
-export type InterestOfferType = "recursos" | "produtos" | "servicos" | "conhecimento" | "estrutura" | "investimento";
+export type InterestOfferType =
+  | "recursos" | "produtos" | "servicos" | "conhecimento" | "estrutura" | "investimento"
+  | "materiais" | "equipamentos" | "equipe" | "execucao_de_etapa" | "patrocinio" | "parceria";
+
+/** Etapa do cronograma da demanda ("Executar determinada etapa", Modelo §27, T-05-15). */
+export interface ScheduleItemRef {
+  id: string;
+  stage: string | null;
+}
+
+export interface ScheduleItemOption {
+  id: string;
+  stage: string;
+  startsOn: string | null;
+  endsOn: string | null;
+}
 export type InterestConnectionStatus = "pendente" | "aceita" | "recusada" | "cancelada";
 export type InterestUserCategory = "parceiro" | "comunidade" | "poder_publico";
 
@@ -2081,6 +2099,8 @@ export interface DemandInterest {
   connectionAnsweredAt: string | null;
   withdrawnAt: string | null;
   createdAt: string;
+  /** Etapa oferecida em "Executar determinada etapa" (T-05-15). */
+  scheduleItem?: ScheduleItemRef | null;
 }
 
 /** Manifestação vista pelo Agente autor: quem se interessou. */
@@ -2153,6 +2173,8 @@ export interface DemandInterestContext {
   isAuthor: boolean;
   open: boolean;
   compatibility: Compatibility | null;
+  /** Etapas do cronograma para "Executar determinada etapa" (T-05-15). */
+  scheduleItems?: ScheduleItemOption[];
 }
 
 export interface Opportunity {
@@ -2193,6 +2215,8 @@ export interface InterestInput {
   kind: InterestKind;
   offerTypes?: InterestOfferType[];
   message?: string | null;
+  /** Obrigatória com `execucao_de_etapa` (T-05-15). */
+  scheduleItemId?: string | null;
 }
 
 /** Perfil de apoio (user-service): base da compatibilidade. */
@@ -2216,14 +2240,16 @@ export type PartnerProfileInput = Omit<PartnerProfile, "exists" | "editable" | "
 // src/support/ (JSON em camelCase). A plataforma não processa pagamento:
 // o apoio financeiro é valor declarado (decisão 5).
 
-/** As 6 modalidades do sistema de apoio (Apresentação, slide 20). */
+/** As 6 modalidades do sistema de apoio (Apresentação, slide 20) e as 2 do Modelo §27 (T-05-15). */
 export type SupportModality =
   | "patrocinar_projeto"
   | "doar_recursos"
   | "financiar_evento"
   | "adotar_espaco_publico"
   | "apoiar_acao_ambiental"
-  | "contratar_servicos_locais";
+  | "contratar_servicos_locais"
+  | "disponibilizar_equipe"
+  | "executar_etapa";
 
 /** Dupla confirmação: o apoiador declara, o Agente confirma ou contesta. */
 export type SupportReceiptStatus = "declarado" | "confirmado" | "contestado";
@@ -2260,6 +2286,8 @@ export interface DemandSupport {
   canceledAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Etapa executada em "Executar determinada etapa" (T-05-15). */
+  scheduleItem?: ScheduleItemRef | null;
 }
 
 /** Apoio visto pelo Agente autor da demanda. */
@@ -2301,6 +2329,7 @@ export interface PublicDemandSupport {
   hasEvidence: boolean;
   occurredOn: string | null;
   createdAt: string;
+  scheduleItem?: ScheduleItemRef | null;
 }
 
 export interface SupportTotals {
@@ -2325,6 +2354,8 @@ export interface DemandSupportContext {
   allowedSupportTypes: SupportType[];
   isAuthor: boolean;
   open: boolean;
+  /** Etapas do cronograma para "Executar determinada etapa" (T-05-15). */
+  scheduleItems?: ScheduleItemOption[];
 }
 
 export interface SupportInput {
@@ -2337,6 +2368,8 @@ export interface SupportInput {
   message?: string | null;
   displayConsent?: boolean;
   publicName?: string | null;
+  /** Obrigatória com `executar_etapa` (T-05-15). */
+  scheduleItemId?: string | null;
 }
 
 export interface SupportConsentInput {

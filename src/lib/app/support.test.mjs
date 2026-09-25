@@ -11,6 +11,7 @@ import {
   MEMBER_SUPPORT_TYPES,
   RECEIPT_STATUSES,
   RECEIPT_STATUS_LABELS,
+  SCHEDULE_ITEM_MODALITY,
   SUPPORTER_CATEGORY_LABELS,
   SUPPORT_EVENT_TYPES,
   SUPPORT_MODALITIES,
@@ -98,6 +99,10 @@ test("linha do tempo do apoio", () => {
   };
   assert.equal(supportTimelineLabel(declared), "Parceiro registrou apoio: doar recursos");
   assert.equal(supportTimelineDetail(declared), "Materiais");
+  // "Executar determinada etapa" (T-05-15): a etapa do cronograma aparece.
+  assert.equal(supportTimelineDetail({ ...declared, details: { ...declared.details, modality: "executar_etapa", supportType: "labor", scheduleStage: "Fundação" } }),
+    "Serviços e mão de obra · etapa: Fundação");
+  assert.equal(SCHEDULE_ITEM_MODALITY, server.SCHEDULE_ITEM_MODALITY);
   assert.equal(
     supportTimelineLabel({ ...declared, details: { ...declared.details, supporterName: "Construtora Horizonte", amount: "1500.00" } }),
     "Construtora Horizonte registrou apoio: doar recursos",

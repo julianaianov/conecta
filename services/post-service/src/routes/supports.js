@@ -39,7 +39,9 @@ const demandStore = require('../demand/store');
 const { findUsableUpload, parseUploadRef, formatUploadRef } = require('../uploads');
 const {
   SUPPORT_ROLES, SUPPORT_ROLE_CATEGORY, SUPPORT_OPEN_STATUSES, EVIDENCE_PURPOSES, RECEIPT_TRANSITIONS,
+  SCHEDULE_ITEM_MODALITY,
 } = require('../support/constants');
+const interestStore = require('../interest/store');
 const { allowedFor, validateSupport, validateConsent, validateReceipt } = require('../support/validation');
 const store = require('../support/store');
 const { listHelpers } = require('./demands');
@@ -196,6 +198,9 @@ module.exports = ({ pool, auth, governmentGate, institutionStatus }) => {
       supports: rows.map(store.serializeOwnSupport),
       allowedModalities: allowed ? modalities : [],
       allowedSupportTypes: allowed ? supportTypes : [],
+      // Etapas do cronograma para "Executar determinada etapa" (T-05-15).
+      scheduleItems: allowed && modalities.includes(SCHEDULE_ITEM_MODALITY)
+        ? await interestStore.scheduleItemsOf(pool, demand.id) : [],
       isAuthor,
       open: SUPPORT_OPEN_STATUSES.includes(demand.status),
     });
@@ -210,6 +215,7 @@ module.exports = ({ pool, auth, governmentGate, institutionStatus }) => {
       throw new HttpError(403, { error: 'O autor não registra apoio à própria demanda', code: 'own_demand' });
     }
     assertOpen(demand);
+    await interestStore.assertScheduleItem(pool, demand.id, value.scheduleItemId);
     let organizationId = null;
     if (role === 'government' && institutionStatus) {
       organizationId = (await institutionStatus(req)).organizationId ?? null;
@@ -218,15 +224,16 @@ module.exports = ({ pool, auth, governmentGate, institutionStatus }) => {
       `INSERT INTO supports
          (post_id, demand_id, user_id, user_name, supporter_category, profile_type, organization_id,
           type, modality, description, amount, occurred_on, message, display_consent, public_name,
-          amount_public, receipt_status, status)
+          amount_public, receipt_status, status, schedule_item_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::support_type, $9::support_modality, $10, $11, $12, $13,
-               $14, $15, $16, 'declarado', 'pending')
+               $14, $15, $16, 'declarado', 'pending', $17)
        RETURNING id`,
       [
         demand.post_id ?? null, demand.id, req.user.userId, req.user.name || req.user.email || null,
         SUPPORT_ROLE_CATEGORY[role], req.user.profileType || null, organizationId,
         value.supportType, value.modality, value.description, store.centsToAmount(value.amountCents),
         value.occurredOn, value.message, value.displayConsent, value.publicName, value.amountPublic,
+        value.scheduleItemId,
       ],
     );
     const support = await store.loadOwnSupport(pool, demand.id, rows[0].id, req.user.userId);

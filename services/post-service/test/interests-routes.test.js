@@ -81,6 +81,22 @@ test('manifestar interesse: quem pode e validação antes do banco', async () =>
   });
 });
 
+test('Executar determinada etapa sem a etapa do cronograma → 422 antes do banco (T-05-15)', async () => {
+  await withServer(async (base) => {
+    const noStage = await send(base, 'POST', `/demands/${DEMAND}/interests`, { kind: 'apoio', offerTypes: ['execucao_de_etapa'] });
+    assert.equal(noStage.status, 422);
+    assert.ok(noStage.body.fields.scheduleItemId);
+    const stray = await send(base, 'POST', `/demands/${DEMAND}/interests`,
+      { kind: 'apoio', offerTypes: ['equipe'], scheduleItemId: DEMAND });
+    assert.equal(stray.status, 422);
+    assert.ok(stray.body.fields.scheduleItemId);
+    const supportNoStage = await send(base, 'POST', `/demands/${DEMAND}/supports`,
+      { modality: 'executar_etapa', supportType: 'labor', description: 'Equipe na fundação' });
+    assert.equal(supportNoStage.status, 422);
+    assert.ok(supportNoStage.body.fields.scheduleItemId);
+  });
+});
+
 test('rotas do Agente exigem Agente', async () => {
   await withServer(async (base) => {
     assert.equal((await send(base, 'GET', `/demands/mine/${DEMAND}/interests`)).body.code, 'demand_author_not_agent');

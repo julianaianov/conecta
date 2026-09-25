@@ -17,7 +17,9 @@
 --   nem voluntariado como "o que foi oferecido" (a rota diz o mesmo; o banco
 --   é a última barreira);
 -- - `supports_record_event` grava `apoio_declarado`/`apoio_cancelado` com o
---   ator `comunidade` (já aceito em `demand_events.actor_type` desde a 012).
+--   ator `comunidade` (já aceito em `demand_events.actor_type` desde a 012) e,
+--   no apoio "Executar determinada etapa" (T-05-15), a etapa do cronograma no
+--   payload público (`supports.schedule_item_id` é da 038, aplicada antes).
 --
 -- Idempotente: pode rodar de novo (o deploy reaplica o manifesto inteiro, e a
 -- 013 é reaplicada antes desta sem recriar o CHECK, que já existe).
@@ -61,6 +63,12 @@ BEGIN
     'supporterName', CASE WHEN NEW.display_consent THEN coalesce(NEW.public_name, NEW.user_name) ELSE NULL END,
     'amount', CASE WHEN NEW.amount_public THEN NEW.amount ELSE NULL END);
   base := jsonb_build_object('support_id', NEW.id, 'modality', NEW.modality, 'support_type', NEW.type);
+  -- Etapa do cronograma em "Executar determinada etapa" (T-05-15, migração 038).
+  IF NEW.schedule_item_id IS NOT NULL THEN
+    public_part := public_part || jsonb_build_object(
+      'scheduleItemId', NEW.schedule_item_id,
+      'scheduleStage', (SELECT stage FROM demand_schedule_items WHERE id = NEW.schedule_item_id));
+  END IF;
 
   IF TG_OP = 'INSERT' THEN
     INSERT INTO demand_events (demand_id, event_type, actor_type, actor, payload, is_public, created_at)

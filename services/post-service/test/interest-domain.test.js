@@ -20,13 +20,23 @@ function enumValues(type) {
   return [...match[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 }
 
+// Oferta de equipe e execução de etapa (T-05-15, Modelo §27).
+const offersSql = fs.readFileSync(path.join(__dirname, '../migrations/038-partner-offers.sql'), 'utf8');
+function addedValues(type) {
+  return [...offersSql.matchAll(new RegExp(`ALTER TYPE ${type} ADD VALUE IF NOT EXISTS '([a-z_]+)'`, 'g'))].map((m) => m[1]);
+}
+
 test('enums da migração 012 = constantes do domínio (fonte: slides 9–11 e 22)', () => {
   assert.deepEqual(enumValues('demand_interest_kind'), I.INTEREST_KINDS);
-  assert.deepEqual(enumValues('demand_interest_offer'), I.OFFER_TYPES);
+  // A 038 (T-05-15) acrescenta as ofertas do Modelo de Conexão §27.
+  assert.deepEqual([...enumValues('demand_interest_offer'), ...addedValues('demand_interest_offer')], I.OFFER_TYPES);
   assert.deepEqual(enumValues('demand_interest_connection_status'), I.CONNECTION_STATUSES);
   assert.deepEqual(Object.keys(I.INTEREST_KIND_LABELS), I.INTEREST_KINDS);
   assert.deepEqual(Object.keys(I.OFFER_TYPE_LABELS), I.OFFER_TYPES);
-  assert.deepEqual(I.OFFER_TYPES, ['recursos', 'produtos', 'servicos', 'conhecimento', 'estrutura', 'investimento']);
+  assert.deepEqual(I.OFFER_TYPES, [
+    'recursos', 'produtos', 'servicos', 'conhecimento', 'estrutura', 'investimento',
+    'materiais', 'equipamentos', 'equipe', 'execucao_de_etapa', 'patrocinio', 'parceria',
+  ]);
   // Estados abertos = os do trigger demand_interests_assert_open.
   const open = /st NOT IN \(([^)]*)\)/.exec(sql)[1];
   assert.deepEqual([...open.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]), I.INTEREST_OPEN_STATUSES);
@@ -61,7 +71,7 @@ test('perfil de apoio no user_db usa os vocabulários da demanda', () => {
 
 test('validateInterest: tipo por papel, oferta obrigatória só no apoio, mensagem', () => {
   assert.deepEqual(I.validateInterest({ offerTypes: ['recursos', 'recursos', 'servicos'] }, 'partner'), {
-    value: { kind: 'apoio', offerTypes: ['recursos', 'servicos'], message: null, eventId: null }, errors: {},
+    value: { kind: 'apoio', offerTypes: ['recursos', 'servicos'], message: null, eventId: null, scheduleItemId: null }, errors: {},
   });
   // Evento da demanda (T25): só participação e voluntariado se vinculam.
   const EVENT_ID = '11111111-1111-4111-8111-111111111111';
@@ -77,6 +87,32 @@ test('validateInterest: tipo por papel, oferta obrigatória só no apoio, mensag
   assert.ok(I.validateInterest({ kind: 'participacao', message: 'x'.repeat(2001) }, 'member').errors.message);
   assert.ok(I.validateInterest({ kind: 'apoio', offerTypes: ['recursos'] }, 'media').errors.kind);
   assert.ok(I.validateInterest({ kind: 'apoio', offerTypes: ['recursos'] }, 'agent').errors.kind);
+});
+
+test('oferta de equipe e execução de etapa (T-05-15, Modelo §27)', () => {
+  const ITEM = '22222222-2222-4222-8222-222222222222';
+  assert.deepEqual(I.OFFER_TYPE_LABELS.equipe, 'Disponibilizar equipe');
+  assert.deepEqual(I.OFFER_TYPE_LABELS.execucao_de_etapa, 'Executar determinada etapa');
+  // Sem etapa → 422 no campo; com etapa, grava o id.
+  assert.ok(I.validateInterest({ offerTypes: ['execucao_de_etapa'] }, 'partner').errors.scheduleItemId);
+  assert.ok(I.validateInterest({ offerTypes: ['execucao_de_etapa'], scheduleItemId: 'x' }, 'partner').errors.scheduleItemId);
+  const ok = I.validateInterest({ offerTypes: ['equipe', 'execucao_de_etapa'], scheduleItemId: ITEM }, 'partner');
+  assert.deepEqual(ok.errors, {});
+  assert.equal(ok.value.scheduleItemId, ITEM);
+  // Etapa sem a oferta de execução é recusada.
+  assert.ok(I.validateInterest({ offerTypes: ['equipe'], scheduleItemId: ITEM }, 'partner').errors.scheduleItemId);
+  // O mesmo vocabulário do Processo de Conexão (T-05-01).
+  const { INTEREST_OFFER_CONTRIBUTION, CONTRIBUTION_KINDS } = require('../src/process/constants');
+  for (const offer of I.OFFER_TYPES) {
+    assert.ok(CONTRIBUTION_KINDS.includes(INTEREST_OFFER_CONTRIBUTION[offer]), `${offer} vira contribuição do processo`);
+  }
+  // A migração: etapa obrigatória com a oferta, FK composta com a demanda, até 12 ofertas.
+  assert.match(offersSql, /\('execucao_de_etapa' = ANY \(offer_types::text\[\]\)\) = \(schedule_item_id IS NOT NULL\)/);
+  assert.match(offersSql, /FOREIGN KEY \(demand_id, schedule_item_id\) REFERENCES demand_schedule_items\(demand_id, id\)/);
+  assert.match(offersSql, /cardinality\(offer_types\) <= 12/);
+  assert.equal(I.connectionTypeFor('apoio', ['patrocinio']), 'sponsorship');
+  assert.equal(I.connectionTypeFor('apoio', ['materiais']), 'resources');
+  assert.equal(I.connectionTypeFor('apoio', ['equipe', 'execucao_de_etapa']), 'partnership');
 });
 
 test('validateConnectionRequest e tipo sugerido', () => {

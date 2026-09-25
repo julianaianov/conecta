@@ -34,7 +34,11 @@ export const INTEREST_KIND_ACTIONS: Record<InterestKind, string> = {
   voluntariado: "Quero ser voluntário",
 };
 
-export const OFFER_TYPES: InterestOfferType[] = ["recursos", "produtos", "servicos", "conhecimento", "estrutura", "investimento"];
+/** Slide 10 e, pela migração 038 (T-05-15), o que faltava do Modelo de Conexão §27. */
+export const OFFER_TYPES: InterestOfferType[] = [
+  "recursos", "produtos", "servicos", "conhecimento", "estrutura", "investimento",
+  "materiais", "equipamentos", "equipe", "execucao_de_etapa", "patrocinio", "parceria",
+];
 
 export const OFFER_TYPE_LABELS: Record<InterestOfferType, string> = {
   recursos: "Recursos",
@@ -43,7 +47,16 @@ export const OFFER_TYPE_LABELS: Record<InterestOfferType, string> = {
   conhecimento: "Conhecimento",
   estrutura: "Estrutura",
   investimento: "Investimento",
+  materiais: "Doar materiais",
+  equipamentos: "Fornecer equipamentos",
+  equipe: "Disponibilizar equipe",
+  execucao_de_etapa: "Executar determinada etapa",
+  patrocinio: "Patrocinar",
+  parceria: "Estabelecer parceria",
 };
+
+/** Oferta que exige a etapa do cronograma (`scheduleItemId`). */
+export const SCHEDULE_ITEM_OFFER: InterestOfferType = "execucao_de_etapa";
 
 export const INTEREST_CONNECTION_STATUSES: InterestConnectionStatus[] = ["pendente", "aceita", "recusada", "cancelada"];
 
@@ -168,7 +181,10 @@ export function interestTimelineLabel(event: Pick<DemandTimelineEvent, "type" | 
 export function interestTimelineDetail(event: Pick<DemandTimelineEvent, "type" | "details">): string | null {
   const offers = event.details?.offerTypes;
   if (event.type !== "interesse_registrado" || !Array.isArray(offers) || !offers.length) return null;
-  return `Pode oferecer: ${offers.map((o) => OFFER_TYPE_LABELS[o as InterestOfferType] ?? o).join(", ")}`;
+  const text = `Pode oferecer: ${offers.map((o) => OFFER_TYPE_LABELS[o as InterestOfferType] ?? o).join(", ")}`;
+  // "Executar determinada etapa" mostra a etapa do cronograma (T-05-15).
+  const stage = event.details?.scheduleStage;
+  return typeof stage === "string" && stage ? `${text} — etapa: ${stage}` : text;
 }
 
 /** Mensagem a partir de um erro das rotas de interesse. */
