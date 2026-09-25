@@ -515,10 +515,10 @@ function validateDemand(input, { forSubmission = false } = {}) {
 
     // Informações específicas do módulo (§23–§25): a fonte lista o que o
     // módulo pede; o que falta vira aviso, nunca bloqueio.
-    const module = moduleOf(value.category);
-    const missing = (MODULE_FIELDS[module] ?? []).filter((field) => value.moduleDetails[field.key] === undefined);
+    const demandModule = moduleOf(value.category);
+    const missing = (MODULE_FIELDS[demandModule] ?? []).filter((field) => value.moduleDetails[field.key] === undefined);
     if (missing.length) {
-      warnings.moduleDetails = `${MODULE_LABELS[module]}: informe também ${missing.map((f) => f.label.toLowerCase()).join(', ')}`;
+      warnings.moduleDetails = `${MODULE_LABELS[demandModule]}: informe também ${missing.map((f) => f.label.toLowerCase()).join(', ')}`;
     }
   }
 

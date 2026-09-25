@@ -114,11 +114,11 @@ test('Modelo §29: módulo derivado das 12 categorias, igual a demand_module (mi
 });
 
 test('módulos: documentos, indicadores, marcos e campos só com valores conhecidos', () => {
-  for (const module of M.MODULES) {
-    for (const type of M.MODULE_DOCUMENT_TYPES[module]) assert.ok(C.DOCUMENT_TYPES.includes(type), `${module}: ${type}`);
-    for (const m of M.MODULE_MILESTONES[module]) assert.ok(C.RECORD_MILESTONES.includes(m), `${module}: ${m}`);
-    assert.ok(Array.isArray(M.MODULE_INDICATORS[module]));
-    assert.ok(Array.isArray(M.MODULE_FIELDS[module]));
+  for (const mod of M.MODULES) {
+    for (const type of M.MODULE_DOCUMENT_TYPES[mod]) assert.ok(C.DOCUMENT_TYPES.includes(type), `${mod}: ${type}`);
+    for (const m of M.MODULE_MILESTONES[mod]) assert.ok(C.RECORD_MILESTONES.includes(m), `${mod}: ${m}`);
+    assert.ok(Array.isArray(M.MODULE_INDICATORS[mod]));
+    assert.ok(Array.isArray(M.MODULE_FIELDS[mod]));
   }
   assert.ok(M.MODULE_DOCUMENT_TYPES.obras.includes('art_rrt'));
   assert.ok(M.MODULE_DOCUMENT_TYPES.obras.includes('documento_do_imovel'));

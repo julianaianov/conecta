@@ -254,7 +254,7 @@ function redactSnapshot(snapshot) {
       authorId: null,
       organizationId: null,
       photoRef: null,
-      moduleDetails: demand.moduleDetails ? (({ imovel: _imovel, ...rest }) => rest)(demand.moduleDetails) : {},
+      moduleDetails: Object.fromEntries(Object.entries(demand.moduleDetails ?? {}).filter(([key]) => key !== 'imovel')),
     },
     location: {
       cep: null,

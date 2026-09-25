@@ -311,8 +311,7 @@ function serializePublicDemand(row, items = null) {
   };
   // Documento e autorização do imóvel ficam com o autor e a análise.
   if (demand.moduleDetails?.imovel) {
-    const { imovel: _imovel, ...rest } = demand.moduleDetails;
-    demand.moduleDetails = rest;
+    demand.moduleDetails = Object.fromEntries(Object.entries(demand.moduleDetails).filter(([key]) => key !== 'imovel'));
   }
   if (items) Object.assign(demand, serializeItems(items, { isPublic: true }));
   return demand;
