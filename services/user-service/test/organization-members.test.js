@@ -257,23 +257,3 @@ test('recusar, remover e as regras de quem pode ser convidado', async () => {
   });
 });
 
-test('GET /notifications avisa o convite em aberto', async () => {
-  const pool = {
-    async query(text) {
-      if (text.includes('FROM connections c')) return { rows: [] };
-      if (text.includes('FROM organization_members m')) {
-        return { rows: [{ id: 'm1', level: 'publicador', invited_at: '2026-09-24T10:00:00.000Z', organization_name: 'Bairro Verde' }] };
-      }
-      if (text.includes('FROM scraps s')) return { rows: [] };
-      throw new Error(`Unexpected query: ${text}`);
-    },
-  };
-  await withServer(pool, async (base) => {
-    const res = await call(base, 'GET', '/notifications', headers(MARIA));
-    assert.equal(res.status, 200);
-    assert.equal(res.body.length, 1);
-    assert.equal(res.body[0].kind, 'membership');
-    assert.equal(res.body[0].href, '/vinculos');
-    assert.match(res.body[0].summary, /Publicador/);
-  });
-});

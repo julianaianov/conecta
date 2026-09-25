@@ -256,27 +256,3 @@ test('POST /connections/:id/messages: corpo vazio ou longo é 400; conexão ence
     assert.equal(third.status, 404);
   });
 });
-
-test('GET /notifications avisa mensagem não lida na conversa da conexão', async () => {
-  const pool = {
-    async query(text) {
-      if (text.includes('FROM connections c') && text.includes("c.status = 'pending'")) return { rows: [] };
-      if (text.includes('FROM connections c') && text.includes("c.status = 'accepted'")) return { rows: [] };
-      if (text.includes('FROM connection_messages m')) {
-        return { rows: [{ id: CX_ID, last_message_at: '2026-09-24T10:00:00.000Z', other_name: 'Associação Bairro Verde', unread: 2 }] };
-      }
-      if (text.includes('FROM organization_members m')) return { rows: [] };
-      if (text.includes('FROM scraps s')) return { rows: [] };
-      throw new Error(`Unexpected query: ${text}`);
-    },
-  };
-  await withServer(pool, async (base) => {
-    const res = await fetch(`${base}/notifications`, { headers: { authorization: `Bearer ${token()}` } });
-    assert.equal(res.status, 200);
-    const list = await res.json();
-    assert.equal(list.length, 1);
-    assert.equal(list[0].kind, 'message');
-    assert.equal(list[0].href, `/conexoes/${CX_ID}`);
-    assert.match(list[0].summary, /2 mensagens/);
-  });
-});

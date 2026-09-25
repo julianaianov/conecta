@@ -33,6 +33,8 @@ const profilesRoutes = require('./routes/profiles');
 const eventsRoutes = require('./routes/events');
 const aiRoutes = require('./routes/ai');
 const mediaRoutes = require('./routes/media');
+const notificationsRoutes = require('./routes/notifications');
+const { createMailer } = require('./notifications/mailer');
 const { createAiService } = require('./ai/service');
 const { createRankingService } = require('./ranking/service');
 const { createPartnerProfileClient, createConnectionsClient } = require('./interest/user-service');
@@ -143,11 +145,16 @@ const createApp = ({
   // Pautas da Comunicação e divulgação registrada (T28): /media/agenda* e a
   // cobertura pública /demands/:id/coverage. Antes das rotas de demanda.
   app.use('/', mediaRoutes({ pool, auth }));
+  // Central de notificações (T-05-16): /notifications e preferências. Antes
+  // das rotas de posts, cujo `/:id` é UUID.
+  app.use('/', notificationsRoutes({ pool, auth, institutionStatus }));
   app.use('/demands', demandsRoutes({ pool, auth, validatedAgent, uploadStorage, dossiers, institutionStatus }));
   app.use('/', postsRoutes(pool, auth, operation, institutional));
 
   app.locals.ai = ai;
   app.locals.dossiers = dossiers;
+  // Caixa de saída de e-mail (T-05-16): sem DM_MAIL_PROVIDER, marca `desligado`.
+  app.locals.mailer = createMailer({ pool });
   app.locals.rankings = rankings === undefined ? createRankingService({ pool }) : rankings;
   return app;
 };
@@ -161,6 +168,9 @@ if (require.main === module) {
   // Laço de recálculo dos rankings e selos (DM_RANKING_INTERVAL_MS; 0 desliga).
   const rankingInterval = Number(process.env.DM_RANKING_INTERVAL_MS ?? 300_000);
   app.locals.rankings?.start(Number.isFinite(rankingInterval) ? rankingInterval : 300_000);
+  // Laço da caixa de saída de e-mail (DM_MAIL_INTERVAL_MS; 0 desliga).
+  const mailInterval = Number(process.env.DM_MAIL_INTERVAL_MS ?? 60_000);
+  app.locals.mailer?.start(Number.isFinite(mailInterval) ? mailInterval : 60_000);
   app.listen(port, () => console.log(`[post-service] listening on ${port}`));
 }
 

@@ -10,6 +10,8 @@ const institutionsRoutes = require('./routes/institutions');
 const partnerProfileRoutes = require('./routes/partner-profile');
 const privacyRoutes = require('./routes/privacy');
 const organizationMembersRoutes = require('./routes/organization-members');
+const notificationsRoutes = require('./routes/notifications');
+const { createMailer } = require('./notifications/mailer');
 const { requireInstitutionalAccess } = institutionsRoutes;
 const {
   resolveJwtSecret, createAuth, parseOperationUserIds, requireOperation,
@@ -47,15 +49,23 @@ const createApp = ({
   // Direitos do titular (T24): /me/privacy e as solicitações do art. 18.
   // Antes das rotas com `/:id` do perfil.
   app.use('/', privacyRoutes({ pool, auth, storage: uploadStorage }));
+  // Central de notificações (T-05-16): /notifications e preferências.
+  app.use('/', notificationsRoutes(pool, auth));
   app.use('/', socialRoutes(pool, auth, operation));
   app.use('/', usersRoutes(pool, auth));
 
+  // Caixa de saída de e-mail (T-05-16): sem DM_MAIL_PROVIDER, marca `desligado`.
+  app.locals.mailer = createMailer({ pool });
   return app;
 };
 
 if (require.main === module) {
   const port = process.env.PORT || 3002;
-  createApp().listen(port, () => console.log(`[user-service] listening on ${port}`));
+  const app = createApp();
+  // Laço da caixa de saída de e-mail (DM_MAIL_INTERVAL_MS; 0 desliga).
+  const mailInterval = Number(process.env.DM_MAIL_INTERVAL_MS ?? 60_000);
+  app.locals.mailer?.start(Number.isFinite(mailInterval) ? mailInterval : 60_000);
+  app.listen(port, () => console.log(`[user-service] listening on ${port}`));
 }
 
 module.exports = { createApp };
