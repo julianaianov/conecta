@@ -24,6 +24,7 @@ const { createGovernmentProfileClient } = require('./institutional/store');
 const { createGovernmentDirectoryClient } = require('./institutional/directory');
 const interestsRoutes = require('./routes/interests');
 const processesRoutes = require('./routes/processes');
+const analysisRequestsRoutes = require('./routes/analysis-requests');
 const processCommunicationRoutes = require('./routes/process-communication');
 const supportsRoutes = require('./routes/supports');
 const executionRoutes = require('./routes/execution');
@@ -128,6 +129,9 @@ const createApp = ({
   // Processo de Conexão com protocolo DM-AAAA-NNNNNN (T-05-01): /processes/* e
   // /demands[/mine]/:id/processes. Antes das rotas da demanda.
   app.use('/', processesRoutes({ pool, auth, validatedAgent, institutionStatus }));
+  // Respostas à análise (T-05-05): solicitar informações, documentos, reunião,
+  // análise técnica e recusar com motivo. Antes das rotas da demanda.
+  app.use('/demands', analysisRequestsRoutes({ pool, auth, validatedAgent, institutionStatus }));
   // Comunicação do processo (T-05-02): /processes/:ref/messages, com anexos do bucket de uploads.
   app.use('/', processCommunicationRoutes({ pool, auth, institutionStatus, uploadStorage }));
   // Registro de apoio realizado, dupla confirmação e histórico de apoio (T16).

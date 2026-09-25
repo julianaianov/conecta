@@ -65,6 +65,7 @@ post_db post-service/migrations/025-media-agenda.sql
 post_db post-service/migrations/026-connection-processes.sql
 post_db post-service/migrations/027-process-messages.sql
 post_db post-service/migrations/028-deadlines.sql
+post_db post-service/migrations/030-analysis-requests.sql
 post_db post-service/migrations/031-demand-categories.sql
 post_db post-service/migrations/032-demand-modules.sql
 post_db post-service/migrations/033-demand-fields.sql

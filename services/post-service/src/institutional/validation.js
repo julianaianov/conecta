@@ -4,8 +4,9 @@
 // regras estruturais (CHECKs e triggers da migração 010).
 
 const {
-  INSTITUTIONAL_STATUSES, RESPONSE_TYPES, SUPPORT_TYPES, LIMITS,
+  INSTITUTIONAL_STATUSES, RESPONSE_TYPES, SUPPORT_TYPES, LIMITS, MEETING_MODES,
 } = require('./constants');
+const { DOCUMENT_TYPES } = require('../demand/constants');
 const { requiresNote } = require('./state-machine');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -87,7 +88,14 @@ function validateResponse(body) {
   const errors = {};
   const type = typeof input.type === 'string' ? input.type : '';
   if (!RESPONSE_TYPES.includes(type)) errors.type = 'Escolha o tipo da resposta';
-  const text = requiredText(input.body, 'body', LIMITS.body, errors, 'Escreva a resposta');
+  // Respostas à análise (Modelo de Conexão §10, T-05-05).
+  const analysis = validateAnalysisFields(input, type === 'solicitacao_de_documentos', errors);
+  const refusalReason = type === 'recusa_com_motivo'
+    ? requiredText(input.refusalReason ?? input.body, 'refusalReason', 3000, errors, 'Informe o motivo da recusa')
+    : null;
+  const text = type === 'recusa_com_motivo' && !input.body
+    ? refusalReason
+    : requiredText(input.body, 'body', LIMITS.body, errors, 'Escreva a resposta');
   const responsibleSector = optionalText(input.responsibleSector, 'responsibleSector', LIMITS.name, errors);
   if (type === 'orgao_ou_setor_responsavel' && !responsibleSector && !errors.responsibleSector) {
     errors.responsibleSector = 'Informe o órgão ou setor responsável';
@@ -111,9 +119,47 @@ function validateResponse(body) {
   return {
     value: {
       type, body: text, responsibleSector, programName, programUrl, plannedFor, status, statusNote,
+      requestedDocumentTypes: type === 'solicitacao_de_documentos' ? analysis.requestedDocumentTypes : [],
+      meetingProposedAt: type === 'solicitacao_de_reuniao' ? analysis.meetingProposedAt : null,
+      meetingMode: type === 'solicitacao_de_reuniao' ? analysis.meetingMode : null,
+      refusalReason,
     },
     errors,
   };
+}
+
+/**
+ * Campos das solicitações (documentos pedidos, data e formato da reunião),
+ * comuns à resposta institucional e à solicitação do Parceiro (T-05-05).
+ */
+function validateAnalysisFields(input, documentsRequired, errors) {
+  let requestedDocumentTypes = [];
+  const rawTypes = input.requestedDocumentTypes;
+  if (rawTypes !== undefined && rawTypes !== null) {
+    if (!Array.isArray(rawTypes) || rawTypes.some((t) => !DOCUMENT_TYPES.includes(t))) {
+      errors.requestedDocumentTypes = 'Escolha os documentos da lista';
+    } else {
+      requestedDocumentTypes = DOCUMENT_TYPES.filter((t) => rawTypes.includes(t));
+    }
+  }
+  if (documentsRequired && !requestedDocumentTypes.length && !errors.requestedDocumentTypes) {
+    errors.requestedDocumentTypes = 'Escolha ao menos um documento';
+  }
+  let meetingProposedAt = null;
+  if (input.meetingProposedAt !== undefined && input.meetingProposedAt !== null && input.meetingProposedAt !== '') {
+    const d = typeof input.meetingProposedAt === 'string' ? new Date(input.meetingProposedAt) : null;
+    if (!d || Number.isNaN(d.getTime()) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(input.meetingProposedAt)) {
+      errors.meetingProposedAt = 'Data e hora no formato AAAA-MM-DDTHH:MM';
+    } else {
+      meetingProposedAt = d.toISOString();
+    }
+  }
+  let meetingMode = null;
+  if (input.meetingMode !== undefined && input.meetingMode !== null && input.meetingMode !== '') {
+    if (MEETING_MODES.includes(input.meetingMode)) meetingMode = input.meetingMode;
+    else errors.meetingMode = 'Presencial ou on-line';
+  }
+  return { requestedDocumentTypes, meetingProposedAt, meetingMode };
 }
 
 /**
@@ -161,4 +207,6 @@ function validateOffer(body) {
   return { value: { supportTypes, description, connectionId }, errors };
 }
 
-module.exports = { validateStatusChange, validateResponse, validateResponsible, validateOffer };
+module.exports = {
+  validateStatusChange, validateResponse, validateResponsible, validateOffer, validateAnalysisFields,
+};

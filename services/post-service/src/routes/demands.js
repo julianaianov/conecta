@@ -90,6 +90,8 @@ const DETAILED_EVENT_TYPES = [
   ...MEDIA_EVENT_TYPES,
   // Processo de Conexão formalizado e mudanças de status (T-05-01).
   ...PROCESS_EVENT_TYPES,
+  // Respostas à análise (T-05-05): tipo da solicitação e categoria da conta.
+  ...require('../analysis').REQUEST_EVENT_TYPES,
   // Encerramento da demanda (T-05-14): data e registro final.
   ...CLOSURE_EVENT_TYPES,
 ];

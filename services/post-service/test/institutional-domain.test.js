@@ -26,7 +26,8 @@ test('enums da migração 010 = constantes do domínio (fonte: slides 10, 12 e 1
     'suspensa', 'cancelada', 'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel']) {
     assert.ok(I.INSTITUTIONAL_STATUSES.includes(s), s);
   }
-  assert.equal(I.RESPONSE_TYPES.length, 8);
+  // Slide 10 (8) e as respostas à análise do Modelo §10 (T-05-05).
+  assert.equal(I.RESPONSE_TYPES.length, 12);
   assert.equal(I.SUPPORT_TYPES.length, 11);
   for (const list of [I.INSTITUTIONAL_STATUSES, I.RESPONSE_TYPES, I.SUPPORT_TYPES]) {
     const labels = list === I.INSTITUTIONAL_STATUSES ? I.INSTITUTIONAL_STATUS_LABELS

@@ -18,7 +18,11 @@
 //   PUT  /institutional/demands/:id/track        responsável (nome e cargo/setor)
 //   POST /institutional/demands/:id/status       { status, note }
 //   POST /institutional/demands/:id/responses    { type, body, responsibleSector, programName,
-//                                                programUrl, plannedFor, status?, statusNote? }
+//                                                programUrl, plannedFor, status?, statusNote?,
+//                                                requestedDocumentTypes?, meetingProposedAt?, meetingMode?,
+//                                                refusalReason? } — as respostas à análise do Modelo §10
+//                                                (T-05-05) entram também em demand_analysis_requests;
+//                                                a recusa leva o acompanhamento a Não aprovada
 //   POST /institutional/demands/:id/offers       { supportTypes[], description, connectionId? }
 //   POST /institutional/demands/:id/formalize    formaliza o Processo de Conexão do órgão
 //                                                (T-05-01; { contributionKinds?, contributionDescription?,
@@ -59,6 +63,9 @@ const forwardingStore = require('../institutional/forwarding-store');
 const processStore = require('../process/store');
 const { PROCESS_STATUSES, checkTransition: checkProcessTransition, validateContribution } = require('../process');
 const { registerForwardingRoutes } = require('./forwardings');
+const analysisStore = require('../analysis/store');
+const { RESPONSE_REQUEST_KIND, canTransition } = require('../institutional');
+const { INTEREST_OPEN_STATUSES } = require('../interest/constants');
 
 const { HttpError, withTransaction } = demandStore;
 const {
@@ -201,7 +208,8 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
     try {
       await fn(req, res);
     } catch (err) {
-      const mapped = processStore.mapProcessSpecific(err) ?? forwardingStore.mapForwardingError(err);
+      const mapped = processStore.mapProcessSpecific(err) ?? analysisStore.mapAnalysisError(err)
+        ?? forwardingStore.mapForwardingError(err);
       if (mapped) return res.status(mapped.status).json(mapped.body);
       console.error(err);
       return res.status(500).json({ error: 'Erro interno' });
@@ -387,6 +395,19 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
     );
   }
 
+  /** Recusa com motivo: acompanhamento (ou processo) em Não aprovada. */
+  async function refuse(client, track, reason, userId) {
+    if (track.status === 'nao_aprovada') return;
+    const process = track.process_id ? await processStore.findProcess(client, track.process_id) : null;
+    let current = track;
+    if ((!process || process.closed_at) && !canTransition(track.status, 'nao_aprovada')
+        && canTransition(track.status, 'em_analise')) {
+      await changeStatus(client, track, 'em_analise', null, userId);
+      current = { ...track, status: 'em_analise' };
+    }
+    await changeStatus(client, current, 'nao_aprovada', reason, userId);
+  }
+
   router.post('/institutional/demands/:id/track', ...gov, handle(async (req, res) => {
     const profile = await profileOf(req);
     const { created, view } = await withTrack(req, profile, async () => {});
@@ -429,20 +450,53 @@ module.exports = ({ pool, auth, governmentActor, governmentProfile, governmentDi
     const profile = await profileOf(req);
     const { view } = await withTrack(req, profile, async (client, track) => {
       // A mudança de status vem antes: a resposta registra o status resultante.
-      if (value.status && value.status !== track.status) {
+      if (value.type === 'recusa_com_motivo') {
+        // "Recusar a demanda informando o motivo" (Modelo §10): Não aprovada,
+        // passando pela análise quando o acompanhamento ainda está Recebida.
+        await refuse(client, track, value.refusalReason, req.user.userId);
+      } else if (value.status && value.status !== track.status) {
         await changeStatus(client, track, value.status, value.statusNote, req.user.userId);
       }
-      await client.query(
+      const { rows: [response] } = await client.query(
         `INSERT INTO demand_institutional_responses
            (track_id, demand_id, organization_id, response_type, body, responsible_sector, program_name,
-            program_url, planned_for, author_id, author_name)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            program_url, planned_for, author_id, author_name, requested_document_types, meeting_proposed_at,
+            meeting_mode, refusal_reason)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::demand_document_type[], $13, $14, $15)
+         RETURNING id`,
         [
           track.id, track.demand_id, track.organization_id, value.type, value.body, value.responsibleSector,
           value.programName, value.programUrl, value.plannedFor, req.user.userId,
-          req.user.name || req.user.email || null,
+          req.user.name || req.user.email || null, value.requestedDocumentTypes, value.meetingProposedAt,
+          value.meetingMode, value.refusalReason,
         ],
       );
+      // O que pede algo ao Agente entra também na caixa "Solicitações recebidas" (T-05-05).
+      const kind = RESPONSE_REQUEST_KIND[value.type];
+      const demand = kind ? await store.loadOpenDemand(client, track.demand_id) : null;
+      if (kind && INTEREST_OPEN_STATUSES.includes(demand.status)) {
+        const process = await analysisStore.openProcessFor(client, track.demand_id, { organizationId: track.organization_id });
+        await analysisStore.insertRequest(client, {
+          demandId: track.demand_id,
+          processId: process?.id ?? null,
+          institutionalResponseId: response.id,
+          requester: {
+            userId: req.user.userId, name: req.user.name || null, category: 'poder_publico',
+            profileType: req.user.profileType || null, organizationId: track.organization_id,
+            organizationName: track.organization_name,
+          },
+          value: {
+            kind,
+            body: kind === 'recusa' ? value.refusalReason : value.body,
+            requestedDocumentTypes: value.requestedDocumentTypes,
+            meetingProposedAt: value.meetingProposedAt,
+            meetingMode: value.meetingMode,
+          },
+        });
+        await analysisStore.notifyAuthor(client, {
+          demand, kind, requesterCategory: 'poder_publico', processId: process?.id ?? null,
+        });
+      }
     });
     res.status(201).json(view);
   }));

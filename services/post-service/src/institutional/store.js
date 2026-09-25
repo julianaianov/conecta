@@ -58,7 +58,9 @@ const PUBLIC_TRACK_SQL = `
 const RESPONSE_SQL = `
   r.id, r.track_id, r.demand_id, r.organization_id, r.response_type, r.body, r.responsible_sector,
   r.program_name, r.program_url, to_char(r.planned_for, 'YYYY-MM-DD') AS planned_for, r.track_status,
-  r.author_id, r.author_name, r.created_at, t.organization_name`;
+  r.author_id, r.author_name, r.created_at, t.organization_name,
+  r.requested_document_types::text[] AS requested_document_types, r.meeting_proposed_at, r.meeting_mode,
+  r.refusal_reason`;
 
 const OFFER_SQL = `
   o.id, o.track_id, o.demand_id, o.organization_id, o.support_types::text[] AS support_types,
@@ -123,9 +125,15 @@ function serializeResponse(row, { isPublic = false } = {}) {
     programUrl: row.program_url ?? null,
     plannedFor: row.planned_for ?? null,
     institutionalStatus: row.track_status,
+    // Respostas à análise (Modelo de Conexão §10, T-05-05, migração 030).
+    requestedDocumentTypes: Array.isArray(row.requested_document_types) ? row.requested_document_types : [],
+    meetingMode: row.meeting_mode ?? null,
+    refusalReason: row.refusal_reason ?? null,
     createdAt: toIso(row.created_at),
   };
-  return isPublic ? base : { ...base, authorId: row.author_id, authorName: row.author_name ?? null };
+  return isPublic ? base : {
+    ...base, meetingProposedAt: toIso(row.meeting_proposed_at), authorId: row.author_id, authorName: row.author_name ?? null,
+  };
 }
 
 function serializeOffer(row, { isPublic = false } = {}) {

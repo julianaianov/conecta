@@ -55,15 +55,15 @@ DO $$ BEGIN
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- "A resposta poderá informar" (slide 10).
--- TODO(fonte-da-verdade): Modelo de Conexão §10 — faltam solicitar documentos, solicitar reunião,
--- solicitar análise técnica e recusar com motivo (Parceiros e Poder Público); ver TODO em
--- src/interest/constants.js.
+-- "A resposta poderá informar" (slide 10) e as respostas à análise do Modelo
+-- de Conexão §10 (solicitar documentos, reunião, análise técnica e recusar com
+-- motivo; banco existente: migração 030, que também cria as colunas deles).
 DO $$ BEGIN
   CREATE TYPE institutional_response_type AS ENUM (
     'recebimento', 'analise_em_andamento', 'orgao_ou_setor_responsavel', 'encaminhamento_realizado',
     'programa_publico_relacionado', 'acao_prevista', 'informacoes_adicionais',
-    'impossibilidade_com_encaminhamento'
+    'impossibilidade_com_encaminhamento', 'solicitacao_de_documentos', 'solicitacao_de_reuniao',
+    'solicitacao_de_analise_tecnica', 'recusa_com_motivo'
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 

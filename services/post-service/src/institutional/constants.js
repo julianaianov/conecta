@@ -40,12 +40,29 @@ const STATUSES_REQUIRING_NOTE = [
   'nao_e_de_competencia', 'encaminhada_ao_orgao_responsavel', 'nao_aprovada', 'suspensa', 'cancelada',
 ];
 
-// "A resposta poderá informar" (slide 10).
+// "A resposta poderá informar" (slide 10) e as respostas à análise do Modelo
+// de Conexão §10 (T-05-05, migração 030): solicitar documentos, reunião,
+// análise técnica e recusar informando o motivo.
 const RESPONSE_TYPES = [
   'recebimento', 'analise_em_andamento', 'orgao_ou_setor_responsavel', 'encaminhamento_realizado',
   'programa_publico_relacionado', 'acao_prevista', 'informacoes_adicionais',
-  'impossibilidade_com_encaminhamento',
+  'impossibilidade_com_encaminhamento', 'solicitacao_de_documentos', 'solicitacao_de_reuniao',
+  'solicitacao_de_analise_tecnica', 'recusa_com_motivo',
 ];
+
+// Respostas que pedem algo ao Agente autor: entram também na caixa
+// "Solicitações recebidas" (demand_analysis_requests, espelho).
+const RESPONSE_REQUEST_KIND = {
+  informacoes_adicionais: 'informacoes_adicionais',
+  solicitacao_de_documentos: 'documentos',
+  solicitacao_de_reuniao: 'reuniao',
+  solicitacao_de_analise_tecnica: 'analise_tecnica',
+  recusa_com_motivo: 'recusa',
+};
+
+// Formato da reunião solicitada.
+const MEETING_MODES = ['presencial', 'online'];
+const MEETING_MODE_LABELS = { presencial: 'Presencial', online: 'On-line' };
 
 const RESPONSE_TYPE_LABELS = {
   recebimento: 'Recebimento da demanda',
@@ -56,6 +73,10 @@ const RESPONSE_TYPE_LABELS = {
   acao_prevista: 'Ação prevista',
   informacoes_adicionais: 'Necessidade de informações adicionais',
   impossibilidade_com_encaminhamento: 'Impossibilidade de atendimento nesta competência',
+  solicitacao_de_documentos: 'Solicitação de documentos',
+  solicitacao_de_reuniao: 'Solicitação de reunião',
+  solicitacao_de_analise_tecnica: 'Solicitação de análise técnica',
+  recusa_com_motivo: 'Recusa da demanda com motivo',
 };
 
 // "Recursos e formas de apoio" (slide 12).
@@ -107,6 +128,9 @@ module.exports = {
   STATUSES_REQUIRING_NOTE,
   RESPONSE_TYPES,
   RESPONSE_TYPE_LABELS,
+  RESPONSE_REQUEST_KIND,
+  MEETING_MODES,
+  MEETING_MODE_LABELS,
   SUPPORT_TYPES,
   SUPPORT_TYPE_LABELS,
   INSTITUTIONAL_EVENT_TYPES,
