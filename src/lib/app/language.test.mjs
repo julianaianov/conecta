@@ -12,7 +12,6 @@ const productFiles = [
   "src/components/Footer.tsx",
   "src/components/Hero.tsx",
   "src/components/ImpactGallery.tsx",
-  "src/components/Community.tsx",
   "src/components/CTABanner.tsx",
   "src/components/Stakeholders.tsx",
   "src/components/Steps.tsx",

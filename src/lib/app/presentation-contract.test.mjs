@@ -27,7 +27,6 @@ test("as ações existentes continuam disponíveis com apresentação discreta",
 test("o vocabulário de produto não usa a palavra rede", () => {
   const productFiles = [
     "src/components/Hero.tsx",
-    "src/components/Community.tsx",
     "src/components/ImpactGallery.tsx",
     "src/components/app/AppShell.tsx",
     "src/components/app/PostCard.tsx",
