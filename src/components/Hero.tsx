@@ -140,7 +140,7 @@ export function Hero({ profiles, stats }: HeroProps) {
         : "50 90 440 240";
 
   return (
-    <section className="hero">
+    <section className="hero" id="top">
       {/* Hidden compliance anchor maintaining Apresentação Institucional contract */}
       <span className="sr-only">
         Infraestrutura Digital de Impacto Local

@@ -6,16 +6,16 @@ export function SupportSystem() {
   };
 
   const forms = [
-    { title: "Apoio financeiro", icon: "i-spark" },
-    { title: "Doação de materiais", icon: "i-box" },
-    { title: "Espaço físico", icon: "i-city" },
-    { title: "Serviços técnicos", icon: "i-bolt" },
+    { title: "Patrocínio", icon: "i-spark" },
+    { title: "Investimento social", icon: "i-brief" },
+    { title: "Doações financeiras", icon: "i-box" },
+    { title: "Doação de materiais e equipamentos", icon: "i-box" },
+    { title: "Apoio técnico e conhecimento especializado", icon: "i-bolt" },
+    { title: "Cessão de espaço e infraestrutura", icon: "i-city" },
+    { title: "Apoio logístico", icon: "i-link" },
     { title: "Voluntariado", icon: "i-heart" },
-    { title: "Articulação institucional", icon: "i-gov" },
-    { title: "Conexão com redes", icon: "i-link" },
-    { title: "Mentoria", icon: "i-bulb" },
     { title: "Divulgação", icon: "i-mega" },
-    { title: "Monitoramento", icon: "i-target" },
+    { title: "Apoio institucional e parcerias estratégicas", icon: "i-gov" },
   ];
 
   return (
@@ -25,12 +25,11 @@ export function SupportSystem() {
           <div>
             <span className="eyebrow">Sistema de apoio</span>
             <h2 className="h2" style={{ marginTop: 16 }}>
-              Dez formas de apoiar um projeto.
+              Formas de apoiar projetos de impacto.
             </h2>
             <p className="lede" style={{ marginTop: 18 }}>
-              Apoiar vai muito além de recursos financeiros. Empresas,
-              institutos, poder público e comunidade podem contribuir de diversas
-              maneiras:
+              Cada projeto indica o que precisa. Parceiros, poder público e
+              comunidade escolhem como contribuir.
             </p>
             <div className="hero-ctas" style={{ marginTop: 28 }}>
               <button

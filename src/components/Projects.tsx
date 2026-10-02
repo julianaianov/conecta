@@ -120,6 +120,9 @@ export function Projects() {
         </div>
 
         <p className="px-note">
+          Imagens ilustrativas, sem relação com projetos reais cadastrados no DM Conecta.
+        </p>
+        <p className="px-note">
           <svg className="ico" aria-hidden="true">
             <use href="#i-spark" />
           </svg>

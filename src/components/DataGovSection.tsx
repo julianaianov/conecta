@@ -38,16 +38,16 @@ export function DataGovSection() {
     <section className="sec band">
       <div className="wrap">
         <div className="sec-head">
-          <span className="eyebrow">Dados e inteligência territorial</span>
-          <h2 className="h2">Dados que orientam decisões.</h2>
+          <span className="eyebrow">Inteligência territorial</span>
+          <h2 className="h2">Dados que orientam onde e como investir.</h2>
           <p className="lede">
-            Indicadores territoriais que apoiam poder público, empresas e
-            parceiros na alocação de recursos onde o impacto é mais necessário.
+            Quanto mais a plataforma é usada, mais completo fica o mapa dos
+            projetos e do impacto nos territórios.
           </p>
         </div>
 
         <div className="temas">
-          <span className="k">Temas mapeados no território</span>
+          <span className="k">Eixos de impacto</span>
           <ul>
             <li>Educação</li>
             <li>Esporte</li>
@@ -59,9 +59,9 @@ export function DataGovSection() {
             <li>População em Situação de Rua</li>
           </ul>
           <p>
-            Dados gerados pela própria dinâmica territorial: demandas
-            identificadas, projetos estruturados, apoios viabilizados e
-            resultados comprovados.
+            Os dados mostram: distribuição e número de projetos por eixo,
+            público beneficiado, recursos mobilizados, projetos em execução e
+            resultados alcançados.
           </p>
         </div>
 
@@ -73,9 +73,10 @@ export function DataGovSection() {
                 <use href="#i-doc" />
               </svg>
             </span>
-            <h3>Projetos estruturados</h3>
+            <h3>Dados organizados</h3>
             <p>
-              Objetivo claro, orçamento, cronograma e metas definidas.
+              Projetos com eixo, território, público, estágio e atores
+              envolvidos.
             </p>
           </div>
           <div className="eqop" aria-hidden="true">
@@ -87,10 +88,8 @@ export function DataGovSection() {
                 <use href="#i-link" />
               </svg>
             </span>
-            <h3>Apoiadores conectados</h3>
-            <p>
-              Empresas, poder público e comunidade viabilizando recursos.
-            </p>
+            <h3>Histórico de projetos e apoios</h3>
+            <p>O que foi estruturado, apoiado e realizado.</p>
           </div>
           <div className="eqop" aria-hidden="true">
             +
@@ -101,10 +100,8 @@ export function DataGovSection() {
                 <use href="#i-activity" />
               </svg>
             </span>
-            <h3>Execução acompanhada</h3>
-            <p>
-              Etapas registradas com evidências, fotos e frequência.
-            </p>
+            <h3>Inteligência territorial</h3>
+            <p>Pessoas, iniciativas, potencial, recursos e impacto de cada território.</p>
           </div>
           <div className="eqop" aria-hidden="true">
             =
@@ -115,11 +112,7 @@ export function DataGovSection() {
                 <use href="#i-target" />
               </svg>
             </span>
-            <h3>Impacto mensurável</h3>
-            <p>
-              Pessoas beneficiadas, metas alcançadas e prestação de contas
-              verificável.
-            </p>
+            <h3>Base para orientar investimentos sociais e ambientais e acompanhar impacto</h3>
           </div>
         </div>
 
@@ -129,18 +122,18 @@ export function DataGovSection() {
           <div className="cpanel">
             <div className="ch">
               <div>
-                <h3>Projetos estruturados por mês</h3>
+                <h3>Projetos cadastrados por mês</h3>
                 <p className="sub">
-                  Evolução de iniciativas registradas e estruturadas
+                  Série histórica de um território
                 </p>
               </div>
-              <span className="tag-ex">Indicador territorial</span>
+              <span className="tag-ex">Exemplo</span>
             </div>
             <svg
               id="chMonth"
               viewBox="0 0 580 220"
               role="img"
-              aria-label="Gráfico de barras mostrando projetos estruturados ao longo do ano"
+              aria-label="Gráfico de barras mostrando projetos cadastrados ao longo do ano"
             >
               {[0, 25, 50].map((t) => (
                 <g key={t}>
@@ -203,10 +196,10 @@ export function DataGovSection() {
               <div>
                 <h3>Projetos por eixo de impacto</h3>
                 <p className="sub">
-                  Distribuição das iniciativas cadastradas
+                  Projetos do mapa de demonstração
                 </p>
               </div>
-              <span className="tag-ex">Indicador territorial</span>
+              <span className="tag-ex">Exemplo</span>
             </div>
             <svg
               id="chType"
@@ -241,211 +234,198 @@ export function DataGovSection() {
         </div>
 
         <p className="band-foot">
-          Painel territorial com dados atualizados a partir do cadastro,
-          validação e acompanhamento de cada iniciativa.
+          Valores ilustrativos, usados apenas para demonstrar a visualização.
+          Não representam dados reais.
         </p>
+      </div>
 
-        {/* Gestão Pública */}
-        <div className="dg-gov" id="gestao">
-          <div className="gov">
+      {/* Gestão Pública */}
+      <div className="wrap gov dg-gov" id="gestao">
+        <div>
+          <span className="eyebrow" style={{ color: "#FF9A5C" }}>
+            Área de governo e gestão pública
+          </span>
+          <h2 className="h2" style={{ color: "#fff", marginTop: 16 }}>
+            O poder público articula e participa de projetos de interesse público.
+          </h2>
+          <p className="lede" style={{ color: "#B5D0D6", marginTop: 18 }}>
+            Tudo dentro da competência de cada órgão, com critérios claros e
+            registro formal.
+          </p>
+          <ul className="govlist">
+            <li>
+              <svg className="ico">
+                <use href="#i-map" />
+              </svg>
+              <div>
+                <b>Mapa de projetos</b>
+                <span>
+                  Iniciativas de interesse público por território.
+                </span>
+              </div>
+            </li>
+            <li>
+              <svg className="ico">
+                <use href="#i-link" />
+              </svg>
+              <div>
+                <b>Articulação institucional</b>
+                <span>Aproximação com as iniciativas.</span>
+              </div>
+            </li>
+            <li>
+              <svg className="ico">
+                <use href="#i-activity" />
+              </svg>
+              <div>
+                <b>Políticas públicas</b>
+                <span>Integração de projetos a políticas públicas.</span>
+              </div>
+            </li>
+            <li>
+              <svg className="ico">
+                <use href="#i-target" />
+              </svg>
+              <div>
+                <b>Programas e editais</b>
+                <span>Divulgação de programas, editais e oportunidades.</span>
+              </div>
+            </li>
+            <li>
+              <svg className="ico">
+                <use href="#i-target" />
+              </svg>
+              <div>
+                <b>Resultados e impacto</b>
+                <span>Acompanhamento de indicadores e resultados.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div className="dash">
+          <div className="appbar" style={{ background: "var(--surface)" }}>
+            <div className="ttl">
+              <svg className="ico" style={{ width: 18, height: 18 }}>
+                <use href="#i-gov" />
+              </svg>
+              Painel de gestão
+            </div>
+            <div className="tabs">
+              <span className="on">Visão geral</span>
+              <span>Territórios</span>
+              <span>Programas e editais</span>
+            </div>
+            <span className="tag-ex sp">Dados fictícios</span>
+          </div>
+
+          <div className="scrollx">
+            <div className="pipe" id="pipe">
+              <div className="pstage">
+                <span className="k">Projetos no território</span>
+                <b>48</b>
+                <div className="meter" aria-hidden="true">
+                  <i style={{ width: "100%" }} />
+                </div>
+              </div>
+              <div className="pstage">
+                <span className="k">Em estruturação</span>
+                <b>14</b>
+                <div className="meter" aria-hidden="true">
+                  <i style={{ width: "29%" }} />
+                </div>
+              </div>
+              <div className="pstage">
+                <span className="k">Buscando apoio</span>
+                <b>11</b>
+                <div className="meter" aria-hidden="true">
+                  <i style={{ width: "23%" }} />
+                </div>
+              </div>
+              <div className="pstage">
+                <span className="k">Em execução</span>
+                <b>12</b>
+                <div className="meter" aria-hidden="true">
+                  <i style={{ width: "25%" }} />
+                </div>
+              </div>
+              <div className="pstage done">
+                <span className="k">Concluídos</span>
+                <b>11</b>
+                <div className="meter" aria-hidden="true">
+                  <i style={{ width: "23%" }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="dcols">
             <div>
-              <span className="eyebrow" style={{ color: "#FF9A5C" }}>
-                Gestão pública
-              </span>
-              <h2 className="h2" style={{ color: "#fff", marginTop: 16 }}>
-                Articulação institucional para transformar o território.
-              </h2>
-              <p className="lede" style={{ color: "#B5D0D6", marginTop: 18 }}>
-                O DM Conecta organiza as demandas do território em uma visão
-                única para secretarias, prefeituras e órgãos públicos,
-                facilitando o planejamento, a articulação e a prestação de
-                contas.
-              </p>
-              <ul className="govlist">
-                <li>
-                  <svg className="ico">
-                    <use href="#i-map" />
-                  </svg>
-                  <div>
-                    <b>Visão territorial unificada</b>
-                    <span>
-                      Mapa de demandas e projetos por bairro e eixo de impacto.
-                    </span>
-                  </div>
-                </li>
-                <li>
-                  <svg className="ico">
-                    <use href="#i-link" />
-                  </svg>
-                  <div>
-                    <b>Articulação intersetorial</b>
-                    <span>
-                      Conexão entre secretarias, parceiros e iniciativas da
-                      sociedade civil.
-                    </span>
-                  </div>
-                </li>
-                <li>
-                  <svg className="ico">
-                    <use href="#i-activity" />
-                  </svg>
-                  <div>
-                    <b>Acompanhamento de entregas</b>
-                    <span>
-                      Linha do tempo, evidências e relatórios de execução em
-                      tempo real.
-                    </span>
-                  </div>
-                </li>
-                <li>
-                  <svg className="ico">
-                    <use href="#i-target" />
-                  </svg>
-                  <div>
-                    <b>Decisões baseadas em evidências</b>
-                    <span>
-                      Indicadores para planejar, priorizar e alocar recursos
-                      públicos.
-                    </span>
-                  </div>
-                </li>
-              </ul>
+              <h4>Projetos por território</h4>
+              <div className="scrollx">
+                <table className="pri">
+                  <thead>
+                    <tr>
+                      <th>Bairro</th>
+                      <th>Projetos</th>
+                      <th>Em execução</th>
+                      <th>Eixo principal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Bairro J</td>
+                      <td>9</td>
+                      <td>2</td>
+                      <td><span className="prio md">Esporte</span></td>
+                    </tr>
+                    <tr>
+                      <td>Bairro B</td>
+                      <td>7</td>
+                      <td>1</td>
+                      <td><span className="prio md">Educação</span></td>
+                    </tr>
+                    <tr>
+                      <td>Bairro G</td>
+                      <td>6</td>
+                      <td>3</td>
+                      <td><span className="prio md">Cultura</span></td>
+                    </tr>
+                    <tr>
+                      <td>Bairro I</td>
+                      <td>4</td>
+                      <td>2</td>
+                      <td><span className="prio md">Meio Ambiente</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <div className="dash">
-              <div className="appbar" style={{ background: "var(--surface)" }}>
-                <div className="ttl">
-                  <svg className="ico" style={{ width: 18, height: 18 }}>
-                    <use href="#i-gov" />
-                  </svg>
-                  Painel de Gestão do Território
-                </div>
-                <div className="tabs">
-                  <span className="on">Território</span>
-                  <span>Demandas</span>
-                  <span>Projetos</span>
-                  <span>Indicadores</span>
-                </div>
-                <span className="tag-ex sp">Visualização de gestão</span>
-              </div>
-
-              <div className="scrollx">
-                <div className="pipe" id="pipe">
-                  <div className="pstage">
-                    <span className="k">Projetos no território</span>
-                    <b>48</b>
-                    <div className="meter" aria-hidden="true">
-                      <i style={{ width: "100%" }} />
-                    </div>
+            <div>
+              <h4>Articulações recentes</h4>
+              <ul className="resp">
+                <li className="ritem">
+                  <div className="who">
+                    <span>Secretaria (exemplo)</span>
+                    <span>Em articulação</span>
                   </div>
-                  <div className="pstage">
-                    <span className="k">Em estruturação</span>
-                    <b>14</b>
-                    <div className="meter" aria-hidden="true">
-                      <i style={{ width: "29%" }} />
-                    </div>
+                  <b>Escolinha de futebol · Bairro C</b>
+                  <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+                    Projeto relacionado a programa municipal de esporte e juventude.
+                  </span>
+                </li>
+                <li className="ritem">
+                  <div className="who">
+                    <span>Órgão público (exemplo)</span>
+                    <span>Divulgado</span>
                   </div>
-                  <div className="pstage">
-                    <span className="k">Buscando apoio</span>
-                    <b>11</b>
-                    <div className="meter" aria-hidden="true">
-                      <i style={{ width: "23%" }} />
-                    </div>
-                  </div>
-                  <div className="pstage">
-                    <span className="k">Em execução</span>
-                    <b>12</b>
-                    <div className="meter" aria-hidden="true">
-                      <i style={{ width: "25%" }} />
-                    </div>
-                  </div>
-                  <div className="pstage done">
-                    <span className="k">Concluídos</span>
-                    <b>11</b>
-                    <div className="meter" aria-hidden="true">
-                      <i style={{ width: "23%" }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="dcols">
-                <div>
-                  <h4>Prioridades territoriais</h4>
-                  <div className="scrollx">
-                    <table className="pri">
-                      <thead>
-                        <tr>
-                          <th>Bairro</th>
-                          <th>Eixo prioritário</th>
-                          <th>Projetos</th>
-                          <th>Urgência</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>Bairro C</td>
-                          <td>Esporte e Juventude</td>
-                          <td>3</td>
-                          <td>
-                            <span className="prio hi">Alta</span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Bairro A</td>
-                          <td>Educação</td>
-                          <td>4</td>
-                          <td>
-                            <span className="prio md">Média</span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Bairro G</td>
-                          <td>Segurança Alimentar</td>
-                          <td>2</td>
-                          <td>
-                            <span className="prio hi">Alta</span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Bairro E</td>
-                          <td>Cultura</td>
-                          <td>3</td>
-                          <td>
-                            <span className="prio lo">Normal</span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div>
-                  <h4>Respostas recentes e encaminhamentos</h4>
-                  <ul className="resp">
-                    <li className="ritem">
-                      <div className="who">
-                        <span>Secretaria de Esporte</span>
-                        <span>Há 2 dias</span>
-                      </div>
-                      <b>Articulação para uso da quadra comunitária</b>
-                      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
-                        Vinculado ao projeto Escolinha de Futebol Comunitária.
-                      </span>
-                    </li>
-                    <li className="ritem">
-                      <div className="who">
-                        <span>Secretaria de Educação</span>
-                        <span>Há 4 dias</span>
-                      </div>
-                      <b>Apoio com espaço para oficinas de leitura</b>
-                      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
-                        Cessão de sala no contraturno escolar no Bairro A.
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+                  <b>Educação ambiental · Bairro J</b>
+                  <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+                    Edital de iniciativas socioambientais compartilhado com o projeto.
+                  </span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>

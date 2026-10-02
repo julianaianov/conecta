@@ -24,54 +24,50 @@ export function CTABanner() {
           <figure className="cta-img" style={{ margin: 0 }}>
             <Image
               src="/images/landing/cta-voluntario.webp"
-              alt="Voluntário sorri abraçado a uma cadela em abrigo de proteção animal"
+              alt="Voluntário sorri abraçado a uma cadela em um abrigo de animais"
               width={800}
               height={440}
               className="w-full h-full object-cover"
             />
-            <ol className="ci-flow" aria-label="Projeto, conexão, execução e impacto">
-              <li className="d" title="Projeto">
-                <i>
-                  <svg className="ico">
-                    <use href="#i-target" />
+            <div className="ci-ov" aria-hidden="true">
+              <ol className="ci-flow" aria-label="Projeto, conexão, execução e impacto">
+                <li className="d" title="Projeto">
+                  <i>
+                    <svg className="ico"><use href="#i-target" /></svg>
+                  </i>
+                </li>
+                <li title="Conexão">
+                  <i>
+                    <svg className="ico"><use href="#i-link" /></svg>
+                  </i>
+                </li>
+                <li title="Execução">
+                  <i>
+                    <svg className="ico"><use href="#i-activity" /></svg>
+                  </i>
+                </li>
+                <li className="r" title="Impacto">
+                  <i>
+                    <svg className="ico"><use href="#i-check" /></svg>
+                  </i>
+                </li>
+              </ol>
+              <div className="ci-pav">
+                <span className="ci-road">
+                  <svg viewBox="0 0 24 24" className="paw" aria-hidden="true">
+                    <ellipse cx="6.2" cy="10.2" rx="2.1" ry="2.6" />
+                    <ellipse cx="10" cy="6.3" rx="2.1" ry="2.7" />
+                    <ellipse cx="14.6" cy="6.3" rx="2.1" ry="2.7" />
+                    <ellipse cx="18.3" cy="10.2" rx="2.1" ry="2.6" />
+                    <path d="M12.3 11.6c-2.6 0-5.6 3.3-5.6 5.9 0 1.7 1.3 2.7 2.8 2.7 1.1 0 1.8-.6 2.8-.6s1.7.6 2.8.6c1.5 0 2.8-1 2.8-2.7 0-2.6-3-5.9-5.6-5.9z" />
                   </svg>
-                </i>
-              </li>
-              <li title="Conexão">
-                <i>
-                  <svg className="ico">
-                    <use href="#i-link" />
-                  </svg>
-                </i>
-              </li>
-              <li title="Execução">
-                <i>
-                  <svg className="ico">
-                    <use href="#i-activity" />
-                  </svg>
-                </i>
-              </li>
-              <li className="r" title="Impacto">
-                <i>
-                  <svg className="ico">
-                    <use href="#i-check" />
-                  </svg>
-                </i>
-              </li>
-            </ol>
-            <div className="ci-pav">
-              <span className="ci-road">
-                <svg viewBox="0 0 24 24" className="paw" aria-hidden="true">
-                  <ellipse cx="6.2" cy="10.2" rx="2.1" ry="2.6" />
-                  <ellipse cx="10" cy="7.2" rx="2.1" ry="2.6" />
-                  <ellipse cx="14" cy="7.2" rx="2.1" ry="2.6" />
-                  <ellipse cx="17.8" cy="10.2" rx="2.1" ry="2.6" />
-                  <path d="M7 16.5 C 7 14, 9 12.5, 12 12.5 C 15 12.5, 17 14, 17 16.5 C 17 19.5, 14.5 21, 12 21 C 9.5 21, 7 19.5, 7 16.5 Z" />
-                </svg>
-              </span>
-              <div>
-                <b>Impacto mensurável</b>
-                <span>Transformação no território</span>
+                </span>
+                <div>
+                  <b>Projeto de proteção animal</b>
+                  <span>Resgate, cuidado e adoção com apoio de parceiros e voluntários.</span>
+                  <em>Em execução</em>
+                  <span className="ci-bar"><i /></span>
+                </div>
               </div>
             </div>
           </figure>

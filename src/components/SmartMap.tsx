@@ -186,10 +186,10 @@ export function SmartMap({ posts = [] }: { posts?: Post[] }) {
       <div className="wrap">
         <div className="sec-head">
           <span className="eyebrow">Território</span>
-          <h2 className="h2">Impacto mapeado no território.</h2>
+          <h2 className="h2">Onde estão os projetos, os recursos e os resultados.</h2>
           <p className="lede">
-            Projetos, demandas e resultados geolocalizados por bairro e eixo de
-            impacto.
+            Filtre por eixo e por estágio e selecione um projeto para ver onde
+            ele está e qual é o próximo passo.
           </p>
         </div>
 
@@ -513,7 +513,12 @@ export function SmartMap({ posts = [] }: { posts?: Post[] }) {
               )}
             </aside>
           </div>
+          <p className="hint">Selecione um projeto no mapa para ver os detalhes.</p>
         </div>
+        <p className="legend-note">
+          Cada eixo tem cor e ícone próprios, para que a leitura não dependa
+          apenas da cor.
+        </p>
       </div>
     </section>
   );
