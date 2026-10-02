@@ -33,6 +33,7 @@ import { DemandProcessesSection } from "../process/ProcessParts";
 import { DemandExecutionSection } from "../execution/DemandExecutionSection";
 import { DemandAccountabilitySection } from "../accountability/DemandAccountabilitySection";
 import { DemandInterestPanel } from "../interest/DemandInterestPanel";
+import { AnalysisRequestPanel } from "../analysis/AnalysisRequestPanel";
 import { DemandSupportBlock } from "../support/DemandSupportPanel";
 import { ViewerComposition } from "../institutional/ViewerComposition";
 import { DemandDocumentsAccessPanel } from "./DemandDocumentsAccessPanel";
@@ -213,6 +214,9 @@ export function PublicDemandView({
       {institution && <PublicInstitutionCard institution={institution} title="Publicada por" profileHref={profileHref} />}
 
       <DemandInterestPanel demandId={demand.id} authorId={demand.authorId} postId={demand.postId} />
+
+      {/* Respostas à análise de Parceiros e do Poder Público (T-05-05, Modelo §10). */}
+      <AnalysisRequestPanel demandId={demand.id} authorId={demand.authorId} />
 
       {/* Registro de apoio realizado e histórico de apoio (T16, slides 20 e 21). */}
       <DemandSupportBlock demandId={demand.id} authorId={demand.authorId} />

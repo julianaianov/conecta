@@ -138,3 +138,73 @@ export function eventJsonLd(event: PublicEvent, url: string): JsonLd {
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
   });
 }
+
+/** Structured Data para a Landing Page (WebSite, Organization, FAQPage). */
+export function landingPageJsonLd(url: string = "https://dmconecta.org"): JsonLd[] {
+  const org: JsonLd = compact({
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${url}#organization`,
+    name: "DM Conecta",
+    url,
+    logo: `${url}/logo.png`,
+    description:
+      "Infraestrutura Digital de Impacto Local. Identifica demandas reais das comunidades, estrutura projetos e conecta parceiros e poder público.",
+    sameAs: [
+      "https://www.instagram.com/dmconectainfradigital/",
+      "https://play.google.com/store/apps/details?id=org.dmconecta.app",
+    ],
+  });
+
+  const website: JsonLd = compact({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${url}#website`,
+    url,
+    name: "DM Conecta",
+    description: "Infraestrutura Digital de Impacto Social e Ambiental",
+    publisher: { "@id": `${url}#organization` },
+  });
+
+  const faq: JsonLd = compact({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${url}#faq`,
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "O que é o DM Conecta?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "O DM Conecta é uma plataforma que identifica demandas sociais e ambientais nas comunidades, estrutura projetos e conecta agentes locais a parceiros e ao poder público para transformar recursos em impacto mensurável.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "O DM Conecta cobra taxa ou comissão sobre os apoios?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Não. O DM Conecta não é intermediário financeiro nem cobra taxa ou porcentagem sobre valores destinados a projetos. A conexão entre apoiadores e projetos é direta e transparente.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Quem pode cadastrar um projeto?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Agentes de Transformação — organizações da sociedade civil, associações comunitárias, coletivos e lideranças locais com atuação comprovada no território.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Como o Poder Público participa?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Por meio de cadastro institucional validado. Órgãos e secretarias podem acompanhar demandas de seus territórios, articular respostas e conectar programas públicos a projetos comunitários.",
+        },
+      },
+    ],
+  });
+
+  return [org, website, faq];
+}

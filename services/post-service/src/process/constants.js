@@ -131,7 +131,20 @@ const SUPPORT_TYPE_CONTRIBUTION = {
   parcerias: 'articulacao',
 };
 
-const ORIGIN_KINDS = ['interesse', 'oferta_institucional', 'acompanhamento_institucional'];
+// `conexao_direta`: conexão pedida pelo Agente a um potencial parceiro (T30),
+// aceita pela outra parte (migração 030).
+const ORIGIN_KINDS = ['interesse', 'oferta_institucional', 'acompanhamento_institucional', 'conexao_direta'];
+
+// Tipo da conexão do user-service (routes/connections.js) → contribuição
+// inicial do processo nascido da conexão direta; a parte ajusta depois.
+const CONNECTION_TYPE_CONTRIBUTION = {
+  sponsorship: ['patrocinio'],
+  resources: ['materiais'],
+  support: [],
+  partnership: ['articulacao'],
+  meeting: [],
+  outreach: [],
+};
 
 // Eventos que o processo grava em demand_events (triggers da migração 026).
 // Os públicos expõem só payload->'public' (protocolo, número, tipo de parte,
@@ -208,6 +221,7 @@ module.exports = {
   INTEREST_OFFER_CONTRIBUTION,
   SUPPORT_TYPE_CONTRIBUTION,
   ORIGIN_KINDS,
+  CONNECTION_TYPE_CONTRIBUTION,
   PROCESS_EVENT_TYPES,
   PROCESS_PRIVATE_EVENT_TYPES,
   DEADLINE_STAGES,

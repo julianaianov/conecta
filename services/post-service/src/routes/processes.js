@@ -25,6 +25,9 @@
 //   POST /processes/:ref/deadlines/:did/fulfill  { note? } prazo cumprido (as duas partes)
 //   GET  /processes/pending                 pendências de prazo de quem pede (processos, e para o
 //                                           órgão, encaminhamentos e acompanhamentos com data limite)
+// Parceiro ou Poder Público que recebeu a conexão direta do Agente (T30):
+//   POST /processes/connections/:cid/accept aceita no user-service e formaliza o processo
+//                                           (origem `conexao_direta`); 201, ou 200 se já existia
 // Agente autor:
 //   GET  /demands/mine/:id/processes        processos da demanda
 //   POST /demands/mine/:id/processes        formaliza a partir do interesse de apoio com a
@@ -50,13 +53,20 @@ const {
 } = require('../process');
 const store = require('../process/store');
 const deadlines = require('../process/deadlines');
+const { normalizeRole } = require('../roles');
 const { notify } = require('../notifications');
 const { listHelpers } = require('./demands');
 
 const { HttpError, withTransaction } = demandStore;
 const { validationError } = listHelpers;
 
-module.exports = ({ pool, auth, validatedAgent, institutionStatus }) => {
+// Estados da demanda em que o processo pode nascer (trigger da migração 026).
+const OPEN_FOR_PROCESS = ['publicada', 'em_busca_de_parceiro', 'conectada', 'em_execucao'];
+const sameUser = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
+
+module.exports = ({
+  pool, auth, validatedAgent, institutionStatus, connections = null, governmentProfile = null,
+}) => {
   if (typeof auth !== 'function' || typeof validatedAgent !== 'function') {
     throw new Error('process routes exigem auth e requireValidatedAgent');
   }
@@ -147,6 +157,58 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus }) => {
     const organizationId = await store.governmentOrganizationOf(req, institutionStatus);
     const today = deadlines.saoPauloDay();
     res.json({ today, pending: await deadlines.pendingFor(pool, { userId: req.user.userId, organizationId, today }) });
+  }));
+
+  // Conexão direta pedida pelo Agente a um potencial parceiro (T30): quem a
+  // recebeu aceita por aqui, o user-service registra o aceite e nasce o
+  // Processo de Conexão (decisão 13), como no aceite do interesse
+  // (routes/interests.js). Idempotente. 422 `connection_not_linked` quando a
+  // conexão não é um pedido do autor da demanda a quem aceita (o portal cai
+  // então no aceite comum do user-service).
+  router.post('/processes/connections/:connectionId/accept', auth, handle(async (req, res) => {
+    if (!connections) throw new HttpError(503, { error: 'Conexões indisponíveis', code: 'connections_unavailable' });
+    const notLinked = () => new HttpError(422, {
+      error: 'Esta conexão não é um pedido do autor da demanda a você', code: 'connection_not_linked',
+    });
+    let connection = await connections.get(req, req.params.connectionId);
+    if (!connection) throw new HttpError(404, { error: 'Conexão não encontrada' });
+    if (!connection.demandId || !isUuid(connection.demandId) || !sameUser(connection.toUserId, req.user.userId)) throw notLinked();
+    const { rows: [demand] } = await pool.query(
+      'SELECT id, author_id, status::text AS status FROM demands WHERE id = $1', [connection.demandId],
+    );
+    if (!demand || !sameUser(demand.author_id, connection.fromUserId)) throw notLinked();
+    // A parte: o órgão do Poder Público validado ou a conta do Parceiro.
+    const organizationId = await store.governmentOrganizationOf(req, institutionStatus);
+    const role = normalizeRole(req.user.role, req.user.profileType);
+    if (!organizationId && role !== 'partner') throw notLinked();
+    let partyName = req.user.name || null;
+    if (organizationId && typeof governmentProfile === 'function') {
+      partyName = (await governmentProfile(req.user.userId).catch(() => null))?.name ?? partyName;
+    }
+
+    if (connection.status === 'pending') {
+      connection = await connections.update(req, connection.id, 'accepted');
+    } else if (connection.status !== 'accepted' && connection.status !== 'done') {
+      throw new HttpError(409, { error: 'Esta conexão já foi encerrada', code: 'connection_closed', connectionStatus: connection.status });
+    }
+    if (!OPEN_FOR_PROCESS.includes(demand.status)) return res.json({ connection, process: null });
+    const result = await withTransaction(pool, async (client) => {
+      await client.query('SELECT id FROM demands WHERE id = $1 FOR UPDATE', [demand.id]);
+      const { rows: existing } = await client.query(
+        'SELECT id FROM connection_processes WHERE origin_connection_id = $1 ORDER BY formalized_at DESC LIMIT 1',
+        [connection.id],
+      );
+      if (existing.length) return { row: await store.findProcess(client, existing[0].id), created: false };
+      return store.formalize(client, {
+        demandId: demand.id,
+        source: store.fromDirectConnection(connection, {
+          userId: req.user.userId, name: partyName, profileType: req.user.profileType || null, organizationId,
+        }),
+        formalizedBy: req.user.userId,
+        formalizedByKind: 'parte',
+      });
+    });
+    res.status(result.created ? 201 : 200).json({ connection, process: store.serializeSummary(result.row) });
   }));
 
   router.get('/processes/by-connection/:connectionId', auth, handle(async (req, res) => {

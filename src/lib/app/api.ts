@@ -24,6 +24,7 @@ import type {
   ProcessDetail, ProcessResponsibleInput, ProcessStatus, ProcessSummary, PublicProcess,
 } from "./process";
 import type { DeadlineInput, PendingItem } from "./deadlines";
+import type { AnalysisRequest, AnalysisRequestInput } from "./analysis";
 import {
   buildNotificationQuery, completePreferences, groupIdsBySource, mergeNotificationFeeds,
 } from "./notifications";
@@ -1049,6 +1050,26 @@ export const api = {
   pendingDeadlines(): Promise<PendingItem[]> {
     return request<{ pending: PendingItem[] }>("/api/posts/processes/pending")
       .then((body) => (Array.isArray(body.pending) ? body.pending : []));
+  },
+  // Respostas à análise (T-05-05, Modelo de Conexão §10): erros com `fields` (DemandRequestError).
+  createAnalysisRequest(demandId: string, input: AnalysisRequestInput): Promise<AnalysisRequest> {
+    return demandRequired<{ request: AnalysisRequest }>(`/${encodeURIComponent(demandId)}/analysis-requests`, {
+      method: "POST", body: JSON.stringify(input),
+    }).then((body) => body.request);
+  },
+  myAnalysisRequests(demandId: string): Promise<AnalysisRequest[]> {
+    return demandRequest<{ requests: AnalysisRequest[] }>(`/${encodeURIComponent(demandId)}/analysis-requests/mine`)
+      .then((body) => body?.requests ?? []);
+  },
+  receivedAnalysisRequests(demandId: string): Promise<AnalysisRequest[]> {
+    return demandRequest<{ requests: AnalysisRequest[] }>(`/mine/${encodeURIComponent(demandId)}/analysis-requests`)
+      .then((body) => body?.requests ?? []);
+  },
+  answerAnalysisRequest(demandId: string, requestId: string, input: { body: string; documentIds: string[] }): Promise<AnalysisRequest> {
+    return demandRequired<{ request: AnalysisRequest }>(
+      `/mine/${encodeURIComponent(demandId)}/analysis-requests/${encodeURIComponent(requestId)}/answer`,
+      { method: "POST", body: JSON.stringify(input) },
+    ).then((body) => body.request);
   },
   demandProcesses(demandId: string): Promise<PublicProcess[]> {
     return request<{ processes: PublicProcess[] }>(`/api/posts/demands/${encodeURIComponent(demandId)}/processes`)

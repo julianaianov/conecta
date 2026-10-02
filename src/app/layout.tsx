@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Inter } from "next/font/google";
+import { DM_Sans, Inter, Schibsted_Grotesk, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import { BrandLoading } from "@/components/app/BrandLoading";
 import { absoluteUrl, metadataForPage, SITE_NAME, SITE_URL } from "@/lib/seo/site";
 import "./globals.css";
@@ -14,6 +14,24 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+const schibstedGrotesk = Schibsted_Grotesk({
+  variable: "--font-schibsted",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+});
+
+const publicSans = Public_Sans({
+  variable: "--font-public-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 const HOME_TITLE = "DM Conecta — Conecte-se · Participe · Transforme";
@@ -56,7 +74,10 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${dmSans.variable} ${inter.variable}`}>
+    <html
+      lang="pt-BR"
+      className={`${dmSans.variable} ${inter.variable} ${schibstedGrotesk.variable} ${publicSans.variable} ${ibmPlexMono.variable}`}
+    >
       <head>
         {/* Prevent theme flash on first load */}
         <script

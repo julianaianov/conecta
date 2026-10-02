@@ -1,68 +1,184 @@
-import { STAKEHOLDERS } from "@/lib/banner-data";
-import { AppImage } from "./AppImage";
-import { Reveal } from "./Reveal";
-
 export function Stakeholders() {
   return (
-    <section id="conexoes" className="py-20 lg:py-28">
-      <div className="mx-auto max-w-6xl px-5 lg:px-8">
-        <Reveal>
-          <div className="mx-auto mb-12 max-w-xl text-center">
-            <span className="text-sm font-semibold uppercase tracking-widest text-orange">
-              Quem move o território
-            </span>
-            <h2 className="mt-3 text-3xl font-extrabold sm:text-4xl" style={{ color: "var(--th-text)" }}>
-              Uma plataforma
-              <br />
-              <span className="gradient-text">feita para todos</span>
-            </h2>
-            <p className="mt-4" style={{ color: "var(--th-muted)" }}>
-              Quem identifica uma necessidade, quem pode ajudar a transformá-la em solução e quem dá visibilidade — qualquer bairro, qualquer cidade.
-            </p>
-          </div>
-        </Reveal>
-
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {STAKEHOLDERS.map((item, i) => (
-            <Reveal key={item.title} delay={i * 60} className="h-full">
-              <div
-                style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}
-                className="group flex h-full flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-orange/40 hover:shadow-xl"
-              >
-                {/* Image — taller card */}
-                <div className="relative h-36 w-full overflow-hidden sm:h-40">
-                  <AppImage
-                    src={item.image}
-                    alt={item.title}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                </div>
-
-                <div className="flex flex-col items-center px-4 py-4 text-center flex-1">
-                  <h3
-                    className="text-[11px] font-extrabold uppercase leading-snug tracking-wide"
-                    style={{ color: item.titleColor }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: "var(--th-muted)" }}>
-                    {item.description}
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-3 rounded-full border border-orange/30 px-3 py-1 text-[10px] font-semibold text-orange transition-all hover:bg-orange/10 hover:border-orange/60"
-                  >
-                    Atuar junto
-                  </button>
-                </div>
-              </div>
-            </Reveal>
-          ))}
+    <section className="sec cx-sec" id="para-quem">
+      <div className="wrap">
+        <div className="sec-head">
+          <span className="eyebrow">Quem participa</span>
+          <h2 className="h2">
+            Quem tem o projeto encontra quem pode apoiar. E o projeto acontece.
+          </h2>
+          <p className="lede">
+            Cinco grupos, cada um com seu papel, conectados pela mesma infraestrutura.
+          </p>
         </div>
 
+        <div className="cx" id="conexao" aria-label="Fluxo de conexão entre atores">
+          <div className="cx-row cx-r1">
+            <article className="cx-n cx-agt">
+              <span className="cx-ic">
+                <svg className="ico">
+                  <use href="#i-people" />
+                </svg>
+              </span>
+              <span className="cx-k">Tem o projeto</span>
+              <h3>Agente de Transformação</h3>
+              <p>Cadastra a iniciativa com objetivo, público e território.</p>
+            </article>
+
+            <span className="cx-ar" aria-hidden="true">
+              <i />
+            </span>
+
+            <article className="cx-n cx-core">
+              <svg className="cx-logo" aria-hidden="true">
+                <use href="#logo-mark" />
+              </svg>
+              <span className="cx-k">Estrutura e conecta</span>
+              <h3>DM Conecta</h3>
+              <ul>
+                <li>Dossiê digital</li>
+                <li>Sugestão de conexões</li>
+                <li>Acompanhamento</li>
+              </ul>
+            </article>
+
+            <span className="cx-ar cx-split" aria-hidden="true">
+              <i />
+            </span>
+
+            <div className="cx-pair">
+              <article className="cx-n cx-par">
+                <span className="cx-ic">
+                  <svg className="ico">
+                    <use href="#i-brief" />
+                  </svg>
+                </span>
+                <span className="cx-k">Apoiam e viabilizam</span>
+                <h3>Parceiros</h3>
+                <p>
+                  Recursos, conhecimento, infraestrutura, divulgação ou parcerias.
+                </p>
+              </article>
+              <article className="cx-n cx-pp">
+                <span className="cx-ic">
+                  <svg className="ico">
+                    <use href="#i-gov" />
+                  </svg>
+                </span>
+                <span className="cx-k">Articula e participa</span>
+                <h3>Poder Público</h3>
+                <p>Articulação institucional, programas e políticas públicas.</p>
+              </article>
+            </div>
+          </div>
+
+          <div className="cx-turn" aria-hidden="true">
+            <i />
+          </div>
+
+          <ol className="cx-row cx-r2">
+            <li className="cx-o">
+              <span className="cx-ic">
+                <svg className="ico">
+                  <use href="#i-activity" />
+                </svg>
+              </span>
+              <div>
+                <h3>Projeto executado</h3>
+                <p>Realizado no território, com etapas, evidências e atualizações.</p>
+              </div>
+            </li>
+            <li className="cx-o">
+              <span className="cx-ic">
+                <svg className="ico">
+                  <use href="#i-check" />
+                </svg>
+              </span>
+              <div>
+                <h3>Resultados</h3>
+                <p>Metas cumpridas e pessoas beneficiadas registradas.</p>
+              </div>
+            </li>
+            <li className="cx-o is-end">
+              <span className="cx-ic">
+                <svg className="ico">
+                  <use href="#i-target" />
+                </svg>
+              </span>
+              <div>
+                <h3>Impacto</h3>
+                <p>Transformação mensurada e visível no território.</p>
+              </div>
+            </li>
+          </ol>
+
+          <ul className="qp" aria-label="Perfis de cada grupo">
+            <li>
+              <span className="qp-ic">
+                <svg className="ico" aria-hidden="true">
+                  <use href="#i-people" />
+                </svg>
+              </span>
+              <div>
+                <b>Agentes de Transformação</b>
+                <span>
+                  Associações, ONGs, institutos, coletivos, projetos sociais e
+                  iniciativas socioambientais.
+                </span>
+              </div>
+            </li>
+            <li>
+              <span className="qp-ic">
+                <svg className="ico" aria-hidden="true">
+                  <use href="#i-brief" />
+                </svg>
+              </span>
+              <div>
+                <b>Parceiros</b>
+                <span>
+                  Empresas, marcas, institutos, patrocinadores, organizações e,
+                  futuramente, investidores.
+                </span>
+              </div>
+            </li>
+            <li>
+              <span className="qp-ic">
+                <svg className="ico" aria-hidden="true">
+                  <use href="#i-gov" />
+                </svg>
+              </span>
+              <div>
+                <b>Poder Público</b>
+                <span>
+                  Prefeituras, secretarias, órgãos públicos e instituições
+                  governamentais.
+                </span>
+              </div>
+            </li>
+            <li>
+              <span className="qp-ic">
+                <svg className="ico" aria-hidden="true">
+                  <use href="#i-heart" />
+                </svg>
+              </span>
+              <div>
+                <b>Comunidade</b>
+                <span>Moradores, voluntários, jovens e participantes.</span>
+              </div>
+            </li>
+            <li>
+              <span className="qp-ic">
+                <svg className="ico" aria-hidden="true">
+                  <use href="#i-mega" />
+                </svg>
+              </span>
+              <div>
+                <b>Comunicação</b>
+                <span>Veículos, jornalistas e criadores de conteúdo.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
       </div>
     </section>
   );

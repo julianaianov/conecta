@@ -1,144 +1,523 @@
+"use client";
+
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { DMLogo } from "./app/DMLogo";
-import { ThemeToggle } from "./ThemeToggle";
-import { APP_URL, NAV_LINKS } from "@/lib/constants";
-
-type ButtonProps = {
-  href: string;
-  variant?: "primary" | "ghost" | "outline";
-  size?: "md" | "lg";
-  block?: boolean;
-  children: React.ReactNode;
-  className?: string;
-};
-
-const variantClasses = {
-  primary:
-    "bg-orange text-white shadow-sm shadow-orange/20 hover:bg-orange-light",
-  ghost:
-    "hover:bg-black/5",
-  outline:
-    "border border-[var(--th-border)] hover:border-orange/60 hover:bg-orange/10",
-};
-
-const sizeClasses = {
-  md: "px-5 py-2 text-sm",
-  lg: "px-7 py-3.5 text-base",
-};
-
-export function Button({
-  href,
-  variant = "primary",
-  size = "md",
-  block = false,
-  children,
-  className = "",
-}: ButtonProps) {
-  return (
-    <Link
-      href={href}
-      style={variant !== "primary" ? { color: "var(--th-text)" } : undefined}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-all duration-200 ${variantClasses[variant]} ${sizeClasses[size]} ${block ? "w-full" : ""} ${className}`}
-    >
-      {children}
-    </Link>
-  );
-}
 
 export function Navbar() {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<
+    Array<{ elId?: string; title: string; sec: string; snip?: string }>
+  >([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize theme
+  useEffect(() => {
+    const isDark =
+      document.documentElement.classList.contains("dark") ||
+      document.documentElement.getAttribute("data-theme") === "dark" ||
+      localStorage.getItem("theme") === "dark";
+    if (isDark) {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      setTheme("light");
+      document.documentElement.classList.remove("dark");
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+    if (nextTheme === "dark") {
+      document.documentElement.classList.add("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+  };
+
+  // Keyboard shortcut Ctrl+K or / to open search, Esc to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.key === "k" && (e.ctrlKey || e.metaKey)) ||
+        (e.key === "/" &&
+          !["INPUT", "TEXTAREA"].includes(
+            (document.activeElement as HTMLElement)?.tagName,
+          ))
+      ) {
+        e.preventDefault();
+        setSearchOpen(true);
+      } else if (e.key === "Escape") {
+        setSearchOpen(false);
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (searchOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 40);
+    } else {
+      setSearchQuery("");
+      setSearchResults([]);
+      setSelectedIndex(-1);
+    }
+  }, [searchOpen]);
+
+  // Index and search content
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setSelectedIndex(-1);
+      return;
+    }
+    const q = searchQuery
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const terms = q.split(/\s+/).filter(Boolean);
+
+    const items = [
+      {
+        elId: "solucao",
+        title: "O DM Conecta",
+        sec: "Visão Geral",
+        snip: "Uma ponte entre quem desenvolve projetos e quem pode apoiá-los.",
+      },
+      {
+        elId: "solucao",
+        title: "Organiza, Conecta, Sugere, Mapeia e Acompanha",
+        sec: "Plataforma",
+        snip: "Dossiê digital, IA e acompanhamento de impacto mensurável.",
+      },
+      {
+        elId: "sobre",
+        title: "O Desafio",
+        sec: "Contexto",
+        snip: "Existem projetos. Existem recursos. Falta conexão.",
+      },
+      {
+        elId: "como-funciona",
+        title: "Como Funciona (8 Etapas)",
+        sec: "Fluxo",
+        snip: "Estruturar, Conectar, Executar e Mensurar.",
+      },
+      {
+        elId: "como-funciona",
+        title: "Atores no Fluxo",
+        sec: "Atores",
+        snip: "Agentes de Transformação, Parceiros, Poder Público, Comunidade e Comunicação.",
+      },
+      {
+        elId: "para-quem",
+        title: "Quem Participa",
+        sec: "Perfis",
+        snip: "Quem tem o projeto encontra quem pode apoiar.",
+      },
+      {
+        elId: "projetos",
+        title: "Projetos e Eixos de Impacto",
+        sec: "Eixos",
+        snip: "Educação, Esporte, Cultura, Proteção Animal, Meio Ambiente, Saúde, Alimentar, Rua.",
+      },
+      {
+        elId: "projetos",
+        title: "Dossiê Digital",
+        sec: "Dossiê",
+        snip: "Estruturação completa e acompanhamento auditável.",
+      },
+      {
+        elId: "apoio",
+        title: "Sistema de Apoio (10 Formas)",
+        sec: "Apoio",
+        snip: "Financeiro, materiais, voluntariado, mentoria, divulgação e monitoramento.",
+      },
+      {
+        elId: "territorio",
+        title: "Mapa Inteligente do Território",
+        sec: "Território",
+        snip: "Visualização geográfica de projetos e demandas com filtros por eixo e estágio.",
+      },
+      {
+        elId: "impacto",
+        title: "Transparência e Prestação de Contas",
+        sec: "Transparência",
+        snip: "Evidências verificáveis, fotos, documentos e histórico temporal.",
+      },
+      {
+        elId: "ia",
+        title: "Inteligência Artificial",
+        sec: "Inovação",
+        snip: "A IA sugere conexões. As pessoas decidem. Governança e limites éticos.",
+      },
+      {
+        elId: "governanca",
+        title: "Governança, LGPD e Neutralidade",
+        sec: "Governança",
+        snip: "Confiança para empresas, organizações e poder público.",
+      },
+      {
+        elId: "faq",
+        title: "Perguntas Frequentes",
+        sec: "FAQ",
+        snip: "Dúvidas sobre cadastro, tipos de projeto, acompanhamento e LGPD.",
+      },
+      {
+        elId: "participar",
+        title: "Cadastrar Projeto / Quero Apoiar",
+        sec: "Ação",
+        snip: "Um projeto pode ser o começo de uma transformação.",
+      },
+    ];
+
+    const matched = items.filter((item) => {
+      const target = (item.title + " " + item.sec + " " + (item.snip || ""))
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      return terms.every((t) => target.includes(t));
+    });
+
+    setSearchResults(matched);
+    setSelectedIndex(matched.length > 0 ? 0 : -1);
+  }, [searchQuery]);
+
+  const goToResult = (elId?: string) => {
+    setSearchOpen(false);
+    if (!elId) return;
+    const el = document.getElementById(elId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.remove("hit-flash");
+      void el.offsetWidth;
+      el.classList.add("hit-flash");
+    }
+  };
+
+  const openCad = (profile: string) => {
+    window.dispatchEvent(
+      new CustomEvent("dmc:open-cad", { detail: { profile } }),
+    );
+  };
+
+  const openLogin = () => {
+    window.dispatchEvent(new CustomEvent("dmc:open-login"));
+  };
+
   return (
-    <header className="nav-blur fixed inset-x-0 top-0 z-50 border-b">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 lg:px-8">
+    <header className="site-header">
+      <div className="wrap">
+        <div className="hdr">
+          <Link href="#top" className="logo" aria-label="DM Conecta — início">
+            <svg className="logo-mark" width="40" height="44" aria-hidden="true">
+              <use href="#logo-mark" />
+            </svg>
+            <span>
+              DM <small>Conecta</small>
+            </span>
+          </Link>
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center" style={{ color: "var(--th-text)" }}>
-          <DMLogo size={30} tone="plain" />
-        </Link>
+          <nav className="nav" aria-label="Principal">
+            <a href="#solucao">O DM Conecta</a>
+            <a href="#como-funciona">Como funciona</a>
+            <a href="#projetos">Projetos</a>
+            <a href="#para-quem">Quem participa</a>
+            <a href="#impacto">Transparência</a>
+            <a href="#territorio">Impacto</a>
+          </nav>
 
-        {/* Nav links — center */}
-        <nav className="hidden items-center gap-6 md:flex" aria-label="Principal">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              style={{ color: "var(--th-muted)" }}
-              className="text-sm font-medium transition-colors hover:text-orange"
+          <div className="hdr-actions">
+            <button
+              className="icon-btn"
+              id="searchBtn"
+              type="button"
+              aria-expanded={searchOpen}
+              aria-controls="searchPanel"
+              aria-label="Pesquisar no DM Conecta"
+              title="Pesquisar (Ctrl+K)"
+              onClick={() => setSearchOpen((prev) => !prev)}
             >
-              {link.label}
-            </a>
-          ))}
-        </nav>
+              <svg className="ico">
+                <use href="#i-search" />
+              </svg>
+            </button>
 
-        {/* Actions — right */}
-        <div className="hidden items-center gap-2 md:flex">
-          <ThemeToggle />
-          <Link
-            href={`${APP_URL}/login`}
-            style={{ color: "var(--th-muted)" }}
-            className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:text-orange"
-          >
-            Entrar
-          </Link>
-          <Link
-            href={`${APP_URL}/register`}
-            className="rounded-lg bg-orange px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-orange-light"
-          >
-            Criar conta
-          </Link>
+            <button
+              className="icon-btn"
+              id="themeBtn"
+              type="button"
+              aria-pressed={theme === "dark"}
+              aria-label={
+                theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"
+              }
+              title={
+                theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"
+              }
+              onClick={toggleTheme}
+            >
+              <svg className="ico i-moon">
+                <use href="#i-moon" />
+              </svg>
+              <svg className="ico i-sun">
+                <use href="#i-sun" />
+              </svg>
+            </button>
+
+            <span className="hdr-sep" aria-hidden="true" />
+
+            <button
+              type="button"
+              className="btn btn-ghost hdr-login"
+              id="loginBtn"
+              aria-haspopup="dialog"
+              aria-controls="loginDlg"
+              onClick={openLogin}
+            >
+              <svg className="ico">
+                <use href="#i-login" />
+              </svg>
+              <span>Entrar</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-ghost hdr-apoio"
+              data-cad="parceiro"
+              onClick={() => openCad("parceiro")}
+            >
+              <svg className="ico">
+                <use href="#i-heart" />
+              </svg>
+              <span>Quero apoiar</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              data-cad="agente"
+              onClick={() => openCad("agente")}
+            >
+              <svg className="ico">
+                <use href="#i-pin" />
+              </svg>
+              <span>Cadastrar projeto</span>
+            </button>
+
+            <button
+              className="menu-btn"
+              id="menuBtn"
+              type="button"
+              aria-expanded={menuOpen}
+              aria-controls="mnav"
+              aria-label="Abrir menu"
+              onClick={() => setMenuOpen((prev) => !prev)}
+            >
+              <svg className="ico">
+                <use href="#i-menu" />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        {/* Mobile */}
-        <div className="flex items-center gap-2 md:hidden">
-          <ThemeToggle />
-          <MobileNav />
+        {/* Mobile menu */}
+        <nav className="mnav" id="mnav" aria-label="Menu móvel" hidden={!menuOpen}>
+          <a href="#solucao" onClick={() => setMenuOpen(false)}>
+            O DM Conecta
+          </a>
+          <a href="#como-funciona" onClick={() => setMenuOpen(false)}>
+            Como funciona
+          </a>
+          <a href="#projetos" onClick={() => setMenuOpen(false)}>
+            Projetos
+          </a>
+          <a href="#para-quem" onClick={() => setMenuOpen(false)}>
+            Quem participa
+          </a>
+          <a href="#impacto" onClick={() => setMenuOpen(false)}>
+            Transparência
+          </a>
+          <a href="#territorio" onClick={() => setMenuOpen(false)}>
+            Impacto
+          </a>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ textAlign: "left", justifyContent: "flex-start", padding: "12px 4px" }}
+            onClick={() => {
+              setMenuOpen(false);
+              openCad("parceiro");
+            }}
+          >
+            Quero apoiar
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ textAlign: "left", justifyContent: "flex-start", padding: "12px 14px" }}
+            onClick={() => {
+              setMenuOpen(false);
+              openCad("agente");
+            }}
+          >
+            Cadastrar projeto
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ textAlign: "left", justifyContent: "flex-start", padding: "12px 4px" }}
+            onClick={() => {
+              setMenuOpen(false);
+              openLogin();
+            }}
+          >
+            Entrar
+          </button>
+        </nav>
+      </div>
+
+      {/* Search overlay dialog */}
+      <div
+        className="srch"
+        id="searchPanel"
+        role="dialog"
+        aria-modal="false"
+        aria-label="Pesquisa"
+        hidden={!searchOpen}
+      >
+        <div className="wrap sp-in">
+          <div className="sp-field">
+            <svg className="ico" aria-hidden="true">
+              <use href="#i-search" />
+            </svg>
+            <input
+              ref={searchInputRef}
+              id="searchInput"
+              type="search"
+              placeholder="Pesquisar no DM Conecta (ex: projetos, apoio, transparência...)"
+              autoComplete="off"
+              aria-label="Pesquisar no DM Conecta"
+              aria-controls="searchResults"
+              aria-autocomplete="list"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown" && searchResults.length > 0) {
+                  e.preventDefault();
+                  setSelectedIndex((prev) =>
+                    Math.min(searchResults.length - 1, prev + 1),
+                  );
+                } else if (e.key === "ArrowUp" && searchResults.length > 0) {
+                  e.preventDefault();
+                  setSelectedIndex((prev) => Math.max(0, prev - 1));
+                } else if (
+                  e.key === "Enter" &&
+                  selectedIndex >= 0 &&
+                  searchResults[selectedIndex]
+                ) {
+                  e.preventDefault();
+                  goToResult(searchResults[selectedIndex].elId);
+                }
+              }}
+            />
+            <kbd className="sp-kbd">Esc</kbd>
+            <button
+              type="button"
+              className="icon-btn sp-close"
+              id="searchClose"
+              aria-label="Fechar pesquisa"
+              onClick={() => setSearchOpen(false)}
+            >
+              <svg className="ico">
+                <use href="#i-close" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="sp-scope" role="group" aria-label="Onde pesquisar">
+            <span className="sp-chip is-on">Nesta página</span>
+            <span
+              className="sp-chip is-off"
+              title="Disponível com a integração da plataforma"
+            >
+              Projetos
+            </span>
+            <span
+              className="sp-chip is-off"
+              title="Disponível com a integração da plataforma"
+            >
+              Organizações
+            </span>
+            <span
+              className="sp-chip is-off"
+              title="Disponível com a integração da plataforma"
+            >
+              Iniciativas
+            </span>
+            <span
+              className="sp-chip is-off"
+              title="Disponível com a integração da plataforma"
+            >
+              Eixos de impacto
+            </span>
+            <span
+              className="sp-chip is-off"
+              title="Disponível com a integração da plataforma"
+            >
+              Territórios
+            </span>
+          </div>
+
+          {searchQuery.trim() && (
+            <ul
+              className="sp-res"
+              id="searchResults"
+              role="listbox"
+              aria-label="Resultados"
+            >
+              {searchResults.length === 0 ? (
+                <li className="empty" role="option" aria-selected={false} aria-disabled="true">
+                  Nenhum conteúdo desta página corresponde a “{searchQuery}”.
+                </li>
+              ) : (
+                searchResults.map((item, i) => (
+                  <li
+                    key={`${item.elId}-${i}`}
+                    role="option"
+                    aria-selected={selectedIndex === i}
+                    onClick={() => goToResult(item.elId)}
+                    onMouseEnter={() => setSelectedIndex(i)}
+                  >
+                    <span className="sec">{item.sec}</span>
+                    <b>{item.title}</b>
+                    {item.snip && <small>{item.snip}</small>}
+                  </li>
+                ))
+              )}
+            </ul>
+          )}
+
+          <p className="sp-note">
+            <svg className="ico" aria-hidden="true">
+              <use href="#i-clock" />
+            </svg>
+            A busca em projetos, organizações, iniciativas, eixos de impacto e
+            territórios cadastrados estará disponível com a integração da
+            plataforma. Por enquanto, a pesquisa encontra conteúdos institucionais
+            deste portal.
+          </p>
         </div>
       </div>
     </header>
-  );
-}
-
-function MobileNav() {
-  return (
-    <details className="group relative">
-      <summary
-        style={{ borderColor: "var(--th-border)" }}
-        className="flex h-9 w-9 cursor-pointer list-none flex-col items-center justify-center gap-1.5 rounded-lg border [&::-webkit-details-marker]:hidden"
-      >
-        <span style={{ background: "var(--th-text)" }} className="h-0.5 w-4.5 transition-transform group-open:translate-y-2 group-open:rotate-45" />
-        <span style={{ background: "var(--th-text)" }} className="h-0.5 w-4.5 transition-opacity group-open:opacity-0" />
-        <span style={{ background: "var(--th-text)" }} className="h-0.5 w-4.5 transition-transform group-open:-translate-y-2 group-open:-rotate-45" />
-      </summary>
-      <div
-        style={{ background: "var(--th-card)", borderColor: "var(--th-border)" }}
-        className="absolute right-0 top-full mt-2 w-52 rounded-2xl border p-3 shadow-2xl backdrop-blur-xl"
-      >
-        <nav className="flex flex-col gap-0.5">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              style={{ color: "var(--th-muted)" }}
-              className="rounded-lg px-3 py-2.5 text-sm font-medium hover:text-orange"
-            >
-              {link.label}
-            </a>
-          ))}
-          <div className="my-2 border-t" style={{ borderColor: "var(--th-border)" }} />
-          <a
-            href={`${APP_URL}/login`}
-            style={{ color: "var(--th-muted)" }}
-            className="rounded-lg px-3 py-2.5 text-sm font-medium hover:text-orange"
-          >
-            Entrar
-          </a>
-          <Link
-            href={`${APP_URL}/register`}
-            className="mt-1 flex w-full items-center justify-center rounded-lg bg-orange px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-light"
-          >
-            Criar conta
-          </Link>
-        </nav>
-      </div>
-    </details>
   );
 }

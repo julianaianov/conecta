@@ -8,7 +8,7 @@ const { HttpError, mapDbError, transitionDemand } = require('../demand/store');
 const { CONNECTABLE_STATUSES } = require('../interest/constants');
 const { effectiveRole } = require('../delegation');
 const {
-  PROFILE_PARTY_KIND, INTEREST_OFFER_CONTRIBUTION, SUPPORT_TYPE_CONTRIBUTION, INITIAL_STATUSES,
+  PROFILE_PARTY_KIND, INTEREST_OFFER_CONTRIBUTION, SUPPORT_TYPE_CONTRIBUTION, INITIAL_STATUSES, CONNECTION_TYPE_CONTRIBUTION,
   PROCESS_EVENT_TYPES, PROTOCOL_RE,
 } = require('./constants');
 const { statusesFor } = require('./state-machine');
@@ -282,8 +282,8 @@ async function formalize(db, { demandId, source, contribution = {}, formalizedBy
     `INSERT INTO connection_processes
        (demand_id, party_kind, party_user_id, party_organization_id, party_name, party_profile_type, origin_kind,
         origin_interest_id, origin_track_id, origin_offer_id, contribution_kinds, contribution_description,
-        contribution_amount_cents, status, formalized_by, formalized_by_kind)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::connection_contribution_kind[], $12, $13, $14, $15, $16)
+        contribution_amount_cents, status, formalized_by, formalized_by_kind, origin_connection_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::connection_contribution_kind[], $12, $13, $14, $15, $16, $17)
      RETURNING id`,
     [
       demandId, source.party.kind, source.party.userId, source.party.organizationId,
@@ -291,6 +291,8 @@ async function formalize(db, { demandId, source, contribution = {}, formalizedBy
       source.origin.interestId ?? null, source.origin.trackId ?? null, source.origin.offerId ?? null,
       merged.contributionKinds ?? [], merged.contributionDescription ?? null, merged.contributionAmountCents ?? null,
       source.status, formalizedBy, formalizedByKind,
+      // Conexão direta (T30): a origem é a própria conexão; nas demais o trigger a preenche.
+      source.origin.connectionId ?? null,
     ],
   );
   const row = await findProcess(db, rows[0].id);
@@ -337,6 +339,31 @@ async function formalizeFromConnection(db, { demandId, connectionId, formalizedB
   const track = { id: o.track_id, organization_id: o.organization_id, organization_name: o.organization_name, status: o.track_status };
   if (TRACK_CLOSED.includes(track.status)) return null;
   return formalize(db, { demandId, source: fromTrack(track, o), formalizedBy, formalizedByKind: 'agente' });
+}
+
+/**
+ * Parte e contribuição a partir da conexão direta pedida pelo Agente (T30):
+ * a conta do Parceiro que aceitou ou o órgão do Poder Público dela.
+ * `party`: `{ userId, name, profileType, organizationId? }`.
+ */
+function fromDirectConnection(connection, party) {
+  const isGovernment = Boolean(party.organizationId);
+  return {
+    party: {
+      kind: isGovernment ? 'poder_publico' : PROFILE_PARTY_KIND[party.profileType] ?? 'parceiro_outro',
+      userId: party.userId,
+      organizationId: isGovernment ? party.organizationId : null,
+      name: party.name || (isGovernment ? 'Poder Público' : 'Parceiro'),
+      profileType: isGovernment ? null : party.profileType ?? null,
+    },
+    contribution: {
+      contributionKinds: CONNECTION_TYPE_CONTRIBUTION[connection.type] ?? [],
+      contributionDescription: null,
+      contributionAmountCents: null,
+    },
+    origin: { kind: 'conexao_direta', connectionId: connection.id },
+    status: 'recebida',
+  };
 }
 
 /** Erros do trigger da migração 026 → HTTP; `null` quando o erro não é do processo. */
@@ -394,6 +421,7 @@ module.exports = {
   initialStatusFromTrack,
   formalize,
   formalizeFromConnection,
+  fromDirectConnection,
   mapProcessSpecific,
   mapProcessError,
 };

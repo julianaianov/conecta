@@ -20,7 +20,7 @@ test('enums da migração 030 = constantes; os 4 tipos novos da resposta institu
   assert.deepEqual(enumValues(sql, 'analysis_request_kind'), A.REQUEST_KINDS);
   assert.deepEqual(enumValues(sql, 'analysis_request_status'), A.REQUEST_STATUSES);
   assert.deepEqual(Object.keys(A.REQUEST_KIND_LABELS), A.REQUEST_KINDS);
-  const added = [...sql.matchAll(/ADD VALUE IF NOT EXISTS '([a-z_]+)'/g)].map((m) => m[1]);
+  const added = [...sql.matchAll(/ALTER TYPE institutional_response_type ADD VALUE IF NOT EXISTS '([a-z_]+)'/g)].map((m) => m[1]);
   assert.deepEqual(added, ['solicitacao_de_documentos', 'solicitacao_de_reuniao', 'solicitacao_de_analise_tecnica', 'recusa_com_motivo']);
   for (const value of added) {
     assert.ok(I.RESPONSE_TYPES.includes(value), value);

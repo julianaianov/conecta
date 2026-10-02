@@ -88,10 +88,11 @@ DO $$ BEGIN
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- De onde o processo nasceu.
+-- De onde o processo nasceu (`conexao_direta`: conexão pedida pelo Agente a um
+-- potencial parceiro, T30; banco existente e a regra da origem: migração 030).
 DO $$ BEGIN
   CREATE TYPE connection_process_origin AS ENUM (
-    'interesse', 'oferta_institucional', 'acompanhamento_institucional'
+    'interesse', 'oferta_institucional', 'acompanhamento_institucional', 'conexao_direta'
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 

@@ -28,6 +28,8 @@
 --   quantidade de documentos).
 -- - A gestão só lê (grant SELECT no dm-infra,
 --   db/migrations/gestao/027-gestao-app-post-deadlines-requests.sql).
+-- - No fim: origem `conexao_direta` do Processo de Conexão (conexão pedida
+--   pelo Agente a um potencial parceiro, T30, aceita pela outra parte).
 --
 -- Idempotente: pode rodar de novo (o deploy reaplica o manifesto inteiro). Os
 -- valores novos do enum não são usados como literal do tipo nesta migração
@@ -258,3 +260,28 @@ DROP TRIGGER IF EXISTS demand_analysis_requests_record_event ON demand_analysis_
 CREATE TRIGGER demand_analysis_requests_record_event
   AFTER INSERT OR UPDATE ON demand_analysis_requests
   FOR EACH ROW EXECUTE FUNCTION demand_analysis_requests_record_event();
+
+-- ---------------------------------------------------------------------------
+-- Conexão direta pedida pelo Agente (T30, "Potenciais parceiros"): aceita pelo
+-- Parceiro ou pelo órgão, também gera Processo de Conexão (decisão 13). A
+-- origem é a própria conexão do user-service (`origin_connection_id`, sem
+-- interesse nem oferta); o post-service confere, no aceite, que a conexão foi
+-- pedida pelo autor da demanda a quem aceita (routes/processes.js).
+ALTER TYPE connection_process_origin ADD VALUE IF NOT EXISTS 'conexao_direta';
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint
+              WHERE conrelid = 'connection_processes'::regclass AND conname = 'connection_processes_origin'
+                AND pg_get_constraintdef(oid) NOT LIKE '%conexao_direta%') THEN
+    ALTER TABLE connection_processes DROP CONSTRAINT connection_processes_origin;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                  WHERE conrelid = 'connection_processes'::regclass AND conname = 'connection_processes_origin') THEN
+    ALTER TABLE connection_processes ADD CONSTRAINT connection_processes_origin CHECK (
+      (origin_kind::text = 'interesse' AND origin_interest_id IS NOT NULL)
+      OR (origin_kind::text = 'oferta_institucional' AND origin_offer_id IS NOT NULL AND origin_track_id IS NOT NULL)
+      OR (origin_kind::text = 'acompanhamento_institucional' AND origin_track_id IS NOT NULL)
+      OR (origin_kind::text = 'conexao_direta' AND origin_connection_id IS NOT NULL
+          AND origin_interest_id IS NULL AND origin_offer_id IS NULL AND origin_track_id IS NULL));
+  END IF;
+END $$;

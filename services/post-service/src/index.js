@@ -134,7 +134,7 @@ const createApp = ({
   }));
   // Processo de Conexão com protocolo DM-AAAA-NNNNNN (T-05-01): /processes/* e
   // /demands[/mine]/:id/processes. Antes das rotas da demanda.
-  app.use('/', processesRoutes({ pool, auth, validatedAgent, institutionStatus }));
+  app.use('/', processesRoutes({ pool, auth, validatedAgent, institutionStatus, connections, governmentProfile }));
   // Respostas à análise (T-05-05): solicitar informações, documentos, reunião,
   // análise técnica e recusar com motivo. Antes das rotas da demanda.
   app.use('/demands', analysisRequestsRoutes({ pool, auth, validatedAgent, institutionStatus }));
