@@ -1,21 +1,52 @@
-import { MAP_THEME_FILTERS } from "@/lib/app/map";
+"use client";
+
+import React from "react";
 import {
   type DemandStatus,
-  type DemandTheme,
   type ThemeIntelligence,
 } from "@/lib/app/types";
 
-const THEME_COLORS: Record<DemandTheme, string> = {
-  iluminacao: "var(--c-pat)",
-  seguranca: "var(--c-sau)",
-  saneamento: "var(--c-soc)",
-  limpeza: "var(--c-ali)",
-  esporte: "var(--c-esp)",
-  educacao: "var(--c-edu)",
-  mobilidade: "var(--c-urb)",
-  cultura: "var(--c-cul)",
-  meio_ambiente: "var(--c-amb)",
+const CATS: Record<string, { name: string; c: string }> = {
+  edu: { name: "Educação", c: "var(--c-edu)" },
+  esp: { name: "Esporte", c: "var(--c-esp)" },
+  cul: { name: "Cultura", c: "var(--c-cul)" },
+  ani: { name: "Proteção Animal", c: "var(--c-ani)" },
+  amb: { name: "Meio Ambiente", c: "var(--c-amb)" },
+  sau: { name: "Saúde e Bem-estar", c: "var(--c-sau)" },
+  ali: { name: "Segurança Alimentar", c: "var(--c-ali)" },
+  rua: { name: "População em Situação de Rua", c: "var(--c-rua)" },
 };
+
+const PTS_DEMO = [
+  { k: "edu", sec: "Bairro A", st: 2, orc: 18, mob: 18 },
+  { k: "edu", sec: "Bairro J", st: 1, orc: 24, mob: 10 },
+  { k: "edu", sec: "Bairro G", st: 0, orc: 36, mob: 0 },
+  { k: "edu", sec: "Bairro H", st: 3, orc: 12, mob: 12 },
+  { k: "esp", sec: "Bairro A", st: 2, orc: 45, mob: 45 },
+  { k: "esp", sec: "Bairro B", st: 1, orc: 30, mob: 8 },
+  { k: "esp", sec: "Bairro C", st: 1, orc: 60, mob: 24 },
+  { k: "esp", sec: "Bairro E", st: 0, orc: 22, mob: 0 },
+  { k: "cul", sec: "Bairro J", st: 2, orc: 15, mob: 15 },
+  { k: "cul", sec: "Bairro D", st: 3, orc: 28, mob: 28 },
+  { k: "cul", sec: "Bairro E", st: 1, orc: 40, mob: 14 },
+  { k: "cul", sec: "Bairro K", st: 0, orc: 52, mob: 0 },
+  { k: "ani", sec: "Bairro H", st: 2, orc: 20, mob: 20 },
+  { k: "ani", sec: "Bairro F", st: 3, orc: 34, mob: 34 },
+  { k: "ani", sec: "Bairro D", st: 1, orc: 26, mob: 10 },
+  { k: "amb", sec: "Bairro I", st: 2, orc: 48, mob: 48 },
+  { k: "amb", sec: "Bairro K", st: 1, orc: 16, mob: 4 },
+  { k: "amb", sec: "Bairro B", st: 0, orc: 38, mob: 0 },
+  { k: "amb", sec: "Bairro A", st: 3, orc: 55, mob: 55 },
+  { k: "sau", sec: "Bairro G", st: 1, orc: 25, mob: 9 },
+  { k: "sau", sec: "Bairro I", st: 2, orc: 32, mob: 32 },
+  { k: "sau", sec: "Bairro C", st: 0, orc: 44, mob: 0 },
+  { k: "ali", sec: "Bairro D", st: 2, orc: 21, mob: 21 },
+  { k: "ali", sec: "Bairro J", st: 1, orc: 58, mob: 20 },
+  { k: "ali", sec: "Bairro F", st: 3, orc: 27, mob: 27 },
+  { k: "rua", sec: "Bairro B", st: 1, orc: 35, mob: 12 },
+  { k: "rua", sec: "Bairro G", st: 0, orc: 19, mob: 0 },
+  { k: "rua", sec: "Bairro A", st: 2, orc: 42, mob: 42 },
+];
 
 const STATUS_COLORS: Record<DemandStatus, string> = {
   em_analise: "var(--muted)",
@@ -39,55 +70,57 @@ const PUBLIC_STAGES: { id: DemandStatus; label: string }[] = [
   { id: "encerrada", label: "Encerradas" },
 ];
 
-const ACTION_KIND_LABELS: Record<string, string> = {
-  acao: "Ação pública",
-  programa: "Programa público",
-  servico: "Serviço público",
-  obra: "Obra pública",
-  evento_publico: "Evento público",
-  edital: "Edital público",
-};
-
 function countLabel(value: number): string {
   return value.toLocaleString("pt-BR");
 }
 
-function monthLabel(value: string): string {
-  const date = new Date(`${value}-01T12:00:00Z`);
-  return new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" })
-    .format(date)
-    .replace(".", "");
-}
-
-function dateLabel(value: string | null): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "UTC" }).format(date);
-}
-
-function DataUnavailable() {
-  return (
-    <div className="dg-empty" role="status">
-      Os indicadores públicos não estão disponíveis agora.
-    </div>
-  );
+function fmtR(v: number): string {
+  if (!v) return "R$ 0";
+  if (v >= 1000) return "R$ " + (v / 1000).toFixed(1).replace('.', ',') + " mi";
+  return "R$ " + v + " mil";
 }
 
 export function DataGovSection({ intelligence }: { intelligence: ThemeIntelligence | null }) {
-  const totalsByTheme = new Map(intelligence?.themes.map((theme) => [theme.theme, theme.total]) ?? []);
+  // Chart 1: Months data
+  const M = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const V = [18, 22, 19, 27, 31, 29, 35, 38, 34, 41, 44, 47];
+  const L = 34, R = 552, T = 10, B = 190, maxM = 50;
+  const step = (R - L) / 12;
+  const bw = step * 0.56;
+  const yVal = (v: number) => B - (v / maxM) * (B - T);
+
+  // Chart 2 & 4: Categories & resources
+  const byE = Object.entries(CATS).map(([k, C]) => {
+    const list = PTS_DEMO.filter((p) => p.k === k);
+    return {
+      k,
+      n: C.name,
+      v: list.length,
+      orc: list.reduce((a, p) => a + p.orc, 0),
+      mob: list.reduce((a, p) => a + p.mob, 0),
+    };
+  });
+  const mE = Math.max(...byE.map((r) => r.v));
+  const sortedByE = [...byE].sort((a, b) => b.v - a.v);
+
+  const mR = Math.max(...byE.map((r) => r.orc));
+  const sortedRec = [...byE].sort((a, b) => b.orc - a.orc);
+
+  // Chart 3: Territories x stages
+  const secs: Record<string, [number, number, number, number]> = {};
+  PTS_DEMO.forEach((p) => {
+    if (!secs[p.sec]) secs[p.sec] = [0, 0, 0, 0];
+    secs[p.sec][p.st]++;
+  });
+  const terrRows = Object.entries(secs)
+    .filter(([k]) => k !== "—")
+    .map(([k, a]) => ({ n: k, a, v: a.reduce((x, y) => x + y, 0) }))
+    .sort((a, b) => b.v - a.v)
+    .slice(0, 7);
+  const mT = Math.max(...terrRows.map((r) => r.v));
+
+  // Gov Dashboard Data
   const totalsByStatus = new Map(intelligence?.byStatus.map((item) => [item.status, item.total]) ?? []);
-  const months = intelligence?.byMonth ?? [];
-  const maxMonth = Math.max(1, ...months.map((item) => item.total));
-  const chartLeft = 34;
-  const chartRight = 552;
-  const chartTop = 10;
-  const chartBottom = 190;
-  const monthStep = (chartRight - chartLeft) / 12;
-  const monthBarWidth = monthStep * 0.56;
-  const yValue = (value: number) => chartBottom - (value / maxMonth) * (chartBottom - chartTop);
-  const ticks = [...new Set([0, Math.ceil(maxMonth / 2), maxMonth])];
-  const hasPublicDemands = (intelligence?.demandsTotal ?? 0) > 0;
   const maxStage = Math.max(1, ...(intelligence?.byStatus.map((item) => item.total) ?? []));
 
   return (
@@ -97,118 +130,150 @@ export function DataGovSection({ intelligence }: { intelligence: ThemeIntelligen
           <span className="eyebrow">Inteligência territorial</span>
           <h2 className="h2">Dados que orientam onde e como investir.</h2>
           <p className="lede">
-            Indicadores agregados das demandas públicas cadastradas no DM Conecta.
+            Quanto mais a plataforma é usada, mais completo fica o mapa dos projetos e do impacto nos territórios.
           </p>
         </div>
 
         <div className="temas">
-          <span className="k">Eixos de impacto · registros por eixo</span>
-          <ul>
-            {MAP_THEME_FILTERS.map(({ id, label }) => (
-              <li key={id}>
-                <i className="dg-theme-dot" aria-hidden="true" style={{ backgroundColor: THEME_COLORS[id] }} />
-                {label}
-                <b>{intelligence ? countLabel(totalsByTheme.get(id) ?? 0) : "—"}</b>
-              </li>
-            ))}
-          </ul>
           <p>
-            Uma demanda pode ser associada a mais de um eixo. Os indicadores mostram registros publicados, estágio e território, sem expor dados pessoais.
+            <b>Os dados mostram:</b> distribuição e número de projetos por eixo, público beneficiado, recursos mobilizados, projetos em execução e resultados alcançados.
           </p>
         </div>
 
         <div className="eq">
           <div className="eqb">
-            <span className="ico"><svg className="ico"><use href="#i-doc" /></svg></span>
+            <svg className="ico"><use href="#i-layers" /></svg>
             <h3>Dados organizados</h3>
-            <p>Demandas públicas com eixo, território, estágio e atores envolvidos.</p>
+            <p>Projetos com eixo, território, público, estágio e atores envolvidos.</p>
           </div>
           <div className="eqop" aria-hidden="true">+</div>
           <div className="eqb">
-            <span className="ico"><svg className="ico"><use href="#i-link" /></svg></span>
+            <svg className="ico"><use href="#i-clock" /></svg>
             <h3>Histórico de projetos e apoios</h3>
             <p>O que foi estruturado, apoiado e realizado.</p>
           </div>
           <div className="eqop" aria-hidden="true">+</div>
           <div className="eqb">
-            <span className="ico"><svg className="ico"><use href="#i-activity" /></svg></span>
+            <svg className="ico"><use href="#i-radar" /></svg>
             <h3>Inteligência territorial</h3>
             <p>Pessoas, iniciativas, potencial, recursos e impacto de cada território.</p>
           </div>
           <div className="eqop" aria-hidden="true">=</div>
           <div className="eqb res">
-            <span className="ico"><svg className="ico"><use href="#i-target" /></svg></span>
+            <svg className="ico" style={{ color: "#FF9A5C" }}><use href="#i-target" /></svg>
             <h3>Base para orientar investimentos sociais e ambientais e acompanhar impacto</h3>
           </div>
         </div>
 
-        <div className="charts">
+        <div className="charts charts4">
           <div className="cpanel">
             <div className="ch">
               <div>
-                <h3>Demandas publicadas por mês</h3>
-                <p className="sub">Últimos 12 meses · dados públicos</p>
+                <span className="cq">Como os projetos evoluem?</span>
+                <h3>Projetos cadastrados por mês</h3>
               </div>
-              <span className="tag-ex">Banco atualizado</span>
+              <span className="tag-ex">Exemplo</span>
             </div>
-            {intelligence === null ? <DataUnavailable /> : !hasPublicDemands ? (
-              <div className="dg-empty" role="status">Ainda não há demandas públicas para compor a série histórica.</div>
-            ) : (
-              <svg id="chMonth" viewBox="0 0 580 220" role="img" aria-label="Demandas públicas publicadas por mês nos últimos doze meses">
-                {ticks.map((tick) => (
-                  <g key={tick}>
-                    <line x1={chartLeft} x2={chartRight} y1={yValue(tick)} y2={yValue(tick)} className={tick ? "grid-l" : "base-l"} />
-                    <text x={chartLeft - 8} y={yValue(tick) + 4} textAnchor="end" className="ax">{tick}</text>
+            <svg id="chMonth" viewBox="0 0 560 220" role="img" aria-label="Gráfico de barras ilustrativo com projetos cadastrados por mês.">
+              {[0, 25, 50].map((t) => (
+                <g key={t}>
+                  <line x1={L} x2={R} y1={yVal(t)} y2={yVal(t)} className={t ? "grid-l" : "base-l"} />
+                  <text x={L - 8} y={yVal(t) + 4} textAnchor="end" className="ax">{t}</text>
+                </g>
+              ))}
+              {V.map((v, i) => {
+                const x = L + i * step + (step - bw) / 2;
+                const top = yVal(v);
+                const r = 4;
+                const d = `M${x} ${B} V${top + r} Q${x} ${top} ${x + r} ${top} H${x + bw - r} Q${x + bw} ${top} ${x + bw} ${top + r} V${B}Z`;
+                return (
+                  <g key={M[i]}>
+                    <path d={d} className={`vbar ${i === 11 ? "last" : ""}`} />
+                    <text x={x + bw / 2} y={B + 18} textAnchor="middle" className="ax">{M[i]}</text>
                   </g>
-                ))}
-                {months.map((item, index) => {
-                  const x = chartLeft + index * monthStep + (monthStep - monthBarWidth) / 2;
-                  const top = yValue(item.total);
-                  return (
-                    <g key={item.month}>
-                      <rect x={x} y={top} width={monthBarWidth} height={chartBottom - top} rx={4} className={`vbar ${index === months.length - 1 ? "last" : ""}`} />
-                      <text x={x + monthBarWidth / 2} y={chartBottom + 18} textAnchor="middle" className="ax">{monthLabel(item.month)}</text>
-                    </g>
-                  );
-                })}
-              </svg>
-            )}
+                );
+              })}
+              <text x={L + 11 * step + step / 2} y={yVal(47) - 8} textAnchor="middle" className="hbv">47</text>
+            </svg>
           </div>
 
           <div className="cpanel">
             <div className="ch">
               <div>
-                <h3>Demandas por eixo de impacto</h3>
-                <p className="sub">Contagem direta dos registros públicos</p>
+                <span className="cq">Em que áreas estão?</span>
+                <h3>Projetos por eixo de impacto</h3>
               </div>
-              <span className="tag-ex">Dados públicos</span>
+              <span className="tag-ex">Exemplo</span>
             </div>
-            {intelligence === null ? <DataUnavailable /> : (
-              <svg id="chType" viewBox="0 0 390 365" role="img" aria-label="Quantidade de demandas públicas por eixo de impacto">
-                {MAP_THEME_FILTERS.map(({ id, label }, index) => {
-                  const y = 8 + index * 39;
-                  const total = totalsByTheme.get(id) ?? 0;
-                  const width = intelligence.demandsWithTheme ? (total / Math.max(1, ...intelligence.themes.map((theme) => theme.total))) * 250 : 0;
-                  const color = THEME_COLORS[id];
-                  return (
-                    <g key={id}>
-                      <circle cx={6} cy={y + 7} r={5} fill={color} />
-                      <text x={18} y={y + 11} className="hbl">{label}</text>
-                      <rect x={0} y={y + 19} width={250} height={9} rx={5} className="dg-axis-track" />
-                      <rect x={0} y={y + 19} width={width} height={9} rx={5} fill={color} />
-                      <text x={262} y={y + 27} className="hbv">{countLabel(total)}</text>
-                    </g>
-                  );
-                })}
-              </svg>
-            )}
+            <div className="hb" id="chType" role="list" aria-label="Quantidade de projetos por eixo de impacto no mapa de demonstração">
+              {sortedByE.map((r) => (
+                <div className="hb-r" role="listitem" key={r.n} data-tip={`<b>${r.n}</b> · ${r.v} projetos (exemplo)`}>
+                  <span className="hb-n">{r.n}</span>
+                  <span className="hb-t"><i style={{ width: `${(r.v / mE) * 100}%` }} /></span>
+                  <span className="hb-v">{r.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="cpanel">
+            <div className="ch">
+              <div>
+                <span className="cq">Onde estão e em que estágio?</span>
+                <h3>Projetos por território</h3>
+              </div>
+              <span className="tag-ex">Exemplo</span>
+            </div>
+            <ul className="hb-leg" aria-label="Estágios">
+              <li><i className="s0" />Em estruturação</li>
+              <li><i className="s1" />Buscando apoio</li>
+              <li><i className="s2" />Em execução</li>
+              <li><i className="s3" />Concluído</li>
+            </ul>
+            <div className="hb" id="chTerr" role="list" aria-label="Projetos por bairro, divididos por estágio">
+              {terrRows.map((r) => (
+                <div className="hb-r" role="listitem" key={r.n} data-tip={`<b>${r.n}</b> · ${r.v} projetos`}>
+                  <span className="hb-n">{r.n}</span>
+                  <span className="hb-t hb-stack" style={{ width: `${(r.v / mT) * 100}%` }}>
+                    {r.a.map((c, i) => c ? <i key={i} className={`s${i}`} style={{ flex: c }} /> : null)}
+                  </span>
+                  <span className="hb-v">{r.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="cpanel">
+            <div className="ch">
+              <div>
+                <span className="cq">Quanto já foi mobilizado?</span>
+                <h3>Recursos por eixo de impacto</h3>
+              </div>
+              <span className="tag-ex">Exemplo</span>
+            </div>
+            <ul className="hb-leg" aria-label="Legenda">
+              <li><i className="m1" />Mobilizado</li>
+              <li><i className="m0" />Orçamento total</li>
+            </ul>
+            <div className="hb" id="chRec" role="list" aria-label="Recursos mobilizados em relação ao orçamento, por eixo de impacto">
+              {sortedRec.map((r) => {
+                const pct = r.orc > 0 ? Math.round((r.mob / r.orc) * 100) : 0;
+                return (
+                  <div className="hb-r hb-rec" role="listitem" key={r.n} data-tip={`<b>${r.n}</b> · Mobilizado: ${fmtR(r.mob)} · Orçamento: ${fmtR(r.orc)} (exemplo)`}>
+                    <span className="hb-n">{r.n}</span>
+                    <span className="hb-t hb-bullet" style={{ width: `${(r.orc / mR) * 100}%` }}>
+                      <i style={{ width: `${pct}%` }} />
+                    </span>
+                    <span className="hb-v">{pct}%</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         <p className="band-foot">
-          {intelligence
-            ? `Fonte: demandas públicas do banco do DM Conecta · ${intelligence.demandsTotal.toLocaleString("pt-BR")} demandas · atualização ${dateLabel(intelligence.generatedAt)}.`
-            : "Fonte: indicadores públicos do DM Conecta."}
+          Valores ilustrativos, usados apenas para demonstrar a visualização. Não representam dados reais.
         </p>
       </div>
 
@@ -234,24 +299,24 @@ export function DataGovSection({ intelligence }: { intelligence: ThemeIntelligen
           <div className="appbar" style={{ background: "var(--surface)" }}>
             <div className="ttl"><svg className="ico" style={{ width: 18, height: 18 }}><use href="#i-gov" /></svg>Painel de gestão</div>
             <div className="tabs" aria-hidden="true"><span className="on">Visão geral</span><span>Territórios</span><span>Programas e editais</span></div>
-            <span className="tag-ex sp">Indicadores públicos</span>
+            <span className="tag-ex sp">Dados fictícios</span>
           </div>
 
           <div className="scrollx" aria-label="Demandas públicas por estágio">
             <div className="pipe" id="pipe">
               <div className="pstage pstage-total">
                 <span className="k"><i style={{ background: "var(--petro-600)" }} />Demandas públicas</span>
-                <b>{intelligence ? countLabel(intelligence.demandsTotal) : "—"}</b>
-                <div className="meter" aria-hidden="true"><i style={{ width: intelligence?.demandsTotal ? "100%" : "0%" }} /></div>
+                <b>{intelligence ? countLabel(intelligence.demandsTotal) : "28"}</b>
+                <div className="meter" aria-hidden="true"><i style={{ width: "100%" }} /></div>
               </div>
               {PUBLIC_STAGES.map((stage) => {
-                const total = totalsByStatus.get(stage.id) ?? 0;
+                const total = totalsByStatus.get(stage.id) ?? (stage.id === "publicada" ? 7 : stage.id === "em_busca_de_parceiro" ? 9 : stage.id === "em_execucao" ? 8 : 4);
                 const color = STATUS_COLORS[stage.id];
                 return (
                   <div className={`pstage ${stage.id === "concluida" || stage.id === "encerrada" ? "done" : ""}`} key={stage.id}>
                     <span className="k"><i style={{ background: color }} />{stage.label}</span>
-                    <b>{intelligence ? countLabel(total) : "—"}</b>
-                    <div className="meter" aria-hidden="true"><i style={{ width: `${intelligence?.demandsTotal ? (total / maxStage) * 100 : 0}%`, background: color }} /></div>
+                    <b>{countLabel(total)}</b>
+                    <div className="meter" aria-hidden="true"><i style={{ width: `${(total / (maxStage || 10)) * 100}%`, background: color }} /></div>
                   </div>
                 );
               })}
@@ -260,42 +325,38 @@ export function DataGovSection({ intelligence }: { intelligence: ThemeIntelligen
 
           <div className="dcols">
             <div>
-              <h4>Demandas por território</h4>
-              {intelligence === null ? <DataUnavailable /> : intelligence.territories.length ? (
-                <div className="scrollx">
-                  <table className="pri">
-                    <thead><tr><th>Território</th><th>Demandas</th><th>Em execução</th><th>Concluídas</th></tr></thead>
-                    <tbody>
-                      {intelligence.territories.slice(0, 4).map((item) => (
-                        <tr key={`${item.territory}-${item.municipality ?? ""}-${item.uf ?? ""}`}>
-                          <td>{[item.territory, item.municipality, item.uf].filter(Boolean).join(" · ")}</td>
-                          <td>{countLabel(item.total)}</td>
-                          <td>{countLabel(item.inExecution)}</td>
-                          <td>{countLabel(item.concluded)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : <div className="dg-empty" role="status">Ainda não há demandas públicas com território informado.</div>}
+              <h4>Projetos por território</h4>
+              <div className="scrollx">
+                <table className="pri">
+                  <thead><tr><th>Bairro</th><th>Projetos</th><th>Em execução</th><th>Eixo principal</th></tr></thead>
+                  <tbody>
+                    <tr><td>Bairro J</td><td>9</td><td>2</td><td><span className="prio md">Esporte</span></td></tr>
+                    <tr><td>Bairro B</td><td>7</td><td>1</td><td><span className="prio md">Educação</span></td></tr>
+                    <tr><td>Bairro G</td><td>6</td><td>3</td><td><span className="prio md">Cultura</span></td></tr>
+                    <tr><td>Bairro I</td><td>4</td><td>2</td><td><span className="prio md">Meio Ambiente</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div>
-              <h4>Articulações institucionais publicadas</h4>
-              {intelligence === null ? <DataUnavailable /> : intelligence.recentGovernmentActions.length ? (
-                <ul className="resp">
-                  {intelligence.recentGovernmentActions.map((action) => (
-                    <li className="ritem" key={action.id}>
-                      <div className="who"><span>{action.organizationName}</span><span>{ACTION_KIND_LABELS[action.kind] ?? "Ação pública"}</span></div>
-                      <b>{action.title}</b>
-                      <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
-                        {[action.territory, action.municipality, action.uf].filter(Boolean).join(" · ") || "Território não informado"}
-                        {action.publishedAt ? ` · ${dateLabel(action.publishedAt)}` : ""}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : <div className="dg-empty" role="status">Ainda não há articulações institucionais públicas.</div>}
+              <h4>Articulações recentes</h4>
+              <ul className="resp">
+                <li className="ritem">
+                  <div className="who"><span>SECRETARIA (EXEMPLO)</span><span>Em articulação</span></div>
+                  <b>Escolinha de futebol · Bairro C</b>
+                  <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+                    Projeto relacionado a programa municipal de esporte e juventude.
+                  </span>
+                </li>
+                <li className="ritem">
+                  <div className="who"><span>ÓRGÃO PÚBLICO (EXEMPLO)</span><span>Divulgado</span></div>
+                  <b>Educação ambiental · Bairro J</b>
+                  <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+                    Edital de iniciativas socioambientais compartilhado com o projeto.
+                  </span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>

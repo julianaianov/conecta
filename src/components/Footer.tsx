@@ -16,7 +16,7 @@ const PLATFORM_LINKS = [
 const INSTITUTIONAL_LINKS = [
   { href: "#governanca", label: "Governança" },
   { href: "#governanca", label: "LGPD" },
-  { href: "/termos-de-uso", label: "Termos de uso" },
+  { href: "/termos-de-uso", label: "Termos de Uso", isTermos: true },
   { href: "/politica-de-privacidade", label: "Política de privacidade" },
   { href: "/seguranca-infantil", label: "Segurança infantil" },
 ];
@@ -54,7 +54,12 @@ export function Footer() {
             <ul>
               {INSTITUTIONAL_LINKS.map((item) => (
                 <li key={item.label}>
-                  <Link href={item.href}>{item.label}</Link>
+                  <Link
+                    href={item.href}
+                    data-termos={item.isTermos ? "true" : undefined}
+                  >
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>

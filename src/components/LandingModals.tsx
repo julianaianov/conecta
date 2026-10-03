@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, FormEvent, ChangeEvent } from "react";
+import { TermosModal } from "./TermosModal";
 
 const CONTACT_EMAIL = "dmconecta.app@core9.email";
 
@@ -225,6 +226,7 @@ export function LandingModals() {
   const [cadCidade, setCadCidade] = useState("");
   const [cadMsg, setCadMsg] = useState("");
   const [cadLgpd, setCadLgpd] = useState(false);
+  const [termosOpen, setTermosOpen] = useState(false);
 
   // Login form state
   const [lgEmail, setLgEmail] = useState("");
@@ -235,9 +237,24 @@ export function LandingModals() {
   const lastActiveRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#termos") {
+      setTermosOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
+
+      // Handle data-termos clicks
+      const termosBtn = target.closest("[data-termos]") as HTMLElement | null;
+      if (termosBtn) {
+        e.preventDefault();
+        lastActiveRef.current = termosBtn;
+        setTermosOpen(true);
+        return;
+      }
 
       // Handle data-cad clicks
       const cadBtn = target.closest("[data-cad]") as HTMLElement | null;
@@ -282,6 +299,7 @@ export function LandingModals() {
         if (lbData) setLbData(null);
         if (cadOpen) setCadOpen(false);
         if (loginOpen) setLoginOpen(false);
+        if (termosOpen) setTermosOpen(false);
         if (lastActiveRef.current) lastActiveRef.current.focus();
       }
     };
@@ -292,7 +310,7 @@ export function LandingModals() {
       document.removeEventListener("click", handleDocumentClick);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [cadOpen, loginOpen, lbData]);
+  }, [cadOpen, loginOpen, lbData, termosOpen]);
 
   const handleCadSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -1110,7 +1128,20 @@ export function LandingModals() {
               checked={cadLgpd}
               onChange={(e) => setCadLgpd(e.target.checked)}
             />
-            <span>Autorizo o uso dos meus dados para contato sobre o DM Conecta, conforme a LGPD.</span>
+            <span>
+              Li e concordo com os{" "}
+              <a
+                href="#termos"
+                data-termos
+                onClick={(e) => {
+                  e.preventDefault();
+                  setTermosOpen(true);
+                }}
+              >
+                Termos de Uso
+              </a>{" "}
+              e autorizo o uso dos meus dados para contato sobre o DM Conecta, conforme a LGPD.
+            </span>
           </label>
 
           <button type="submit" className="btn btn-primary lg-go">
@@ -1258,6 +1289,14 @@ export function LandingModals() {
           <figcaption id="lbCap">{lbData?.cap}</figcaption>
         </figure>
       </div>
+
+      <TermosModal
+        isOpen={termosOpen}
+        onClose={() => {
+          setTermosOpen(false);
+          if (lastActiveRef.current) lastActiveRef.current.focus();
+        }}
+      />
     </>
   );
 }
