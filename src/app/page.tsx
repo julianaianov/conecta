@@ -17,21 +17,21 @@ import { Steps } from "@/components/Steps";
 import { SupportSystem } from "@/components/SupportSystem";
 import { TransparencySection } from "@/components/TransparencySection";
 import { landingPageJsonLd } from "@/lib/seo/structured-data";
-import { getPublicMapPosts, getPublicPosts, getPublicRanking } from "@/lib/server/public-data";
+import {
+  getPublicDemandMapSnapshot,
+  getPublicThemeIntelligence,
+} from "@/lib/server/public-data";
 
 export default async function Home() {
-  const [posts, mapPosts, ranking] = await Promise.all([
-    getPublicPosts({ limit: 6 }),
-    getPublicMapPosts(),
-    getPublicRanking(),
+  const [demandMap, intelligence] = await Promise.all([
+    getPublicDemandMapSnapshot(),
+    getPublicThemeIntelligence(),
   ]);
-  const profiles = Object.values(ranking).flat();
-  const neighborhoods = new Set(posts.map((post) => post.neighborhood).filter(Boolean));
   const stats = [
-    { value: profiles.length.toLocaleString("pt-BR"), label: "Perfis publicados" },
-    { value: posts.length.toLocaleString("pt-BR"), label: "Sinais recentes" },
-    { value: neighborhoods.size.toLocaleString("pt-BR"), label: "Bairros nos sinais" },
-    { value: mapPosts.length.toLocaleString("pt-BR"), label: "Sinais no mapa" },
+    { value: intelligence?.demandsTotal.toLocaleString("pt-BR") ?? "—", label: "Demandas públicas" },
+    { value: intelligence?.demandsWithTheme.toLocaleString("pt-BR") ?? "—", label: "Com eixo de impacto" },
+    { value: intelligence?.territoriesTotal.toLocaleString("pt-BR") ?? "—", label: "Territórios informados" },
+    { value: demandMap?.counts.total.toLocaleString("pt-BR") ?? "—", label: "Demandas no mapa" },
   ];
 
   const jsonLd = landingPageJsonLd();
@@ -45,15 +45,15 @@ export default async function Home() {
       <LandingSvgSymbols />
       <Navbar />
       <main id="conteudo">
-        <Hero profiles={profiles} stats={stats} />
+        <Hero mapView={demandMap} intelligence={intelligence} stats={stats} />
         <Challenge />
         <Solution />
         <Steps />
         <Stakeholders />
         <Projects />
         <SupportSystem />
-        <SmartMap posts={mapPosts} />
-        <DataGovSection />
+        <SmartMap view={demandMap} intelligence={intelligence} />
+        <DataGovSection intelligence={intelligence} />
         <TransparencySection />
         <AISection />
         <GovernanceSection />

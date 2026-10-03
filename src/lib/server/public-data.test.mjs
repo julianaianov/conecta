@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveServerApiBase } from "./public-api.ts";
-import { getPublicPost, getPublicProfile, getPublicSupports } from "./public-data.ts";
+import { getPublicDemandMapSnapshot, getPublicPost, getPublicProfile, getPublicSupports } from "./public-data.ts";
 
 test("internal service URL wins over the public API URL", () => {
   assert.equal(
@@ -18,4 +18,5 @@ test("missing public sources keep typed empty results", async () => {
   assert.equal(await getPublicPost("missing"), null);
   assert.equal(await getPublicProfile("missing"), null);
   assert.deepEqual(await getPublicSupports("missing"), { summary: [], supports: [] });
+  assert.equal(await getPublicDemandMapSnapshot(), null);
 });

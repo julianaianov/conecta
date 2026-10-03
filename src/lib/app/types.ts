@@ -2942,6 +2942,34 @@ export interface ThemeIntelligence {
   generatedAt: string;
   demandsTotal: number;
   demandsWithTheme: number;
+  territoriesTotal: number;
+  byStatus: { status: DemandStatus; total: number }[];
+  /** Publicações por mês nos últimos 12 meses. */
+  byMonth: { month: string; total: number }[];
+  territories: {
+    territory: string;
+    municipality: string | null;
+    uf: string | null;
+    total: number;
+    inExecution: number;
+    concluded: number;
+  }[];
+  recentGovernmentActions: {
+    id: string;
+    kind: string;
+    title: string;
+    organizationName: string;
+    territory: string | null;
+    municipality: string | null;
+    uf: string | null;
+    publishedAt: string | null;
+  }[];
+  recentDemand: {
+    title: string;
+    status: DemandStatus;
+    territory: string | null;
+    publishedAt: string | null;
+  } | null;
   themes: { theme: DemandTheme; label: string; total: number; urgent: number; concluded: number; territories: number }[];
   byTerritory: {
     theme: DemandTheme; label: string; territory: string; municipality: string | null; uf: string | null;

@@ -369,13 +369,20 @@ const EMPTY_MAP_VIEW: MapView = {
   truncated: false,
 };
 
+export async function getPublicDemandMapSnapshot(
+  filter: MapFilterState = emptyMapFilter(),
+  options: MapQueryOptions = {},
+): Promise<MapView | null> {
+  const data = await fetchPublicJson<MapView>("posts", `/demands/map?${buildMapQuery(filter, options)}`);
+  if (!data || !Array.isArray(data.points) || !data.counts) return null;
+  return { ...data, clusters: Array.isArray(data.clusters) ? data.clusters : [] };
+}
+
 export async function getPublicDemandMap(
   filter: MapFilterState = emptyMapFilter(),
   options: MapQueryOptions = {},
 ): Promise<MapView> {
-  const data = await fetchPublicJson<MapView>("posts", `/demands/map?${buildMapQuery(filter, options)}`);
-  if (!data || !Array.isArray(data.points)) return EMPTY_MAP_VIEW;
-  return { ...data, clusters: Array.isArray(data.clusters) ? data.clusters : [] };
+  return (await getPublicDemandMapSnapshot(filter, options)) ?? EMPTY_MAP_VIEW;
 }
 
 export async function getPublicMapTerritories(filter?: MapFilterState): Promise<MapTerritory[]> {
@@ -388,7 +395,14 @@ export async function getPublicMapTerritories(filter?: MapFilterState): Promise<
 export async function getPublicThemeIntelligence(filter?: MapFilterState): Promise<ThemeIntelligence | null> {
   const query = filter ? `?${buildMapQuery(filter)}` : "";
   const data = await fetchPublicJson<ThemeIntelligence>("posts", `/demands/themes/intelligence${query}`);
-  return data && Array.isArray(data.themes) ? { ...data, byTerritory: Array.isArray(data.byTerritory) ? data.byTerritory : [] } : null;
+  return data && Array.isArray(data.themes) ? {
+    ...data,
+    byStatus: Array.isArray(data.byStatus) ? data.byStatus : [],
+    byMonth: Array.isArray(data.byMonth) ? data.byMonth : [],
+    territories: Array.isArray(data.territories) ? data.territories : [],
+    recentGovernmentActions: Array.isArray(data.recentGovernmentActions) ? data.recentGovernmentActions : [],
+    byTerritory: Array.isArray(data.byTerritory) ? data.byTerritory : [],
+  } : null;
 }
 
 // ── Engajamento, rankings e selos (T21) ────────────────────

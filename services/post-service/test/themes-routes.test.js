@@ -53,6 +53,17 @@ test('inteligência territorial: uma consulta, eixos zerados presentes e filtro 
       demands_with_theme: 3,
       by_theme: [{ theme: 'saneamento', total: 2, urgent: 1, concluded: 0, territories: 1 }],
       crossed: [{ theme: 'saneamento', territory: 'Centro', municipality: 'Niterói', uf: 'RJ', total: 2, urgent: 1, concluded: 0 }],
+      by_status: [{ status: 'publicada', total: 3 }, { status: 'em_execucao', total: 1 }],
+      by_month: [{ month: new Date().toISOString().slice(0, 7), total: 2 }],
+      territories: [{ territory: 'Centro', municipality: 'Niterói', uf: 'RJ', total: 3, in_execution: 1, concluded: 0 }],
+      territories_total: 1,
+      recent_actions: [{
+        id: 'action-1', kind: 'programa', title: 'Programa público', organization_name: 'Secretaria Municipal',
+        territory: 'Centro', municipality: 'Niterói', uf: 'RJ', published_at: new Date(),
+      }],
+      recent_demand: {
+        title: 'Ação de saneamento', status: 'em_execucao', territory: 'Centro', published_at: new Date(),
+      },
     }],
   } : null));
   await withServer(pool, async (base) => {
@@ -61,6 +72,14 @@ test('inteligência territorial: uma consulta, eixos zerados presentes e filtro 
     const body = await res.json();
     assert.equal(body.demandsTotal, 4);
     assert.equal(body.demandsWithTheme, 3);
+    assert.equal(body.territoriesTotal, 1);
+    assert.equal(body.byStatus.find((item) => item.status === 'publicada').total, 3);
+    assert.equal(body.byStatus.find((item) => item.status === 'em_execucao').total, 1);
+    assert.equal(body.byMonth.length, 12);
+    assert.equal(body.byMonth.at(-1).total, 2);
+    assert.equal(body.territories[0].inExecution, 1);
+    assert.equal(body.recentGovernmentActions[0].organizationName, 'Secretaria Municipal');
+    assert.equal(body.recentDemand.title, 'Ação de saneamento');
     assert.equal(body.themes.length, THEMES.length);
     const saneamento = body.themes.find((t) => t.theme === 'saneamento');
     assert.equal(saneamento.total, 2);
@@ -75,6 +94,8 @@ test('inteligência territorial: uma consulta, eixos zerados presentes e filtro 
   });
   const aggregate = pool.calls.filter((c) => /demand_themes/.test(c.text));
   assert.equal(aggregate.length, 1, 'uma consulta por requisição');
+  assert.match(aggregate[0].text, /government_actions/);
+  assert.match(aggregate[0].text, /visibility = 'visible'/);
   assert.ok(aggregate[0].params.some((p) => Array.isArray(p) && p.includes('saneamento')));
   assert.equal(aggregate[0].params.at(-1), INTELLIGENCE_MAX);
 });
