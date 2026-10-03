@@ -1571,7 +1571,7 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `AppShell` para versão nova; caixa de aceite no `/register` (o cadastro não
   segue sem ela). Páginas públicas: `/privacidade` (lista real do que é
   coletado, **derivada do schema**, com a tabela de origem de cada bloco),
-  `/termos-de-uso` (v1.0) e `/politica-de-privacidade` (v1.1), as três no
+  `/termos-de-uso` (v1.1) e `/politica-de-privacidade` (v1.1), as três no
   `sitemap.ts`.
 - `src/components/app/InDevelopment.tsx` é o aviso padrão de funcionalidade em
   desenvolvimento (slide 25). Hoje identifica: pagamento na plataforma

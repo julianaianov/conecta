@@ -34,7 +34,7 @@ export interface ConsentRecord {
 
 /** Documentos com aceite obrigatório, na ordem em que aparecem no cadastro. */
 export const CONSENT_DOCUMENTS: ConsentDocument[] = [
-  { key: "termos_de_uso", label: "Termos de Uso", version: "1.0", date: "2026-09-22", path: "/termos-de-uso" },
+  { key: "termos_de_uso", label: "Termos de Uso", version: "1.1", date: "2026-10-01", path: "/termos-de-uso" },
   { key: "politica_de_privacidade", label: "Política de Privacidade", version: "1.1", date: "2026-09-22", path: "/politica-de-privacidade" },
 ];
 

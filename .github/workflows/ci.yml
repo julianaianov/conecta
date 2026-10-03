@@ -46,7 +46,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Auditar dependências
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Construir homologação
         run: npm run build

@@ -14,8 +14,8 @@ const CONSENT_DOCUMENTS = [
   {
     key: 'termos_de_uso',
     label: 'Termos de Uso',
-    version: '1.0',
-    date: '2026-09-22',
+    version: '1.1',
+    date: '2026-10-01',
     path: '/termos-de-uso',
   },
   {
