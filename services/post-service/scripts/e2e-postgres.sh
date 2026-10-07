@@ -1,24 +1,18 @@
 #!/usr/bin/env bash
-# Sobe um PostgreSQL temporário (15+; no macOS, o do Homebrew), roda os testes
-# de ponta a ponta da demanda (test/demand-e2e.test.js), do dossiê
-# (test/dossier-e2e.test.js), da atuação institucional do Poder Público
-# (test/institutional-e2e.test.js), dos encaminhamentos (test/forwarding-e2e.test.js)
-# do interesse/conexão/oportunidades (test/interest-e2e.test.js), do apoio
-# (test/support-e2e.test.js), da execução com evidências
-# (test/execution-e2e.test.js), da prestação de contas
-# (test/accountability-e2e.test.js), do mapa inteligente (test/map-e2e.test.js) e do
-# engajamento/rankings/selos (test/engagement-e2e.test.js) e da denúncia de
-# conteúdo e de perfil (test/report-e2e.test.js) e da área de governo e gestão
-# pública (test/government-e2e.test.js) e dos direitos do titular
-# (test/privacy-e2e.test.js) e dos eventos e inscrições (test/event-e2e.test.js)
-# e das sugestões de inteligência artificial (test/ai-e2e.test.js, com o cliente
-# do modelo simulado: nenhuma chamada à API do Claude) e da central de
-# notificações (test/notifications-e2e.test.js, que cria também um user_db),
-# do Processo de Conexão (test/process-e2e.test.js) e dos prazos e alertas
-# (test/deadline-e2e.test.js) e das respostas à análise (test/analysis-e2e.test.js),
-# e do encerramento da demanda (test/closure-e2e.test.js),
-# cada um num banco novo, e destrói o cluster no fim, com sucesso ou falha.
-# Nada é gravado fora do diretório temporário.
+# Sobe um PostgreSQL temporário (15+; no macOS, o do Homebrew) e roda TODOS os
+# testes de ponta a ponta do post-service (um arquivo test/<suite>-e2e.test.js
+# por assunto: demanda, dossiê, atuação institucional, encaminhamentos,
+# interesse e conexão, apoio, execução, prestação de contas, mapa, engajamento,
+# denúncia, governo, privacidade, eventos, inteligência artificial (com o
+# cliente do modelo simulado: nenhuma chamada à API do Claude), central de
+# notificações (que cria também um user_db), Processo de Conexão, prazos,
+# respostas à análise, encerramento, conexão direta etc.), cada um num banco
+# novo, e destrói o cluster no fim, com sucesso ou falha. Nada é gravado fora do
+# diretório temporário.
+#
+# A lista de suítes vem dos arquivos: um teste novo entra sem editar este script.
+# Uma suíte que falha NÃO interrompe as seguintes: todas rodam, o resumo no fim
+# nomeia as que falharam e o script sai com status 1.
 #
 # Uso: npm run test:e2e   (PG_BIN=/caminho/bin para escolher a versão)
 set -euo pipefail
@@ -54,8 +48,28 @@ trap cleanup EXIT
 "$PG_BIN/initdb" -D "$tmp/data" -U postgres --auth=trust -E UTF8 --locale=C >/dev/null
 "$PG_BIN/pg_ctl" -D "$tmp/data" -l "$tmp/postgres.log" -w \
   -o "-p $port -k $tmp -c listen_addresses=127.0.0.1" start >/dev/null
-for suite in demand dossier institutional forwarding interest support execution accountability map engagement report government privacy event ai notifications process deadline analysis closure; do
-  "$PG_BIN/createdb" -h 127.0.0.1 -p "$port" -U postgres "post_db_$suite"
-  DM_E2E_DATABASE_URL="postgresql://postgres@127.0.0.1:$port/post_db_$suite" \
-    NODE_ENV=test node --test "test/$suite-e2e.test.js"
+suites=()
+for file in test/*-e2e.test.js; do
+  [[ -e "$file" ]] || continue
+  name="$(basename "$file")"
+  suites+=("${name%-e2e.test.js}")
 done
+if (( ${#suites[@]} == 0 )); then
+  echo "Nenhum test/*-e2e.test.js encontrado" >&2
+  exit 1
+fi
+
+failed=()
+for suite in "${suites[@]}"; do
+  "$PG_BIN/createdb" -h 127.0.0.1 -p "$port" -U postgres "post_db_$suite"
+  if ! DM_E2E_DATABASE_URL="postgresql://postgres@127.0.0.1:$port/post_db_$suite" \
+      NODE_ENV=test node --test "test/$suite-e2e.test.js"; then
+    failed+=("$suite")
+  fi
+done
+
+if (( ${#failed[@]} > 0 )); then
+  echo "Suítes e2e com falha (${#failed[@]} de ${#suites[@]}): ${failed[*]}" >&2
+  exit 1
+fi
+echo "Suítes e2e: ${#suites[@]} de ${#suites[@]} passaram"

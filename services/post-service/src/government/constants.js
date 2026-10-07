@@ -26,7 +26,7 @@ const INDICATOR_IDS = INDICATORS.map((i) => i.id);
 const INDICATOR_SOURCES = {
   demandas_recebidas: 'Demandas publicadas no recorte e no período.',
   demandas_por_territorio: 'Mesmas demandas, agrupadas pelo território informado na demanda.',
-  demandas_por_categoria: 'Mesmas demandas, agrupadas pelas 5 categorias da fonte.',
+  demandas_por_categoria: 'Mesmas demandas, agrupadas pela categoria da demanda (todas as categorias aparecem, inclusive as sem demanda no recorte).',
   demandas_urgentes: 'Demandas com prioridade urgente ou da categoria Problema Urgente.',
   demandas_encaminhadas: 'Demandas com encaminhamento registrado pelo órgão ou acompanhamento em Encaminhada.',
   demandas_em_execucao: 'Demandas em execução (status da demanda ou do acompanhamento do órgão).',

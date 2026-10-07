@@ -216,12 +216,16 @@ test('central de notificações: devolução, publicação, resposta institucion
         body: { preferences: [{ kind: 'atualizacao_de_processo', inApp: true, email: false }] },
       })).status, 200);
       await call('POST', '/notifications/read', { body: { all: true } });
+      // `analise_em_andamento` só registra a resposta: gera apenas o aviso de
+      // atualização de processo. (`informacoes_adicionais` também abre uma
+      // solicitação ao Agente, T-05-05, e esta avisa por outro tipo; ver abaixo.)
       assert.equal((await call('POST', `/institutional/demands/${demand}/responses`, {
-        as: GOV, body: { type: 'informacoes_adicionais', body: 'Vistoria marcada.' },
+        as: GOV, body: { type: 'analise_em_andamento', body: 'Vistoria marcada.' },
       })).status, 201);
       const { rows: [latest] } = await pool.query(
         `SELECT n.id, (SELECT count(*)::int FROM email_outbox o WHERE o.notification_id = n.id) AS outbox
-           FROM notifications n WHERE n.user_id = $1 AND n.read_at IS NULL`, [AGENT],
+           FROM notifications n
+          WHERE n.user_id = $1 AND n.kind = 'atualizacao_de_processo' AND n.read_at IS NULL`, [AGENT],
       );
       assert.equal(latest.outbox, 0);
       // App desligado e e-mail desligado: nenhum aviso.
@@ -229,8 +233,17 @@ test('central de notificações: devolução, publicação, resposta institucion
         body: { preferences: [{ kind: 'atualizacao_de_processo', inApp: false, email: false }] },
       });
       await call('POST', '/notifications/read', { body: { all: true } });
-      await call('POST', `/institutional/demands/${demand}/responses`, { as: GOV, body: { type: 'informacoes_adicionais', body: 'Equipe a caminho.' } });
+      assert.equal((await call('POST', `/institutional/demands/${demand}/responses`, {
+        as: GOV, body: { type: 'analise_em_andamento', body: 'Equipe a caminho.' },
+      })).status, 201);
       assert.equal((await inbox(AGENT, '?unread=1')).unreadCount, 0);
+      // A preferência é por tipo: pedir informações ao Agente vira uma
+      // "Solicitação de análise" (§08, T-05-05), tipo à parte que segue ligado.
+      assert.equal((await call('POST', `/institutional/demands/${demand}/responses`, {
+        as: GOV, body: { type: 'informacoes_adicionais', body: 'Envie a planta do local.' },
+      })).status, 201);
+      box = await inbox(AGENT, '?unread=1');
+      assert.deepEqual(box.notifications.map((n) => n.kind), ['solicitacao_de_analise']);
 
       // ── Caixa de saída sem provedor: tudo desligado, nada falha ──────────
       const { rows: [pending] } = await pool.query("SELECT count(*)::int AS n FROM email_outbox WHERE status = 'pendente'");

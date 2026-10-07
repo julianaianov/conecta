@@ -135,8 +135,9 @@ async function loadIndicators(db, { organizationId, profile, filters }) {
     byTerritory: (row.by_territory ?? []).map((t) => ({
       label: t.label, uf: t.uf ?? null, total: t.total, urgent: t.urgent, concluded: t.concluded,
     })),
-    // As 5 categorias sempre aparecem, inclusive com zero: o painel mostra a
-    // distribuição inteira, não só o que existe.
+    // Todas as categorias da demanda (CATEGORIES: 12, Modelo de Conexão §03)
+    // aparecem sempre, inclusive com zero: o painel mostra a distribuição
+    // inteira, não só o que existe.
     byCategory: CATEGORIES.map((category) => {
       const found = byCategory.get(category);
       return {

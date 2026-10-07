@@ -15,6 +15,7 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const { createApp } = require('../src');
 const { createIndicatorCache } = require('../src/government/cache');
+const { CATEGORIES } = require('../src/demand/constants');
 
 const DATABASE_URL = process.env.DM_E2E_DATABASE_URL;
 const SECRET = 'post-service-e2e-secret-0123456789abcdef';
@@ -147,8 +148,12 @@ test('governo: indicadores reais, recorte, priorização, ações divulgadas e e
       assert.equal(jurisdicao.body.indicators.demandas_encaminhadas, 0);
       assert.equal(jurisdicao.body.indicators.demandas_concluidas, 0);
       assert.equal(jurisdicao.body.indicators.beneficiarios_alcancados, 0);
-      assert.equal(jurisdicao.body.byCategory.length, 5);
+      // As 12 categorias da demanda (Modelo de Conexão §03, decisão 15) aparecem
+      // sempre, na ordem do vocabulário, inclusive as sem demanda no recorte.
+      assert.equal(jurisdicao.body.byCategory.length, 12);
+      assert.deepEqual(jurisdicao.body.byCategory.map((c) => c.category), CATEGORIES);
       assert.equal(jurisdicao.body.byCategory.find((c) => c.category === 'problema_urbano').total, 1);
+      assert.equal(jurisdicao.body.byCategory.filter((c) => c.total === 0).length, 9, 'só 3 categorias têm demanda no recorte');
       assert.deepEqual(
         [...jurisdicao.body.byTerritory.map((t) => t.label)].sort(),
         ['Centro', 'Zona Oeste'],
