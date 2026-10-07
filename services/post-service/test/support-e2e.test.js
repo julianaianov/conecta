@@ -92,7 +92,7 @@ test('apoio: modalidades da fonte, dupla confirmação, transparência e meus ap
           problemIdentified: 'Situação sem resposta no território.', coverageArea: 'Bairro e entorno.',
           priority: 'alta', photoRef: 'https://example.org/foto.jpg', cep: '22790-000', street: 'Rua A',
           addressNumber: '10', district: 'Recreio', municipality: 'Rio de Janeiro', uf: 'RJ',
-          latitude: -23.02, longitude: -43.45, territory: 'Recreio dos Bandeirantes',
+          latitude: -23.02, longitude: -43.45, territory: 'Recreio dos Bandeirantes', themes: ['educacao'],
         },
       });
       assert.equal(created.status, 201, JSON.stringify(created.body));
@@ -252,6 +252,22 @@ test('apoio: modalidades da fonte, dupla confirmação, transparência e meus ap
         as: AGENT, body: { note: 'Resolvido com o parceiro.' },
       });
       assert.equal(resolved.body.support.receiptStatus, 'confirmado', 'contestado → confirmado');
+
+      // Inteligência territorial (landing): o mobilizado por eixo soma só apoio
+      // confirmado com valor autorizado. O patrocínio de R$ 5.000 está confirmado,
+      // mas sem valor público: fica fora; a doação de R$ 1.500 entra.
+      const intelligence = await call('GET', '/demands/themes/intelligence', { auth: false });
+      assert.equal(intelligence.status, 200);
+      const educacao = intelligence.body.themes.find((t) => t.theme === 'educacao');
+      assert.equal(educacao.total, 1);
+      assert.equal(educacao.budgetCents, 200000, 'orçamento original da demanda');
+      assert.equal(educacao.mobilizedCents, 150000, 'só o apoio confirmado com valor público');
+      assert.equal(intelligence.body.totals.mobilizedCents, 150000, 'total do recorte, cada demanda uma vez');
+      assert.ok(intelligence.body.totals.budgetCents >= 200000);
+      assert.equal(intelligence.body.totals.beneficiariesReached, 0, 'sem prestação de contas concluída');
+      const semApoio = intelligence.body.themes.find((t) => t.theme === 'cultura');
+      assert.equal(semApoio.budgetCents, 0);
+      assert.equal(semApoio.mobilizedCents, 0);
 
       // Apoio confirmado não é cancelado; o declarado é.
       assert.equal((await call('POST', `/demands/${demand}/supports/${donation.body.support.id}/cancel`)).status, 409);

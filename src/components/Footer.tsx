@@ -5,12 +5,11 @@ import { InDevelopment } from "./app/InDevelopment";
 const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=org.dmconecta.app";
 
 const PLATFORM_LINKS = [
-  { href: "#solucao", label: "O DM Conecta" },
+  { href: "#sobre", label: "O desafio" },
+  { href: "#para-quem", label: "Quem participa" },
   { href: "#como-funciona", label: "Como funciona" },
   { href: "#projetos", label: "Projetos e eixos" },
-  { href: "#para-quem", label: "Quem participa" },
   { href: "#impacto", label: "Transparência" },
-  { href: "#faq", label: "Perguntas frequentes" },
 ];
 
 const INSTITUTIONAL_LINKS = [
@@ -86,7 +85,7 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <span className="ft-soon">Canais institucionais em breve</span>
+                <a href="mailto:contato@dmconecta.org" data-contact>Enviar mensagem</a>
               </li>
               <li className="pt-2">
                 <a
@@ -117,7 +116,7 @@ export function Footer() {
 
         <div className="fbot">
           <span>&copy; {new Date().getFullYear()} DM Conecta</span>
-          <span>Dados, mapas e imagens desta página são ilustrativos. Funcionalidades em desenvolvimento estão identificadas.</span>
+          <span>Números, mapas e indicadores desta página vêm dos dados públicos da plataforma. As imagens são ilustrativas. Funcionalidades em desenvolvimento estão identificadas.</span>
         </div>
       </div>
     </footer>

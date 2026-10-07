@@ -34,6 +34,7 @@ import { mapPublicInstitutionRecord } from "../app/institution.ts";
 import { resolveMediaUrl } from "../app/uploads.ts";
 import { runtime } from "../app/runtime.ts";
 import { boundedPublicLimit, fetchPublicJson, MAX_PUBLIC_LIST_LIMIT } from "./public-api.ts";
+import { normalizeMapView, normalizeThemeIntelligence } from "../app/landing.ts";
 import { buildMapQuery, emptyMapFilter, type MapFilterState, type MapQueryOptions } from "../app/map.ts";
 import type {
   EventAgendaFilter, EventSignupSummary, EventTerritory, PublicEvent,
@@ -373,9 +374,7 @@ export async function getPublicDemandMapSnapshot(
   filter: MapFilterState = emptyMapFilter(),
   options: MapQueryOptions = {},
 ): Promise<MapView | null> {
-  const data = await fetchPublicJson<MapView>("posts", `/demands/map?${buildMapQuery(filter, options)}`);
-  if (!data || !Array.isArray(data.points) || !data.counts) return null;
-  return { ...data, clusters: Array.isArray(data.clusters) ? data.clusters : [] };
+  return normalizeMapView(await fetchPublicJson<MapView>("posts", `/demands/map?${buildMapQuery(filter, options)}`));
 }
 
 export async function getPublicDemandMap(
@@ -394,15 +393,9 @@ export async function getPublicMapTerritories(filter?: MapFilterState): Promise<
 /** Inteligência territorial por eixo temático (T26, slide 26); `null` sem resposta. */
 export async function getPublicThemeIntelligence(filter?: MapFilterState): Promise<ThemeIntelligence | null> {
   const query = filter ? `?${buildMapQuery(filter)}` : "";
-  const data = await fetchPublicJson<ThemeIntelligence>("posts", `/demands/themes/intelligence${query}`);
-  return data && Array.isArray(data.themes) ? {
-    ...data,
-    byStatus: Array.isArray(data.byStatus) ? data.byStatus : [],
-    byMonth: Array.isArray(data.byMonth) ? data.byMonth : [],
-    territories: Array.isArray(data.territories) ? data.territories : [],
-    recentGovernmentActions: Array.isArray(data.recentGovernmentActions) ? data.recentGovernmentActions : [],
-    byTerritory: Array.isArray(data.byTerritory) ? data.byTerritory : [],
-  } : null;
+  return normalizeThemeIntelligence(
+    await fetchPublicJson<ThemeIntelligence>("posts", `/demands/themes/intelligence${query}`),
+  );
 }
 
 // ── Engajamento, rankings e selos (T21) ────────────────────

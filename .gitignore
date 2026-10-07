@@ -46,3 +46,6 @@ ds-bundle/
 .design-sync/
 graphify-out/
 pnpm-lock.yaml
+
+# ── Referências de design (ficam em ../design, fora do repositório) ──
+/dm-conecta-landing-*.html

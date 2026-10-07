@@ -27,10 +27,24 @@ const serverApiEnv: ServerApiEnv = {
   production: process.env.NEXT_PUBLIC_RUNTIME_ENV === "production",
 };
 
+const BASE_ENV_NAME: Record<PublicService, string> = {
+  posts: "DM_INTERNAL_POST_API_URL",
+  users: "DM_INTERNAL_USER_API_URL",
+};
+
 function publicUrl(service: PublicService, path: string): string | null {
   const base = resolveServerApiBase(service, serverApiEnv);
   if (!base) return null;
   return `${base}/${path.replace(/^\/+/, "")}`;
+}
+
+/**
+ * A página pública cai em "indisponível" sem dizer por quê. O motivo vai para o
+ * log do servidor (nunca para o visitante): é o que separa "variável de rede
+ * interna ausente" de "serviço fora do ar" ou "rota respondeu erro".
+ */
+function reportUnavailable(service: PublicService, path: string, reason: string): void {
+  console.error(`[public-api] ${service} ${path.split("?")[0]} indisponível: ${reason}`);
 }
 
 /**
@@ -39,16 +53,23 @@ function publicUrl(service: PublicService, path: string): string | null {
  */
 export async function fetchPublicJson<T>(service: PublicService, path: string): Promise<T | null> {
   const url = publicUrl(service, path);
-  if (!url) return null;
+  if (!url) {
+    reportUnavailable(service, path, `${BASE_ENV_NAME[service]} (ou NEXT_PUBLIC_API_URL) não configurada no servidor`);
+    return null;
+  }
 
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
       next: { revalidate: PUBLIC_DATA_REVALIDATE_SECONDS },
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      reportUnavailable(service, path, `resposta HTTP ${response.status} de ${url.split("?")[0]}`);
+      return null;
+    }
     return (await response.json()) as T;
-  } catch {
+  } catch (error) {
+    reportUnavailable(service, path, `${error instanceof Error ? error.message : "falha de rede"} (${url.split("?")[0]})`);
     return null;
   }
 }

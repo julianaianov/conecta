@@ -46,20 +46,35 @@ function intelligenceSql(where, limitParam) {
       SELECT d.id, d.territory, d.municipality, d.uf, d.status::text AS status,
              d.published_at,
              (d.priority = 'urgente' OR d.category = 'problema_urgente') AS urgent,
-             (d.status IN ('concluida', 'prestacao_de_contas', 'encerrada')) AS concluded
+             (d.status IN ('concluida', 'prestacao_de_contas', 'encerrada')) AS concluded,
+             d.budget_amount_cents
         FROM demands d
        WHERE ${where}
     ),
+    -- Apoio já confirmado pelo Agente com valor autorizado para exibição
+    -- (mesma regra do supportTotals, T16): é o "mobilizado" do painel.
+    mobilized AS (
+      SELECT s.demand_id, round(sum(s.amount) * 100)::bigint AS cents
+        FROM supports s
+       WHERE s.demand_id IN (SELECT id FROM base)
+         AND s.canceled_at IS NULL AND s.status <> 'rejected'
+         AND s.amount_public AND s.receipt_status = 'confirmado'
+       GROUP BY s.demand_id
+    ),
     marked AS (
-      SELECT b.*, t.theme::text AS theme
-        FROM base b JOIN demand_themes t ON t.demand_id = b.id
+      SELECT b.*, t.theme::text AS theme, coalesce(m.cents, 0)::bigint AS mobilized_cents
+        FROM base b
+        JOIN demand_themes t ON t.demand_id = b.id
+        LEFT JOIN mobilized m ON m.demand_id = b.id
     ),
     by_theme AS (
       SELECT theme,
              count(*)::int AS total,
              count(*) FILTER (WHERE urgent)::int AS urgent,
              count(*) FILTER (WHERE concluded)::int AS concluded,
-             count(DISTINCT coalesce(nullif(btrim(territory), ''), '—'))::int AS territories
+             count(DISTINCT coalesce(nullif(btrim(territory), ''), '—'))::int AS territories,
+             coalesce(sum(budget_amount_cents), 0)::bigint AS budget_cents,
+             coalesce(sum(mobilized_cents), 0)::bigint AS mobilized_cents
         FROM marked GROUP BY theme
     ),
     crossed AS (
@@ -114,7 +129,7 @@ function intelligenceSql(where, limitParam) {
        LIMIT ${PUBLIC_ACTIONS_MAX}
     ),
     recent_demand AS (
-      SELECT d.title, d.status::text AS status,
+      SELECT d.id, d.title, d.status::text AS status,
              coalesce(nullif(btrim(d.territory), ''), nullif(btrim(d.municipality), ''), nullif(btrim(d.uf), '')) AS territory,
              d.published_at
         FROM demands d
@@ -124,6 +139,14 @@ function intelligenceSql(where, limitParam) {
     )
     SELECT (SELECT count(*)::int FROM base) AS demands_total,
            (SELECT count(DISTINCT id)::int FROM marked) AS demands_with_theme,
+           -- Totais do recorte, uma vez por demanda (a soma por eixo repete a
+           -- demanda que tem mais de um eixo). Pessoas beneficiadas só de
+           -- prestação de contas concluída (T18): é o número já publicado.
+           (SELECT coalesce(sum(budget_amount_cents), 0)::bigint FROM base) AS budget_cents_total,
+           (SELECT coalesce(sum(cents), 0)::bigint FROM mobilized) AS mobilized_cents_total,
+           (SELECT coalesce(sum(a.beneficiaries_reached), 0)::bigint
+              FROM demand_accountability a
+             WHERE a.status = 'concluida' AND a.demand_id IN (SELECT id FROM base)) AS beneficiaries_reached,
            coalesce((SELECT json_agg(x) FROM by_theme x), '[]'::json) AS by_theme,
            coalesce((SELECT json_agg(x) FROM crossed x), '[]'::json) AS crossed,
            coalesce((SELECT json_agg(x) FROM by_status x), '[]'::json) AS by_status,
@@ -171,6 +194,11 @@ module.exports = ({ pool }) => {
       demandsTotal: row.demands_total ?? 0,
       demandsWithTheme: row.demands_with_theme ?? 0,
       territoriesTotal: Number(row.territories_total) || 0,
+      totals: {
+        budgetCents: Number(row.budget_cents_total) || 0,
+        mobilizedCents: Number(row.mobilized_cents_total) || 0,
+        beneficiariesReached: Number(row.beneficiaries_reached) || 0,
+      },
       byStatus: PUBLIC_STATUSES.map((status) => ({ status, total: byStatus.get(status) ?? 0 })),
       byMonth: lastTwelveMonths().map((month) => ({ month, total: byMonth.get(month) ?? 0 })),
       territories: (row.territories ?? []).map((territory) => ({
@@ -194,6 +222,7 @@ module.exports = ({ pool }) => {
           : action.published_at ?? null,
       })),
       recentDemand: row.recent_demand ? {
+        id: row.recent_demand.id,
         title: row.recent_demand.title,
         status: row.recent_demand.status,
         territory: row.recent_demand.territory ?? null,
@@ -212,6 +241,9 @@ module.exports = ({ pool }) => {
           urgent: found?.urgent ?? 0,
           concluded: found?.concluded ?? 0,
           territories: found?.territories ?? 0,
+          // bigint chega como texto no `pg`; os valores cabem em Number.
+          budgetCents: Number(found?.budget_cents) || 0,
+          mobilizedCents: Number(found?.mobilized_cents) || 0,
         };
       }),
       byTerritory: crossed.map((c) => ({

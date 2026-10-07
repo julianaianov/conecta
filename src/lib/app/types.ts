@@ -2943,6 +2943,12 @@ export interface ThemeIntelligence {
   demandsTotal: number;
   demandsWithTheme: number;
   territoriesTotal: number;
+  /**
+   * Totais do recorte, cada demanda uma vez: orçamento original, apoio
+   * confirmado com valor público e pessoas beneficiadas das prestações de
+   * contas concluídas.
+   */
+  totals: { budgetCents: number; mobilizedCents: number; beneficiariesReached: number };
   byStatus: { status: DemandStatus; total: number }[];
   /** Publicações por mês nos últimos 12 meses. */
   byMonth: { month: string; total: number }[];
@@ -2965,12 +2971,19 @@ export interface ThemeIntelligence {
     publishedAt: string | null;
   }[];
   recentDemand: {
+    id: string;
     title: string;
     status: DemandStatus;
     territory: string | null;
     publishedAt: string | null;
   } | null;
-  themes: { theme: DemandTheme; label: string; total: number; urgent: number; concluded: number; territories: number }[];
+  themes: {
+    theme: DemandTheme; label: string; total: number; urgent: number; concluded: number; territories: number;
+    /** Orçamento original somado das demandas do eixo (centavos). */
+    budgetCents: number;
+    /** Apoio confirmado pelo Agente com valor autorizado para exibição (centavos). */
+    mobilizedCents: number;
+  }[];
   byTerritory: {
     theme: DemandTheme; label: string; territory: string; municipality: string | null; uf: string | null;
     slug: string; total: number; urgent: number; concluded: number;

@@ -3,6 +3,16 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 
+// Seções do menu, na ordem da narrativa da página.
+const NAV_SECTIONS = [
+  { id: "sobre", label: "O desafio" },
+  { id: "para-quem", label: "Quem participa" },
+  { id: "como-funciona", label: "Como funciona" },
+  { id: "projetos", label: "Projetos" },
+  { id: "territorio", label: "Impacto" },
+  { id: "impacto", label: "Transparência" },
+] as const;
+
 export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -12,7 +22,37 @@ export function Navbar() {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [currentSection, setCurrentSection] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const spyBar = useRef<HTMLElement>(null);
+
+  // Progresso de leitura e seção atual no menu.
+  useEffect(() => {
+    const root = document.documentElement;
+    const onScroll = () => {
+      const height = root.scrollHeight - window.innerHeight;
+      if (spyBar.current) spyBar.current.style.transform = `scaleX(${height > 0 ? Math.min(1, window.scrollY / height) : 0})`;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    onScroll();
+
+    let observer: IntersectionObserver | undefined;
+    if ("IntersectionObserver" in window) {
+      observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) if (entry.isIntersecting) setCurrentSection(entry.target.id);
+      }, { rootMargin: "-45% 0px -50% 0px" });
+      for (const { id } of NAV_SECTIONS) {
+        const target = document.getElementById(id);
+        if (target) observer.observe(target);
+      }
+    }
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      observer?.disconnect();
+    };
+  }, []);
 
   // Initialize theme
   useEffect(() => {
@@ -168,12 +208,6 @@ export function Navbar() {
         snip: "Confiança para empresas, organizações e poder público.",
       },
       {
-        elId: "faq",
-        title: "Perguntas Frequentes",
-        sec: "FAQ",
-        snip: "Dúvidas sobre cadastro, tipos de projeto, acompanhamento e LGPD.",
-      },
-      {
         elId: "participar",
         title: "Cadastrar Projeto / Quero Apoiar",
         sec: "Ação",
@@ -205,18 +239,9 @@ export function Navbar() {
     }
   };
 
-  const openCad = (profile: string) => {
-    window.dispatchEvent(
-      new CustomEvent("dmc:open-cad", { detail: { profile } }),
-    );
-  };
-
-  const openLogin = () => {
-    window.dispatchEvent(new CustomEvent("dmc:open-login"));
-  };
-
   return (
     <header className="site-header">
+      <span className="spy-bar" aria-hidden="true"><i id="spyBar" ref={spyBar} /></span>
       <div className="wrap">
         <div className="hdr">
           <Link href="#top" className="logo" aria-label="DM Conecta — início">
@@ -229,12 +254,9 @@ export function Navbar() {
           </Link>
 
           <nav className="nav" aria-label="Principal">
-            <a href="#solucao">O DM Conecta</a>
-            <a href="#como-funciona">Como funciona</a>
-            <a href="#projetos">Projetos</a>
-            <a href="#para-quem">Quem participa</a>
-            <a href="#impacto">Transparência</a>
-            <a href="#territorio">Impacto</a>
+            {NAV_SECTIONS.map((item) => (
+              <a href={`#${item.id}`} className={currentSection === item.id ? "is-cur" : undefined} key={item.id}>{item.label}</a>
+            ))}
           </nav>
 
           <div className="hdr-actions">
@@ -282,7 +304,6 @@ export function Navbar() {
               id="loginBtn"
               aria-haspopup="dialog"
               aria-controls="loginDlg"
-              onClick={openLogin}
             >
               <svg className="ico">
                 <use href="#i-login" />
@@ -290,29 +311,19 @@ export function Navbar() {
               <span>Entrar</span>
             </button>
 
-            <button
-              type="button"
-              className="btn btn-ghost hdr-apoio"
-              data-cad="parceiro"
-              onClick={() => openCad("parceiro")}
-            >
+            <Link className="btn btn-ghost hdr-apoio" href="/register?perfil=partner">
               <svg className="ico">
                 <use href="#i-heart" />
               </svg>
               <span>Quero apoiar</span>
-            </button>
+            </Link>
 
-            <button
-              type="button"
-              className="btn btn-primary"
-              data-cad="agente"
-              onClick={() => openCad("agente")}
-            >
+            <Link className="btn btn-primary" href="/register?perfil=agent">
               <svg className="ico">
                 <use href="#i-pin" />
               </svg>
               <span>Cadastrar projeto</span>
-            </button>
+            </Link>
 
             <button
               className="menu-btn"
@@ -332,57 +343,12 @@ export function Navbar() {
 
         {/* Mobile menu */}
         <nav className="mnav" id="mnav" aria-label="Menu móvel" hidden={!menuOpen}>
-          <a href="#solucao" onClick={() => setMenuOpen(false)}>
-            O DM Conecta
-          </a>
-          <a href="#como-funciona" onClick={() => setMenuOpen(false)}>
-            Como funciona
-          </a>
-          <a href="#projetos" onClick={() => setMenuOpen(false)}>
-            Projetos
-          </a>
-          <a href="#para-quem" onClick={() => setMenuOpen(false)}>
-            Quem participa
-          </a>
-          <a href="#impacto" onClick={() => setMenuOpen(false)}>
-            Transparência
-          </a>
-          <a href="#territorio" onClick={() => setMenuOpen(false)}>
-            Impacto
-          </a>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            style={{ textAlign: "left", justifyContent: "flex-start", padding: "12px 4px" }}
-            onClick={() => {
-              setMenuOpen(false);
-              openCad("parceiro");
-            }}
-          >
-            Quero apoiar
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            style={{ textAlign: "left", justifyContent: "flex-start", padding: "12px 14px" }}
-            onClick={() => {
-              setMenuOpen(false);
-              openCad("agente");
-            }}
-          >
-            Cadastrar projeto
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            style={{ textAlign: "left", justifyContent: "flex-start", padding: "12px 4px" }}
-            onClick={() => {
-              setMenuOpen(false);
-              openLogin();
-            }}
-          >
-            Entrar
-          </button>
+          {NAV_SECTIONS.map((item) => (
+            <a href={`#${item.id}`} onClick={() => setMenuOpen(false)} key={item.id}>{item.label}</a>
+          ))}
+          <Link href="/register?perfil=partner" onClick={() => setMenuOpen(false)}>Quero apoiar</Link>
+          <Link href="/register?perfil=agent" onClick={() => setMenuOpen(false)}>Cadastrar projeto</Link>
+          <a href="/login" data-open-login onClick={() => setMenuOpen(false)}>Entrar</a>
         </nav>
       </div>
 

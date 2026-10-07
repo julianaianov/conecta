@@ -1884,6 +1884,56 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `InDevelopment` e sem link; o botão Google Play leva à ficha
   `org.dmconecta.app`; nenhum `href="#"`. `landing-claims.test.mjs` confere
   os componentes importados por `page.tsx`.
+- **Dados da landing vêm do banco, sem amostra** (homologação e produção). `page.tsx`
+  tem `revalidate = 60`: a página é pré-gerada no build (sem API) e refeita no
+  servidor em produção, lendo `getPublicDemandMapSnapshot`,
+  `getPublicThemeIntelligence` e `getPublicMapTerritories` pela rede interna.
+  O resultado vai ao `LandingDataProvider` (`src/components/LandingData.tsx`);
+  `SmartMap`, `DataGovSection` e `TransparencySection` consomem por
+  `useLandingData()`. Se o SSR não conseguiu ler (`null`: variável
+  `DM_INTERNAL_POST_API_URL` ausente no web, post-service fora do ar), o
+  navegador relê as mesmas rotas públicas em `/api/posts/demands/...`
+  (`api.demandMap`, `api.themeIntelligence`, `api.mapTerritories`). Se falhar de
+  novo, as seções mostram o estado indisponível, nunca número inventado.
+  `fetchPublicJson` registra no log do servidor o motivo de cada falha
+  (`[public-api] posts /demands/map indisponível: ...`): é o primeiro lugar a olhar
+  quando a home mostra "O mapa público não está disponível agora".
+- Os números saem de `src/lib/app/landing.ts` (funções puras,
+  `landing.test.mjs`, que também impede a volta de amostras como `PTS_DEMO`,
+  "Bairro A" ou "(exemplo)" nos componentes), todos de
+  `GET /demands/themes/intelligence`: a faixa do mapa (`mapFlow`: projetos,
+  recursos, execução, resultados, impacto) usa `totals` — `budgetCents`,
+  `mobilizedCents` (apoio **confirmado**, com valor público e não cancelado, a
+  regra de `supportTotals`) e `beneficiariesReached` (soma das prestações de
+  contas `concluida`), cada demanda uma vez; os três gráficos em abas usam
+  `byMonth`, `territories` e `themes[].budgetCents`/`mobilizedCents`; o painel
+  de gestão usa `byStatus` e `recentGovernmentActions`.
+- Mapa da landing (`SmartMap`): Leaflet com as demandas publicadas e filtros
+  reais (território, eixo temático, estágio, período de publicação, "somente
+  com resultados"). Cada filtro refaz `GET /demands/map` e
+  `GET /demands/themes/intelligence` com o mesmo recorte
+  (`landingMapQueryFilter`); os eixos da barra lateral são os nove do banco
+  (T26), não os oito cartões editoriais da seção de projetos.
+- **Entrar e cadastro são os reais.** O modal "Entrar" chama `api.login` e segue
+  para `/feed`; os botões de cadastro são links para `/register?perfil=<papel>`
+  (`agent`, `partner`, `government`, `member`, `media`), que pré-seleciona a
+  categoria. `LandingModals` guarda só o login, o "Fale conosco"
+  (`data-contact`, abre o e-mail do visitante) e os Termos de Uso
+  (`data-termos`). Não há lista de lançamento nem formulário que só gera e-mail
+  no lugar do cadastro.
+- Segue como conteúdo editorial (não é dado): diagrama conceitual do desafio,
+  cartões de tipos de projeto e de perfis com imagens ilustrativas
+  identificadas, e o cartão "Como a sugestão funciona" da IA (o que entra e o
+  que volta, sem resultado de exemplo). O cartão de reconhecimento lista os sete
+  rankings reais e leva a `/ranking`.
+- Ordem e movimento: `Hero`, `Challenge` (+ `ChallengeScenario`), `Stakeholders`,
+  `Steps` (abas), `Projects` (dossiê e formas de apoiar), `SmartMap`,
+  `DataGovSection`, `AISection` (+ `AISimulation`), `TransparencySection`,
+  `GovernanceSection`, `CTABanner`. `LandingEffects` revela os blocos ao rolar;
+  a barra de progresso e o link ativo ficam no `Navbar`. As seções "O DM
+  Conecta", "Sistema de apoio" e "Perguntas frequentes" saíram com o desenho de
+  outubro de 2026. O CSS da landing (`src/app/landing.css`) é a folha da
+  referência de design, com o bloco "EXPERIÊNCIA DINÂMICA" no fim.
 - `Community`, `Features`, `TrustBar` e `FeatureIcon` foram apagados (código
   morto com "PIX… 10 formas de contribuir", contrário à decisão 5).
 

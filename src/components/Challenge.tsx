@@ -1,388 +1,79 @@
-"use client";
-
-import { useState } from "react";
+import type { CSSProperties } from "react";
+import { ChallengeScenario } from "@/components/ChallengeScenario";
 
 export function Challenge() {
-  const [connected, setConnected] = useState(false);
-
   return (
-    <section className="sec" id="sobre">
-      <div className="wrap challenge">
-        <div>
-          <span className="eyebrow">O desafio</span>
-          <h2 className="h2 ch-t" style={{ marginTop: 16 }}>
-            Existem projetos. Existem recursos.{" "}
-            <span className="hl">Falta conexão.</span>
-          </h2>
-          <p className="lede" style={{ marginTop: 18 }}>
-            Há iniciativas de impacto em todos os territórios, mas muitas não
-            têm estrutura, recursos ou conexões para crescer. E quem quer apoiar
-            não conta com uma infraestrutura única para encontrar, acompanhar e
-            medir esses projetos.
-          </p>
-          <dl className="trio">
-            <div>
-              <span className="tb">
-                <svg className="ico">
-                  <use href="#i-target" />
-                </svg>
-              </span>
-              <dt>Projetos</dt>
-              <dd>
-                Iniciativas sociais e ambientais com grande potencial, mas sem a
-                estrutura necessária para crescer.
-              </dd>
-            </div>
-            <div>
-              <span className="tb">
-                <svg className="ico">
-                  <use href="#i-box" />
-                </svg>
-              </span>
-              <dt>Recursos</dt>
-              <dd>
-                Empresas, institutos, patrocinadores e poder público querem
-                apoiar, mas não encontram os projetos.
-              </dd>
-            </div>
-            <div>
-              <span className="tb">
-                <svg className="ico">
-                  <use href="#i-people" />
-                </svg>
-              </span>
-              <dt>Pessoas e organizações</dt>
-              <dd>
-                Atuam de forma dispersa, sem acompanhamento nem resultados
-                comprovados.
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        <figure className="conn-card" style={{ margin: 0 }}>
-          <div className="conn-top">
-            <div className="seg" role="group" aria-label="Comparar cenários">
-              <button
-                type="button"
-                id="segA"
-                aria-pressed={!connected}
-                onClick={() => setConnected(false)}
-              >
-                Hoje
-              </button>
-              <button
-                type="button"
-                id="segB"
-                aria-pressed={connected}
-                onClick={() => setConnected(true)}
-              >
-                Com o DM Conecta
-              </button>
-            </div>
-            <span className="tag-ex">Diagrama conceitual</span>
+    <section className="sec dz-sec" id="sobre">
+      <div className="wrap">
+        <div className="dz-hero">
+          <div className="dz-ht">
+            <span className="eyebrow"><i className="eb-n" aria-hidden="true">01</i>O desafio</span>
+            <h2 className="h2 ch-t">Existem projetos.<br />Existem recursos.<br /><span className="hl">Falta conexão.</span></h2>
+            <p className="lede">Há iniciativas de impacto em todos os territórios e há quem queira apoiá-las. Mas não existe uma infraestrutura única que aproxime uns dos outros.</p>
           </div>
-
-          <div
-            id="connSvg"
-            className={`dx ${connected ? "on" : ""}`}
-            role="group"
-            aria-labelledby="connCap"
-          >
-            {/* SVG Connecting lines overlay */}
-            <svg
-              className="dx-lines"
-              id="dxLines"
-              viewBox="0 0 500 360"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              {connected ? (
-                <>
-                  {/* From Demanda to Core */}
-                  <path
-                    d="M 120 90 C 120 120, 180 120, 180 150"
-                    className="dx-ln in"
-                  />
-                  {/* From Recursos to Core */}
-                  <path
-                    d="M 380 90 C 380 120, 320 120, 320 150"
-                    className="dx-ln in"
-                  />
-                  {/* From Core to Atores */}
-                  <path
-                    d="M 250 215 C 250 240, 250 250, 250 270"
-                    className="dx-ln out"
-                  />
-                </>
-              ) : (
-                <>
-                  {/* Broken / Disconnected lines */}
-                  <path
-                    d="M 120 90 L 120 135"
-                    className="dx-ln in"
-                    strokeDasharray="4 4"
-                  />
-                  <g className="dx-x">
-                    <circle cx="120" cy="140" r="7" />
-                    <path d="M 117 137 L 123 143 M 123 137 L 117 143" />
-                  </g>
-                  <path
-                    d="M 380 90 L 380 135"
-                    className="dx-ln in"
-                    strokeDasharray="4 4"
-                  />
-                  <g className="dx-x">
-                    <circle cx="380" cy="140" r="7" />
-                    <path d="M 377 137 L 383 143 M 383 137 L 377 143" />
-                  </g>
-                  <path
-                    d="M 250 260 L 250 275"
-                    className="dx-ln out"
-                    strokeDasharray="4 4"
-                  />
-                  <g className="dx-x">
-                    <circle cx="250" cy="255" r="7" />
-                    <path d="M 247 252 L 253 258 M 253 252 L 247 258" />
-                  </g>
-                </>
-              )}
+          <div className="dz-sc" id="dzSc" role="img" aria-label="Projetos, recursos, pessoas e organizações dispersos, sem um ponto de encontro">
+            <svg className="dz-ln" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="20" y1="13" x2="32.6" y2="28.5" />
+              <line x1="81" y1="13" x2="68.0" y2="28.5" />
+              <line x1="13" y1="53" x2="28.5" y2="51.7" />
+              <line x1="89" y1="51" x2="72.6" y2="50.6" />
+              <line x1="23" y1="89" x2="34.3" y2="72.6" />
+              <line x1="77" y1="89" x2="65.7" y2="72.6" />
             </svg>
-
-            {/* Projetos */}
-            <section
-              className="dx-card dx-dem"
-              id="dxDem"
-              aria-label="Projetos"
-            >
-              <header>
-                <span className="dx-ic">
-                  <svg className="ico">
-                    <use href="#i-target" />
-                  </svg>
-                </span>
-                <h4>Projetos</h4>
-                <span className="dx-tag">Entrada</span>
-              </header>
-              <ul className="dx-list">
-                <li>
-                  <svg
-                    className="mini-pin"
-                    viewBox="-12 -31 24 32"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M0 0 C -2.6 -5.2 -10.5 -10.6 -10.5 -19 A10.5 10.5 0 1 1 10.5 -19 C 10.5 -10.6 2.6 -5.2 0 0Z"
-                      style={{ fill: "var(--c-esp)" }}
-                    />
-                    <circle cy="-19" r="4.4" fill="#fff" />
-                  </svg>
-                  Escolinha de futebol
-                </li>
-                <li>
-                  <svg
-                    className="mini-pin"
-                    viewBox="-12 -31 24 32"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M0 0 C -2.6 -5.2 -10.5 -10.6 -10.5 -19 A10.5 10.5 0 1 1 10.5 -19 C 10.5 -10.6 2.6 -5.2 0 0Z"
-                      style={{ fill: "var(--c-edu)" }}
-                    />
-                    <circle cy="-19" r="4.4" fill="#fff" />
-                  </svg>
-                  Reforço escolar
-                </li>
-                <li>
-                  <svg
-                    className="mini-pin"
-                    viewBox="-12 -31 24 32"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M0 0 C -2.6 -5.2 -10.5 -10.6 -10.5 -19 A10.5 10.5 0 1 1 10.5 -19 C 10.5 -10.6 2.6 -5.2 0 0Z"
-                      style={{ fill: "var(--c-ani)" }}
-                    />
-                    <circle cy="-19" r="4.4" fill="#fff" />
-                  </svg>
-                  Castração solidária
-                </li>
-              </ul>
-            </section>
-
-            {/* Recursos */}
-            <section
-              className="dx-card dx-rec"
-              id="dxRec"
-              aria-label="Recursos"
-            >
-              <header>
-                <span className="dx-ic">
-                  <svg className="ico">
-                    <use href="#i-box" />
-                  </svg>
-                </span>
-                <h4>Recursos</h4>
-                <span className="dx-tag">Entrada</span>
-              </header>
-              <ul className="dx-list">
-                <li>
-                  <svg
-                    className="mini-pin"
-                    viewBox="-12 -31 24 32"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M0 0 C -2.6 -5.2 -10.5 -10.6 -10.5 -19 A10.5 10.5 0 1 1 10.5 -19 C 10.5 -10.6 2.6 -5.2 0 0Z"
-                      style={{ fill: "var(--c-pat)" }}
-                    />
-                    <circle cy="-19" r="4.4" fill="#fff" />
-                  </svg>
-                  Patrocínio
-                </li>
-                <li>
-                  <svg
-                    className="mini-pin"
-                    viewBox="-12 -31 24 32"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M0 0 C -2.6 -5.2 -10.5 -10.6 -10.5 -19 A10.5 10.5 0 1 1 10.5 -19 C 10.5 -10.6 2.6 -5.2 0 0Z"
-                      style={{ fill: "var(--c-soc)" }}
-                    />
-                    <circle cy="-19" r="4.4" fill="#fff" />
-                  </svg>
-                  Voluntariado
-                </li>
-                <li>
-                  <svg
-                    className="mini-pin"
-                    viewBox="-12 -31 24 32"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M0 0 C -2.6 -5.2 -10.5 -10.6 -10.5 -19 A10.5 10.5 0 1 1 10.5 -19 C 10.5 -10.6 2.6 -5.2 0 0Z"
-                      style={{ fill: "var(--c-urb)" }}
-                    />
-                    <circle cy="-19" r="4.4" fill="#fff" />
-                  </svg>
-                  Programas públicos
-                </li>
-              </ul>
-            </section>
-
-            {/* Core: DM Conecta */}
-            <section
-              className="dx-core"
-              id="dxCore"
-              aria-label="DM Conecta"
-            >
-              <header>
-                <svg className="dx-logo" aria-hidden="true">
-                  <use href="#logo-mark" />
-                </svg>
-                <div>
-                  <strong>DM Conecta</strong>
-                  <span>Infraestrutura digital</span>
-                </div>
-              </header>
-              <div className="dx-mods">
-                <div className="dx-mod" id="dxModO">
-                  <svg className="ico">
-                    <use href="#i-layers" />
-                  </svg>
-                  Estrutura
-                </div>
-                <div className="dx-mod" id="dxModC">
-                  <svg className="ico">
-                    <use href="#i-link" />
-                  </svg>
-                  Conecta
-                </div>
-                <div className="dx-mod" id="dxModD">
-                  <svg className="ico">
-                    <use href="#i-activity" />
-                  </svg>
-                  Acompanha
-                </div>
-              </div>
-              <p className="dx-empty">Sem ponto de encontro</p>
-            </section>
-
-            {/* Atores: Pessoas e organizações */}
-            <section
-              className="dx-card dx-act"
-              id="dxAct"
-              aria-label="Pessoas e organizações"
-            >
-              <header>
-                <span className="dx-ic">
-                  <svg className="ico">
-                    <use href="#i-people" />
-                  </svg>
-                </span>
-                <h4>Pessoas e organizações</h4>
-                <span className="dx-tag">Rede</span>
-              </header>
-              <ul className="dx-chips">
-                <li>
-                  <svg className="ico">
-                    <use href="#i-people" />
-                  </svg>
-                  Agentes
-                </li>
-                <li>
-                  <svg className="ico">
-                    <use href="#i-heart" />
-                  </svg>
-                  Comunidade
-                </li>
-                <li>
-                  <svg className="ico">
-                    <use href="#i-gov" />
-                  </svg>
-                  Poder Público
-                </li>
-                <li>
-                  <svg className="ico">
-                    <use href="#i-brief" />
-                  </svg>
-                  Parceiros
-                </li>
-                <li>
-                  <svg className="ico">
-                    <use href="#i-mega" />
-                  </svg>
-                  Comunicação
-                </li>
-              </ul>
-            </section>
+            <i className="dz-x" style={{ left: "32.6%", top: "28.5%" }}>×</i>
+            <i className="dz-x" style={{ left: "68.0%", top: "28.5%" }}>×</i>
+            <i className="dz-x" style={{ left: "28.5%", top: "51.7%" }}>×</i>
+            <i className="dz-x" style={{ left: "72.6%", top: "50.6%" }}>×</i>
+            <i className="dz-x" style={{ left: "34.3%", top: "72.6%" }}>×</i>
+            <i className="dz-x" style={{ left: "65.7%", top: "72.6%" }}>×</i>
+            <span className="dz-mid">Sem ponto<br />de encontro</span>
+            <ul>
+              <li className="dz-c dz-p" style={{ left: "20%", top: "13%", "--r": "-3deg", "--i": 0 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-target" /></svg>Escolinha de futebol</li>
+              <li className="dz-c dz-a" style={{ left: "49%", top: "9%", "--r": "2deg", "--i": 1 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-people" /></svg>Agentes</li>
+              <li className="dz-c dz-r" style={{ left: "81%", top: "13%", "--r": "3deg", "--i": 2 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-box" /></svg>Patrocínio</li>
+              <li className="dz-c dz-a" style={{ left: "27%", top: "33%", "--r": "2deg", "--i": 3 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-heart" /></svg>Comunidade</li>
+              <li className="dz-c dz-a" style={{ left: "73%", top: "32%", "--r": "-2deg", "--i": 4 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-brief" /></svg>Parceiros</li>
+              <li className="dz-c dz-p" style={{ left: "13%", top: "53%", "--r": "3deg", "--i": 5 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-target" /></svg>Reforço escolar</li>
+              <li className="dz-c dz-r" style={{ left: "89%", top: "51%", "--r": "-3deg", "--i": 6 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-box" /></svg>Voluntariado</li>
+              <li className="dz-c dz-a" style={{ left: "29%", top: "70%", "--r": "-2deg", "--i": 7 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-mega" /></svg>Comunicação</li>
+              <li className="dz-c dz-a" style={{ left: "72%", top: "69%", "--r": "2deg", "--i": 8 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-gov" /></svg>Poder Público</li>
+              <li className="dz-c dz-p" style={{ left: "23%", top: "89%", "--r": "2deg", "--i": 9 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-target" /></svg>Castração solidária</li>
+              <li className="dz-c dz-r" style={{ left: "77%", top: "89%", "--r": "-2deg", "--i": 10 } as CSSProperties}><svg className="ico" aria-hidden="true"><use href="#i-box" /></svg>Programas públicos</li>
+            </ul>
+            <p className="dz-key" aria-hidden="true"><span className="k-p">Projetos</span><span className="k-r">Recursos</span><span className="k-a">Pessoas e organizações</span></p>
           </div>
-
-          <div className="dx-legend" aria-hidden="true">
-            <span>
-              <i className="lg-in" />
-              Entrada no sistema
-            </span>
-            <span>
-              <i className="lg-out" />
-              Conexão com atores
-            </span>
-            <span className="lg-off">
-              <i className="lg-x">×</i>
-              Sem conexão
-            </span>
-          </div>
-
-          <figcaption className="conn-cap">
-            <span className="cc-dot" aria-hidden="true" />
-            <span id="connCap">
-              {connected
-                ? "Com o DM Conecta: projetos são estruturados, conectados a quem pode apoiar e acompanhados até o impacto."
-                : "Hoje: projetos, recursos, pessoas e organizações existem, mas seguem caminhos separados."}
-            </span>
-          </figcaption>
-        </figure>
+        </div>
+        <ol className="dz-pts" id="dzPts" aria-label="O problema em uma visão rápida">
+          <li style={{ "--i": 0 } as CSSProperties}>
+            <span className="dz-pn">01</span>
+            <span className="dz-pi"><svg className="ico" aria-hidden="true"><use href="#i-layers" /></svg></span>
+            <h3>Projetos sem estrutura</h3>
+            <p>Iniciativas sociais e ambientais com grande potencial, mas sem a <b>estrutura</b> necessária para crescer.</p>
+            <span className="dz-pa"><i>Afeta</i>Quem realiza</span>
+          </li>
+          <li style={{ "--i": 1 } as CSSProperties}>
+            <span className="dz-pn">02</span>
+            <span className="dz-pi"><svg className="ico" aria-hidden="true"><use href="#i-search" /></svg></span>
+            <h3>Recursos que não chegam</h3>
+            <p>Empresas, institutos, patrocinadores e poder público <b>querem apoiar</b>, mas não encontram os projetos.</p>
+            <span className="dz-pa"><i>Afeta</i>Quem apoia</span>
+          </li>
+          <li style={{ "--i": 2 } as CSSProperties}>
+            <span className="dz-pn">03</span>
+            <span className="dz-pi"><svg className="ico" aria-hidden="true"><use href="#i-route" /></svg></span>
+            <h3>Atuação dispersa</h3>
+            <p>Pessoas e organizações atuam de forma <b>dispersa</b>, cada uma por um caminho.</p>
+            <span className="dz-pa"><i>Afeta</i>Pessoas e organizações</span>
+          </li>
+          <li style={{ "--i": 3 } as CSSProperties}>
+            <span className="dz-pn">04</span>
+            <span className="dz-pi"><svg className="ico" aria-hidden="true"><use href="#i-eye" /></svg></span>
+            <h3>Sem acompanhamento</h3>
+            <p>Falta uma infraestrutura única para <b>acompanhar e medir</b> os resultados dos projetos.</p>
+            <span className="dz-pa"><i>Afeta</i>Quem apoia e quem realiza</span>
+          </li>
+        </ol>
+        <ChallengeScenario />
       </div>
     </section>
   );

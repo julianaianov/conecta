@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Inter, Schibsted_Grotesk, Public_Sans, IBM_Plex_Mono } from "next/font/google";
+import { DM_Mono, DM_Sans, Inter, Schibsted_Grotesk, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import { BrandLoading } from "@/components/app/BrandLoading";
 import { absoluteUrl, metadataForPage, SITE_NAME, SITE_URL } from "@/lib/seo/site";
 import "./globals.css";
@@ -7,7 +7,13 @@ import "./globals.css";
 const dmSans = DM_Sans({
   variable: "--font-dmsans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const dmMono = DM_Mono({
+  variable: "--font-dm-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 const inter = Inter({
@@ -76,7 +82,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${dmSans.variable} ${inter.variable} ${schibstedGrotesk.variable} ${publicSans.variable} ${ibmPlexMono.variable}`}
+      className={`${dmSans.variable} ${dmMono.variable} ${inter.variable} ${schibstedGrotesk.variable} ${publicSans.variable} ${ibmPlexMono.variable}`}
     >
       <head>
         {/* Prevent theme flash on first load */}

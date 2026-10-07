@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/app/auth";
 import { postRegisterDestination } from "@/lib/app/institution";
 import { Button } from "@/components/app/Button";
@@ -17,14 +17,28 @@ import {
 import { CONSENT_DOCUMENTS, CONSENT_KEYS } from "@/lib/app/privacy";
 import type { IconName } from "@/components/app/Icon";
 
+/** A landing chega com o perfil escolhido: `/register?perfil=agent`. Fora da lista, vale o padrão. */
+function roleFromQuery(value: string | null): UserRole {
+  return ROLES.includes(value as UserRole) ? (value as UserRole) : "member";
+}
+
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const { register, status } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("member");
+  const [role, setRole] = useState<UserRole>(() => roleFromQuery(searchParams.get("perfil")));
   const [profileType, setProfileType] = useState<ProfileType | null>(null);
   const [show, setShow] = useState(false);
   /** Aceite versionado dos Termos e da Política (T24, LGPD art. 8º). */
