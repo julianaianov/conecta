@@ -14,6 +14,7 @@ import {
 } from "./types";
 import { buildRanking, type RankingMetrics, type RankingUser } from "./ranking";
 import { emptyProfileActivity, normalizeProfileActivity, type ProfileActivity } from "./profile";
+import type { OwnProfile, ProfileUpdateInput } from "./profile-edit";
 import { runtime } from "./runtime";
 import { normalizeCoordinates } from "./location";
 import { buildPostQuery, type PostListFilter } from "./post-query";
@@ -243,6 +244,28 @@ function mapUser(r: RawPost): User {
     avatarUrl: (r.avatar_url ?? r.avatarUrl ?? null) as string | null,
   };
 }
+
+/** Perfil do titular (`GET|POST /api/users/me`): a visão pública mais telefone e estado. */
+function mapOwnProfile(r: RawPost): OwnProfile {
+  return {
+    userId: String(r.user_id ?? ""),
+    name: String(r.name ?? ""),
+    role: normalizeRole((r.role as string) ?? null, (r.profile_type as string) ?? null),
+    profileType: (r.profile_type ?? null) as ProfileType | null,
+    bio: (r.bio as string) ?? null,
+    status: (r.status as string) ?? null,
+    city: (r.city as string) ?? null,
+    neighborhood: (r.neighborhood as string) ?? null,
+    website: (r.website as string) ?? null,
+    avatarUrl: (r.avatar_url as string) ?? null,
+    coverUrl: (r.cover_url as string) ?? null,
+    memberSince: r.member_since as string | undefined,
+    friendCount: Number(r.friend_count ?? 0),
+    phone: (r.phone as string) ?? null,
+    state: (r.state as string) ?? null,
+  };
+}
+
 function mapCommunity(r: RawPost): Community {
   return {
     id: String(r.id),
@@ -888,6 +911,40 @@ export const api = {
       };
     } catch (err) {
       if (err instanceof NetworkError) throw new Error("Não foi possível carregar o perfil. Tente novamente.");
+      throw err;
+    }
+  },
+
+  /**
+   * Perfil do próprio titular, com telefone e estado (a leitura pública não os
+   * traz). Conta sem linha de perfil ainda a recebe pelo provisionamento.
+   */
+  async getMyProfile(): Promise<OwnProfile> {
+    try {
+      let raw: RawPost;
+      try {
+        raw = await request<RawPost>("/api/users/me");
+      } catch (err) {
+        if (!(err instanceof ApiError) || err.status !== 404) throw err;
+        raw = await request<RawPost>("/api/users/me/provision", { method: "POST", body: "{}" });
+      }
+      return mapOwnProfile(raw);
+    } catch (err) {
+      if (err instanceof NetworkError) throw new Error("Não foi possível carregar o perfil. Tente novamente.");
+      throw err;
+    }
+  },
+
+  /**
+   * Edita o próprio perfil (W36). Só muda o que for enviado; `null` limpa o
+   * campo. Erro de validação: `ApiError` 422 com `fields` por campo.
+   */
+  async updateProfile(input: ProfileUpdateInput): Promise<OwnProfile> {
+    try {
+      const raw = await request<RawPost>("/api/users/me", { method: "POST", body: JSON.stringify(input) });
+      return mapOwnProfile(raw);
+    } catch (err) {
+      if (err instanceof NetworkError) throw new Error("Não foi possível conectar ao serviço. Tente novamente.");
       throw err;
     }
   },

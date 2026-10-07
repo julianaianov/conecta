@@ -256,9 +256,17 @@ export const DATA_INVENTORY: DataInventoryEntry[] = [
   {
     source: "user_db.profiles",
     group: "Perfil",
-    fields: ["nome", "bio", "foto e capa", "situação", "bairro", "cidade", "estado", "telefone", "site", "categoria e subperfil", "data de entrada"],
+    fields: ["nome", "bio", "foto e capa", "situação", "bairro", "cidade", "site", "categoria e subperfil", "data de entrada"],
     purpose: "Identificar quem publica, apoia e se conecta.",
     visibility: "público",
+  },
+  {
+    // `GET /:id` do user-service não traz estas colunas (PUBLIC_PROFILE_COLUMNS); só o dono as lê.
+    source: "user_db.profiles",
+    group: "Perfil: contato",
+    fields: ["telefone", "estado"],
+    purpose: "Contato e localização informados pelo próprio titular, na tela Editar perfil.",
+    visibility: "privado",
   },
   {
     source: "user_db.organizations, organization_representatives, organization_validation_events",

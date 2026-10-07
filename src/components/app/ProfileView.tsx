@@ -32,6 +32,7 @@ import {
   type CollaborationLink, type ProfileActivity,
 } from "@/lib/app/profile";
 import { INSTITUTION_HUB_PATH } from "@/lib/app/institution";
+import { PROFILE_EDIT_PATH } from "@/lib/app/profile-edit";
 import { InstitutionSeal, PublicInstitutionCard } from "./institution/PublicInstitutionCard";
 import { InstitutionStatusBadge } from "./institution/InstitutionStatus";
 import { useInstitutionAccess } from "./institution/useInstitutionAccess";
@@ -193,6 +194,17 @@ function IdentityCard({
           <span className="font-semibold" style={{ color: "var(--th-text)" }}>Cadastro institucional</span>
           {ownInstitution ? <InstitutionStatusBadge status={ownInstitution} /> : <span className="text-xs font-bold" style={{ color: "var(--th-muted)" }}>Não iniciado</span>}
         </Link>
+      )}
+
+      {isOwn && (
+        <div className="mt-4 space-y-2">
+          {!profile.bio && !home && (
+            <p className="text-xs" style={{ color: "var(--th-muted)" }}>
+              Seu perfil ainda não tem apresentação nem bairro. Preencha para que parceiros, órgãos e a comunidade saibam onde você atua.
+            </p>
+          )}
+          <Button block size="sm" variant="outline" icon="edit" href={PROFILE_EDIT_PATH}>Editar perfil</Button>
+        </div>
       )}
 
       {!isOwn && (

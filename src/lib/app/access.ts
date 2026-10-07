@@ -27,6 +27,7 @@ export const PRIVATE_PATH_PREFIXES = [
 /** Rotas de sessão e de ação que nunca devem entrar no índice. */
 export const NOINDEX_EXACT_PATHS = [
   "/perfil",
+  "/perfil/editar",
   "/login",
   "/register",
   "/recuperar-senha",

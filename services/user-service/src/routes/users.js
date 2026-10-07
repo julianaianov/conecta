@@ -1,6 +1,7 @@
 const express = require('express');
 const { ensureProfile } = require('../profile-provision');
 const { isUuid } = require('../security');
+const { validateProfileUpdate, buildProfileUpdate } = require('../profile-edit');
 
 // Projeção pública do perfil: nada de telefone, estado ou metadados internos.
 // Qualquer campo novo em `profiles` fica privado até ser incluído aqui de propósito.
@@ -46,28 +47,25 @@ module.exports = (pool, auth) => {
     }
   });
 
-  // POST /me — create or update profile (sempre do dono do token)
+  // POST /me: o titular edita o próprio perfil (W36; sempre do dono do token).
+  // Só muda os campos enviados (nome, bio, foto, bairro, cidade, estado,
+  // telefone e site; domínio em src/profile-edit.js). Categoria e subperfil
+  // nascem no cadastro e não mudam aqui. Erros por campo: 422 `fields`.
   router.post('/me', auth, async (req, res) => {
-    const { name, bio, avatar_url, phone, website, city, state } = req.body ?? {};
-    const userId = req.user.userId;
+    const { value, errors } = validateProfileUpdate(req.body);
+    if (Object.keys(errors).length) {
+      return res.status(422).json({ error: 'Perfil inválido', code: 'validation_failed', fields: errors });
+    }
+    if (!Object.keys(value).length) {
+      return res.status(422).json({ error: 'Informe ao menos um campo do perfil', code: 'validation_failed', fields: {} });
+    }
     try {
-      const existing = await pool.query('SELECT id FROM profiles WHERE user_id=$1', [userId]);
-      let result;
-      if (existing.rows.length) {
-        result = await pool.query(
-          `UPDATE profiles
-             SET name=COALESCE($1, name), bio=$2, avatar_url=$3, phone=$4, website=$5, city=$6, state=$7, updated_at=NOW()
-           WHERE user_id=$8 RETURNING ${OWNER_PROFILE_SQL}`,
-          [name || null, bio, avatar_url, phone, website, city, state, userId]
-        );
-      } else {
-        result = await pool.query(
-          `INSERT INTO profiles (user_id,name,bio,avatar_url,phone,website,city,state,role,profile_type)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING ${OWNER_PROFILE_SQL}`,
-          [userId, name || req.user.name, bio, avatar_url, phone, website, city, state, req.user.role, req.user.profileType ?? null]
-        );
-      }
-      res.json(result.rows[0]);
+      // A conta que ainda não tem perfil ganha a linha das claims do token.
+      await ensureProfile(pool, req.user);
+      const update = buildProfileUpdate(req.user.userId, value, OWNER_PROFILE_SQL);
+      const { rows } = await pool.query(update.text, update.params);
+      if (!rows.length) return res.status(404).json({ error: 'Perfil não encontrado' });
+      res.json(rows[0]);
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Erro interno' });

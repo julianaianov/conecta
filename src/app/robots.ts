@@ -18,6 +18,7 @@ const PRIVATE_PATHS = [
   "/dossie/verificar",
   "/governo",
   "/oportunidades",
+  "/perfil/editar",
   "/perfil/privacidade",
   "/meus-eventos",
   "/minhas-inscricoes",

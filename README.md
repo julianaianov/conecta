@@ -93,7 +93,7 @@ O contrato está em `src/lib/app/access.ts`.
 | `/conexoes/nova`, `/conexoes/[id]` | Protegido | solicitar e acompanhar conexões |
 | `/post/[id]/apoiar` | Protegido | fluxo de apoio |
 | `/criar`, `/demandas/nova`, `/demandas/[id]/editar`, `/minhas-demandas` | Protegido | publicar e gerir demandas |
-| `/perfil`, `/perfil/privacidade` | Protegido | perfil próprio e direitos do titular |
+| `/perfil`, `/perfil/editar`, `/perfil/privacidade` | Protegido | perfil próprio, edição do perfil e direitos do titular |
 | `/meus-apoios`, `/oportunidades`, `/meus-eventos`, `/minhas-inscricoes` | Protegido | área da conta |
 | `/cadastro-institucional` | Protegido | cadastro institucional (T05) |
 | `/governo` | Protegido | área do Poder Público |
