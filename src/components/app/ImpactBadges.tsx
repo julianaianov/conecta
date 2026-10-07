@@ -15,13 +15,13 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/app/api";
 import { formatDate } from "@/lib/app/format";
-import type { ProfileImpact } from "@/lib/app/ranking";
+import { impactForRole, type ProfileImpact } from "@/lib/app/ranking";
 import { Icon } from "./Icon";
 
 export function ImpactBadges({
-  userId, initial = null, own = false,
-}: { userId: string; initial?: ProfileImpact | null; own?: boolean }) {
-  const [impact, setImpact] = useState<ProfileImpact | null>(initial);
+  userId, initial = null, own = false, role = null,
+}: { userId: string; initial?: ProfileImpact | null; own?: boolean; role?: string | null }) {
+  const [loaded, setImpact] = useState<ProfileImpact | null>(initial);
   const [consent, setConsent] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [consentNotice, setConsentNotice] = useState<string>("");
@@ -55,6 +55,8 @@ export function ImpactBadges({
     }
   }
 
+  // Poder Público nunca é ranqueado, nem antes do primeiro registro (slide 13).
+  const impact = impactForRole(loaded, role);
   if (!impact) return null;
 
   return (
@@ -88,16 +90,23 @@ export function ImpactBadges({
         )
       ) : (
         <>
-          <ul className="grid grid-cols-2 gap-2">
-            {impact.indicators.map((indicator) => (
-              <li key={indicator.id} className="rounded-xl p-3" style={{ background: "var(--th-card-alt)" }}>
-                <p className="text-lg font-bold font-numeric" style={{ color: "var(--th-text)" }}>
-                  {indicator.value.toLocaleString("pt-BR")}
-                </p>
-                <p className="text-[11px]" style={{ color: "var(--th-muted)" }}>{indicator.label}</p>
-              </li>
-            ))}
-          </ul>
+          {impact.indicators.length === 0 ? (
+            <p className="text-xs" style={{ color: "var(--th-muted)" }}>
+              Ainda não há atuação institucional registrada. Os indicadores contam o que o órgão
+              registra na plataforma: acompanhamentos, respostas, encaminhamentos e apoios oferecidos.
+            </p>
+          ) : (
+            <ul className="grid grid-cols-2 gap-2">
+              {impact.indicators.map((indicator) => (
+                <li key={indicator.id} className="rounded-xl p-3" style={{ background: "var(--th-card-alt)" }}>
+                  <p className="text-lg font-bold font-numeric" style={{ color: "var(--th-text)" }}>
+                    {indicator.value.toLocaleString("pt-BR")}
+                  </p>
+                  <p className="text-[11px]" style={{ color: "var(--th-muted)" }}>{indicator.label}</p>
+                </li>
+              ))}
+            </ul>
+          )}
           {impact.notice && <p className="text-[11px]" style={{ color: "var(--th-muted)" }}>{impact.notice}</p>}
         </>
       )}

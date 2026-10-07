@@ -55,6 +55,18 @@ function placeLabel(uf, municipality, district) {
 // ── Identidade das contas (retratos gravados no próprio post_db) ────────────
 // O post_db não conhece `profiles` (outra base). Cada tabela do fluxo já grava
 // o retrato do nome de quem agiu; aqui esses retratos viram uma identidade só.
+//
+// Poder Público (§4 de Perfis: "indicadores de atuação, respostas,
+// encaminhamentos e resultados"): quem registra atuação institucional (abre
+// acompanhamento, responde, oferece apoio, encaminha, divulga ação ou organiza
+// evento do órgão) é Poder Público por definição, mesmo sem nunca ter apoiado,
+// demonstrado interesse, compartilhado, publicado ou comentado. Sem essas
+// linhas a categoria ficava desconhecida e o órgão recebia selos vazios e a
+// opção de consentimento de ranking. Vale também para a conta que age pelo
+// órgão por vínculo (T29): essas rotas só aceitam o papel efetivo de Poder
+// Público, e a conta fica fora de ranking de pessoas, como já ocorria quando o
+// apoio ou o interesse era registrado por delegação. `GOVERNMENT_SQL` (abaixo)
+// lê as mesmas tabelas; o teste de domínio confere que nenhuma fica de fora.
 const ACTORS_SQL = `
   WITH snap AS (
     SELECT user_id, supporter_category AS category, profile_type,
@@ -76,6 +88,29 @@ const ACTORS_SQL = `
     UNION ALL
     SELECT author_id, NULL, NULL, author_name, NULL, false, created_at
       FROM comments
+    UNION ALL
+    SELECT opened_by, 'poder_publico', NULL, opened_by_name, NULL, false, created_at
+      FROM demand_institutional_tracks
+    UNION ALL
+    SELECT author_id, 'poder_publico', NULL, author_name, NULL, false, created_at
+      FROM demand_institutional_responses
+    UNION ALL
+    SELECT author_id, 'poder_publico', NULL, author_name, NULL, false, created_at
+      FROM demand_institutional_offers
+    UNION ALL
+    SELECT forwarded_by, 'poder_publico', NULL, forwarded_by_name, NULL, false, created_at
+      FROM demand_forwardings
+    UNION ALL
+    SELECT author_id, 'poder_publico', NULL, author_name, NULL, false, created_at
+      FROM demand_forwarding_updates
+    UNION ALL
+    SELECT author_id, 'poder_publico', NULL, author_name, NULL, false, created_at
+      FROM government_actions
+    UNION ALL
+    SELECT organizer_id, organizer_category, organizer_profile_type, organizer_name,
+           organizer_avatar, false, created_at
+      FROM events
+     WHERE organizer_category = 'poder_publico'
   ), agg AS (
     SELECT user_id,
            array_agg(DISTINCT category) FILTER (WHERE category IS NOT NULL) AS categories,
@@ -540,9 +575,12 @@ async function loadBadges(db, actors) {
     if (asCount(row.total) >= 10) badges.push(badgeRow(row.user_id, 'divulgador', row.tenth_at, row.total));
   }
   // Poder Público: indicadores de atuação em vez de ranking e de selo
-  // (slide 13). Ficam em `profile_engagement.metrics.government`.
+  // (slide 13). Ficam em `profile_engagement.metrics.government`. Quem tem
+  // atuação institucional registrada é Poder Público, mesmo que `actors` (lido
+  // antes, noutra consulta) ainda não a tenha visto.
   for (const row of government.rows) {
     const entry = touch(row.user_id);
+    entry.category = EXCLUDED_CATEGORY;
     entry.metrics.government = { ...(entry.metrics.government ?? {}), [row.kind]: asCount(row.total) };
   }
   return { badges, engagement: [...engagement.values()] };
@@ -737,5 +775,6 @@ module.exports = {
   placeKey,
   placeLabel,
   BADGES,
+  ACTORS_SQL,
   GOVERNMENT_SQL,
 };

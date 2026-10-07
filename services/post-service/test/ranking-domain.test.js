@@ -9,7 +9,9 @@ const {
   normalizeActorCategory, GOVERNMENT_NOTICE, CONSENT_NOTICE, COMPANY_PROFILE_TYPES,
 } = require('../src/ranking/constants');
 const { normalizePeriod, periodStart, pointsFor, rankEntries } = require('../src/ranking/scoring');
-const { buildBoards, loadBadges, placeKey, placeLabel } = require('../src/ranking/store');
+const {
+  buildBoards, loadActors, loadBadges, placeKey, placeLabel, ACTORS_SQL, GOVERNMENT_SQL,
+} = require('../src/ranking/store');
 
 test('os sete rankings são os do slide 22, na ordem da fonte', () => {
   assert.deepEqual(BOARD_IDS, [
@@ -307,4 +309,89 @@ test('Comunicação com dez compartilhamentos recebe o selo divulgador e a categ
   const entry = engagement.find((e) => e.userId === MEDIA);
   assert.equal(entry.category, 'comunicacao');
   assert.equal(entry.metrics.shares, 10);
+});
+
+// ── Poder Público que só atua institucionalmente (§4 de Perfis, PER-112) ───
+
+/** Tabelas de que uma consulta SQL lê (`FROM <tabela>`). */
+const tablesRead = (sql) => new Set([...sql.matchAll(/\bFROM\s+([a-z_]+)/g)].map((m) => m[1]));
+
+test('toda tabela de atuação institucional que gera indicador também identifica o Poder Público', () => {
+  const indicators = tablesRead(GOVERNMENT_SQL);
+  const identity = tablesRead(ACTORS_SQL);
+  assert.ok(indicators.size >= 4, 'acompanhamentos, respostas, ofertas e encaminhamentos');
+  for (const table of indicators) {
+    assert.ok(identity.has(table), `${table} gera indicador de atuação, mas não identifica a conta como Poder Público`);
+  }
+  // Divulgação de ação, atualização de encaminhamento e evento do órgão também são atuação.
+  for (const table of ['government_actions', 'demand_forwarding_updates', 'events']) {
+    assert.ok(identity.has(table), table);
+  }
+});
+
+test('a categoria vem da atuação institucional: o órgão que só responde e encaminha é Poder Público', async () => {
+  const db = {
+    async query(text) {
+      assert.equal(text, ACTORS_SQL);
+      return {
+        rows: [
+          // Só a atuação institucional (o retrato gravado pelas tabelas do órgão).
+          {
+            user_id: GOV, categories: ['poder_publico'], latest_category: 'poder_publico', name: 'Prefeitura',
+            avatar: null, profile_type: null, support_consent: null, profile_consent: null,
+          },
+          // Membro que também age pelo órgão (T29): o retrato de compartilhamento diz `member`.
+          {
+            user_id: MEMBER, categories: ['member', 'poder_publico'], latest_category: 'poder_publico', name: 'Paulo',
+            avatar: null, profile_type: 'morador', support_consent: null, profile_consent: true,
+          },
+          {
+            user_id: PARTNER, categories: ['parceiro'], latest_category: 'parceiro', name: 'Empresa',
+            avatar: null, profile_type: 'empresa', support_consent: null, profile_consent: null,
+          },
+        ],
+      };
+    },
+  };
+  const found = await loadActors(db);
+  assert.equal(found.get(GOV).government, true);
+  assert.equal(found.get(GOV).category, EXCLUDED_CATEGORY);
+  assert.equal(found.get(MEMBER).government, true, 'a atuação pelo órgão pesa mais que a categoria própria da conta');
+  assert.equal(found.get(MEMBER).category, EXCLUDED_CATEGORY);
+  assert.equal(found.get(PARTNER).government, false);
+
+  // Fora do ranking de pessoas, qualquer que seja a atividade pessoal.
+  const boards = buildBoards(found, metrics({
+    activity: {
+      rows: [
+        { user_id: GOV, kind: 'shares', total: 20 },
+        { user_id: MEMBER, kind: 'shares', total: 20 },
+        { user_id: PARTNER, kind: 'shares', total: 1 },
+      ],
+    },
+  }));
+  assert.deepEqual(boards.get('usuarios_mais_ativos').map((e) => e.subjectId), [PARTNER]);
+});
+
+test('os indicadores de atuação marcam a conta como Poder Público mesmo sem outro registro', async () => {
+  const db = {
+    async query(text) {
+      if (text === GOVERNMENT_SQL) {
+        return {
+          rows: [
+            { user_id: GOV, kind: 'tracks', total: 2 },
+            { user_id: GOV, kind: 'responses', total: 3 },
+            { user_id: GOV, kind: 'forwardings', total: 1 },
+          ],
+        };
+      }
+      return { rows: [] };
+    },
+  };
+  // `actors` não conhece a conta (ela surgiu entre as duas leituras do recálculo).
+  const { badges, engagement } = await loadBadges(db, new Map());
+  assert.deepEqual(badges, []);
+  const entry = engagement.find((e) => e.userId === GOV);
+  assert.equal(entry.category, EXCLUDED_CATEGORY);
+  assert.deepEqual(entry.metrics.government, { tracks: 2, responses: 3, forwardings: 1 });
 });

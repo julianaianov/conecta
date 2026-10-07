@@ -224,6 +224,27 @@ export interface ProfileImpact {
   computedAt: string | null;
 }
 
+/**
+ * O servidor reconhece o Poder Público pelo que a conta registrou (atuação
+ * institucional, apoio, interesse...). Uma conta do Poder Público ainda sem
+ * nenhum registro, ou cujo primeiro registro o recálculo materializado ainda
+ * não viu, chega como `ranked: true`. Como o perfil já sabe a categoria da
+ * conta, a tela trata essa conta como Poder Público: aviso de neutralidade em
+ * vez de selos e sem a opção de aparecer em ranking (slide 13). Nunca
+ * inventa indicador: sem registro, a lista fica vazia.
+ */
+export function impactForRole(impact: ProfileImpact | null, role: string | null | undefined): ProfileImpact | null {
+  if (!impact || role !== "government" || !impact.ranked) return impact;
+  return {
+    ...impact,
+    category: "poder_publico",
+    ranked: false,
+    badges: [],
+    indicators: [],
+    notice: RANKING_GOVERNMENT_NOTICE,
+  };
+}
+
 export type ShareTargetKind = "post" | "demand";
 export type ShareChannel = "web_share" | "copiar_link" | "outro";
 

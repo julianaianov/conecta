@@ -50,6 +50,7 @@ import {
   RANKING_METRIC_LABELS,
   RANKING_PERIOD_LABELS,
   RANKING_PERIODS,
+  impactForRole,
   normalizeRankingPeriod,
   rankingDisplayName,
   rankingHighlights,
@@ -104,4 +105,29 @@ test("linha sem consentimento não é identificada na interface", () => {
     rankingDisplayName({ ...entry, subjectKind: "bairro" }),
     "Território sem identificação",
   );
+});
+
+// Perfis §4: para o Poder Público valem indicadores de atuação, nunca selo nem ranking.
+const rankedImpact = {
+  userId: "u1", category: null, ranked: true, badges: [], indicators: [], notice: null, computedAt: null,
+};
+
+test("conta do Poder Público ainda não reconhecida pelo servidor não vê selos nem consentimento de ranking", () => {
+  const view = impactForRole(rankedImpact, "government");
+  assert.equal(view.ranked, false);
+  assert.equal(view.category, "poder_publico");
+  assert.deepEqual(view.badges, []);
+  assert.deepEqual(view.indicators, [], "sem registro, nenhum indicador é inventado");
+  assert.equal(view.notice, RANKING_GOVERNMENT_NOTICE);
+});
+
+test("o servidor continua decidindo: indicadores reais e as demais categorias passam intactos", () => {
+  const indicators = [{ id: "tracks", label: "Demandas acompanhadas", value: 3 }];
+  const government = { ...rankedImpact, category: "poder_publico", ranked: false, indicators, notice: "aviso" };
+  assert.equal(impactForRole(government, "government"), government);
+  for (const role of ["agent", "member", "partner", "media", null, undefined]) {
+    assert.equal(impactForRole(rankedImpact, role), rankedImpact, String(role));
+  }
+  // Sem resposta do servidor, a tela não afirma nada.
+  assert.equal(impactForRole(null, "government"), null);
 });

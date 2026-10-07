@@ -138,7 +138,7 @@ export function ProfileView({ userId, initial }: { userId: string; initial?: Pro
           />
           {institution && <PublicInstitutionCard institution={institution} />}
           <DeclaredProfileSection userId={userId} role={role} isOwn={isOwn} />
-          <ImpactBadges userId={userId} initial={initial?.impact ?? null} own={isOwn} />
+          <ImpactBadges userId={userId} initial={initial?.impact ?? null} own={isOwn} role={role} />
           {isOwn && <OwnShortcuts role={role} />}
         </div>
 

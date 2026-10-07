@@ -26,12 +26,19 @@ const MEMBER = '44444444-4444-4444-8444-444444444444';
 const GOV = '55555555-5555-4555-8555-555555555555';
 const ORG_AGENT = '77777777-7777-4777-8777-777777777777';
 const ORG_GOV = '88888888-8888-4888-8888-888888888888';
+// Órgão que só atua institucionalmente (nunca apoia, demonstra interesse, publica nem comenta) e
+// uma conta de Membro com vínculo ativo a ele (T29, `atuar_institucionalmente`).
+const GOV_ONLY = '99999999-9999-4999-8999-999999999999';
+const DELEGATE = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const ORG_GOV_ONLY = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 const USERS = {
   [AGENT]: ['agent', 'associacao', 'Associação Recreio Vivo'],
   [PARTNER]: ['partner', 'empresa', 'Construtora Horizonte'],
   [MEMBER]: ['member', 'voluntario', 'Joana Moradora'],
   [GOV]: ['government', 'secretaria', 'Secretaria de Obras'],
+  [GOV_ONLY]: ['government', 'prefeitura', 'Prefeitura do Recreio'],
+  [DELEGATE]: ['member', 'morador', 'Paulo Delegado'],
 };
 const token = (userId) => {
   const [role, profileType, name] = USERS[userId];
@@ -40,8 +47,26 @@ const token = (userId) => {
 
 async function institutionStatus(req) {
   if (req.user.userId === GOV) return { kind: 'poder_publico', status: 'validada', canActInstitutionally: true, organizationId: ORG_GOV };
+  if (req.user.userId === GOV_ONLY) return { kind: 'poder_publico', status: 'validada', canActInstitutionally: true, organizationId: ORG_GOV_ONLY };
+  if (req.user.userId === DELEGATE) {
+    return {
+      kind: 'poder_publico', status: 'validada', canActInstitutionally: true, organizationId: ORG_GOV_ONLY,
+      delegation: {
+        memberId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', level: 'publicador',
+        permissions: ['atuar_institucionalmente'], organizationName: 'Prefeitura do Recreio',
+      },
+    };
+  }
   if (req.user.userId === AGENT) return { kind: 'agente_transformacao', status: 'validada', canActInstitutionally: true, organizationId: ORG_AGENT };
   return { kind: null, status: null, canActInstitutionally: true, organizationId: null };
+}
+
+// Identificação pública do órgão (o user-service tem os próprios testes).
+async function governmentProfile() {
+  return {
+    name: 'Prefeitura do Recreio', governmentSphere: 'municipal', department: null, competenceAreas: [],
+    territory: null, municipality: 'Rio de Janeiro', uf: 'RJ',
+  };
 }
 
 function postDbFiles() {
@@ -75,7 +100,7 @@ test('engajamento: compartilhamento, rankings materializados, neutralidade e sel
     const gestao = new Pool({ connectionString: gestaoUrl.toString() });
 
     const server = createApp({
-      pool, secret: SECRET, institutionStatus, operationUserIds: new Set(), uploadStorage: null,
+      pool, secret: SECRET, institutionStatus, governmentProfile, operationUserIds: new Set(), uploadStorage: null,
       dossierService: null, rankings: null,
       partnerProfile: { get: async () => null },
       connections: { create: async () => null, get: async () => null, update: async () => null },
@@ -273,6 +298,62 @@ test('engajamento: compartilhamento, rankings materializados, neutralidade e sel
       assert.deepEqual(govImpact.badges, []);
       assert.equal(govImpact.indicators.length, 5);
       assert.match(govImpact.notice, /indicadores de atuação/);
+      assert.equal(govImpact.category, 'poder_publico');
+
+      // ── Órgão que só atua institucionalmente (§4 de Perfis: indicadores de atuação) ──
+      // Nenhum apoio, interesse, demanda, compartilhamento, post ou comentário: só acompanha,
+      // responde e oferece apoio pelas rotas institucionais. A categoria precisa vir dessa atuação.
+      const track = await call('POST', `/institutional/demands/${demand}/track`, { as: GOV_ONLY });
+      assert.equal(track.status, 201, JSON.stringify(track.body));
+      const answer = await call('POST', `/institutional/demands/${demand}/responses`, {
+        as: GOV_ONLY,
+        body: { type: 'recebimento', body: 'Recebemos a demanda e ela está em análise pela equipe.', status: 'em_analise' },
+      });
+      assert.equal(answer.status, 201, JSON.stringify(answer.body));
+      const institutionalOffer = await call('POST', `/institutional/demands/${demand}/offers`, {
+        as: GOV_ONLY, body: { supportTypes: ['conhecimento_tecnico'], description: 'Orientação técnica da equipe municipal.' },
+      });
+      assert.equal(institutionalOffer.status, 201, JSON.stringify(institutionalOffer.body));
+
+      // Conta de Membro agindo pelo órgão (T29): também responde, e além disso compartilha como pessoa.
+      const delegated = await call('POST', `/institutional/demands/${demand}/responses`, {
+        as: DELEGATE, body: { type: 'recebimento', body: 'Registro feito pela equipe vinculada ao órgão.' },
+      });
+      assert.equal(delegated.status, 201, JSON.stringify(delegated.body));
+      assert.equal((await share(DELEGATE, demand, 'demand', 'copiar_link')).status, 201);
+
+      await refresh(pool);
+      const onlyImpact = (await call('GET', `/profiles/${GOV_ONLY}/impact`, { auth: false })).body;
+      assert.equal(onlyImpact.category, 'poder_publico', 'a atuação institucional já identifica o Poder Público');
+      assert.equal(onlyImpact.ranked, false, 'o órgão que só atua institucionalmente também não recebe selo nem posição');
+      assert.deepEqual(onlyImpact.badges, []);
+      assert.deepEqual(
+        Object.fromEntries(onlyImpact.indicators.map((i) => [i.id, i.value])),
+        { tracks: 1, responses: 1, forwardings: 0, offers: 1, concluded: 0 },
+      );
+      assert.match(onlyImpact.notice, /indicadores de atuação/);
+
+      // Quem age pelo órgão é tratado como Poder Público, como já ocorria no apoio por delegação:
+      // o compartilhamento pessoal dele não o leva a nenhum ranking.
+      const delegateImpact = (await call('GET', `/profiles/${DELEGATE}/impact`, { auth: false })).body;
+      assert.equal(delegateImpact.ranked, false);
+      assert.deepEqual(delegateImpact.badges, []);
+      assert.equal(delegateImpact.indicators.find((i) => i.id === 'responses').value, 1);
+
+      for (const period of ['mes', 'ano', 'sempre']) {
+        const { body } = await call('GET', `/rankings?period=${period}&limit=100`, { auth: false });
+        for (const board of body.boards) {
+          for (const account of [GOV, GOV_ONLY, DELEGATE]) {
+            assert.equal(board.entries.some((e) => e.subjectId === account), false,
+              `${board.id} (${period}) não pode conter ${account}`);
+          }
+        }
+      }
+      // Quem não é do Poder Público segue pontuando normalmente.
+      const activeAfter = (await call('GET', '/rankings?period=sempre&limit=100&board=usuarios_mais_ativos', { auth: false }))
+        .body.boards[0].entries;
+      assert.ok(activeAfter.some((e) => e.subjectId === PARTNER));
+      assert.ok(activeAfter.some((e) => e.subjectId === MEMBER));
 
       // ── Período configurável ─────────────────────────────────────────────
       const thisMonth = (await call('GET', '/rankings?period=mes&limit=50', { auth: false })).body;
