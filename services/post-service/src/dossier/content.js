@@ -95,6 +95,16 @@ const toNumber = (v) => (v === null || v === undefined ? null : Number(v));
 const toIso = (v) => (v instanceof Date ? v.toISOString() : v ?? null);
 const text = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
+/** Coluna DATE como `AAAA-MM-DD` (o pg a entrega como Date à meia-noite local). */
+function toDay(v) {
+  if (v instanceof Date) {
+    if (Number.isNaN(v.getTime())) return null;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+  }
+  return typeof v === 'string' && v ? v.slice(0, 10) : null;
+}
+
 function daysBetween(start, end) {
   const a = Date.parse(`${start}T00:00:00Z`);
   const b = Date.parse(`${end}T00:00:00Z`);
@@ -105,7 +115,9 @@ function daysBetween(start, end) {
  * Demanda congelada no pedido do dossiê (linha de `demands` com a projeção do
  * autor + itens de store.loadItems). É o que a versão integral mostra.
  */
-function demandSnapshot(row, items, { accountability = null, processes = null, history = null } = {}) {
+function demandSnapshot(row, items, {
+  accountability = null, processes = null, history = null, execution = null,
+} = {}) {
   const schedule = (items.scheduleItems ?? []).map((s) => ({
     id: s.id,
     stage: s.stage,
@@ -228,6 +240,10 @@ function demandSnapshot(row, items, { accountability = null, processes = null, h
     // Histórico (Modelo §06, T-05-10): eventos da demanda até o pedido desta
     // versão (src/dossier/history.js). Ausente em retratos anteriores.
     ...(Array.isArray(history) ? { history } : {}),
+    // Execução (Modelo de Conexão §22): entregas, evidências (fotos e vídeos) e
+    // documentos da execução, sem referência nem URL de arquivo. Ausente em
+    // retratos anteriores.
+    ...(execution ? { execution: executionSnapshot(execution) } : {}),
     // Encerramento (Modelo de Conexão §22, T-05-14; migração 037): data de
     // conclusão, responsáveis e registro final. Só em demanda encerrada.
     ...(row.closed_at ? {
@@ -237,6 +253,57 @@ function demandSnapshot(row, items, { accountability = null, processes = null, h
         summary: text(row.closing_summary),
       },
     } : {}),
+  };
+}
+
+/**
+ * Retrato da execução (Modelo de Conexão §22: "Entregas, ... Evidências,
+ * Documentos, ... Fotos, Vídeos"). Recebe as linhas de `listDeliveries`,
+ * `listEvidences` e `listExecutionDocuments` (src/execution/store.js). Nada
+ * aqui leva o arquivo: nem a referência `upload:`, nem URL, nem o autor.
+ */
+function executionSnapshot({ deliveries = [], evidences = [], documents = [] } = {}) {
+  return {
+    deliveries: deliveries.map((d) => ({
+      item: d.item,
+      description: text(d.description),
+      deliveredOn: toDay(d.delivered_on),
+      recipient: text(d.recipient),
+      recipientPublic: d.recipient_public === true,
+      stage: text(d.stage),
+      evidence: d.evidence_id
+        ? { milestone: d.evidence_milestone ?? null, mediaKind: d.evidence_media_kind ?? null, recordedOn: toDay(d.evidence_recorded_on) }
+        : null,
+    })),
+    evidences: evidences.map((e) => ({
+      milestone: e.milestone,
+      mediaKind: e.media_kind,
+      caption: text(e.caption),
+      recordedOn: toDay(e.recorded_on),
+      stage: text(e.stage),
+    })),
+    documents: documents.map((x) => ({
+      kind: x.kind,
+      title: x.title,
+      description: text(x.description),
+      issuedOn: toDay(x.issued_on),
+      amountCents: toNumber(x.amount_cents),
+      stage: text(x.stage),
+      milestone: x.milestone ?? null,
+    })),
+  };
+}
+
+/**
+ * Versão pública da execução: o recebedor só fica quando o Agente autorizou
+ * (pode ser pessoa física) e a descrição do documento fica de fora, como na
+ * página da demanda.
+ */
+function redactExecution(execution) {
+  return {
+    ...execution,
+    deliveries: execution.deliveries.map((d) => ({ ...d, recipient: d.recipientPublic ? d.recipient : null })),
+    documents: execution.documents.map((x) => ({ ...x, description: null })),
   };
 }
 
@@ -368,6 +435,8 @@ function redactSnapshot(snapshot) {
       : {}),
     // Histórico: só eventos públicos, sem ator e sem nota (T-05-10).
     ...(Array.isArray(snapshot.history) ? { history: redactHistory(snapshot.history) } : {}),
+    // Execução: o recebedor da entrega só com autorização do Agente.
+    ...(snapshot.execution ? { execution: redactExecution(snapshot.execution) } : {}),
     // Encerramento: os responsáveis podem ser nomes de pessoas (T-05-14).
     ...(snapshot.closure ? { closure: { ...snapshot.closure, responsibles: null } } : {}),
   };
@@ -508,6 +577,7 @@ module.exports = {
   HASH_RE,
   demandSnapshot,
   accountabilitySnapshot,
+  executionSnapshot,
   processSnapshot,
   connectionFinance,
   FEE_OBSERVATION,

@@ -49,11 +49,12 @@ test('a situação da etapa é o enum demand_stage_progress (slide 23; Modelo §
   assert.deepEqual(Object.keys(E.STAGE_PROGRESS_LABELS).sort(), [...E.STAGE_PROGRESS].sort());
 });
 
-test('os eventos da execução são os gravados pelos triggers da 014, da 034 e da 035', () => {
+test('os eventos da execução são os gravados pelos triggers da 014, da 034, da 035 e da 052', () => {
   const documentsSql = fs.readFileSync(path.join(__dirname, '../migrations/035-execution-documents.sql'), 'utf8');
+  const deliveriesSql = fs.readFileSync(path.join(__dirname, '../migrations/052-demand-deliveries.sql'), 'utf8');
   for (const type of E.EXECUTION_EVENT_TYPES) {
-    assert.ok(sql.includes(`'${type}'`) || statusSql.includes(`'${type}'`) || documentsSql.includes(`'${type}'`),
-      `evento ${type} não é gravado pela migração`);
+    assert.ok(sql.includes(`'${type}'`) || statusSql.includes(`'${type}'`) || documentsSql.includes(`'${type}'`)
+      || deliveriesSql.includes(`'${type}'`), `evento ${type} não é gravado pela migração`);
   }
   assert.deepEqual(E.TRANSITION_REQUIRED_MILESTONE, { iniciar_execucao: 'antes', concluir: 'depois' });
 });
@@ -295,4 +296,89 @@ test('marcos do módulo ambiental na evidência e no documento (§24; T-05-08 + 
     recordedOn: '2026-09-01',
   }).errors, {});
   assert.ok(E.validateEvidence({ milestone: 'meio' }).errors.milestone);
+});
+
+const deliveriesSql = fs.readFileSync(path.join(__dirname, '../migrations/052-demand-deliveries.sql'), 'utf8');
+
+test('entrega: item, data e recebedor obrigatórios, sem data futura; recebedor privado por padrão (Modelo §22)', () => {
+  const empty = E.validateDelivery({});
+  assert.match(empty.errors.item, /o que foi entregue/);
+  assert.match(empty.errors.deliveredOn, /Informe a data/);
+  assert.match(empty.errors.recipient, /quem recebeu/);
+  assert.deepEqual(Object.keys(empty.errors).sort(), ['deliveredOn', 'item', 'recipient']);
+
+  const future = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  assert.match(E.validateDelivery({ item: 'Horta', recipient: 'Associação', deliveredOn: future }).errors.deliveredOn,
+    /entrega não fica no futuro/);
+  assert.ok(E.validateDelivery({ item: 'Horta', recipient: 'Associação', deliveredOn: '01/09/2026' }).errors.deliveredOn);
+  assert.ok(E.validateDelivery({ item: 'x'.repeat(E.MAX_DELIVERY_ITEM + 1), recipient: 'A', deliveredOn: '2026-09-01' }).errors.item);
+  assert.ok(E.validateDelivery({ item: 'H', recipient: 'x'.repeat(E.MAX_DELIVERY_RECIPIENT + 1), deliveredOn: '2026-09-01' }).errors.recipient);
+  assert.ok(E.validateDelivery({ item: 'H', recipient: 'A', deliveredOn: '2026-09-01', recipientPublic: 'sim' }).errors.recipientPublic);
+  assert.ok(E.validateDelivery({ item: 'H', recipient: 'A', deliveredOn: '2026-09-01', evidenceId: 'x' }).errors.evidenceId);
+  assert.ok(E.validateDelivery({ item: 'H', recipient: 'A', deliveredOn: '2026-09-01', scheduleItemId: 'x' }).errors.scheduleItemId);
+
+  const ok = E.validateDelivery({
+    item: ' Horta comunitária ', description: ' 20 canteiros ', recipient: ' Associação de Moradores ', deliveredOn: '2026-09-28',
+    evidenceId: '11111111-1111-4111-8111-111111111111', scheduleItemId: '22222222-2222-4222-8222-222222222222',
+  });
+  assert.deepEqual(ok.errors, {});
+  assert.deepEqual(ok.value, {
+    item: 'Horta comunitária', description: '20 canteiros', deliveredOn: '2026-09-28', recipient: 'Associação de Moradores',
+    recipientPublic: false,
+    scheduleItemId: '22222222-2222-4222-8222-222222222222', evidenceId: '11111111-1111-4111-8111-111111111111',
+  });
+  assert.equal(E.validateDelivery({ ...ok.value, recipientPublic: true }).value.recipientPublic, true);
+});
+
+test('entrega: vale do início da execução em diante e o evento público está no vocabulário', () => {
+  assert.deepEqual(E.DELIVERY_OPEN_STATUSES, E.PROGRESS_OPEN_STATUSES);
+  assert.ok(E.EXECUTION_EVENT_TYPES.includes('entrega_registrada'));
+  assert.ok(E.MAX_DELIVERIES > 0);
+});
+
+test('a migração 052 guarda as entregas: só inserção, gestão só lê, sem arquivo e sem exclusão', () => {
+  assert.match(deliveriesSql, /CREATE TABLE IF NOT EXISTS demand_deliveries/);
+  assert.match(deliveriesSql, /a gestão só lê as entregas/);
+  assert.match(deliveriesSql, /a entrega registrada não muda nem é excluída/);
+  assert.match(deliveriesSql, /demand_execution_assert_open\(NEW\.demand_id, NEW\.author_id, true\)/);
+  assert.match(deliveriesSql, /BEFORE TRUNCATE ON demand_deliveries/);
+  // Vínculos opcionais da mesma demanda: etapa e evidência (FK composta).
+  assert.match(deliveriesSql, /FOREIGN KEY \(demand_id, schedule_item_id\)/);
+  assert.match(deliveriesSql, /FOREIGN KEY \(demand_id, evidence_id\)/);
+  // O recebedor é privado por padrão e só sai no evento com autorização.
+  assert.match(deliveriesSql, /recipient_public BOOLEAN NOT NULL DEFAULT FALSE/);
+  assert.match(deliveriesSql, /CASE WHEN NEW\.recipient_public THEN NEW\.recipient END/);
+  // A conclusão da prestação ganha o gatilho próprio, sem reescrever o da 015.
+  assert.match(deliveriesSql, /CREATE TRIGGER demand_accountability_require_deliveries/);
+  assert.doesNotMatch(deliveriesSql, /CREATE OR REPLACE FUNCTION demand_accountability_guard/);
+  assert.doesNotMatch(deliveriesSql, /ALTER TYPE/);
+});
+
+test('entrega: o autor vê o recebedor; o público só vê quando o Agente autorizou, sem autor', () => {
+  const row = {
+    id: 'd1', demand_id: 'x', schedule_item_id: 's1', evidence_id: 'e1', item: 'Horta', description: '20 canteiros',
+    delivered_on: '2026-11-28', recipient: 'Maria Souza', recipient_public: false,
+    author_id: 'a1', author_name: 'Autora', created_at: new Date('2026-11-29T10:00:00Z'), stage: 'Plantio',
+    evidence_milestone: 'depois', evidence_media_kind: 'foto', evidence_recorded_on: '2026-11-28',
+  };
+  const owner = store.serializeDelivery(row);
+  assert.equal(owner.recipient, 'Maria Souza');
+  assert.equal(owner.recipientPublic, false);
+  assert.deepEqual(owner.author, { userId: 'a1', name: 'Autora' });
+  assert.deepEqual(owner.evidence, { id: 'e1', milestone: 'depois', mediaKind: 'foto', recordedOn: '2026-11-28' });
+  assert.equal(owner.evidenceId, 'e1');
+
+  const hidden = store.serializePublicDelivery(row);
+  assert.equal(hidden.recipient, null);
+  assert.equal(hidden.recipientPublic, false);
+  assert.equal(hidden.author, undefined);
+  assert.equal(hidden.evidenceId, undefined);
+  assert.equal(hidden.item, 'Horta');
+  assert.equal(hidden.deliveredOn, '2026-11-28');
+  assert.ok(!JSON.stringify(hidden).includes('Maria Souza'));
+  assert.ok(!JSON.stringify(hidden).includes('Autora'));
+
+  const shown = store.serializePublicDelivery({ ...row, recipient: 'Associação de Moradores', recipient_public: true, evidence_id: null });
+  assert.equal(shown.recipient, 'Associação de Moradores');
+  assert.equal(shown.evidence, null);
 });

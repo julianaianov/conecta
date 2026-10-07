@@ -204,6 +204,14 @@ async function evidenceMilestones(db, demandId) {
   };
 }
 
+/** Quantas entregas a execução já registrou (Modelo de Conexão §22; migração 052). */
+async function countDeliveries(db, demandId) {
+  const { rows: [row] } = await db.query(
+    'SELECT count(*)::int AS total FROM demand_deliveries WHERE demand_id = $1', [demandId],
+  );
+  return Number(row?.total ?? 0);
+}
+
 /** Alguma etapa do cronograma previu o registro do acompanhamento (T-02-04)? */
 async function plannedMonitoring(db, demandId) {
   const { rows: [row] } = await db.query(
@@ -281,6 +289,7 @@ module.exports = {
   listDocuments,
   listGoalsWithResults,
   evidenceMilestones,
+  countDeliveries,
   plannedMonitoring,
   listExecutionDocuments,
   summarize,

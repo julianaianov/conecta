@@ -63,7 +63,7 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
       await admin.query('DO $$ BEGIN CREATE ROLE gestao_app LOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$');
       await admin.query(`GRANT SELECT ON demands, demand_events, demand_evidences, demand_goals,
                            demand_accountability, demand_accountability_results,
-                           demand_accountability_documents, posts TO gestao_app`);
+                           demand_accountability_documents, demand_deliveries, posts TO gestao_app`);
       await admin.query(`GRANT UPDATE (status, review_state, review_note, reviewed_by, archive_reason, updated_at)
                            ON demands TO gestao_app`);
     } catch (err) {
@@ -215,6 +215,12 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
       const antes = inicial.body.requirements.find((r) => r.key === 'evidence_antes');
       assert.equal(antes.applies, true);
       assert.equal(antes.satisfied, true);
+      // Modelo de Conexão §22: ao menos uma entrega, sempre (sem execução física também).
+      const entregas = inicial.body.requirements.find((r) => r.key === 'deliveries');
+      assert.equal(entregas.condition, 'sempre');
+      assert.equal(entregas.applies, true);
+      assert.equal(entregas.satisfied, false);
+      assert.equal(inicial.body.deliveriesTotal, 0);
       // Sem apoio financeiro declarado, o comprovante não é exigido.
       const comprovante = inicial.body.requirements.find((r) => r.key === 'financial_receipt');
       assert.equal(comprovante.applies, false);
@@ -230,6 +236,7 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
       // Modelo de Conexão §21 (T-05-13): quem participou e o resultado final.
       assert.ok(incompleta.body.fields.participants);
       assert.ok(incompleta.body.fields.finalResult);
+      assert.match(incompleta.body.fields.deliveries, /ao menos uma entrega/);
 
       // ── Registro final ────────────────────────────────────────────────────
       const rascunho = await call('PUT', `/demands/mine/${demand.id}/accountability`, {
@@ -286,8 +293,33 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
       });
       assert.equal(metaAlheia.status, 404);
 
+      // Resultados e registro final completos, mas sem nenhuma entrega registrada (§22).
+      const semEntrega = await call('GET', `/demands/mine/${demand.id}/accountability`);
+      assert.equal(semEntrega.body.canConclude, false, 'falta ao menos uma entrega');
+      assert.equal(semEntrega.body.deliveriesTotal, 0);
+      const semEntregaConclusao = await call('POST', `/demands/mine/${demand.id}/accountability/conclude`);
+      assert.equal(semEntregaConclusao.status, 422, JSON.stringify(semEntregaConclusao.body));
+      assert.deepEqual(Object.keys(semEntregaConclusao.body.fields), ['deliveries']);
+      // O banco recusa por conta própria (gatilho da migração 052), pela rota ou fora dela.
+      await assert.rejects(
+        pool.query("UPDATE demand_accountability SET status = 'concluida' WHERE demand_id = $1", [demand.id]),
+        /exige ao menos uma entrega registrada/,
+      );
+      // A entrega é registrada com a demanda já em prestação de contas, ligada à evidência do "depois".
+      const evidenciaDepois = (await call('GET', `/demands/mine/${demand.id}/execution`)).body.evidences
+        .find((e) => e.milestone === 'depois');
+      const entrega = await call('POST', `/demands/mine/${demand.id}/deliveries`, {
+        body: {
+          item: 'Praça revitalizada', description: 'Piso, canteiros e bancos.', deliveredOn: daysAgo(2),
+          recipient: 'Associação de moradores do Recreio', recipientPublic: true, evidenceId: evidenciaDepois.id,
+        },
+      });
+      assert.equal(entrega.status, 201, JSON.stringify(entrega.body));
+
       const completa = await call('GET', `/demands/mine/${demand.id}/accountability`);
       assert.equal(completa.body.canConclude, true);
+      assert.equal(completa.body.deliveriesTotal, 1);
+      assert.equal(completa.body.requirements.find((r) => r.key === 'deliveries').satisfied, true);
       assert.equal(completa.body.summary.goalsTotal, 2);
       assert.equal(completa.body.summary.goalsAchieved, 1);
 
@@ -457,6 +489,14 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
         /permission denied|a gestão só lê/,
       );
 
+      // A entrega registrada não muda (a prestação concluída continua apontando para ela).
+      await assert.rejects(
+        pool.query("UPDATE demand_deliveries SET recipient = 'outro' WHERE demand_id = $1", [demand.id]),
+        /não muda nem é excluída/,
+      );
+      const { rows: entregasGestao } = await gestao.query('SELECT item FROM demand_deliveries WHERE demand_id = $1', [demand.id]);
+      assert.deepEqual(entregasGestao.map((r) => r.item), ['Praça revitalizada']);
+
       // ── Outro Agente não vê nem escreve ───────────────────────────────────
       assert.equal((await call('GET', `/demands/mine/${demand.id}/accountability`, { as: OTHER_AGENT })).status, 404);
 
@@ -479,6 +519,13 @@ test('prestação de contas: exigências, conclusão, transparência e dossiê',
           body: { measuredValue: '40 participantes', measurementMethod: 'Lista de presença', achieved: true },
         })).status, 200);
       }
+      // Sem execução física a entrega continua obrigatória (oficina, serviço, evento também entregam algo).
+      const socialSemEntrega = await call('POST', `/demands/mine/${social.id}/accountability/conclude`);
+      assert.equal(socialSemEntrega.status, 422);
+      assert.deepEqual(Object.keys(socialSemEntrega.body.fields), ['deliveries']);
+      assert.equal((await call('POST', `/demands/mine/${social.id}/deliveries`, {
+        body: { item: 'Clube de leitura em funcionamento', deliveredOn: daysAgo(1), recipient: 'Participantes do clube' },
+      })).status, 201);
       const socialView = await call('GET', `/demands/mine/${social.id}/accountability`);
       const socialAntes = socialView.body.requirements.find((r) => r.key === 'evidence_antes');
       assert.equal(socialAntes.applies, false, 'sem execução física o registro não é exigido');

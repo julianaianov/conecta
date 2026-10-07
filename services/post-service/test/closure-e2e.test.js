@@ -3,7 +3,8 @@
 // prestação de contas concluída, registro final e responsáveis, data de
 // conclusão gravada pelo banco, processos da demanda no status final
 // adequado, evento público `demanda_encerrada`, aviso às partes, versão
-// `encerramento` do dossiê e a demanda encerrada no histórico público.
+// `encerramento` do dossiê (com as entregas, as evidências e os documentos da
+// execução, §22) e a demanda encerrada no histórico público.
 //
 // Só roda com DM_E2E_DATABASE_URL apontando para um banco VAZIO e descartável
 // (PostgreSQL 15+, superusuário). O jeito normal é `npm run test:e2e`
@@ -80,6 +81,22 @@ const connections = {
     return { ...c };
   },
 };
+
+/** Armazenamento em memória: só a gravação do PDF interessa (a foto da demanda é um link). */
+function memoryStorage() {
+  const objects = new Map();
+  return {
+    objects,
+    async put({ key, body, contentType }) { objects.set(key, { bytes: Buffer.from(body), contentType }); },
+    async get(key) {
+      const o = objects.get(key);
+      if (!o) throw new Error(`sem objeto ${key}`);
+      return o.bytes;
+    },
+  };
+}
+
+const daysAgo = (days) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
 function postDbFiles() {
   const services = path.join(__dirname, '../..');
@@ -196,6 +213,49 @@ test('encerramento (§22): prestação concluída, registro final, processos fin
         /prestação de contas concluída/,
       );
 
+      // ── Execução registrada: evidência, documento e entregas (Modelo §22) ──
+      const confirmedUpload = async (purpose) => {
+        const uploadId = crypto.randomUUID();
+        await pool.query(
+          `INSERT INTO uploads (id, owner_id, purpose, status, tmp_key, object_key, content_type,
+                                declared_size_bytes, size_bytes, original_name, demand_id, confirmed_at)
+           VALUES ($1, $2, $3, 'confirmado', $4, $5, $6, 1024, 1024, 'arquivo', $7, NOW())`,
+          [uploadId, AGENT, purpose, `tmp/${uploadId}`, `demands/${id}/files/${uploadId}`,
+            purpose === 'demand_evidence_photo' ? 'image/jpeg' : 'application/pdf', id],
+        );
+        return `upload:${uploadId}`;
+      };
+      const [{ id: scheduleItemId }] = (await call('GET', `/demands/mine/${id}`)).body.scheduleItems;
+      const evidence = await call('POST', `/demands/mine/${id}/evidences`, {
+        body: {
+          reference: await confirmedUpload('demand_evidence_photo'), milestone: 'acompanhamento', mediaKind: 'foto',
+          recordedOn: daysAgo(5), caption: 'Encontro de leitura', scheduleItemId,
+        },
+      });
+      assert.equal(evidence.status, 201, JSON.stringify(evidence.body));
+      assert.equal((await call('POST', `/demands/mine/${id}/execution-documents`, {
+        body: {
+          kind: 'certificado', title: 'Certificado do mediador', reference: await confirmedUpload('demand_execution_document'),
+          issuedOn: daysAgo(4), description: 'Certificado interno da formação',
+        },
+      })).status, 201);
+      // Sem entrega a prestação não conclui (§22).
+      const semEntrega = await call('POST', `/demands/mine/${id}/accountability/conclude`);
+      assert.equal(semEntrega.status, 422);
+      assert.match(semEntrega.body.fields.deliveries, /ao menos uma entrega/);
+      for (const delivery of [
+        {
+          item: 'Clube de leitura em funcionamento', description: 'Acervo e mediadores formados.', deliveredOn: daysAgo(3),
+          recipient: 'Dona Maria Souza, coordenadora do clube', evidenceId: evidence.body.evidence.id,
+        },
+        {
+          item: 'Acervo de 120 livros', deliveredOn: daysAgo(2), recipient: 'Biblioteca comunitária do Recreio', recipientPublic: true,
+        },
+      ]) {
+        const registered = await call('POST', `/demands/mine/${id}/deliveries`, { body: delivery });
+        assert.equal(registered.status, 201, JSON.stringify(registered.body));
+      }
+
       // ── Prestação de contas concluída ─────────────────────────────────────
       assert.equal((await call('PUT', `/demands/mine/${id}/accountability`, {
         body: {
@@ -289,6 +349,41 @@ test('encerramento (§22): prestação concluída, registro final, processos fin
       const { rows: [{ max }] } = await pool.query('SELECT max(version) AS max FROM demand_dossiers WHERE demand_id = $1', [id]);
       assert.equal(Number(versions[0].version), Number(max), 'é a última versão');
       assert.equal(versions[0].snapshot.closure.responsibles, 'Associação Recreio Vivo — coordenação do projeto');
+      // O retrato do encerramento já carrega o que a execução registrou (§22), sem arquivo.
+      const frozen = versions[0].snapshot.execution;
+      assert.deepEqual(frozen.deliveries.map((d) => d.item), ['Clube de leitura em funcionamento', 'Acervo de 120 livros']);
+      assert.deepEqual(frozen.evidences.map((e) => [e.milestone, e.mediaKind, e.caption]), [['acompanhamento', 'foto', 'Encontro de leitura']]);
+      assert.deepEqual(frozen.documents.map((d) => [d.kind, d.title]), [['certificado', 'Certificado do mediador']]);
+      assert.equal(JSON.stringify(frozen).includes('upload:'), false);
+
+      // Com armazenamento, a geração monta o conteúdo das duas versões: o integral guarda o recebedor; o
+      // público só o que o Agente autorizou, sem a descrição do documento e sem nenhuma referência de arquivo.
+      const storage = memoryStorage();
+      const withStorage = createDossierService({ pool, storage, fetchInstitution: async () => null, logger, backoffSeconds: 0 });
+      const generated = await withStorage.processPending({ demandId: id, force: true });
+      assert.equal(generated.failed, 0);
+      const { rows: closedVersions } = await pool.query(
+        `SELECT variant, status, content, object_key FROM demand_dossiers
+          WHERE demand_id = $1 AND trigger_kind = 'encerramento' ORDER BY variant`, [id],
+      );
+      assert.deepEqual(closedVersions.map((v) => [v.variant, v.status]), [['integral', 'gerado'], ['publica', 'gerado']]);
+      assert.ok(closedVersions.every((v) => storage.objects.has(v.object_key)), 'o PDF de cada versão foi gravado');
+      const [integralContent, publicContent] = closedVersions.map((v) => v.content);
+      for (const c of [integralContent, publicContent]) {
+        assert.equal(c.execution.deliveries.length, 2);
+        assert.deepEqual(c.execution.evidences.map((e) => e.caption), ['Encontro de leitura']);
+        assert.deepEqual(c.execution.documents.map((d) => d.title), ['Certificado do mediador']);
+        assert.equal(c.execution.deliveries[0].evidence.mediaKind, 'foto');
+      }
+      assert.equal(integralContent.execution.deliveries[0].recipient, 'Dona Maria Souza, coordenadora do clube');
+      assert.equal(integralContent.execution.documents[0].description, 'Certificado interno da formação');
+      assert.equal(publicContent.execution.deliveries[0].recipient, null);
+      assert.equal(publicContent.execution.deliveries[1].recipient, 'Biblioteca comunitária do Recreio');
+      assert.equal(publicContent.execution.documents[0].description, null);
+      const publicJson = JSON.stringify(publicContent);
+      assert.equal(publicJson.includes('Dona Maria Souza'), false);
+      assert.equal(publicJson.includes('Certificado interno'), false);
+      assert.equal(publicJson.includes('upload:'), false);
 
       // Encerrada é final para o Agente; o registro final não muda.
       assert.equal((await call('POST', `/demands/${id}/transitions`, { body: { action: 'encerrar' } })).status, 409);

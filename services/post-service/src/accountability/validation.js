@@ -6,8 +6,9 @@
 // - `validateAccountabilityDraft`: o rascunho aceita campo a campo, sem exigir
 //   nada (o Agente monta aos poucos);
 // - `checkRequirements` + `assertConcludable`: na conclusão, diz exatamente o
-//   que é obrigatório **sempre** e o que é obrigatório **condicionalmente**
-//   (execução física declarada; apoio financeiro declarado).
+//   que é obrigatório **sempre** (inclusive ao menos uma Entrega, Modelo de
+//   Conexão §22) e o que é obrigatório **condicionalmente** (execução física
+//   declarada; apoio financeiro declarado).
 
 const {
   DOCUMENT_KINDS, REQUIREMENTS, MAX_EXECUTION_REPORT, MAX_ACTIONS_RECORD, MAX_SCHEDULE_SUMMARY,
@@ -182,6 +183,7 @@ function validateAccountabilityDocument(input, { today = new Date() } = {}) {
  * - `plannedMonitoring`: alguma etapa do cronograma previu o registro do
  *   acompanhamento (T-02-04);
  * - `goalsTotal` e `resultsTotal`: metas declaradas × resultados informados;
+ * - `deliveriesTotal`: entregas registradas na execução (migração 052);
  * - `financialReceipts`: quantos comprovantes financeiros foram anexados.
  *
  * Devolve `[{ key, label, condition, applies, satisfied, informative, reason }]`.
@@ -197,6 +199,7 @@ function checkRequirements(state = {}) {
   const satisfiedBy = {
     execution_report: has(a.executionReport),
     actions_record: has(a.actionsRecord),
+    deliveries: Number(state.deliveriesTotal ?? 0) > 0,
     schedule_summary: has(a.scheduleSummary),
     beneficiaries_reached: Number.isInteger(a.beneficiariesReached) && a.beneficiariesReached >= 0,
     impact_indicators: has(a.impactIndicators),
@@ -248,6 +251,7 @@ function missingRequirements(state) {
 const REQUIREMENT_FIELD = {
   execution_report: 'executionReport',
   actions_record: 'actionsRecord',
+  deliveries: 'deliveries',
   schedule_summary: 'scheduleSummary',
   beneficiaries_reached: 'beneficiariesReached',
   impact_indicators: 'impactIndicators',
@@ -264,6 +268,7 @@ const REQUIREMENT_FIELD = {
 const REQUIREMENT_MESSAGE = {
   execution_report: 'Escreva o relatório de execução',
   actions_record: 'Registre as ações realizadas',
+  deliveries: 'Registre ao menos uma entrega (aba Execução)',
   schedule_summary: 'Atualize o cronograma com o que foi de fato executado',
   beneficiaries_reached: 'Informe quantas pessoas foram alcançadas',
   impact_indicators: 'Informe os indicadores de impacto',

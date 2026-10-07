@@ -73,7 +73,7 @@ function mapAccountabilityDbError(err) {
   if (err?.code === '23514' && /exige o registro do "antes"|exige o registro do "depois"/.test(message)) {
     return new HttpError(409, { error: message, code: 'evidence_required' });
   }
-  if (err?.code === '23514' && /exige comprovante financeiro|resultado alcançado de cada meta/.test(message)) {
+  if (err?.code === '23514' && /exige comprovante financeiro|resultado alcançado de cada meta|exige ao menos uma entrega/.test(message)) {
     return new HttpError(409, { error: message, code: 'accountability_incomplete' });
   }
   if (err?.code === '23514' && /só o Agente autor presta contas|com a demanda em prestação de contas|começa como rascunho/.test(message)) {
@@ -175,6 +175,8 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
   /** Visão do Agente autor: rascunho, metas, anexos e o que a conclusão exige. */
   async function ownerView(db, demand, row) {
     const monitoring = await store.plannedMonitoring(db, demand.id);
+    // Entregas registradas na execução (Modelo de Conexão §22): a conclusão exige ao menos uma.
+    const deliveriesTotal = await store.countDeliveries(db, demand.id);
     // Documentos anexados durante a execução (T-05-12), listados no resumo.
     const executionDocuments = await store.listExecutionDocuments(db, demand.id);
     if (!row) {
@@ -185,6 +187,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
         results: [],
         documents: [],
         executionDocuments,
+        deliveriesTotal,
         goals,
         summary: store.summarize([], []),
         status: demand.status,
@@ -199,6 +202,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
           plannedMonitoring: monitoring,
           goalsTotal: goals.length,
           resultsTotal: 0,
+          deliveriesTotal,
           financialReceipts: 0,
         }),
         editable: ACCOUNTABILITY_OPEN_STATUSES.includes(demand.status),
@@ -223,6 +227,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
       plannedMonitoring: monitoring,
       goalsTotal: goals.length,
       resultsTotal: results.length,
+      deliveriesTotal,
       financialReceipts: summary.financialReceipts,
     });
     return {
@@ -230,6 +235,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
       results,
       documents,
       executionDocuments,
+      deliveriesTotal,
       goals,
       summary,
       status: demand.status,
@@ -418,6 +424,7 @@ module.exports = ({ pool, auth, validatedAgent, dossiers = null, institutionStat
         milestones: current.milestones,
         goalsTotal: current.goals.length,
         resultsTotal: current.results.length,
+        deliveriesTotal: current.deliveriesTotal,
         financialReceipts: current.summary.financialReceipts,
       });
       if (Object.keys(errors).length) {

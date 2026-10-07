@@ -68,6 +68,13 @@ export const EXECUTION_DOCUMENT_PURPOSE: UploadPurpose = "demand_execution_docum
 export const EXECUTION_DOCUMENT_OPEN_STATUSES: DemandStatus[] = ["em_execucao", "concluida", "prestacao_de_contas"];
 export const MAX_EXECUTION_DOCUMENTS = 100;
 
+/** Entregas (Modelo de Conexão §22; migração post 052): do início da execução em diante. */
+export const DELIVERY_OPEN_STATUSES: DemandStatus[] = ["em_execucao", "concluida", "prestacao_de_contas"];
+export const MAX_DELIVERIES = 100;
+export const MAX_DELIVERY_ITEM = 200;
+export const MAX_DELIVERY_DESCRIPTION = 2000;
+export const MAX_DELIVERY_RECIPIENT = 200;
+
 export const EVIDENCE_MEDIA_KINDS: DemandEvidenceMediaKind[] = ["foto", "video"];
 
 export const EVIDENCE_MEDIA_LABELS: Record<DemandEvidenceMediaKind, string> = {
@@ -155,6 +162,7 @@ export const EXECUTION_EVENT_TYPES = [
   "prazo_alterado", "registro_dispensado",
   "etapa_atrasada", "ocorrencia_registrada", "ocorrencia_resolvida",
   "documento_da_execucao_registrado",
+  "entrega_registrada",
 ];
 
 export const MAX_CAPTION = 500;
@@ -199,6 +207,8 @@ export function executionTimelineLabel(event: Pick<DemandTimelineEvent, "type" |
       return "Ocorrência resolvida";
     case "documento_da_execucao_registrado":
       return "Documento da execução anexado";
+    case "entrega_registrada":
+      return "Entrega registrada";
     default:
       return null;
   }
@@ -237,6 +247,13 @@ export function executionTimelineDetail(event: Pick<DemandTimelineEvent, "type" 
   }
   if (event.type === "documento_da_execucao_registrado" && typeof x.title === "string") {
     parts.push(x.title);
+  }
+  if (event.type === "entrega_registrada") {
+    if (typeof x.item === "string" && x.item) parts.push(x.item);
+    const deliveredOn = typeof x.deliveredOn === "string" ? formatRecordDate(x.deliveredOn.slice(0, 10)) : "";
+    if (deliveredOn) parts.push(`entregue em ${deliveredOn}`);
+    // O recebedor só vem no evento quando o Agente autorizou a divulgação.
+    if (typeof x.recipient === "string" && x.recipient) parts.push(`recebido por ${x.recipient}`);
   }
   if (event.type === "etapa_atrasada") {
     const dueOn = typeof x.dueOn === "string" ? formatRecordDate(x.dueOn.slice(0, 10)) : "";

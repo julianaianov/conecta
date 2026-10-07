@@ -2604,6 +2604,8 @@ export interface PublicDemandExecution {
   schedule: DemandScheduleStatus[];
   incidents?: PublicDemandIncident[];
   documents?: PublicDemandExecutionDocument[];
+  /** Entregas (Modelo de Conexão §22); o recebedor só vem quando o Agente autorizou. */
+  deliveries?: PublicDemandDelivery[];
   summary?: DemandExecutionSummary;
   status: DemandStatus;
   hasPhysicalExecution: boolean;
@@ -2638,6 +2640,9 @@ export interface DemandExecution {
   /** Documentos anexados durante a execução (T-05-12). */
   documents?: DemandExecutionDocument[];
   canRegisterDocument?: boolean;
+  /** Entregas registradas (Modelo de Conexão §22), com o recebedor sempre visível. */
+  deliveries?: DemandDelivery[];
+  canRegisterDelivery?: boolean;
   /** Marcos aceitos na evidência e no documento (módulo da demanda, §24). */
   allowedMilestones?: DemandScheduleMilestone[];
 }
@@ -2669,6 +2674,51 @@ export interface DemandProgressInput {
   partialResults?: string | null;
   note?: string | null;
   expenses?: DemandProgressExpenseInput[];
+}
+
+// ── ENTREGAS (Modelo de Conexão §22; migração post 052) ─────────────────────
+// "O encerramento deve reunir: Entregas, Resultados, Indicadores, Evidências,
+// Documentos, Relatórios, Fotos, Vídeos...". Só inserção; a prestação de contas
+// só conclui com ao menos uma. Espelha services/post-service/src/execution/.
+
+/** Foto ou vídeo que comprova a entrega (resumo, sem o arquivo). */
+export interface DemandDeliveryEvidence {
+  id: string;
+  milestone: DemandScheduleMilestone | null;
+  mediaKind: DemandEvidenceMediaKind | null;
+  recordedOn: string | null;
+}
+
+/** Entrega no acompanhamento público: sem autor; o recebedor só com autorização. */
+export interface PublicDemandDelivery {
+  id: string;
+  scheduleItemId: string | null;
+  stage: string | null;
+  evidence: DemandDeliveryEvidence | null;
+  item: string;
+  description: string | null;
+  deliveredOn: string | null;
+  recipient: string | null;
+  recipientPublic: boolean;
+  createdAt: string | null;
+}
+
+/** Entrega vista pelo Agente autor (o recebedor sempre aparece). */
+export interface DemandDelivery extends PublicDemandDelivery {
+  recipient: string;
+  evidenceId: string | null;
+  author: { userId: string; name: string | null };
+}
+
+export interface DemandDeliveryInput {
+  item: string;
+  deliveredOn: string;
+  recipient: string;
+  description?: string | null;
+  /** Mostra o nome de quem recebeu na página pública (pode ser pessoa física). */
+  recipientPublic?: boolean;
+  scheduleItemId?: string | null;
+  evidenceId?: string | null;
 }
 
 // ── PRESTAÇÃO DE CONTAS E PRESTAÇÃO DE RESULTADOS (T18) ─────────────────────
@@ -2843,6 +2893,8 @@ export interface DemandAccountabilityView {
   results: DemandAccountabilityResult[];
   documents: DemandAccountabilityDocument[];
   executionDocuments?: PublicDemandExecutionDocument[];
+  /** Entregas registradas na execução: a conclusão exige ao menos uma (Modelo §22). */
+  deliveriesTotal?: number;
   goals: DemandAccountabilityGoal[];
   summary: DemandAccountabilitySummary;
   status: DemandStatus;

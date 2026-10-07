@@ -70,6 +70,8 @@ const ACCOUNTABILITY_EVENT_TYPES = ['prestacao_de_contas_concluida'];
 const REQUIREMENTS = [
   { key: 'execution_report', condition: 'sempre', label: 'Relatório de execução' },
   { key: 'actions_record', condition: 'sempre', label: 'Registros das ações realizadas' },
+  // Modelo de Conexão §22 e §23 (migração 052): o que foi entregue, registrado na aba Execução.
+  { key: 'deliveries', condition: 'sempre', label: 'Entregas (ao menos uma registrada na aba Execução)' },
   { key: 'schedule_summary', condition: 'sempre', label: 'Atualização final do cronograma' },
   { key: 'beneficiaries_reached', condition: 'sempre', label: 'Número de beneficiários alcançados' },
   { key: 'impact_indicators', condition: 'sempre', label: 'Indicadores de impacto' },

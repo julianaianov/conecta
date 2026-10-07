@@ -60,6 +60,7 @@ export const REQUIREMENTS: {
 }[] = [
   { key: "execution_report", condition: "sempre", label: "Relatório de execução" },
   { key: "actions_record", condition: "sempre", label: "Registros das ações realizadas" },
+  { key: "deliveries", condition: "sempre", label: "Entregas (ao menos uma registrada na aba Execução)" },
   { key: "schedule_summary", condition: "sempre", label: "Atualização final do cronograma" },
   { key: "beneficiaries_reached", condition: "sempre", label: "Número de beneficiários alcançados" },
   { key: "impact_indicators", condition: "sempre", label: "Indicadores de impacto" },

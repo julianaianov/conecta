@@ -68,6 +68,16 @@ const EXECUTION_DOCUMENT_PURPOSE = 'demand_execution_document';
 const EXECUTION_DOCUMENT_OPEN_STATUSES = ['em_execucao', 'concluida', 'prestacao_de_contas'];
 const MAX_EXECUTION_DOCUMENTS = 100;
 
+// Entregas (Modelo de Conexão §22 "O encerramento deve reunir: Entregas, ...",
+// §23 passo "Entrega" e §30 camada 5; migração 052): o que foi entregue, quando,
+// a quem e com que evidência. Só inserção; vale do início da execução em diante,
+// como o andamento. A prestação de contas só conclui com ao menos uma.
+const DELIVERY_OPEN_STATUSES = ['em_execucao', 'concluida', 'prestacao_de_contas'];
+const MAX_DELIVERIES = 100;
+const MAX_DELIVERY_ITEM = 200;
+const MAX_DELIVERY_DESCRIPTION = 2000;
+const MAX_DELIVERY_RECIPIENT = 200;
+
 // Situação da etapa do cronograma (slide 23; Modelo de Conexão §18: "Não
 // iniciada, Em andamento, Concluída, Atrasada, Bloqueada"). `atrasada` também
 // é gravada pela plataforma (`demand_stage_delays`, migração 034) quando o
@@ -163,6 +173,8 @@ const EXECUTION_EVENT_TYPES = [
   'etapa_atrasada', 'ocorrencia_registrada', 'ocorrencia_resolvida',
   // Migração 035 (T-05-12): documento anexado durante a execução.
   'documento_da_execucao_registrado',
+  // Migração 052: entrega registrada (Modelo de Conexão §22).
+  'entrega_registrada',
 ];
 
 const MAX_CAPTION = 500;
@@ -196,6 +208,11 @@ module.exports = {
   EXECUTION_DOCUMENT_PURPOSE,
   EXECUTION_DOCUMENT_OPEN_STATUSES,
   MAX_EXECUTION_DOCUMENTS,
+  DELIVERY_OPEN_STATUSES,
+  MAX_DELIVERIES,
+  MAX_DELIVERY_ITEM,
+  MAX_DELIVERY_DESCRIPTION,
+  MAX_DELIVERY_RECIPIENT,
   EVIDENCE_OPEN_STATUSES,
   PROGRESS_OPEN_STATUSES,
   WAIVER_OPEN_STATUSES,

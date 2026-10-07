@@ -64,6 +64,7 @@ const FIXED_LABELS = {
   ocorrencia_registrada: 'Ocorrência registrada na execução',
   ocorrencia_resolvida: 'Ocorrência resolvida',
   documento_da_execucao_registrado: 'Documento da execução anexado',
+  entrega_registrada: 'Entrega registrada',
   prestacao_de_contas_concluida: 'Prestação de contas concluída',
   resultados_registrados: 'Resultados registrados',
   divulgacao_registrada: 'Divulgação registrada pela Comunicação',

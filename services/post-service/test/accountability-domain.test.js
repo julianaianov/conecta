@@ -112,6 +112,7 @@ const completeState = (extra = {}) => ({
   milestones: { antes: 0, depois: 0 },
   goalsTotal: 2,
   resultsTotal: 2,
+  deliveriesTotal: 1,
   financialReceipts: 0,
   ...extra,
 });
@@ -119,7 +120,7 @@ const completeState = (extra = {}) => ({
 test('o obrigatório sempre não depende de execução física nem de apoio financeiro', () => {
   const requirements = A.checkRequirements(completeState());
   const always = requirements.filter((r) => r.condition === 'sempre');
-  assert.equal(always.length, 8);
+  assert.equal(always.length, 9);
   assert.ok(always.every((r) => r.applies && r.satisfied));
   // Sem execução física e sem apoio financeiro, o condicional não se aplica.
   assert.ok(requirements.filter((r) => r.condition !== 'sempre').every((r) => !r.applies));
@@ -162,6 +163,26 @@ test('apoio financeiro declarado exige resumo e comprovante ("quando aplicável"
     financialReceipts: 2,
   });
   assert.deepEqual(A.conclusionErrors(complete), {});
+});
+
+test('ao menos uma entrega é obrigatória sempre, sem depender de execução física (Modelo §22)', () => {
+  const requirement = A.checkRequirements(completeState({ deliveriesTotal: 0 })).find((r) => r.key === 'deliveries');
+  assert.equal(requirement.condition, 'sempre');
+  assert.equal(requirement.applies, true);
+  assert.equal(requirement.satisfied, false);
+  assert.equal(requirement.informative, false);
+  assert.match(requirement.label, /^Entregas/);
+  assert.deepEqual(A.conclusionErrors(completeState({ deliveriesTotal: 0 })), {
+    deliveries: 'Registre ao menos uma entrega (aba Execução)',
+  });
+  // Demanda sem execução física também entrega alguma coisa (oficina, serviço, evento).
+  assert.deepEqual(A.conclusionErrors(completeState({ hasPhysicalExecution: false, deliveriesTotal: 0 })).deliveries,
+    'Registre ao menos uma entrega (aba Execução)');
+  assert.deepEqual(A.conclusionErrors(completeState({ deliveriesTotal: 3 })), {});
+  // Sem o dado no estado (cliente antigo), a exigência não é dada como cumprida.
+  const { deliveriesTotal, ...withoutTotal } = completeState();
+  void deliveriesTotal;
+  assert.ok(A.conclusionErrors(withoutTotal).deliveries);
 });
 
 test('o resultado de cada meta declarada é obrigatório', () => {
@@ -215,6 +236,7 @@ test('acompanhamento previsto no cronograma é exigência informativa, nunca blo
     milestones: { antes: 0, acompanhamento: 0, depois: 0 },
     goalsTotal: 0,
     resultsTotal: 0,
+    deliveriesTotal: 1,
   };
   const planned = A.checkRequirements({ ...complete, plannedMonitoring: true })
     .find((r) => r.key === 'evidence_acompanhamento');

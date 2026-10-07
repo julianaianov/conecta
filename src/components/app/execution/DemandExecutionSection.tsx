@@ -2,7 +2,8 @@
 // Sem estado: serve ao SSR da página da demanda (`/demandas/[id]`).
 //
 // Percentual de execução, status Atrasada/Bloqueada e ocorrências: Modelo de
-// Conexão §18–19 (T-05-11).
+// Conexão §18–19 (T-05-11). Entregas: Modelo §22 (o recebedor só aparece quando
+// o Agente autorizou).
 //
 // Fonte: Fluxo 2, slide 23 (etapas concluídas e em andamento, cumprimento do
 // cronograma, alterações de prazo, execução orçamentária, resultados parciais
@@ -68,10 +69,12 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
   const loose = execution.evidences.filter((e) => !paired.has(e.id));
   const incidents = execution.incidents ?? [];
   const documents = execution.documents ?? [];
+  const deliveries = execution.deliveries ?? [];
   const hasContent = execution.evidences.length > 0
     || execution.progress.length > 0
     || incidents.length > 0
     || documents.length > 0
+    || deliveries.length > 0
     || Boolean(execution.recordWaiverReason);
   if (!hasContent) return null;
 
@@ -203,6 +206,30 @@ export function DemandExecutionSection({ execution }: { execution: PublicDemandE
           ) : (
             <p className="text-sm" style={{ color: "var(--th-muted)" }}>Sem atualizações de andamento ainda.</p>
           )}
+        </ReadSection>
+      )}
+
+      {/* Entregas (Modelo §22): o que foi entregue, quando, a quem e com que evidência. */}
+      {deliveries.length > 0 && (
+        <ReadSection title="Entregas" icon="check">
+          <ul className="space-y-2">
+            {deliveries.map((delivery) => (
+              <li key={delivery.id} className="rounded-lg border p-3" style={{ borderColor: "var(--th-border)" }}>
+                <p className="text-sm font-semibold" style={{ color: "var(--th-text)" }}>{delivery.item}</p>
+                {delivery.description && (
+                  <p className="mt-0.5 whitespace-pre-line text-sm" style={{ color: "var(--th-text)" }}>{delivery.description}</p>
+                )}
+                <p className="mt-1 text-xs font-numeric" style={{ color: "var(--th-muted)" }}>
+                  {delivery.deliveredOn ? `Entregue em ${formatRecordDate(delivery.deliveredOn)}` : "Entrega registrada"}
+                  {delivery.recipient ? ` · Recebido por ${delivery.recipient}` : ""}
+                  {delivery.stage ? ` · ${delivery.stage}` : ""}
+                  {delivery.evidence?.mediaKind && delivery.evidence.milestone
+                    ? ` · Evidência: ${EVIDENCE_MEDIA_LABELS[delivery.evidence.mediaKind]} do ${EVIDENCE_MILESTONE_SHORT[delivery.evidence.milestone].toLowerCase()}`
+                    : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
         </ReadSection>
       )}
     </>

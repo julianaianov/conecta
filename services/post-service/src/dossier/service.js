@@ -16,6 +16,7 @@
 const crypto = require('node:crypto');
 const store = require('../demand/store');
 const accountabilityStore = require('../accountability/store');
+const executionStore = require('../execution/store');
 const { PUBLIC_STATUSES } = require('../demand/constants');
 const { parseUploadRef } = require('../uploads');
 const {
@@ -173,7 +174,16 @@ function createDossierService({
       );
       // Histórico (Modelo §06, T-05-10): eventos até este pedido, congelados no retrato.
       const { rows: events } = await client.query(HISTORY_SQL, [demandId]);
-      const snapshot = demandSnapshot(row, items, { accountability, processes, history: historySnapshot(events) });
+      // Execução (Modelo §22): entregas, evidências e documentos da execução,
+      // em sequência porque `client` é o da transação.
+      const execution = {
+        deliveries: await executionStore.listDeliveries(client, demandId),
+        evidences: await executionStore.listEvidences(client, demandId),
+        documents: await executionStore.listExecutionDocuments(client, demandId),
+      };
+      const snapshot = demandSnapshot(row, items, {
+        accountability, processes, history: historySnapshot(events), execution,
+      });
       const status = storage ? 'pendente' : 'indisponivel';
       const reason = storage ? null : UNAVAILABLE_REASON;
       let created = 0;

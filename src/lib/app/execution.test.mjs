@@ -16,6 +16,11 @@ import {
   EXECUTION_DOCUMENT_OPEN_STATUSES,
   EXECUTION_DOCUMENT_PURPOSE,
   MAX_EXECUTION_DOCUMENTS,
+  DELIVERY_OPEN_STATUSES,
+  MAX_DELIVERIES,
+  MAX_DELIVERY_DESCRIPTION,
+  MAX_DELIVERY_ITEM,
+  MAX_DELIVERY_RECIPIENT,
   INCIDENT_IMPACTS,
   INCIDENT_IMPACT_LABELS,
   INCIDENT_KINDS,
@@ -151,4 +156,31 @@ test("marcos do módulo ambiental e documentos da execução seguem o post-servi
   assert.equal(MAX_EXECUTION_DOCUMENTS, server.MAX_EXECUTION_DOCUMENTS);
   assert.ok(UPLOAD_PURPOSES[EXECUTION_DOCUMENT_PURPOSE]);
   assert.equal(executionTimelineLabel({ type: "documento_da_execucao_registrado", details: {} }), "Documento da execução anexado");
+});
+
+test("entregas seguem o post-service e têm rótulo e detalhe na linha do tempo (Modelo §22)", () => {
+  assert.deepEqual(DELIVERY_OPEN_STATUSES, server.DELIVERY_OPEN_STATUSES);
+  for (const [key, value] of Object.entries({
+    MAX_DELIVERIES, MAX_DELIVERY_DESCRIPTION, MAX_DELIVERY_ITEM, MAX_DELIVERY_RECIPIENT,
+  })) {
+    assert.equal(value, server[key], key);
+  }
+  assert.ok(EXECUTION_EVENT_TYPES.includes("entrega_registrada"));
+  assert.equal(executionTimelineLabel({ type: "entrega_registrada", details: {} }), "Entrega registrada");
+  assert.equal(timelineEventLabel({ type: "entrega_registrada", toStatus: null, details: {} }), "Entrega registrada");
+  // O recebedor só vem no evento quando o Agente autorizou: sem ele, o detalhe não o inventa.
+  assert.equal(
+    executionTimelineDetail({
+      type: "entrega_registrada",
+      details: { item: "Praça revitalizada", deliveredOn: "2026-11-28", stage: "Obra" },
+    }),
+    "Etapa: Obra · Praça revitalizada · entregue em 28/11/2026",
+  );
+  assert.match(
+    executionTimelineDetail({
+      type: "entrega_registrada",
+      details: { item: "Kit esportivo", deliveredOn: "2026-11-29", recipient: "Associação de Moradores" },
+    }) ?? "",
+    /recebido por Associação de Moradores/,
+  );
 });

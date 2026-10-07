@@ -171,3 +171,31 @@ test('documento da execução: validação por campo antes do banco (T-05-12)', 
     assert.ok(res.body.fields.kind && res.body.fields.title && res.body.fields.reference);
   });
 });
+
+test('entregas: token, papel, instituição validada e validação por campo antes do banco (Modelo §22)', async () => {
+  await withServer(async (base) => {
+    const body = { item: 'Horta comunitária', recipient: 'Associação de Moradores', deliveredOn: '2026-09-28' };
+    assert.equal((await send(base, 'POST', `/demands/mine/${DEMAND}/deliveries`, body, {})).status, 401);
+    for (const [role, profileType] of [['member', 'morador'], ['partner', 'empresa'], ['government', 'secretaria']]) {
+      const res = await send(base, 'POST', `/demands/mine/${DEMAND}/deliveries`, body, auth(role, profileType));
+      assert.equal(res.status, 403);
+      assert.equal(res.body.code, 'demand_author_not_agent');
+    }
+    const invalid = await send(base, 'POST', `/demands/mine/${DEMAND}/deliveries`, { evidenceId: 'nao-e-uuid' });
+    assert.equal(invalid.status, 422);
+    assert.equal(invalid.body.code, 'validation_failed');
+    assert.ok(invalid.body.fields.item && invalid.body.fields.recipient && invalid.body.fields.deliveredOn);
+    assert.ok(invalid.body.fields.evidenceId);
+    const future = await send(base, 'POST', `/demands/mine/${DEMAND}/deliveries`, { ...body, deliveredOn: '2999-01-01' });
+    assert.equal(future.status, 422);
+    assert.match(future.body.fields.deliveredOn, /não fica no futuro/);
+  });
+
+  await withServer(async (base) => {
+    const res = await send(base, 'POST', `/demands/mine/${DEMAND}/deliveries`, {
+      item: 'Horta', recipient: 'Associação', deliveredOn: '2026-09-28',
+    });
+    assert.equal(res.status, 403);
+    assert.equal(res.body.code, 'institution_not_validated');
+  }, { access: { kind: 'agente_transformacao', status: 'em_analise', canActInstitutionally: false, organizationId: null } });
+});

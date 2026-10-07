@@ -503,3 +503,118 @@ test('Histórico (Modelo §06, T-05-10): integral com tudo; pública só com eve
   assert.equal(old.history, undefined);
   assert.deepEqual(old.demand.priorityCriteria, []);
 });
+
+// Linhas como o store da execução as devolve (listDeliveries, listEvidences, listExecutionDocuments).
+const EXECUTION_ROWS = {
+  deliveries: [
+    {
+      item: 'Horta comunitária com 20 canteiros', description: 'Entregue com sistema de irrigação.',
+      delivered_on: new Date(2026, 10, 28), recipient: 'Maria Souza', recipient_public: false, stage: 'Plantio',
+      evidence_id: 'e1', evidence_milestone: 'depois', evidence_media_kind: 'foto', evidence_recorded_on: '2026-11-28',
+    },
+    {
+      item: 'Ferramentas de jardinagem', description: null, delivered_on: '2026-11-29',
+      recipient: 'Associação de Moradores do Recreio', recipient_public: true, stage: null, evidence_id: null,
+    },
+  ],
+  evidences: [
+    {
+      id: 'e1', milestone: 'antes', media_kind: 'foto', caption: 'Praça abandonada', recorded_on: '2026-10-01', stage: 'Preparação',
+      upload_ref: 'upload:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', upload_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      author_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', author_name: 'Autora do registro',
+    },
+    { id: 'e2', milestone: 'depois', media_kind: 'video', caption: null, recorded_on: '2026-11-28', stage: null },
+  ],
+  documents: [
+    {
+      kind: 'laudo', title: 'Laudo do solo', description: 'Análise interna do solo', issued_on: '2026-10-05',
+      amount_cents: '12000', stage: 'Preparação', milestone: 'antes',
+      reference: 'upload:cccccccc-cccc-4ccc-8ccc-cccccccccccc', upload_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    },
+  ],
+};
+
+test('Entregas, evidências e documentos da execução entram no retrato e no PDF do encerramento (Modelo §22)', async () => {
+  const snapshot = content.demandSnapshot({ ...ROW, status: 'encerrada', closed_at: new Date('2026-12-01T12:00:00Z') }, ITEMS,
+    { execution: EXECUTION_ROWS });
+  assert.deepEqual(snapshot.execution.deliveries[0], {
+    item: 'Horta comunitária com 20 canteiros', description: 'Entregue com sistema de irrigação.', deliveredOn: '2026-11-28',
+    recipient: 'Maria Souza', recipientPublic: false, stage: 'Plantio',
+    evidence: { milestone: 'depois', mediaKind: 'foto', recordedOn: '2026-11-28' },
+  });
+  assert.equal(snapshot.execution.deliveries[1].evidence, null);
+  assert.deepEqual(snapshot.execution.evidences.map((e) => [e.milestone, e.mediaKind, e.recordedOn, e.stage, e.caption]), [
+    ['antes', 'foto', '2026-10-01', 'Preparação', 'Praça abandonada'], ['depois', 'video', '2026-11-28', null, null],
+  ]);
+  assert.deepEqual(snapshot.execution.documents[0], {
+    kind: 'laudo', title: 'Laudo do solo', description: 'Análise interna do solo', issuedOn: '2026-10-05',
+    amountCents: 12000, stage: 'Preparação', milestone: 'antes',
+  });
+  // Nenhum arquivo no retrato: nem referência, nem id do upload, nem autor.
+  const raw = JSON.stringify(snapshot.execution);
+  for (const secret of ['upload:', 'aaaaaaaa-aaaa', 'cccccccc-cccc', 'bbbbbbbb-bbbb', 'Autora do registro', 'http']) {
+    assert.ok(!raw.includes(secret), `o retrato da execução não pode conter ${secret}`);
+  }
+
+  // Integral: o recebedor sempre aparece, e o PDF avisa o que a versão pública esconde.
+  const integral = content.buildDossierContent({ snapshot, institution: INSTITUTION, meta: meta('integral', { trigger: 'encerramento' }) });
+  assert.equal(integral.execution.deliveries[0].recipient, 'Maria Souza');
+  const text = await pdfTexts(integral);
+  for (const expected of ['Execução: entregas, evidências e documentos', 'Entregas', 'Horta comunitária com 20 canteiros',
+    'Maria Souza\n(não divulgado na versão pública)', 'Associação de Moradores do Recreio', 'Fotografia · Depois · 28/11/2026',
+    'Evidências: fotos e vídeos', 'Praça abandonada', 'Filmagem', 'Documentos da execução', 'Laudo do solo', 'Análise interna do solo',
+    'Laudo', 'R$ 120,00']) {
+    assert.ok(text.includes(expected), expected);
+  }
+
+  // Pública: o recebedor só quando autorizado; sem descrição do documento; sem nenhum link de arquivo.
+  const publica = content.buildDossierContent({ snapshot, institution: INSTITUTION, meta: meta('publica', { trigger: 'encerramento' }) });
+  assert.equal(publica.execution.deliveries[0].recipient, null);
+  assert.equal(publica.execution.deliveries[1].recipient, 'Associação de Moradores do Recreio');
+  assert.equal(publica.execution.documents[0].description, null);
+  const publicJson = JSON.stringify(publica);
+  assert.ok(!publicJson.includes('Maria Souza') && !publicJson.includes('Análise interna do solo'));
+  assert.ok(!publicJson.includes('upload:'));
+  const publicText = await pdfTexts(publica);
+  assert.ok(publicText.includes('Não divulgado'));
+  assert.ok(publicText.includes('Associação de Moradores do Recreio'));
+  assert.ok(!publicText.includes('Maria Souza') && !publicText.includes('Análise interna do solo'));
+  assert.ok(publicText.includes('o recebedor da entrega só aparece quando o Agente autorizou'));
+  // O snapshot gravado não muda com a redação, e a execução entra no hash.
+  assert.equal(snapshot.execution.deliveries[0].recipient, 'Maria Souza');
+  assert.notEqual(content.contentHash(integral), content.contentHash(publica));
+  const pdf = await renderDossierPdf(integral, { verifyUrl: 'https://dmconecta.org/x', contentSha256: content.contentHash(integral) });
+  assert.equal(pdf.subarray(0, 5).toString('latin1'), '%PDF-');
+
+  // Retrato anterior (sem execução) e demanda sem registro seguem sem a seção.
+  const old = content.buildDossierContent({ snapshot: content.demandSnapshot(ROW, ITEMS), institution: INSTITUTION, meta: meta('integral') });
+  assert.equal(old.execution, undefined);
+  assert.ok(!(await pdfTexts(old)).includes('Execução: entregas, evidências e documentos'));
+  const empty = content.buildDossierContent({
+    snapshot: content.demandSnapshot(ROW, ITEMS, { execution: { deliveries: [], evidences: [], documents: [] } }),
+    institution: INSTITUTION, meta: meta('integral'),
+  });
+  assert.ok(!(await pdfTexts(empty)).includes('Execução: entregas, evidências e documentos'));
+});
+
+test('os anexos da prestação no PDF usam o rótulo de todos os tipos do §20, não a chave', async () => {
+  const snapshot = content.demandSnapshot(ROW, ITEMS, { accountability: {
+    ...ACCOUNTABILITY,
+    documents: [{ kind: 'nota_fiscal', title: 'NF 77', issuedOn: '2026-11-20', amountCents: 1000 }],
+  } });
+  const text = await pdfTexts(content.buildDossierContent({ snapshot, institution: INSTITUTION, meta: meta('integral') }));
+  assert.ok(text.includes('Nota fiscal: NF 77'));
+  assert.ok(!text.includes('nota_fiscal'));
+});
+
+test('migração 052: entregas só inserção e prestação exige ao menos uma', () => {
+  const sql = fs.readFileSync(path.join(__dirname, '../migrations/052-demand-deliveries.sql'), 'utf8');
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS demand_deliveries/);
+  assert.match(sql, /a gestão só lê as entregas/);
+  assert.match(sql, /BEFORE TRUNCATE ON demand_deliveries/);
+  assert.match(sql, /'entrega_registrada'/);
+  assert.match(sql, /BEFORE UPDATE ON demand_accountability/);
+  assert.match(sql, /exige ao menos uma entrega registrada/);
+  const manifest = fs.readFileSync(path.join(__dirname, '../../migrations.manifest'), 'utf8');
+  assert.match(manifest, /^post_db post-service\/migrations\/052-demand-deliveries\.sql$/m);
+});

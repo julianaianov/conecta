@@ -65,6 +65,8 @@ test('execução: evidências antes/depois, andamento, orçamento executado e hi
       // dm-infra 031 (T-05-11/T-05-12): atraso gravado, situação da etapa e ocorrências.
       await admin.query(`GRANT SELECT ON demand_stage_delays, demand_stage_status,
                            demand_execution_incidents, demand_execution_documents TO gestao_app`);
+      // Entregas (migração 052): a gestão só lê (grant SELECT no dm-infra).
+      await admin.query('GRANT SELECT ON demand_deliveries TO gestao_app');
       await admin.query(`GRANT UPDATE (status, review_state, review_note, reviewed_by, archive_reason, updated_at)
                            ON demands TO gestao_app`);
     } catch (err) {
@@ -558,6 +560,106 @@ test('execução: evidências antes/depois, andamento, orçamento executado e hi
       });
       assert.equal(cedoDoc.status, 409);
       assert.equal(cedoDoc.body.code, 'demand_not_open');
+
+      // ── Entregas (Modelo de Conexão §22 e §23): item, data, recebedor e evidência ─
+      const entregaBody = (extra = {}) => ({
+        item: 'Quadra reformada com piso novo', description: 'Piso, pintura e redes.', deliveredOn: daysAgo(1),
+        recipient: 'Dona Maria Souza, zeladora da escola', scheduleItemId: quadra.scheduleItemId, ...extra,
+      });
+      const minhaQuadra = await call('GET', `/demands/mine/${quadra.id}/execution`);
+      assert.equal(minhaQuadra.body.canRegisterDelivery, true);
+      assert.deepEqual(minhaQuadra.body.deliveries, [], 'sem entrega registrada ainda');
+      const evidenciaQuadra = minhaQuadra.body.evidences[0].id;
+
+      // Antes da execução, só o Agente autor e só com vínculos da própria demanda.
+      const cedoEntrega = await call('POST', `/demands/mine/${outra.id}/deliveries`, { body: entregaBody({ scheduleItemId: null }) });
+      assert.equal(cedoEntrega.status, 409);
+      assert.equal(cedoEntrega.body.code, 'demand_not_open');
+      assert.equal((await call('POST', `/demands/mine/${quadra.id}/deliveries`, {
+        as: OTHER_AGENT, body: entregaBody(),
+      })).status, 404, 'entrega é do Agente autor');
+      const etapaAlheia = await call('POST', `/demands/mine/${quadra.id}/deliveries`, {
+        body: entregaBody({ scheduleItemId: outra.scheduleItemId }),
+      });
+      assert.equal(etapaAlheia.status, 422);
+      assert.ok(etapaAlheia.body.fields.scheduleItemId);
+      const evidenciaAlheia = await call('POST', `/demands/mine/${quadra.id}/deliveries`, {
+        body: entregaBody({ evidenceId: beforePhoto.body.evidence.id }),
+      });
+      assert.equal(evidenciaAlheia.status, 422, 'a evidência é desta demanda');
+      assert.ok(evidenciaAlheia.body.fields.evidenceId);
+      const futura = await call('POST', `/demands/mine/${quadra.id}/deliveries`, { body: entregaBody({ deliveredOn: '2999-01-01' }) });
+      assert.equal(futura.status, 422);
+      assert.match(futura.body.fields.deliveredOn, /não fica no futuro/);
+
+      const entrega = await call('POST', `/demands/mine/${quadra.id}/deliveries`, {
+        body: entregaBody({ evidenceId: evidenciaQuadra }),
+      });
+      assert.equal(entrega.status, 201, JSON.stringify(entrega.body));
+      assert.equal(entrega.body.delivery.item, 'Quadra reformada com piso novo');
+      assert.equal(entrega.body.delivery.stage, 'Execução da obra');
+      assert.equal(entrega.body.delivery.recipient, 'Dona Maria Souza, zeladora da escola');
+      assert.equal(entrega.body.delivery.recipientPublic, false, 'o recebedor é privado por padrão');
+      assert.equal(entrega.body.delivery.evidenceId, evidenciaQuadra);
+      assert.equal(entrega.body.delivery.evidence.milestone, 'antes');
+      assert.equal(entrega.body.delivery.evidence.mediaKind, 'foto');
+      assert.equal(entrega.body.delivery.author.userId, AGENT);
+      const entregaInstitucional = await call('POST', `/demands/mine/${quadra.id}/deliveries`, {
+        body: {
+          item: 'Kit de material esportivo', deliveredOn: daysAgo(1), recipient: 'Associação de Moradores do Recreio',
+          recipientPublic: true,
+        },
+      });
+      assert.equal(entregaInstitucional.status, 201, JSON.stringify(entregaInstitucional.body));
+      assert.equal(entregaInstitucional.body.delivery.stage, null);
+      assert.equal(entregaInstitucional.body.delivery.evidence, null);
+
+      // Visão pública: o recebedor só quando autorizado; sem autor nem id interno do arquivo.
+      const comEntregas = await call('GET', `/demands/${quadra.id}/execution`, { auth: false });
+      assert.equal(comEntregas.body.deliveries.length, 2);
+      const [entregaPrivada, entregaPublica] = comEntregas.body.deliveries;
+      assert.equal(entregaPrivada.item, 'Quadra reformada com piso novo');
+      assert.equal(entregaPrivada.recipient, null, 'recebedor não autorizado não sai na rota pública');
+      assert.equal(entregaPrivada.recipientPublic, false);
+      assert.equal(entregaPrivada.author, undefined);
+      assert.equal(entregaPrivada.evidenceId, undefined);
+      assert.equal(entregaPrivada.evidence.milestone, 'antes');
+      assert.equal(entregaPublica.recipient, 'Associação de Moradores do Recreio');
+      assert.equal(JSON.stringify(comEntregas.body.deliveries).includes('Dona Maria Souza'), false);
+      const minhasEntregas = await call('GET', `/demands/mine/${quadra.id}/execution`);
+      assert.equal(minhasEntregas.body.deliveries.length, 2);
+      assert.equal(minhasEntregas.body.deliveries[0].recipient, 'Dona Maria Souza, zeladora da escola');
+
+      // Linha do tempo pública: o evento leva item, data e etapa, e o recebedor só com autorização.
+      const entregasTimeline = await call('GET', `/demands/${quadra.id}/timeline`, { auth: false });
+      const eventosEntrega = entregasTimeline.body.events.filter((e) => e.type === 'entrega_registrada');
+      assert.equal(eventosEntrega.length, 2);
+      assert.equal(eventosEntrega[0].details.item, 'Quadra reformada com piso novo');
+      assert.equal(eventosEntrega[0].details.stage, 'Execução da obra');
+      assert.equal(eventosEntrega[0].details.deliveredOn, daysAgo(1));
+      assert.equal(eventosEntrega[0].details.recipient, undefined);
+      assert.equal(eventosEntrega[1].details.recipient, 'Associação de Moradores do Recreio');
+      assert.equal(eventosEntrega[0].details.delivery_id, undefined, 'o id interno não sai na rota pública');
+      assert.equal(JSON.stringify(entregasTimeline.body).includes('Dona Maria Souza'), false);
+
+      // Só inserção: nada muda, nada é excluído, a gestão só lê.
+      await assert.rejects(
+        pool.query("UPDATE demand_deliveries SET item = 'outro' WHERE id = $1", [entrega.body.delivery.id]),
+        /não muda nem é excluída/,
+      );
+      await assert.rejects(
+        pool.query('DELETE FROM demand_deliveries WHERE id = $1', [entrega.body.delivery.id]),
+        /não muda nem é excluída/,
+      );
+      await assert.rejects(pool.query('TRUNCATE demand_deliveries'), /não é apagada/);
+      const { rows: entregasGestao } = await gestao.query(
+        'SELECT item FROM demand_deliveries WHERE demand_id = $1 ORDER BY created_at', [quadra.id],
+      );
+      assert.equal(entregasGestao.length, 2);
+      await assert.rejects(
+        gestao.query("UPDATE demand_deliveries SET item = 'gestão' WHERE demand_id = $1", [quadra.id]),
+        /permission denied|a gestão só lê/,
+      );
 
       const concluida = await call('POST', `/demands/mine/${quadra.id}/progress`, {
         body: { scheduleItemId: quadra.scheduleItemId, stageProgress: 'concluida' },

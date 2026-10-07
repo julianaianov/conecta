@@ -26,6 +26,9 @@
 //                                        registro técnico (Modelo §20; T-05-12)
 //   POST /mine/:id/incidents             registra ocorrência (Modelo §19)
 //   POST /mine/:id/incidents/:incidentId/resolve   resolução, gravada uma vez
+//   POST /mine/:id/deliveries            registra uma entrega: item, data,
+//                                        recebedor e evidência (Modelo §22; só
+//                                        inserção; a prestação exige ao menos uma)
 //
 // Status da etapa (Modelo §18): `schedule[].stageProgress` é Não iniciada, Em
 // andamento, Concluída, Atrasada ou Bloqueada; o atraso é gravado
@@ -47,11 +50,12 @@ const { findUsableUpload, parseUploadRef, formatUploadRef } = require('../upload
 const {
   EVIDENCE_PURPOSE_BY_MEDIA, EVIDENCE_OPEN_STATUSES, PROGRESS_OPEN_STATUSES, WAIVER_OPEN_STATUSES,
   RECORD_MILESTONES, EXECUTION_DOCUMENT_PURPOSE, EXECUTION_DOCUMENT_OPEN_STATUSES, MAX_EXECUTION_DOCUMENTS,
+  DELIVERY_OPEN_STATUSES, MAX_DELIVERIES,
   evidenceMilestonesFor,
 } = require('../execution/constants');
 const {
   validateEvidence, validateEvidenceUpdate, validateProgressUpdate, validateRecordWaiver,
-  validateIncident, validateIncidentResolution, validateExecutionDocument,
+  validateIncident, validateIncidentResolution, validateExecutionDocument, validateDelivery,
 } = require('../execution/validation');
 const store = require('../execution/store');
 const { listHelpers } = require('./demands');
@@ -165,13 +169,14 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
 
   /** Visão completa da execução, para o público e para o autor. */
   async function executionView(db, demandId, { owner, status }) {
-    const [rawEvidences, progress, budget, schedule, rawIncidents, rawDocuments] = await Promise.all([
+    const [rawEvidences, progress, budget, schedule, rawIncidents, rawDocuments, rawDeliveries] = await Promise.all([
       store.listEvidences(db, demandId),
       store.listProgress(db, demandId),
       store.budgetExecution(db, demandId),
       store.scheduleStatus(db, demandId, { running: status === 'em_execucao' }),
       store.listIncidents(db, demandId),
       store.listExecutionDocuments(db, demandId),
+      store.listDeliveries(db, demandId),
     ]);
     const evidences = rawEvidences.map(owner ? store.serializeEvidence : store.serializePublicEvidence);
     const incidents = rawIncidents.map(owner ? store.serializeIncident : store.serializePublicIncident);
@@ -186,6 +191,8 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
       schedule,
       incidents,
       documents: rawDocuments.map(owner ? store.serializeExecutionDocument : store.serializePublicExecutionDocument),
+      // Entregas (Modelo §22): o recebedor só sai na visão pública se o Agente autorizou.
+      deliveries: rawDeliveries.map(owner ? store.serializeDelivery : store.serializePublicDelivery),
       summary: store.executionSummary(schedule, budget, incidents),
     };
   }
@@ -219,6 +226,7 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
       canRegisterProgress: PROGRESS_OPEN_STATUSES.includes(demand.status),
       canRegisterIncident: PROGRESS_OPEN_STATUSES.includes(demand.status),
       canRegisterDocument: EXECUTION_DOCUMENT_OPEN_STATUSES.includes(demand.status),
+      canRegisterDelivery: DELIVERY_OPEN_STATUSES.includes(demand.status),
       // Marcos aceitos na evidência e no documento (módulo da demanda, §24).
       allowedMilestones: evidenceMilestonesFor(demand.category),
       canWaiveRecord: !waived && WAIVER_OPEN_STATUSES.includes(demand.status),
@@ -449,6 +457,50 @@ module.exports = ({ pool, auth, validatedAgent, institutionStatus = null }) => {
       return saved;
     });
     res.status(201).json({ document: store.serializeExecutionDocument(document) });
+  }));
+
+  // Entregas (Modelo de Conexão §22): o que foi entregue, quando, a quem e com
+  // que evidência. Só inserção; a prestação de contas só conclui com ao menos
+  // uma. O recebedor só aparece na página pública se o Agente autorizar.
+  router.post('/mine/:id/deliveries', auth, requireAgent, validatedAgent, handle(async (req, res) => {
+    const { value, errors } = validateDelivery(req.body ?? {});
+    if (Object.keys(errors).length) throw validationError(errors);
+    const delivery = await withTransaction(pool, async (client) => {
+      const demand = await demandStore.loadOwnDemand(client, req.params.id, req.user.userId, { forUpdate: true });
+      assertOpen(demand, DELIVERY_OPEN_STATUSES,
+        'As entregas são registradas a partir do início da execução');
+      const { rows: [count] } = await client.query(
+        'SELECT count(*)::int AS total FROM demand_deliveries WHERE demand_id = $1', [demand.id],
+      );
+      if (Number(count?.total ?? 0) >= MAX_DELIVERIES) {
+        throw validationError({ item: `Registre no máximo ${MAX_DELIVERIES} entregas` });
+      }
+      if (value.scheduleItemId) {
+        const { rowCount } = await client.query(
+          'SELECT 1 FROM demand_schedule_items WHERE id = $1 AND demand_id = $2', [value.scheduleItemId, demand.id],
+        );
+        if (!rowCount) throw validationError({ scheduleItemId: 'Escolha uma etapa do cronograma desta demanda' });
+      }
+      if (value.evidenceId) {
+        const { rowCount } = await client.query(
+          'SELECT 1 FROM demand_evidences WHERE id = $1 AND demand_id = $2', [value.evidenceId, demand.id],
+        );
+        if (!rowCount) throw validationError({ evidenceId: 'Escolha uma evidência desta demanda' });
+      }
+      const { rows: [row] } = await client.query(
+        `INSERT INTO demand_deliveries
+           (demand_id, schedule_item_id, evidence_id, item, description, delivered_on, recipient,
+            recipient_public, author_id, author_name)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING id`,
+        [
+          demand.id, value.scheduleItemId, value.evidenceId, value.item, value.description,
+          value.deliveredOn, value.recipient, value.recipientPublic, req.user.userId, req.user.name || null,
+        ],
+      );
+      return store.loadDelivery(client, demand.id, row.id);
+    });
+    res.status(201).json({ delivery: store.serializeDelivery(delivery) });
   }));
 
   // Ocorrências da execução (Modelo de Conexão §19): só inserção; entram na

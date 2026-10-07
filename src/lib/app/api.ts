@@ -85,7 +85,7 @@ import type {
 import type {
   DemandEvidence, DemandEvidenceInput, DemandExecution, DemandProgressInput,
   DemandProgressUpdate, PublicDemandExecution, DemandIncident, DemandIncidentInput,
-  DemandExecutionDocument, DemandExecutionDocumentInput,
+  DemandExecutionDocument, DemandExecutionDocumentInput, DemandDelivery, DemandDeliveryInput,
 } from "./types";
 import type {
   DemandAccountabilityDocumentInput, DemandAccountabilityInput, DemandAccountabilityResultInput,
@@ -1825,6 +1825,13 @@ export const api = {
     return (await demandRequired<{ document: DemandExecutionDocument }>(
       `/mine/${encodeURIComponent(id)}/execution-documents`, { method: "POST", ...json(input) },
     )).document;
+  },
+
+  /** Registra uma entrega: item, data, recebedor e evidência (Modelo de Conexão §22; só inserção). */
+  async registerDemandDelivery(id: string, input: DemandDeliveryInput): Promise<DemandDelivery> {
+    return (await demandRequired<{ delivery: DemandDelivery }>(
+      `/mine/${encodeURIComponent(id)}/deliveries`, { method: "POST", ...json(input) },
+    )).delivery;
   },
 
   /** Registra uma ocorrência da execução (Modelo de Conexão §19). */

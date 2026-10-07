@@ -17,6 +17,8 @@ const {
 } = require('./content');
 const { FEE_OBSERVATION } = require('./content');
 const { PARTY_KIND_LABELS, PROCESS_STATUS_LABELS } = require('../process/constants');
+const { EVIDENCE_MEDIA_LABELS } = require('../execution/constants');
+const { DOCUMENT_KIND_LABELS } = require('../accountability/constants');
 const { PRIORITY_CRITERIA } = require('../demand/priority');
 const { ACTOR_LABELS, formatHistoryWhen } = require('./history');
 
@@ -355,17 +357,73 @@ function photoBlock(doc, content, photo) {
     + 'A imagem fica disponível na página da demanda.');
 }
 
-/** Tipos de anexo da prestação de contas (T18, migração post 015). */
-const ACCOUNTABILITY_DOCUMENT_LABELS = {
-  comprovante_financeiro: 'Comprovante financeiro',
-  relatorio_execucao: 'Relatório de execução',
-  registro_acao: 'Registro da ação realizada',
-  outro: 'Outro documento',
-};
+/**
+ * Execução (Modelo de Conexão §22): entregas, evidências (fotos e vídeos) e
+ * documentos anexados durante a execução. Só metadados: o arquivo não vai no
+ * dossiê (nem referência nem URL), como os comprovantes da prestação.
+ */
+function executionSection(doc, execution, n, { isPublic }) {
+  const { deliveries, evidences, documents } = execution;
+  sectionTitle(doc, n, 'Execução: entregas, evidências e documentos');
+
+  subTitle(doc, 'Entregas');
+  if (!deliveries.length) {
+    paragraph(doc, 'Nenhuma entrega registrada até a geração desta versão.');
+  } else {
+    table(doc, [
+      { header: 'O que foi entregue', width: 0.3 }, { header: 'Data', width: 0.12, numeric: true },
+      { header: 'Recebido por', width: 0.24 }, { header: 'Etapa', width: 0.14 },
+      { header: 'Evidência', width: 0.2 },
+    ], deliveries.map((d) => {
+      const recipient = d.recipient
+        ? `${d.recipient}${!isPublic && !d.recipientPublic ? '\n(não divulgado na versão pública)' : ''}`
+        : 'Não divulgado';
+      const evidence = d.evidence
+        ? [EVIDENCE_MEDIA_LABELS[d.evidence.mediaKind] ?? d.evidence.mediaKind,
+          MILESTONE_SHORT[d.evidence.milestone] ?? d.evidence.milestone,
+          d.evidence.recordedOn ? formatDate(d.evidence.recordedOn) : null].filter(Boolean).join(' · ')
+        : null;
+      return [`${d.item}${d.description ? `\n${d.description}` : ''}`, formatDate(d.deliveredOn), recipient, d.stage, evidence];
+    }));
+  }
+
+  if (evidences.length) {
+    subTitle(doc, 'Evidências: fotos e vídeos');
+    table(doc, [
+      { header: 'Marco', width: 0.18 }, { header: 'Tipo', width: 0.14 },
+      { header: 'Data do registro', width: 0.16, numeric: true }, { header: 'Etapa', width: 0.18 },
+      { header: 'Legenda', width: 0.34 },
+    ], evidences.map((e) => [
+      MILESTONE_SHORT[e.milestone] ?? e.milestone, EVIDENCE_MEDIA_LABELS[e.mediaKind] ?? e.mediaKind,
+      formatDate(e.recordedOn), e.stage, e.caption,
+    ]));
+  }
+
+  if (documents.length) {
+    subTitle(doc, 'Documentos da execução');
+    table(doc, [
+      { header: 'Tipo', width: 0.2 }, { header: 'Título', width: 0.32 },
+      { header: 'Emitido em', width: 0.14, numeric: true }, { header: 'Etapa e marco', width: 0.18 },
+      { header: 'Valor declarado', width: 0.16, align: 'right', numeric: true },
+    ], documents.map((x) => [
+      DOCUMENT_KIND_LABELS[x.kind] ?? x.kind,
+      `${x.title}${x.description ? `\n${x.description}` : ''}`,
+      x.issuedOn ? formatDate(x.issuedOn) : null,
+      [x.stage, x.milestone ? MILESTONE_SHORT[x.milestone] ?? x.milestone : null].filter(Boolean).join('\n'),
+      x.amountCents !== null && x.amountCents !== undefined ? formatCents(x.amountCents) : null,
+    ]));
+  }
+  doc.font('regular').fontSize(7.5).fillColor(COLOR.cinza)
+    .text('O dossiê registra o tipo, o título, a data e a etapa; os arquivos das evidências e dos documentos '
+      + 'ficam com o Agente e com a equipe de análise.'
+      + (isPublic ? ' Versão pública: o recebedor da entrega só aparece quando o Agente autorizou.' : ''),
+    MARGIN.left, doc.y, { width: CONTENT_WIDTH });
+  doc.moveDown(0.3);
+}
 
 function renderBody(doc, content) {
   const {
-    agent, demand, location, budget, schedule, goals, resources, documents, deadlines, accountability,
+    agent, demand, location, budget, schedule, goals, resources, documents, deadlines, accountability, execution,
   } = content;
   const inst = agent.institution;
   const isPublic = content.variant === 'publica';
@@ -556,6 +614,12 @@ function renderBody(doc, content) {
       .text('Versão pública: os arquivos ficam com o Agente e com a equipe de análise.', MARGIN.left, doc.y, { width: CONTENT_WIDTH });
   }
 
+  // Execução (Modelo de Conexão §22): entregas, evidências e documentos. Só
+  // aparece quando o retrato traz algum registro (retratos anteriores não).
+  if (execution && (execution.deliveries.length || execution.evidences.length || execution.documents.length)) {
+    executionSection(doc, execution, ++n, { isPublic });
+  }
+
   // Prestação de contas e resultados (T18, slide 24). Só na versão gerada
   // depois que o Agente concluiu a prestação.
   if (accountability) {
@@ -598,7 +662,7 @@ function renderBody(doc, content) {
 
     subTitle(doc, 'Comprovantes e relatórios anexados');
     bulletList(doc, accountability.documents.map((d) => {
-      const parts = [`${ACCOUNTABILITY_DOCUMENT_LABELS[d.kind] ?? d.kind}: ${d.title}`];
+      const parts = [`${DOCUMENT_KIND_LABELS[d.kind] ?? d.kind}: ${d.title}`];
       if (d.issuedOn) parts.push(formatDate(d.issuedOn));
       if (d.amountCents !== null && d.amountCents !== undefined) parts.push(formatCents(d.amountCents));
       return parts.join(' — ');

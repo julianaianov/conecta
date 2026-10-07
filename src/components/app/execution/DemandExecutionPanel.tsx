@@ -5,7 +5,8 @@
 // atualiza o andamento (etapas, cronograma, prazo, resultados parciais) e a
 // execução orçamentária, e pareia os registros para o histórico visual.
 // Modelo de Conexão §18–19 (T-05-11): percentual de execução, status Atrasada
-// e Bloqueada (com motivo) e registro de ocorrências.
+// e Bloqueada (com motivo) e registro de ocorrências. Modelo §22: Entregas
+// (item, data, recebedor e evidência), exigidas ao concluir a prestação de contas.
 //
 // Fonte: Fluxo 2, slides 11, 12, 14, 23 e 24. O servidor é quem decide: as
 // mensagens de erro vêm de `fields` e dos códigos das rotas.
@@ -23,6 +24,9 @@ import {
   EVIDENCE_MILESTONE_LABELS,
   EVIDENCE_MILESTONE_SHORT,
   EXECUTION_DOCUMENT_PURPOSE,
+  MAX_DELIVERY_DESCRIPTION,
+  MAX_DELIVERY_ITEM,
+  MAX_DELIVERY_RECIPIENT,
   RECORD_MILESTONES,
   STAGE_PROGRESS,
   STAGE_PROGRESS_LABELS,
@@ -92,6 +96,15 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
   const [docIssuedOn, setDocIssuedOn] = useState("");
   const [docStage, setDocStage] = useState("");
   const [docMilestone, setDocMilestone] = useState<DemandScheduleMilestone | "">("");
+
+  // Entregas (Modelo §22)
+  const [deliveryItem, setDeliveryItem] = useState("");
+  const [deliveryDescription, setDeliveryDescription] = useState("");
+  const [deliveryOn, setDeliveryOn] = useState(today);
+  const [deliveryRecipient, setDeliveryRecipient] = useState("");
+  const [deliveryRecipientPublic, setDeliveryRecipientPublic] = useState(false);
+  const [deliveryStage, setDeliveryStage] = useState("");
+  const [deliveryEvidence, setDeliveryEvidence] = useState("");
 
   // Ocorrências (Modelo §19)
   const [incidentKind, setIncidentKind] = useState<DemandIncidentKind | "">("");
@@ -223,6 +236,24 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
     setDocIssuedOn("");
     setDocStage("");
     setDocMilestone("");
+  });
+
+  const addDelivery = () => run("delivery", async () => {
+    await api.registerDemandDelivery(demandId, {
+      item: deliveryItem.trim(),
+      description: deliveryDescription.trim() || null,
+      deliveredOn: deliveryOn,
+      recipient: deliveryRecipient.trim(),
+      recipientPublic: deliveryRecipientPublic,
+      scheduleItemId: deliveryStage || null,
+      evidenceId: deliveryEvidence || null,
+    });
+    setDeliveryItem("");
+    setDeliveryDescription("");
+    setDeliveryRecipient("");
+    setDeliveryRecipientPublic(false);
+    setDeliveryStage("");
+    setDeliveryEvidence("");
   });
 
   const addIncident = () => run("incident", async () => {
@@ -616,6 +647,118 @@ export function DemandExecutionPanel({ demandId, onChanged }: {
           <Button className="mt-3" type="button" size="sm" icon="send" loading={busy === "progress"} onClick={addProgress}>
             Registrar atualização
           </Button>
+        </section>
+      )}
+
+      {/* Entregas (Modelo §22): o que foi entregue, quando, a quem e com que evidência. */}
+      {(data.canRegisterDelivery || (data.deliveries ?? []).length > 0) && (
+        <section id={`exec-${demandId}-deliveries`} className="rounded-xl border p-3" style={{ borderColor: "var(--th-border)" }}>
+          <h3 className="mb-1 text-sm font-bold" style={{ color: "var(--th-text)" }}>
+            Entregas ({(data.deliveries ?? []).length})
+          </h3>
+          <p className="mb-2 text-xs" style={{ color: "var(--th-muted)" }}>
+            O encerramento reúne as entregas: a prestação de contas só é concluída com ao menos uma registrada. Cada
+            entrega fica gravada sem alteração.
+          </p>
+          {(data.deliveries ?? []).length > 0 ? (
+            <ul className="mb-3 space-y-1.5">
+              {(data.deliveries ?? []).map((delivery) => (
+                <li key={delivery.id} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--th-border)" }}>
+                  <p className="font-semibold" style={{ color: "var(--th-text)" }}>{delivery.item}</p>
+                  {delivery.description && (
+                    <p className="whitespace-pre-line" style={{ color: "var(--th-text)" }}>{delivery.description}</p>
+                  )}
+                  <p className="text-xs" style={{ color: "var(--th-muted)" }}>
+                    {delivery.deliveredOn ? `Entregue em ${formatRecordDate(delivery.deliveredOn)}` : ""}
+                    {` · Recebido por ${delivery.recipient} (${delivery.recipientPublic ? "nome visível na página pública" : "nome só para você e a equipe"})`}
+                    {delivery.stage ? ` · ${delivery.stage}` : ""}
+                    {delivery.evidence?.mediaKind && delivery.evidence.milestone
+                      ? ` · Evidência: ${EVIDENCE_MEDIA_LABELS[delivery.evidence.mediaKind]} do ${EVIDENCE_MILESTONE_SHORT[delivery.evidence.milestone].toLowerCase()}`
+                      : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mb-2 text-sm" style={{ color: "var(--th-muted)" }}>Nenhuma entrega registrada ainda.</p>
+          )}
+          {data.canRegisterDelivery && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextInput
+                name={`exec-${demandId}-delivery-item`}
+                label="O que foi entregue"
+                className="sm:col-span-2"
+                maxLength={MAX_DELIVERY_ITEM}
+                value={deliveryItem}
+                onValue={setDeliveryItem}
+                error={fields.item}
+              />
+              <TextArea
+                name={`exec-${demandId}-delivery-description`}
+                label="Detalhes da entrega (opcional)"
+                className="sm:col-span-2"
+                hint="Aparece na página pública da demanda."
+                rows={2}
+                maxLength={MAX_DELIVERY_DESCRIPTION}
+                value={deliveryDescription}
+                onValue={setDeliveryDescription}
+                error={fields.description}
+              />
+              <TextInput
+                name={`exec-${demandId}-delivery-date`}
+                label="Data da entrega"
+                type="date"
+                max={today()}
+                value={deliveryOn}
+                onValue={setDeliveryOn}
+                error={fields.deliveredOn}
+              />
+              <TextInput
+                name={`exec-${demandId}-delivery-recipient`}
+                label="Quem recebeu"
+                hint="Pessoa ou instituição que recebeu a entrega."
+                maxLength={MAX_DELIVERY_RECIPIENT}
+                value={deliveryRecipient}
+                onValue={setDeliveryRecipient}
+                error={fields.recipient}
+              />
+              <div className="sm:col-span-2">
+                <Checkbox
+                  name={`exec-${demandId}-delivery-public`}
+                  label="Mostrar o nome de quem recebeu na página pública"
+                  checked={deliveryRecipientPublic}
+                  onChecked={setDeliveryRecipientPublic}
+                  hint="Desmarcado, o nome fica só para você e para a equipe da plataforma (pode ser uma pessoa física)."
+                />
+              </div>
+              <SelectInput
+                name={`exec-${demandId}-delivery-stage`}
+                label="Etapa do cronograma"
+                placeholder="Sem etapa específica"
+                value={deliveryStage}
+                onValue={setDeliveryStage}
+                options={stageOptions}
+                error={fields.scheduleItemId}
+              />
+              <SelectInput
+                name={`exec-${demandId}-delivery-evidence`}
+                label="Evidência (foto ou vídeo)"
+                placeholder="Sem evidência vinculada"
+                value={deliveryEvidence}
+                onValue={setDeliveryEvidence}
+                options={data.evidences.map((e) => ({
+                  value: e.id,
+                  label: `${EVIDENCE_MEDIA_LABELS[e.mediaKind]} · ${EVIDENCE_MILESTONE_SHORT[e.milestone]} · ${formatRecordDate(e.recordedOn)}${e.caption ? ` · ${e.caption}` : ""}`,
+                }))}
+                error={fields.evidenceId}
+              />
+              <div className="sm:col-span-2">
+                <Button type="button" size="sm" icon="plus" loading={busy === "delivery"} onClick={addDelivery}>
+                  Registrar entrega
+                </Button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

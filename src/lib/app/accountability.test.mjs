@@ -138,3 +138,15 @@ test("os códigos de erro das rotas viram texto de tela", () => {
 test("as dez perguntas do §21 são as do post-service (T-05-13)", () => {
   assert.deepEqual(RESULT_QUESTIONS, server.RESULT_QUESTIONS);
 });
+
+test("a conclusão exige ao menos uma entrega, sempre (Modelo §22)", () => {
+  const deliveries = REQUIREMENTS.find((r) => r.key === "deliveries");
+  assert.equal(deliveries.condition, "sempre");
+  assert.ok(!deliveries.informative);
+  assert.match(deliveries.label, /^Entregas/);
+  assert.deepEqual(deliveries, server.REQUIREMENTS.find((r) => r.key === "deliveries"));
+  const pending = pendingRequirements([
+    { key: "deliveries", label: deliveries.label, condition: "sempre", applies: true, satisfied: false, reason: null },
+  ]);
+  assert.deepEqual(pending.map((r) => r.key), ["deliveries"]);
+});

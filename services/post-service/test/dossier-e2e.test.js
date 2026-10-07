@@ -234,6 +234,8 @@ test('dossiê: envio (S3 fora) → regeneração → reenvio → publicação �
       assert.equal(stored.content.agent.institution.cnpj, '11222333000181');
       assert.equal(stored.content.location.street, 'Rua das Flores');
       assert.equal(stored.content.photo.embedded, true);
+      // Execução (Modelo §22): antes da execução o retrato leva as listas vazias (o PDF só abre a seção com registro).
+      assert.deepEqual(stored.content.execution, { deliveries: [], evidences: [], documents: [] });
       const { rows: [up] } = await pool.query('SELECT purpose, status, owner_id, demand_id, object_key, sha256 FROM uploads WHERE id = $1', [stored.upload_id]);
       assert.deepEqual(up, {
         purpose: 'demand_dossier', status: 'confirmado', owner_id: AGENT, demand_id: id,

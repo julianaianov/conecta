@@ -283,9 +283,9 @@ export const DATA_INVENTORY: DataInventoryEntry[] = [
     visibility: "público",
   },
   {
-    source: "post_db.demands e tabelas ligadas (orçamento, cronograma, metas, recursos, documentos, dossiê, evidências, prestação de contas)",
+    source: "post_db.demands e tabelas ligadas (orçamento, cronograma, metas, recursos, documentos, dossiê, evidências, entregas, prestação de contas)",
     group: "Demandas do Agente de Transformação",
-    fields: ["categoria, título, descrição, objetivo e justificativa", "público beneficiado e prioridade", "endereço com CEP, coordenada e território", "orçamento, cronograma, metas e indicadores", "documentos comprobatórios", "fotos e vídeos do antes e do depois", "prestação de contas e resultados"],
+    fields: ["categoria, título, descrição, objetivo e justificativa", "público beneficiado e prioridade", "endereço com CEP, coordenada e território", "orçamento, cronograma, metas e indicadores", "documentos comprobatórios", "fotos e vídeos do antes e do depois", "entregas: o que foi entregue, a data e quem recebeu (o nome de quem recebeu só aparece se o Agente autorizar)", "prestação de contas e resultados"],
     purpose: "Estruturar, publicar, executar e prestar contas da demanda.",
     visibility: "público",
   },

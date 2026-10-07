@@ -6,6 +6,7 @@ const {
   EVIDENCE_MEDIA_KINDS, STAGE_PROGRESS, MAX_CAPTION, MAX_PARTIAL_RESULTS,
   MAX_NOTE, MAX_REASON, MAX_EXPENSE_DESCRIPTION, MAX_EXPENSES, MAX_EXECUTED_CENTS,
   INCIDENT_KINDS, INCIDENT_IMPACTS, MAX_INCIDENT_TEXT, EVIDENCE_MILESTONES,
+  MAX_DELIVERY_ITEM, MAX_DELIVERY_DESCRIPTION, MAX_DELIVERY_RECIPIENT,
 } = require('./constants');
 const { DOCUMENT_KINDS, MAX_DOCUMENT_TITLE, MAX_DOCUMENT_DESCRIPTION, MAX_AMOUNT_CENTS } = require('../accountability/constants');
 
@@ -306,6 +307,33 @@ function validateExecutionDocument(input, { today = new Date(), milestones = EVI
   };
 }
 
+/**
+ * Entrega (Modelo de Conexão §22 e §23; migração 052):
+ * `{ item, deliveredOn, recipient, description?, recipientPublic?, scheduleItemId?, evidenceId? }`.
+ * O item e o recebedor são obrigatórios; o recebedor só aparece na página
+ * pública quando `recipientPublic` for verdadeiro (pode ser pessoa física).
+ */
+function validateDelivery(input, { today = new Date() } = {}) {
+  const body = input && typeof input === 'object' ? input : {};
+  const errors = {};
+  const item = optionalText(body, 'item', errors, MAX_DELIVERY_ITEM);
+  if (!item && !errors.item) errors.item = 'Diga o que foi entregue';
+  const description = optionalText(body, 'description', errors, MAX_DELIVERY_DESCRIPTION);
+  const deliveredOn = parseDate(body.deliveredOn, errors, 'deliveredOn', { required: true, future: false, today });
+  if (errors.deliveredOn === 'A data do registro não fica no futuro') {
+    errors.deliveredOn = 'A data da entrega não fica no futuro';
+  }
+  const recipient = optionalText(body, 'recipient', errors, MAX_DELIVERY_RECIPIENT);
+  if (!recipient && !errors.recipient) errors.recipient = 'Diga quem recebeu a entrega';
+  const recipientPublic = parseBoolean(body.recipientPublic, 'recipientPublic', errors) === true;
+  const scheduleItemId = optionalUuid(body, 'scheduleItemId', errors);
+  const evidenceId = optionalUuid(body, 'evidenceId', errors);
+  return {
+    value: { item, description, deliveredOn, recipient, recipientPublic, scheduleItemId, evidenceId },
+    errors,
+  };
+}
+
 /** Resolução da ocorrência, gravada uma vez: `{ resolution }`. */
 function validateIncidentResolution(input) {
   const body = input && typeof input === 'object' ? input : {};
@@ -316,6 +344,7 @@ function validateIncidentResolution(input) {
 }
 
 module.exports = {
+  validateDelivery,
   validateExecutionDocument,
   validateIncident,
   validateIncidentResolution,

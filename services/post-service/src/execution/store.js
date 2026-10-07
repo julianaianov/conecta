@@ -303,6 +303,81 @@ async function listExecutionDocuments(db, demandId) {
   return rows;
 }
 
+// Entregas (Modelo de Conexão §22; migração 052). A evidência vinculada vem
+// resumida (marco, tipo e data), sem o arquivo.
+const DELIVERY_SQL = `
+  y.id, y.demand_id, y.schedule_item_id, y.evidence_id, y.item, y.description, y.delivered_on,
+  y.recipient, y.recipient_public, y.author_id, y.author_name, y.created_at,
+  (SELECT s.stage FROM demand_schedule_items s WHERE s.id = y.schedule_item_id) AS stage,
+  (SELECT e.milestone::text FROM demand_evidences e WHERE e.id = y.evidence_id) AS evidence_milestone,
+  (SELECT e.media_kind::text FROM demand_evidences e WHERE e.id = y.evidence_id) AS evidence_media_kind,
+  (SELECT e.recorded_on FROM demand_evidences e WHERE e.id = y.evidence_id) AS evidence_recorded_on`;
+
+function deliveryEvidence(row) {
+  if (!row.evidence_id) return null;
+  return {
+    id: row.evidence_id,
+    milestone: row.evidence_milestone ?? null,
+    mediaKind: row.evidence_media_kind ?? null,
+    recordedOn: toDate(row.evidence_recorded_on),
+  };
+}
+
+/** Entrega vista pelo Agente autor (o recebedor sempre aparece). */
+function serializeDelivery(row) {
+  return {
+    id: row.id,
+    scheduleItemId: row.schedule_item_id ?? null,
+    stage: row.stage ?? null,
+    evidenceId: row.evidence_id ?? null,
+    evidence: deliveryEvidence(row),
+    item: row.item,
+    description: row.description ?? null,
+    deliveredOn: toDate(row.delivered_on),
+    recipient: row.recipient,
+    recipientPublic: row.recipient_public === true,
+    author: { userId: row.author_id, name: row.author_name ?? null },
+    createdAt: toIso(row.created_at),
+  };
+}
+
+/**
+ * Entrega no acompanhamento público: sem autor, e o recebedor só quando o
+ * Agente autorizou (`recipient_public`); pode ser pessoa física.
+ */
+function serializePublicDelivery(row) {
+  return {
+    id: row.id,
+    scheduleItemId: row.schedule_item_id ?? null,
+    stage: row.stage ?? null,
+    evidence: deliveryEvidence(row),
+    item: row.item,
+    description: row.description ?? null,
+    deliveredOn: toDate(row.delivered_on),
+    recipient: row.recipient_public === true ? row.recipient : null,
+    recipientPublic: row.recipient_public === true,
+    createdAt: toIso(row.created_at),
+  };
+}
+
+async function listDeliveries(db, demandId) {
+  const { rows } = await db.query(
+    `SELECT ${DELIVERY_SQL} FROM demand_deliveries y
+      WHERE y.demand_id = $1 ORDER BY y.delivered_on, y.created_at, y.id`,
+    [demandId],
+  );
+  return rows;
+}
+
+async function loadDelivery(db, demandId, deliveryId) {
+  const { rows } = await db.query(
+    `SELECT ${DELIVERY_SQL} FROM demand_deliveries y WHERE y.id = $1 AND y.demand_id = $2`,
+    [deliveryId, demandId],
+  );
+  if (!rows.length) throw new HttpError(404, { error: 'Entrega não encontrada' });
+  return rows[0];
+}
+
 const INCIDENT_SQL = `
   i.id, i.demand_id, i.process_id, i.schedule_item_id, i.kind::text AS kind, i.description,
   i.occurred_on, i.impact::text AS impact, i.author_id, i.author_name, i.resolved_at, i.resolution,
@@ -441,6 +516,11 @@ module.exports = {
   serializeExecutionDocument,
   serializePublicExecutionDocument,
   listExecutionDocuments,
+  DELIVERY_SQL,
+  serializeDelivery,
+  serializePublicDelivery,
+  listDeliveries,
+  loadDelivery,
   INCIDENT_SQL,
   serializeIncident,
   serializePublicIncident,
