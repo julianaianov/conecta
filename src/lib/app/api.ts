@@ -22,6 +22,9 @@ import { mapPublicInstitutionRecord, normalizeCep } from "./institution";
 import { resolveMediaUrl } from "./uploads";
 import type { ProcessMessage, ProcessMessageInput, ProcessMessagePage } from "./process-communication";
 import type {
+  ProcessDocumentInput, ProcessDocumentLink, ProcessDocumentList, ProcessDocumentVersion,
+} from "./process-documents";
+import type {
   ProcessDetail, ProcessResponsibleInput, ProcessStatus, ProcessSummary, PublicProcess,
 } from "./process";
 import type { DeadlineInput, PendingItem } from "./deadlines";
@@ -1146,6 +1149,36 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }).then((body) => body.message);
+  },
+  // Documentos do processo (T-05-04, Modelo §17): área própria, versões, acesso e arquivamento.
+  listProcessDocuments(ref: string): Promise<ProcessDocumentList> {
+    return request<Partial<ProcessDocumentList>>(`/api/posts/processes/${encodeURIComponent(ref)}/documents`)
+      .then((body) => ({
+        groups: Array.isArray(body.groups) ? body.groups : [],
+        open: body.open !== false,
+        participants: Array.isArray(body.participants) ? body.participants : [],
+        module: body.module ?? null,
+      }));
+  },
+  /** Documento novo ou nova versão (`replacesGroupId`); o arquivo é um upload `process_document` confirmado. */
+  createProcessDocument(ref: string, input: ProcessDocumentInput): Promise<ProcessDocumentVersion> {
+    return request<{ document: ProcessDocumentVersion }>(`/api/posts/processes/${encodeURIComponent(ref)}/documents`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }).then((body) => body.document);
+  },
+  /** Só quem enviou arquiva, com o motivo; nada é excluído. */
+  archiveProcessDocument(ref: string, documentId: string, reason: string): Promise<ProcessDocumentVersion> {
+    return request<{ document: ProcessDocumentVersion }>(
+      `/api/posts/processes/${encodeURIComponent(ref)}/documents/${encodeURIComponent(documentId)}/archive`,
+      { method: "POST", body: JSON.stringify({ reason }) },
+    ).then((body) => body.document);
+  },
+  /** URL assinada de 60 s do arquivo, conforme o acesso do documento (a consulta fica registrada). */
+  openProcessDocument(ref: string, documentId: string): Promise<ProcessDocumentLink> {
+    return request<ProcessDocumentLink>(
+      `/api/posts/processes/${encodeURIComponent(ref)}/documents/${encodeURIComponent(documentId)}/file`,
+    );
   },
   /** Formalização pelo órgão do Poder Público (acompanhamento → processo). */
   formalizeInstitutionalProcess(demandId: string): Promise<InstitutionalDemandView> {

@@ -5,9 +5,12 @@
 // permissão de acesso; controle de versões) e §33; decisão 13.
 //
 // Partes do processo (Agente autor e parte conectada; demais recebem 404):
-//   GET  /processes/:ref/documents               documentos agrupados por documento (groupId),
-//                                                versão vigente primeiro; os restritos só para
-//                                                quem pode abrir
+//   GET  /processes/:ref/documents               { groups, open, participants, module }: documentos
+//                                                agrupados por documento (groupId), versão vigente
+//                                                primeiro; os restritos só para quem pode abrir;
+//                                                `participants` = quem pode constar da lista de um
+//                                                restrito (autor e parte conectada); `module` = módulo
+//                                                da demanda (tipos do módulo primeiro na tela)
 //   POST /processes/:ref/documents               { name, documentType, uploadId, accessLevel,
 //                                                restrictedTo?, organizationName?, replacesGroupId? }
 //                                                (arquivo: upload `process_document` confirmado
@@ -28,8 +31,9 @@
 const express = require('express');
 const { isUuid } = require('../security');
 const {
-  FILE_URL_SECONDS, validateDocument, validateArchive, serializeDocument, groupDocuments,
+  FILE_URL_SECONDS, validateDocument, validateArchive, serializeDocument, groupDocuments, documentAudience,
 } = require('../process/documents');
+const { moduleOf } = require('../demand/modules');
 const {
   processAccessRole, canOpenProcessDocument, recordProcessDocumentConsultation,
 } = require('../process/upload-access');
@@ -110,7 +114,13 @@ module.exports = ({ pool, auth, institutionStatus, uploadStorage = null, operati
   router.get('/processes/:ref/documents', auth, handle(async (req, res) => {
     const { row } = await store.loadVisibleProcess(pool, req, req.params.ref, institutionStatus);
     const viewer = await viewerOf(pool, req, row);
-    res.json({ groups: await listDocuments(pool, req, row, viewer), open: !row.closed_at });
+    const { rows: [demand] } = await pool.query('SELECT category::text AS category FROM demands WHERE id = $1', [row.demand_id]);
+    res.json({
+      groups: await listDocuments(pool, req, row, viewer),
+      open: !row.closed_at,
+      participants: documentAudience(row),
+      module: moduleOf(demand?.category),
+    });
   }));
 
   router.post('/processes/:ref/documents', auth, handle(async (req, res) => {

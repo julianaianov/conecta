@@ -650,6 +650,11 @@ test('Documentos do processo (T-05-04): versões, status, acesso público/instit
       assert.deepEqual(budget.versions.map((v) => [v.version, v.status]), [[2, 'vigente'], [1, 'substituido']]);
       assert.equal(budget.versions[0].uploadedBy.name, 'Construtora Horizonte');
       assert.equal(budget.versions[0].upload.fileName, 'Orçamento.xlsx');
+      // Tela de documentos (§17, §33): quem pode constar da lista do restrito e o módulo da demanda (§29).
+      assert.deepEqual(list.body.participants.map((x) => [x.id, x.side]), [[AGENT, 'agente'], [PARTNER, 'conectado']]);
+      assert.equal(list.body.participants[1].label, 'Construtora Horizonte');
+      assert.equal(list.body.module, 'articulacao_publica');
+      assert.equal(list.body.open, true);
 
       // Arquivo por URL de 60 s: parte baixa o institucional; terceiro recebe 404.
       const fileUrl = (d, as) => call('GET', `/processes/${p.id}/documents/${d}/file`, { as });
@@ -688,12 +693,31 @@ test('Documentos do processo (T-05-04): versões, status, acesso público/instit
       assert.equal(pub.status, 201, JSON.stringify(pub.body));
       assert.equal(pub.body.document.organizationName, 'Associação Recreio Vivo', 'instituição responsável');
       assert.equal((await fileUrl(pub.body.document.id, OTHER)).status, 200);
+
+      // Tipos dos módulos (migração 044): o enum do banco aceita o valor novo; o Parceiro pede o documento
+      // (Solicitação de documentos) e o Agente responde com o documento novo do processo (T-05-05).
+      const recovery = await sendDocument(AGENT, 'Plano.xlsx', {
+        name: 'Plano de recuperação da área', documentType: 'plano_de_recuperacao',
+      });
+      assert.equal(recovery.status, 201, JSON.stringify(recovery.body));
+      assert.equal(recovery.body.document.documentType, 'plano_de_recuperacao');
+      assert.equal(recovery.body.document.accessLevel, 'institucional');
+      const asked = await call('POST', `/demands/${demand}/analysis-requests`, {
+        body: { kind: 'documentos', body: 'Preciso do plano.', requestedDocumentTypes: ['plano_de_recuperacao'] },
+      });
+      assert.equal(asked.status, 201, JSON.stringify(asked.body));
+      assert.equal(asked.body.request.processId, p.id, 'a solicitação da parte nasce ligada ao processo');
+      const answered = await call('POST', `/demands/mine/${demand}/analysis-requests/${asked.body.request.id}/answer`, {
+        as: AGENT, body: { body: 'Segue o plano.', documentIds: [recovery.body.document.id] },
+      });
+      assert.equal(answered.status, 200, JSON.stringify(answered.body));
+      assert.deepEqual(answered.body.request.answerDocuments.map((d) => [d.title, d.source]), [['Plano de recuperação da área', 'processo']]);
       const timeline = await call('GET', `/processes/${p.protocol}/timeline`, { auth: false });
       const publicDocs = timeline.body.events.filter((e) => e.type === 'documento_registrado');
       assert.deepEqual(publicDocs.map((e) => e.details.name), ['Relatório de execução'], 'só o documento público aparece');
       assert.ok(!JSON.stringify(timeline.body).includes('processes/'), 'sem arquivo no evento');
       const full = await call('GET', `/processes/${p.id}`, { as: PARTNER });
-      assert.equal(full.body.timeline.filter((e) => e.type === 'documento_registrado').length, 4);
+      assert.equal(full.body.timeline.filter((e) => e.type === 'documento_registrado').length, 5);
 
       // Arquivo errado: anexo da comunicação não vira documento (422); o mesmo upload não entra duas vezes.
       const attachment = await f.upload(PARTNER, 'process_attachment', p.id, XLSX_TYPE, XLSX, 'a.xlsx');
@@ -729,13 +753,13 @@ test('Documentos do processo (T-05-04): versões, status, acesso público/instit
       await assert.rejects(pool.query('DELETE FROM connection_process_documents WHERE id = $1', [id]), /não é excluído/);
       await assert.rejects(pool.query('TRUNCATE connection_process_documents'), /não são apagados/);
       const { rows: [counted] } = await gestao.query('SELECT count(*)::int AS n FROM connection_process_documents WHERE process_id = $1', [p.id]);
-      assert.equal(counted.n, 4);
+      assert.equal(counted.n, 5);
       await assert.rejects(gestao.query("UPDATE connection_process_documents SET status = 'arquivado' WHERE id = $1", [id]));
 
       // LGPD: o nome de quem enviou sai; o documento fica.
       const anonymized = await call('POST', '/me/privacy/anonymize', { as: AGENT, body: { protocol: 'LGPD-2026-000778' } });
       assert.equal(anonymized.status, 200, JSON.stringify(anonymized.body));
-      assert.equal(anonymized.body.summary.documentosDeProcesso, 1);
+      assert.equal(anonymized.body.summary.documentosDeProcesso, 2);
       const after = await call('GET', `/processes/${p.id}/documents`);
       const report = after.body.groups.find((g) => g.documentType === 'relatorio_de_execucao');
       assert.equal(report.versions[0].uploadedBy.name, 'Conta removida');

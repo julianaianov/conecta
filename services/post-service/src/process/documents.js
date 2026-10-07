@@ -9,10 +9,18 @@
 const { parseUploadRef, formatUploadRef } = require('../uploads');
 
 // Tipos (§17: Projeto técnico, Orçamento, Parecer técnico, Termo de parceria,
-// Relatório de execução, Comprovantes, e os documentos citados no §20).
+// Relatório de execução, Comprovantes, e os documentos citados no §20), mais os
+// dos módulos específicos (T-05-08, §23 a §25: documentação institucional,
+// documento do imóvel, projeto arquitetônico, ART/RRT, plano de recuperação,
+// plano de monitoramento, relatório ambiental, plano de trabalho, plano de
+// ação, metodologia, equipe e público-alvo; migração post 044). Os valores do
+// enum `connection_process_document_type` são estes.
 const DOCUMENT_TYPES = [
   'projeto_tecnico', 'orcamento', 'parecer_tecnico', 'termo_de_parceria', 'relatorio_de_execucao', 'comprovante',
   'plano_de_execucao', 'autorizacao_ou_licenca', 'contrato', 'nota_fiscal', 'laudo', 'certificado', 'outro',
+  'documentacao_institucional', 'documento_do_imovel', 'projeto_arquitetonico', 'art_rrt', 'plano_de_recuperacao',
+  'plano_de_monitoramento', 'relatorio_ambiental', 'plano_de_trabalho', 'plano_de_acao', 'metodologia', 'equipe',
+  'publico_alvo',
 ];
 const DOCUMENT_TYPE_LABELS = {
   projeto_tecnico: 'Projeto técnico',
@@ -28,7 +36,82 @@ const DOCUMENT_TYPE_LABELS = {
   laudo: 'Laudo',
   certificado: 'Certificado',
   outro: 'Outro',
+  documentacao_institucional: 'Documentação institucional',
+  documento_do_imovel: 'Documento do imóvel',
+  projeto_arquitetonico: 'Projeto arquitetônico',
+  art_rrt: 'ART/RRT',
+  plano_de_recuperacao: 'Plano de recuperação',
+  plano_de_monitoramento: 'Plano de monitoramento',
+  relatorio_ambiental: 'Relatório ambiental',
+  plano_de_trabalho: 'Plano de trabalho',
+  plano_de_acao: 'Plano de ação',
+  metodologia: 'Metodologia',
+  equipe: 'Equipe',
+  publico_alvo: 'Público-alvo',
 };
+
+// Documentos de cada módulo da demanda (src/demand/modules.js), na ordem da
+// fonte, já no vocabulário do processo: o §23 (Obras) segue Documentação →
+// Orçamento → Aprovação → Plano de execução → Execução; o §24 (Ambiental), Plano
+// de recuperação → Autorizações ou licenças → Execução → Monitoramento →
+// Relatório ambiental; o §25 (Social), Plano de ação → Apoio → Execução. Os
+// demais módulos usam só a lista comum.
+const PROCESS_MODULE_DOCUMENT_TYPES = {
+  obras: [
+    'documentacao_institucional', 'documento_do_imovel', 'projeto_arquitetonico', 'projeto_tecnico', 'orcamento',
+    'art_rrt', 'autorizacao_ou_licenca', 'plano_de_execucao', 'contrato', 'nota_fiscal', 'comprovante',
+    'relatorio_de_execucao',
+  ],
+  ambiental: [
+    'plano_de_recuperacao', 'autorizacao_ou_licenca', 'metodologia', 'plano_de_monitoramento', 'relatorio_ambiental',
+  ],
+  social: [
+    'plano_de_acao', 'projeto_tecnico', 'plano_de_trabalho', 'orcamento', 'metodologia', 'documentacao_institucional',
+    'equipe', 'publico_alvo', 'relatorio_de_execucao', 'comprovante',
+  ],
+  apoio_investimento: [],
+  articulacao_publica: [],
+};
+
+// Tipo do documento da demanda → tipo do documento do processo (o Agente que
+// responde a uma "Solicitação de documentos" envia o arquivo como documento do
+// processo). Tipo fora da tabela cai em `outro`.
+const PROCESS_TYPE_BY_DEMAND_TYPE = {
+  documentos_institucionais: 'documentacao_institucional',
+  estatuto: 'documentacao_institucional',
+  documentos_de_representacao: 'documentacao_institucional',
+  autorizacoes: 'autorizacao_ou_licenca',
+  orcamentos_e_cotacoes: 'orcamento',
+  projetos_tecnicos: 'projeto_tecnico',
+  fotografias: 'outro',
+  outros: 'outro',
+  documento_do_imovel: 'documento_do_imovel',
+  projeto_arquitetonico: 'projeto_arquitetonico',
+  art_rrt: 'art_rrt',
+  licencas_ou_autorizacoes: 'autorizacao_ou_licenca',
+  contratos: 'contrato',
+  notas_fiscais: 'nota_fiscal',
+  comprovantes: 'comprovante',
+  relatorio_de_execucao: 'relatorio_de_execucao',
+  plano_de_trabalho: 'plano_de_trabalho',
+  metodologia: 'metodologia',
+  equipe: 'equipe',
+  publico_alvo: 'publico_alvo',
+  plano_de_recuperacao: 'plano_de_recuperacao',
+  plano_de_monitoramento: 'plano_de_monitoramento',
+  relatorio_ambiental: 'relatorio_ambiental',
+};
+
+/** Tipo do processo para um tipo de documento da demanda (`outro` se desconhecido). */
+function processTypeForDemandType(demandType) {
+  return PROCESS_TYPE_BY_DEMAND_TYPE[demandType] ?? 'outro';
+}
+
+/** Todos os tipos, com os do módulo da demanda primeiro (sem repetir). */
+function documentTypesForModule(moduleKey) {
+  const first = PROCESS_MODULE_DOCUMENT_TYPES[moduleKey] ?? [];
+  return [...first, ...DOCUMENT_TYPES.filter((type) => !first.includes(type))];
+}
 
 const DOCUMENT_STATUSES = ['vigente', 'substituido', 'arquivado'];
 const DOCUMENT_STATUS_LABELS = { vigente: 'Vigente', substituido: 'Substituído', arquivado: 'Arquivado' };
@@ -173,9 +256,29 @@ function groupDocuments(docs) {
   }).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
 
+/**
+ * Quem pode constar da lista de um documento restrito (§33): o Agente autor e
+ * a parte conectada (conta, ou o órgão pelo identificador da instituição). O
+ * autor, os delegados e a operação abrem o restrito sem constar da lista; ela
+ * existe porque o banco exige ao menos um autorizado.
+ */
+function documentAudience(row) {
+  const audience = [];
+  if (row.demand_author_id) {
+    audience.push({ id: String(row.demand_author_id).toLowerCase(), side: 'agente', label: 'Agente de Transformação (autor da demanda)' });
+  }
+  const partyId = row.party_organization_id ?? row.party_user_id;
+  if (partyId) {
+    audience.push({ id: String(partyId).toLowerCase(), side: 'conectado', label: row.party_name || 'Parte conectada' });
+  }
+  return audience;
+}
+
 module.exports = {
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_LABELS,
+  PROCESS_MODULE_DOCUMENT_TYPES,
+  PROCESS_TYPE_BY_DEMAND_TYPE,
   DOCUMENT_STATUSES,
   DOCUMENT_STATUS_LABELS,
   ACCESS_LEVELS,
@@ -186,4 +289,7 @@ module.exports = {
   validateArchive,
   serializeDocument,
   groupDocuments,
+  documentAudience,
+  documentTypesForModule,
+  processTypeForDemandType,
 };

@@ -80,3 +80,4 @@ post_db post-service/migrations/040-process-fees.sql
 post_db post-service/migrations/041-member-support.sql
 post_db post-service/migrations/042-priority-criteria.sql
 post_db post-service/migrations/043-institutional-visibility.sql
+post_db post-service/migrations/044-process-document-types.sql

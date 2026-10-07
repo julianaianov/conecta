@@ -1,10 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const jwt = require('jsonwebtoken');
 const { createApp } = require('../src');
 const {
-  DOCUMENT_TYPES, ACCESS_LEVELS, validateDocument, validateArchive, serializeDocument, groupDocuments,
+  DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, PROCESS_MODULE_DOCUMENT_TYPES, PROCESS_TYPE_BY_DEMAND_TYPE, ACCESS_LEVELS,
+  validateDocument, validateArchive, serializeDocument, groupDocuments, documentAudience, documentTypesForModule,
+  processTypeForDemandType,
 } = require('../src/process/documents');
+const { DOCUMENT_TYPES: DEMAND_DOCUMENT_TYPES } = require('../src/demand/constants');
+const { MODULES } = require('../src/demand/modules');
 const { canOpenProcessDocument } = require('../src/process/upload-access');
 
 // Documentos do Processo de Conexão (T-05-04) com banco simulado: validação,
@@ -56,6 +62,9 @@ function fakePool() {
     if (/^(BEGIN|COMMIT|ROLLBACK)$/.test(text) || /SAVEPOINT/.test(text)) return { rows: [] };
     if (/FROM connection_processes p JOIN demands d/.test(text) && /WHERE p\.(id|protocol) = \$1/.test(text)) {
       return { rows: params[0] === PROCESS || params[0] === processRow.protocol ? [processRow] : [] };
+    }
+    if (/SELECT category::text AS category FROM demands WHERE id = \$1/.test(text)) {
+      return { rows: [{ category: 'obra_ou_melhoria_de_infraestrutura' }] };
     }
     if (/FROM connection_process_documents d JOIN uploads u/.test(text)) {
       if (/WHERE d\.process_id = \$1 ORDER BY/.test(text)) return { rows: DOCS };
@@ -144,6 +153,12 @@ test('lista: só as partes do processo, versão vigente primeiro; terceiro 404',
     assert.equal((await send(base, 'GET', `/processes/${PROCESS}/documents`, undefined, auth(STRANGER))).status, 404);
     const agent = await send(base, 'GET', `/processes/${PROCESS}/documents`, undefined, auth(AGENT, 'agent', 'associacao'));
     assert.equal(agent.status, 200);
+    assert.equal(agent.body.open, true);
+    assert.equal(agent.body.module, 'obras', 'módulo da categoria da demanda (§29)');
+    assert.deepEqual(agent.body.participants.map((p) => [p.id, p.side, p.label]), [
+      [AGENT, 'agente', 'Agente de Transformação (autor da demanda)'],
+      [PARTNER, 'conectado', 'Construtora Horizonte'],
+    ]);
     assert.equal(agent.body.groups.length, 2, 'o autor vê também o restrito (decisão 13)');
     const budget = agent.body.groups.find((g) => g.documentType === 'orcamento');
     assert.deepEqual(budget.versions.map((v) => [v.version, v.status]), [[2, 'vigente'], [1, 'substituido']]);
@@ -193,4 +208,52 @@ test('envio e arquivamento: validação antes do banco; só quem enviou arquiva'
     assert.equal(other.body.code, 'forbidden_archive');
   }, { pool });
   assert.ok(!pool.calls.some((c) => /INSERT INTO connection_process_documents|UPDATE connection_process_documents/.test(c.text)));
+});
+
+test('tipos do processo alinhados aos módulos da demanda (§17, §23 a §25; migração 044)', () => {
+  // Os valores do enum são os da 029 mais os da 044: o código não grava tipo fora do banco.
+  const dir = path.join(__dirname, '..', 'migrations');
+  const created = /CREATE TYPE connection_process_document_type AS ENUM \(([^)]*)\)/.exec(
+    fs.readFileSync(path.join(dir, '029-process-documents.sql'), 'utf8'),
+  )[1].match(/'[a-z_]+'/g).map((v) => v.slice(1, -1));
+  const added = [...fs.readFileSync(path.join(dir, '044-process-document-types.sql'), 'utf8')
+    .matchAll(/ADD VALUE IF NOT EXISTS '([a-z_]+)'/g)].map((m) => m[1]);
+  assert.deepEqual([...DOCUMENT_TYPES].sort(), [...created, ...added].sort());
+  assert.equal(new Set(DOCUMENT_TYPES).size, DOCUMENT_TYPES.length);
+  assert.deepEqual(Object.keys(DOCUMENT_TYPE_LABELS).sort(), [...DOCUMENT_TYPES].sort());
+  // §23 a §25: plano de execução, plano de recuperação, relatório ambiental, plano de ação e contratos.
+  for (const type of ['plano_de_execucao', 'plano_de_recuperacao', 'relatorio_ambiental', 'plano_de_acao', 'contrato']) {
+    assert.ok(DOCUMENT_TYPES.includes(type), type);
+  }
+  assert.equal(DOCUMENT_TYPE_LABELS.plano_de_recuperacao, 'Plano de recuperação');
+  assert.equal(DOCUMENT_TYPE_LABELS.relatorio_ambiental, 'Relatório ambiental');
+  assert.equal(DOCUMENT_TYPE_LABELS.plano_de_acao, 'Plano de ação');
+  assert.deepEqual(validateDocument({ name: 'Plano', documentType: 'plano_de_recuperacao', uploadId: UPLOAD }).errors, {});
+
+  // Módulos: só tipos válidos, e o módulo vem primeiro na lista.
+  assert.deepEqual(Object.keys(PROCESS_MODULE_DOCUMENT_TYPES).sort(), [...MODULES].sort());
+  for (const types of Object.values(PROCESS_MODULE_DOCUMENT_TYPES)) assert.ok(types.every((t) => DOCUMENT_TYPES.includes(t)));
+  const ambiental = documentTypesForModule('ambiental');
+  assert.deepEqual(ambiental.slice(0, 2), ['plano_de_recuperacao', 'autorizacao_ou_licenca']);
+  assert.equal(ambiental.length, DOCUMENT_TYPES.length);
+  assert.deepEqual(documentTypesForModule('articulacao_publica'), DOCUMENT_TYPES);
+  assert.deepEqual(documentTypesForModule(null), DOCUMENT_TYPES);
+
+  // Tipo da demanda → tipo do processo; o que não está na tabela vira `outro`.
+  for (const [demandType, processType] of Object.entries(PROCESS_TYPE_BY_DEMAND_TYPE)) {
+    assert.ok(DEMAND_DOCUMENT_TYPES.includes(demandType), `${demandType} não é tipo de documento da demanda`);
+    assert.ok(DOCUMENT_TYPES.includes(processType), `${processType} não é tipo do processo`);
+  }
+  assert.equal(processTypeForDemandType('contratos'), 'contrato');
+  assert.equal(processTypeForDemandType('orcamentos_e_cotacoes'), 'orcamento');
+  assert.equal(processTypeForDemandType('plano_de_recuperacao'), 'plano_de_recuperacao');
+  assert.equal(processTypeForDemandType('tipo_que_nao_existe'), 'outro');
+});
+
+test('lista de autorizados do restrito: autor e parte (conta ou órgão)', () => {
+  assert.deepEqual(documentAudience(processRow).map((a) => a.side), ['agente', 'conectado']);
+  const ORG = '55555555-5555-4555-8555-555555555555';
+  const gov = documentAudience({ ...processRow, party_kind: 'poder_publico', party_user_id: STRANGER, party_organization_id: ORG, party_name: 'Secretaria de Obras' });
+  assert.deepEqual(gov[1], { id: ORG, side: 'conectado', label: 'Secretaria de Obras' }, 'o órgão, não o representante');
+  assert.deepEqual(documentAudience({ demand_author_id: null, party_user_id: null, party_organization_id: null }), []);
 });
