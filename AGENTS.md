@@ -61,7 +61,8 @@ local (`~/Dev/Projetos/DmConnecta`), os repositórios ficam lado a lado.
   `duplicate_object`) e `init.sql` só indexa colunas que existem desde a criação
   da tabela. Migração nova entra no fim do bloco do seu banco no manifesto
   (`scripts/migrations-manifest.test.mjs` confere). Próximos números livres:
-  auth-service 005, user-service 013, post-service 025. Registre a migração em
+  auth-service 005, user-service 019, post-service 053 (045 a 051 não foram
+  usados). Registre a migração em
   `dm-docs/production-status.md` até ela ser aplicada em produção.
 - Posts antigos (decisão 7 de `dm-docs/fonte-da-verdade/decisoes-de-implementacao.md`):
   o status não é editável (PUT com `status` responde 400); a moderação só
