@@ -7,6 +7,7 @@ import { GovernanceSection } from "@/components/GovernanceSection";
 import { Hero } from "@/components/Hero";
 import { LandingDataProvider } from "@/components/LandingData";
 import { LandingEffects } from "@/components/LandingEffects";
+import { LandingMotion } from "@/components/LandingMotion";
 import { LandingModals } from "@/components/LandingModals";
 import { LandingSvgSymbols } from "@/components/LandingSvgSymbols";
 import { Navbar } from "@/components/Navbar";
@@ -62,6 +63,7 @@ export default async function Home() {
       <Footer />
       <LandingModals />
       <LandingEffects />
+      <LandingMotion />
     </>
   );
 }
