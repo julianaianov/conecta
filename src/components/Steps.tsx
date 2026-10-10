@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { LANDING_JOURNEY_STEPS, type LandingActorId } from "@/lib/app/landing-presentation";
 
-type ActorId = "agt" | "par" | "pp" | "com" | "cmn" | "dm";
+type ActorId = LandingActorId;
 
 const ACTORS: { id: ActorId; name: string; icon?: string }[] = [
   { id: "agt", name: "Agentes de Transformação", icon: "i-people" },
@@ -13,16 +14,7 @@ const ACTORS: { id: ActorId; name: string; icon?: string }[] = [
   { id: "dm", name: "DM Conecta" },
 ];
 
-const STAGES: { title: string; phase: string; actors: ActorId[]; text: string; ai?: boolean }[] = [
-  { title: "Projeto", phase: "Estruturar", actors: ["agt"], text: "Após o cadastro institucional e a validação, o Agente de Transformação cadastra a iniciativa e apresenta seu objetivo." },
-  { title: "Estruturação", phase: "Estruturar", actors: ["agt", "dm"], text: "O projeto é organizado com orçamento, cronograma, público beneficiado e resultados esperados." },
-  { title: "Conexão", phase: "Conectar", actors: ["dm"], text: "O DM Conecta identifica possíveis parceiros e apoiadores para o projeto.", ai: true },
-  { title: "Apoio", phase: "Conectar", actors: ["par", "pp", "com"], text: "Parceiros, poder público e comunidade oferecem recursos financeiros, materiais, técnicos, institucionais ou humanos." },
-  { title: "Execução", phase: "Executar", actors: ["agt", "par"], text: "O projeto é realizado no território pelo Agente de Transformação com os parceiros envolvidos." },
-  { title: "Acompanhamento", phase: "Executar", actors: ["agt", "dm"], text: "Etapas, evidências e atualizações são registradas." },
-  { title: "Resultados", phase: "Mensurar", actors: ["agt"], text: "O Agente apresenta os resultados alcançados." },
-  { title: "Impacto", phase: "Mensurar", actors: ["dm", "cmn"], text: "O DM Conecta mensura e dá visibilidade à transformação gerada." },
-];
+const STAGES = LANDING_JOURNEY_STEPS;
 
 const two = (value: number) => String(value).padStart(2, "0");
 
@@ -75,7 +67,7 @@ export function Steps() {
       <div className="wrap">
         <div className="sec-head">
           <span className="eyebrow"><i className="eb-n" aria-hidden="true">03</i>Como funciona</span>
-          <h2 className="h2">Do projeto ao impacto, <span className="hl">em oito etapas.</span></h2>
+          <h2 className="h2">Do projeto ao impacto, <span className="hl">em nove etapas.</span></h2>
           <p className="lede">O DM Conecta estrutura o projeto, conecta a quem pode apoiar e acompanha até o resultado. Selecione uma etapa.</p>
         </div>
 
@@ -138,7 +130,7 @@ export function Steps() {
                   <span className="hw-ph">Fase · {stage.phase}</span>
                   <div className="hw-title">
                     <span className="hw-big" aria-hidden="true">{two(index + 1)}</span>
-                    <h3>{stage.title}</h3>
+                    <h3>{stage.panelTitle ?? stage.title}</h3>
                     {stage.ai ? (
                       <a className="cf-ia" href="#ia"><svg className="ico" aria-hidden="true"><use href="#i-spark" /></svg>IA · em desenvolvimento</a>
                     ) : null}

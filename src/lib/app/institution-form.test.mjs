@@ -269,7 +269,7 @@ test("fluxo: rascunho, envio, status com parecer e trilha", () => {
   const status = read("src/components/app/institution/InstitutionStatus.tsx");
   assert.match(status, /validationNote/);
   assert.match(status, /institution\.events/);
-  assert.match(read("src/app/(auth)/register/page.tsx"), /postRegisterDestination\(role, profileType\)/);
+  assert.match(read("src/components/RegisterDialog.tsx"), /postRegisterDestination\(role, profileType\)/);
 });
 
 test("publicar, comentar, apoiar e conectar tratam o 403 institucional", () => {

@@ -194,7 +194,7 @@ test("o cliente chama GET e POST /api/users/me e a tela usa os campos e erros po
 });
 
 test("o cadastro continua sem telefone e o inventário de privacidade separa o contato do perfil", () => {
-  const register = read("src/app/(auth)/register/page.tsx");
+  const register = read("src/components/RegisterDialog.tsx");
   assert.doesNotMatch(register, /phone|Celular|type="tel"/i);
 
   const privacy = read("src/lib/app/privacy.ts");

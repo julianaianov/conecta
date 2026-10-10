@@ -8,6 +8,7 @@ import {
   landingMapQueryFilter, mapFlow, monthAbbreviation, monthBars,
   niceMax, normalizeMapView, normalizeThemeIntelligence, resourceRows, stageTotals, territoryRows, themeRows,
 } from "./landing.ts";
+import { LANDING_ANALYTICS_PANELS, LANDING_JOURNEY_STEPS } from "./landing-presentation.ts";
 
 const intelligence = {
   source: "fonte",
@@ -48,6 +49,25 @@ const intelligence = {
   ],
   truncated: false,
 };
+
+test("a jornada mantém nove etapas e os rótulos da publicação no mapa", () => {
+  assert.deepEqual(LANDING_JOURNEY_STEPS.map((step) => step.title), [
+    "Projeto", "Estruturação", "Publicação", "Conexão", "Apoio",
+    "Execução", "Acompanhamento", "Resultados", "Impacto",
+  ]);
+  assert.equal(LANDING_JOURNEY_STEPS[2].panelTitle, "Publicação no mapa");
+  assert.equal(LANDING_JOURNEY_STEPS[2].phase, "Estruturar");
+  assert.deepEqual(LANDING_JOURNEY_STEPS[2].actors, ["dm"]);
+});
+
+test("a inteligência territorial mantém as três abas do HTML", () => {
+  assert.deepEqual(LANDING_ANALYTICS_PANELS.map((panel) => panel.id), [
+    "month", "territory", "resources",
+  ]);
+  assert.deepEqual(LANDING_ANALYTICS_PANELS.map((panel) => panel.title), [
+    "Projetos cadastrados por mês", "Projetos por território", "Recursos por eixo de impacto",
+  ]);
+});
 
 test("sem leitura pública, tudo fica vazio: nenhuma amostra nem número de reserva", () => {
   assert.deepEqual(monthBars(null), []);

@@ -98,7 +98,7 @@ test("a landing traz o posicionamento literal da Apresentação Institucional", 
   ]);
   assert.doesNotMatch(constants, /Sua marca \+ Associação/);
 
-  const page = flat("src/app/page.tsx");
+  const page = flat("src/components/LandingExperience.tsx");
   for (const component of ["<Hero ", "<Steps />", "<CTABanner />"]) assert.ok(page.includes(component), component);
 });
 

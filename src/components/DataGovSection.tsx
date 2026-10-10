@@ -12,6 +12,7 @@ import {
   stageTotals,
   territoryRows,
 } from "@/lib/app/landing";
+import { LANDING_ANALYTICS_PANELS } from "@/lib/app/landing-presentation";
 import { type DemandStatus } from "@/lib/app/types";
 
 const STATUS_COLORS: Record<DemandStatus, string> = {
@@ -37,12 +38,8 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <div className="dg-empty" role="status">{children}</div>;
 }
 
-// As três perguntas que os dados respondem: uma por vez, em abas.
-const QUESTIONS = [
-  { question: "Como os projetos evoluem?", title: "Projetos publicados por mês" },
-  { question: "Onde estão e em que estágio?", title: "Projetos por território" },
-  { question: "Quanto já foi mobilizado?", title: "Recursos por eixo de impacto" },
-] as const;
+// As três perguntas do HTML: uma por vez, em abas.
+const QUESTIONS = LANDING_ANALYTICS_PANELS;
 
 /** Inteligência territorial e painel de gestão: só contagens agregadas do banco público. */
 export function DataGovSection() {

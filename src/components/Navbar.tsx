@@ -149,7 +149,7 @@ export function Navbar() {
       },
       {
         elId: "como-funciona",
-        title: "Como Funciona (8 Etapas)",
+        title: "Como Funciona (9 Etapas)",
         sec: "Fluxo",
         snip: "Estruturar, Conectar, Executar e Mensurar.",
       },

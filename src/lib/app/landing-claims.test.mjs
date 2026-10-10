@@ -5,18 +5,18 @@ import { test } from "node:test";
 
 // Apresentação Institucional, slide 25: "apenas dados verificáveis são publicados;
 // funcionalidades ainda em desenvolvimento são identificadas como tal".
-// A landing (src/app/page.tsx) não promete app iOS nem deixa links vazios.
+// A landing não promete app iOS nem deixa links vazios.
 
 const root = path.resolve(import.meta.dirname, "../../..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 
 /** Componentes renderizados pela landing, lidos dos imports de page.tsx. */
 function landingFiles() {
-  const page = read("src/app/page.tsx");
+  const page = read("src/components/LandingExperience.tsx");
   const components = [...page.matchAll(/from "@\/components\/(\w+)"/g)].map(
     ([, name]) => `src/components/${name}.tsx`,
   );
-  return ["src/app/page.tsx", "src/lib/constants.ts", ...components];
+  return ["src/app/page.tsx", "src/components/LandingExperience.tsx", "src/lib/constants.ts", ...components];
 }
 
 const stripComments = (source) =>

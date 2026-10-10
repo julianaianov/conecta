@@ -22,10 +22,12 @@ test("cadastro, login e restauração de sessão garantem o perfil", () => {
 });
 
 test("cadastro coleta só o necessário (LGPD): sem nascimento, gênero ou telefone", () => {
-  const page = sourceAt("../../app/(auth)/register/page.tsx");
-  assert.doesNotMatch(page, /birthdate|Data de nascimento/i);
-  assert.doesNotMatch(page, /gender|Gênero/);
-  assert.doesNotMatch(page, /phone|Celular|type="tel"/i);
+  const dialog = sourceAt("../../components/RegisterDialog.tsx");
+  assert.doesNotMatch(dialog, /birthdate|Data de nascimento/i);
+  assert.doesNotMatch(dialog, /gender|Gênero/);
+  assert.doesNotMatch(dialog, /phone|Celular|type="tel"/i);
+  const route = sourceAt("../../app/(auth)/register/page.tsx");
+  assert.match(route, /LandingExperience dialog="register"/);
 });
 
 test("migração de backfill de perfis existe e está no manifesto que a infra aplica", () => {

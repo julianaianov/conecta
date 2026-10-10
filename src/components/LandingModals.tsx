@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api } from "@/lib/app/api";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useAuth } from "@/lib/app/auth";
 import { TermosModal } from "./TermosModal";
 
 const CONTACT_EMAIL = "dmconecta.app@core9.email";
@@ -14,10 +14,11 @@ const CONTACT_EMAIL = "dmconecta.app@core9.email";
  * Uso. O cadastro não mora aqui: os botões levam a `/register?perfil=…`, o
  * fluxo real de criação de conta.
  */
-export function LandingModals() {
+export function LandingModals({ initialLoginOpen = false }: { initialLoginOpen?: boolean }) {
   const router = useRouter();
+  const { login, status } = useAuth();
   const [contactOpen, setContactOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(initialLoginOpen);
   const [termosOpen, setTermosOpen] = useState(false);
 
   const [name, setName] = useState("");
@@ -33,6 +34,15 @@ export function LandingModals() {
   const [loggingIn, setLoggingIn] = useState(false);
 
   const lastActive = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (initialLoginOpen && status === "authenticated") router.replace("/feed");
+  }, [initialLoginOpen, router, status]);
+
+  const closeLogin = useCallback(() => {
+    setLoginOpen(false);
+    if (window.location.pathname === "/login") router.replace("/");
+  }, [router]);
 
   useEffect(() => {
     if (window.location.hash !== "#termos") return;
@@ -76,7 +86,7 @@ export function LandingModals() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setContactOpen(false);
-      setLoginOpen(false);
+      if (loginOpen) closeLogin();
       setTermosOpen(false);
       lastActive.current?.focus();
     };
@@ -87,7 +97,7 @@ export function LandingModals() {
       document.removeEventListener("click", onClick);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, []);
+  }, [closeLogin, loginOpen]);
 
   const submitContact = (event: FormEvent) => {
     event.preventDefault();
@@ -123,7 +133,7 @@ export function LandingModals() {
     setLoginFeedback(null);
     setLoggingIn(true);
     try {
-      await api.login(loginEmail.trim(), loginPassword);
+      await login(loginEmail.trim(), loginPassword);
       // O portal confere a sessão e provisiona o perfil ao abrir.
       router.push("/feed");
     } catch (error) {
@@ -194,10 +204,10 @@ export function LandingModals() {
         aria-modal="true"
         aria-labelledby="lgT"
         hidden={!loginOpen}
-        onClick={(event) => { if (event.target === event.currentTarget) setLoginOpen(false); }}
+        onClick={(event) => { if (event.target === event.currentTarget) closeLogin(); }}
       >
         <form className="lg-box" id="loginForm" noValidate onSubmit={submitLogin}>
-          <button type="button" className="lg-x" id="loginX" aria-label="Fechar" onClick={() => setLoginOpen(false)}>&times;</button>
+          <button type="button" className="lg-x" id="loginX" aria-label="Fechar" onClick={closeLogin}>&times;</button>
           <svg className="lg-logo" width="30" height="33" aria-hidden="true"><use href="#logo-mark" /></svg>
           <h2 id="lgT">Entrar no DM Conecta</h2>
           <p className="lg-sub">Acesse sua conta para acompanhar projetos, apoios e conexões.</p>
