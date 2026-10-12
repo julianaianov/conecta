@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 
 // Eixos de impacto: categorias editoriais e exemplos de tipos de projeto (não são projetos cadastrados).
@@ -188,7 +187,7 @@ export function Projects() {
             <div className="ap2-t">
               <h3>Formas de apoiar</h3>
               <p>Cada projeto indica o que precisa. Quem apoia escolhe como contribuir.</p>
-              <Link className="btn btn-primary" href="/register?perfil=partner">Quero apoiar <svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></Link>
+              <a className="btn btn-primary" href="#contato" data-cad="parceiro">Quero apoiar <svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></a>
             </div>
             <ul className="ap2-l">
               {SUPPORT_FORMS.map((form) => (

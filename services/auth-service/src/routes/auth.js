@@ -6,8 +6,7 @@ const { body, validationResult } = require('express-validator');
 const { isAccessPayload } = require('../security');
 const { CONSENT_DOCUMENTS, CONSENT_KEYS, normalizeConsentKeys } = require('../consents');
 
-// As 5 categorias de perfil e seus subperfis (espelha src/lib/app/types.ts e
-// docs/perfis-e-permissoes.md).
+// Perfis de conta atuais e compatibilidade para contas legadas.
 const ROLE_PROFILES = {
   agent:      ['associacao', 'ong', 'instituto', 'projeto_social', 'coletivo', 'lider_comunitario', 'representante_bairro'],
   member:     ['morador', 'voluntario', 'jovem', 'participante'],
@@ -15,7 +14,9 @@ const ROLE_PROFILES = {
   government: ['prefeitura', 'secretaria', 'orgao_publico', 'representante_poder_publico', 'politico'],
   media:      ['imprensa', 'veiculo_comunicacao', 'jornalista'],
 };
-const ROLES = Object.keys(ROLE_PROFILES);
+// Comunicação não cria contas novas; `media` continua válido para autenticar
+// e atender contas existentes até a migração de seus dados.
+const PUBLIC_REGISTRATION_ROLES = ['agent', 'member', 'partner', 'government'];
 const PROFILE_TYPES = Object.values(ROLE_PROFILES).flat();
 
 // Colunas devolvidas ao próprio usuário (nunca password_hash).
@@ -40,7 +41,7 @@ module.exports = (pool, { secret } = {}) => {
     body('email').isEmail().normalizeEmail(),
     body('password').isLength({ min: 6 }),
     body('name').notEmpty().trim(),
-    body('role').isIn(ROLES),
+    body('role').isIn(PUBLIC_REGISTRATION_ROLES),
     body('profile_type').isIn(PROFILE_TYPES),
   ], async (req, res) => {
     const errors = validationResult(req);

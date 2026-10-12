@@ -85,7 +85,7 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="mailto:contato@dmconecta.org" data-contact>Enviar mensagem</a>
+                <a href="#contato" data-cad="contato">Enviar mensagem</a>
               </li>
               <li className="pt-2">
                 <a

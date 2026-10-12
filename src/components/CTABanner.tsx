@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 
 export function CTABanner() {
   return (
@@ -33,41 +32,46 @@ export function CTABanner() {
               <span className="routes-h">Como participar</span>
               <h3 id="jrH">Qual é o seu papel no DM Conecta?</h3>
             </div>
-            <Link className="jr jr-main" href="/register?perfil=agent" data-journey="agente">
+            <a className="jr jr-main" href="#contato" data-cad="agente" data-journey="agente">
               <span className="jr-tag">Comece por aqui</span>
               <span className="jr-ic"><svg className="ico" aria-hidden="true"><use href="#i-people" /></svg></span>
               <b>Sou Agente de Transformação</b>
               <span className="jr-d">Cadastre e estruture seu projeto, conecte-se a apoiadores e registre resultados.</span>
               <span className="jr-cta">Cadastrar projeto<svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></span>
-            </Link>
+            </a>
             <div className="jr-grid">
-              <Link className="jr" href="/register?perfil=member" data-journey="comunidade">
+              <a className="jr" href="#contato" data-cad="comunidade" data-journey="comunidade">
                 <span className="jr-ic"><svg className="ico" aria-hidden="true"><use href="#i-heart" /></svg></span>
                 <b>Sou da comunidade</b>
                 <span className="jr-d">Participe, seja voluntário e acompanhe projetos do seu território.</span>
                 <span className="jr-cta">Quero participar<svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></span>
-              </Link>
-              <Link className="jr" href="/register?perfil=government" data-journey="poder-publico">
+              </a>
+              <a className="jr" href="#contato" data-cad="poder-publico" data-journey="poder-publico">
                 <span className="jr-ic"><svg className="ico" aria-hidden="true"><use href="#i-gov" /></svg></span>
                 <b>Represento o Poder Público</b>
                 <span className="jr-d">Articule, participe e acompanhe projetos de interesse público.</span>
                 <span className="jr-cta">Acessar como gestor<svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></span>
-              </Link>
-              <Link className="jr" href="/register?perfil=partner" data-journey="parceiro">
+              </a>
+              <a className="jr" href="#contato" data-cad="parceiro" data-journey="parceiro">
                 <span className="jr-ic"><svg className="ico" aria-hidden="true"><use href="#i-brief" /></svg></span>
                 <b>Sou empresa ou parceiro</b>
                 <span className="jr-d">Encontre projetos compatíveis e acompanhe o impacto do seu apoio.</span>
                 <span className="jr-cta">Quero apoiar<svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></span>
-              </Link>
-              <Link className="jr" href="/register?perfil=media" data-journey="comunicacao">
+              </a>
+              <a className="jr" href="#contato" data-cad="comunicacao" data-journey="comunicacao">
                 <span className="jr-ic"><svg className="ico" aria-hidden="true"><use href="#i-mega" /></svg></span>
                 <b>Trabalho com comunicação</b>
                 <span className="jr-d">Identifique pautas de impacto e dê visibilidade a projetos e resultados.</span>
                 <span className="jr-cta">Acompanhar projetos<svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></span>
-              </Link>
+              </a>
             </div>
           </nav>
         </div>
+        <aside className="lc2" aria-labelledby="lcT">
+          <span className="lc-badge"><svg className="ico" aria-hidden="true"><use href="#i-clock" /></svg>Em desenvolvimento</span>
+          <p><b id="lcT">Seja avisado no lançamento.</b> A plataforma está em construção. Deixe seu contato para saber quando o cadastro abrir.</p>
+          <a className="btn btn-primary" href="#contato" data-cad="aviso">Quero ser avisado <svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></a>
+        </aside>
       </div>
     </section>
 

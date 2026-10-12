@@ -13,7 +13,6 @@ import { LandingModals } from "@/components/LandingModals";
 import { LandingSvgSymbols } from "@/components/LandingSvgSymbols";
 import { Navbar } from "@/components/Navbar";
 import { Projects } from "@/components/Projects";
-import { RegisterDialog } from "@/components/RegisterDialog";
 import { SmartMap } from "@/components/SmartMap";
 import { Stakeholders } from "@/components/Stakeholders";
 import { Steps } from "@/components/Steps";
@@ -41,6 +40,14 @@ export async function LandingExperience({
     getPublicThemeIntelligence(),
     getPublicMapTerritories(),
   ]);
+  const roleToProfile: Record<UserRole, "agente" | "parceiro" | "poder-publico" | "comunidade" | "comunicacao"> = {
+    partner: "parceiro",
+    agent: "agente",
+    government: "poder-publico",
+    member: "comunidade",
+    media: "comunicacao",
+  };
+  const cadPerfil = roleToProfile[initialRole] || "parceiro";
   const jsonLd = landingPageJsonLd();
 
   return (
@@ -70,8 +77,11 @@ export async function LandingExperience({
         </main>
       </LandingDataProvider>
       <Footer />
-      <LandingModals initialLoginOpen={dialog === "login"} />
-      {dialog === "register" ? <RegisterDialog initialRole={initialRole} /> : null}
+      <LandingModals
+        initialLoginOpen={dialog === "login"}
+        initialCadOpen={dialog === "register"}
+        initialCadPerfil={cadPerfil}
+      />
       <LandingEffects />
       <LandingMotion />
     </>

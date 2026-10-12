@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
+import * as types from "./types.ts";
+
+const {
   ROLES,
   ROLE_PROFILES,
   PROFILE_ROLE,
@@ -9,10 +11,17 @@ import {
   allowedSupportTypes,
   can,
   normalizeRole,
-} from "./types.ts";
+} = types;
 
-test("organiza os perfis nas 5 categorias do ecossistema", () => {
+test("cadastro público oferece os quatro perfis atuais e mantém media só por compatibilidade", () => {
+  assert.deepEqual(types.PUBLIC_REGISTRATION_ROLES, ["agent", "member", "partner", "government"]);
+  assert.ok(ROLES.includes("media"), "contas antigas de Comunicação continuam reconhecidas pelo domínio");
+  assert.ok(!types.PUBLIC_REGISTRATION_ROLES.includes("media"));
+});
+
+test("mantém os quatro perfis atuais e reconhece Comunicação apenas como role legado", () => {
   assert.deepEqual(ROLES, ["agent", "member", "partner", "government", "media"]);
+  assert.deepEqual(types.PUBLIC_REGISTRATION_ROLES, ["agent", "member", "partner", "government"]);
   assert.equal(PROFILE_ROLE.instituto, "agent");
   assert.equal(PROFILE_ROLE.imprensa, "media");
   assert.equal(PROFILE_ROLE.jornalista, "media");
@@ -28,7 +37,7 @@ test("subperfis não se repetem entre categorias", () => {
   assert.equal(new Set(all).size, all.length);
 });
 
-test("converte as categorias antigas; o subperfil decide a divisão do Institucional", () => {
+test("converte categorias antigas e mantém contas antigas de Comunicação", () => {
   assert.equal(normalizeRole("community"), "agent");
   assert.equal(normalizeRole("citizen"), "member");
   assert.equal(normalizeRole("institutional"), "government");

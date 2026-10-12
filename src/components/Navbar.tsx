@@ -311,19 +311,19 @@ export function Navbar() {
               <span>Entrar</span>
             </button>
 
-            <Link className="btn btn-ghost hdr-apoio" href="/register?perfil=partner">
+            <a className="btn btn-ghost hdr-apoio" href="#contato" data-cad="parceiro">
               <svg className="ico">
                 <use href="#i-heart" />
               </svg>
               <span>Quero apoiar</span>
-            </Link>
+            </a>
 
-            <Link className="btn btn-primary" href="/register?perfil=agent">
+            <a className="btn btn-primary" href="#contato" data-cad="agente">
               <svg className="ico">
                 <use href="#i-pin" />
               </svg>
               <span>Cadastrar projeto</span>
-            </Link>
+            </a>
 
             <button
               className="menu-btn"
@@ -346,8 +346,8 @@ export function Navbar() {
           {NAV_SECTIONS.map((item) => (
             <a href={`#${item.id}`} onClick={() => setMenuOpen(false)} key={item.id}>{item.label}</a>
           ))}
-          <Link href="/register?perfil=partner" onClick={() => setMenuOpen(false)}>Quero apoiar</Link>
-          <Link href="/register?perfil=agent" onClick={() => setMenuOpen(false)}>Cadastrar projeto</Link>
+          <a href="#contato" data-cad="parceiro" onClick={() => setMenuOpen(false)}>Quero apoiar</a>
+          <a href="#contato" data-cad="agente" onClick={() => setMenuOpen(false)}>Cadastrar projeto</a>
           <a href="/login" data-open-login onClick={() => setMenuOpen(false)}>Entrar</a>
         </nav>
       </div>

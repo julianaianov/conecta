@@ -4,15 +4,19 @@
  * support_type, support_record, payment_method) e o contrato da API.
  */
 
-// ── Perfis do ecossistema ──────────────────────────────────
+// ── Perfis de conta ────────────────────────────────────────
 /**
- * As 5 categorias de perfil, organizadas pela função de cada participante no
- * fluxo DEMANDA → PROJETO → CONEXÃO → APOIO → ARTICULAÇÃO → AMPLIFICAÇÃO →
- * EXECUÇÃO → RESULTADO → IMPACTO. Cada categoria agrupa subperfis
- * (ver ROLE_PROFILES). Especificação: docs/perfis-e-permissoes.md.
+ * Os quatro perfis que podem criar conta. `media` permanece no contrato para
+ * reconhecer contas antigas de Comunicação; novos cadastros usam somente
+ * PUBLIC_REGISTRATION_ROLES. Especificação: docs/perfis-e-permissoes.md.
  */
 export type UserRole = "agent" | "member" | "partner" | "government" | "media";
 
+/** Perfis de conta habilitados no cadastro público atual. */
+export const PUBLIC_REGISTRATION_ROLES = ["agent", "member", "partner", "government"] as const;
+export type PublicRegistrationRole = (typeof PUBLIC_REGISTRATION_ROLES)[number];
+
+/** Todos os roles ainda reconhecidos por sessões e dados existentes. */
 export const ROLES: UserRole[] = ["agent", "member", "partner", "government", "media"];
 
 export const ROLE_LABELS: Record<UserRole, string> = {

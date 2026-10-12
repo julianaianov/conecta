@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 interface Role {
@@ -13,8 +12,7 @@ interface Role {
   summary: React.ReactNode;
   who: string[];
   does: string[];
-  /** Perfil pré-selecionado em `/register`. */
-  register: string;
+  cadKey: string;
   cta: string;
 }
 
@@ -39,7 +37,7 @@ const ROLES: Role[] = [
       "Registrar execução, evidências e atualizações",
       "Apresentar resultados e indicadores de impacto",
     ],
-    register: "agent",
+    cadKey: "agente",
     cta: "Cadastrar projeto",
   },
   {
@@ -60,7 +58,7 @@ const ROLES: Role[] = [
       "Acompanhar execução, evidências e resultados",
       "Participar do reconhecimento de apoiadores",
     ],
-    register: "partner",
+    cadKey: "parceiro",
     cta: "Quero apoiar",
   },
   {
@@ -82,7 +80,7 @@ const ROLES: Role[] = [
       "Integrar projetos a políticas públicas",
       "Acompanhar indicadores e resultados",
     ],
-    register: "government",
+    cadKey: "poder-publico",
     cta: "Acessar como gestor",
   },
   {
@@ -104,7 +102,7 @@ const ROLES: Role[] = [
       "Inscrever-se em atividades e eventos dos projetos",
       "Acompanhar resultados",
     ],
-    register: "member",
+    cadKey: "comunidade",
     cta: "Quero participar",
   },
   {
@@ -117,15 +115,12 @@ const ROLES: Role[] = [
     summary: <><b>Amplia a visibilidade</b> dos projetos e de seus resultados.</>,
     who: ["Veículos de comunicação", "Jornalistas", "Produtores e criadores de conteúdo", "Agentes de comunicação"],
     does: [
-      "Criar perfil profissional ou institucional",
       "Visualizar projetos e resultados",
-      "Solicitar conexão",
-      "Identificar pautas de impacto",
-      "Compartilhar iniciativas",
-      "Divulgar projetos e resultados",
+      "Acompanhar iniciativas do território",
+      "Compartilhar projetos e resultados fora da plataforma",
       "Acompanhar informações públicas dos projetos",
     ],
-    register: "media",
+    cadKey: "comunicacao",
     cta: "Acompanhar projetos",
   },
 ];
@@ -237,7 +232,7 @@ export function Stakeholders() {
                 ) : null}
               </div>
               <div className="qx-dc">
-                <Link className="btn btn-primary" href={`/register?perfil=${role.register}`}>{role.cta} <svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></Link>
+                <a className="btn btn-primary" href="#contato" data-cad={role.cadKey}>{role.cta} <svg className="ico" aria-hidden="true"><use href="#i-arrow" /></svg></a>
                 <button type="button" className="qx-x" onClick={close}>Fechar</button>
               </div>
             </div>

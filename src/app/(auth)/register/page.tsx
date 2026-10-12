@@ -1,11 +1,24 @@
 import { LandingExperience } from "@/components/LandingExperience";
-import { ROLES, type UserRole } from "@/lib/app/types";
+import { PUBLIC_REGISTRATION_ROLES, type PublicRegistrationRole } from "@/lib/app/types";
 
 export const revalidate = 60;
 
-function roleFromQuery(value: string | string[] | undefined): UserRole {
-  const role = Array.isArray(value) ? value[0] : value;
-  return ROLES.includes(role as UserRole) ? role as UserRole : "member";
+const QUERY_ROLE_MAP: Record<string, PublicRegistrationRole> = {
+  partner: "partner",
+  parceiro: "partner",
+  agent: "agent",
+  agente: "agent",
+  government: "government",
+  "poder-publico": "government",
+  governo: "government",
+  member: "member",
+  comunidade: "member",
+};
+
+function roleFromQuery(value: string | string[] | undefined): PublicRegistrationRole {
+  const raw = (Array.isArray(value) ? value[0] : value)?.toLowerCase() || "";
+  if (raw in QUERY_ROLE_MAP) return QUERY_ROLE_MAP[raw];
+  return PUBLIC_REGISTRATION_ROLES.includes(raw as PublicRegistrationRole) ? (raw as PublicRegistrationRole) : "partner";
 }
 
 export default async function RegisterPage({

@@ -9,7 +9,7 @@ import { Button } from "@/components/app/Button";
 import { Icon } from "@/components/app/Icon";
 import { DMLogo } from "@/components/app/DMLogo";
 import {
-  ROLES, ROLE_LABELS, ROLE_COLORS, ROLE_ICONS, ROLE_PROFILES,
+  PUBLIC_REGISTRATION_ROLES, ROLE_LABELS, ROLE_COLORS, ROLE_ICONS, ROLE_PROFILES,
   ROLE_PERMISSION_LABELS, ROLE_RESTRICTIONS, ROLE_FUNCTIONS, ROLE_DESCRIPTIONS, ROLE_FUTURE_PROFILES,
   type UserRole, type ProfileType,
 } from "@/lib/app/types";
@@ -123,7 +123,7 @@ export function RegisterDialog({ initialRole = "member" }: { initialRole?: UserR
           <div>
             <span className="mb-2 block text-sm font-semibold" style={{ color: "var(--th-text)" }}>Tipo de perfil</span>
             <div role="radiogroup" aria-label="Tipo de perfil" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {ROLES.map((r) => {
+                {PUBLIC_REGISTRATION_ROLES.map((r) => {
                   const active = role === r;
                   return (
                     <button

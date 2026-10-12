@@ -97,6 +97,22 @@ test('o cadastro sem aceite dos documentos é recusado com 422', async () => {
   });
 });
 
+test('o cadastro público recusa novas contas de Comunicação antes de consultar o banco', async () => {
+  const pool = createPool();
+  await withServer(pool, async (base) => {
+    const res = await fetch(`${base}/register`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: 'comunicacao@example.com', password: 'senha123', name: 'Comunicacao',
+        role: 'media', profile_type: 'imprensa', consents: CONSENT_KEYS,
+      }),
+    });
+    assert.equal(res.status, 400);
+  });
+  assert.deepEqual(pool.queries, []);
+});
+
 test('o cadastro com aceite parcial também é recusado', async () => {
   await withServer(createPool(), async (base) => {
     const res = await fetch(`${base}/register`, {
