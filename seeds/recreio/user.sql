@@ -1,3 +1,5 @@
+SET session_replication_role = replica;
+
 -- Seed oficial de perfis, comunidades, organizações e conexões — Recreio dos Bandeirantes, RJ
 -- DM Conecta: perfis canônicos das 5 categorias do ecossistema.
 
@@ -333,3 +335,6 @@ INSERT INTO connections (type, status, from_user_id, to_user_id, message, create
    'Subprefeitura em diálogo constante para encaminhamentos de drenagem e iluminação no Terreirão.',
    NOW() - INTERVAL '50 days', NOW())
 ON CONFLICT DO NOTHING;
+
+
+SET session_replication_role = DEFAULT;

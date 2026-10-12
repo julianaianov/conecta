@@ -693,46 +693,41 @@ INSERT INTO demand_themes (demand_id, theme, created_at) VALUES
 ON CONFLICT DO NOTHING;
 
 -- ── 3. Metas das Demandas (demand_goals) ──────────────────────────────────────────
-INSERT INTO demand_goals (demand_id, description, created_at) VALUES
-  ('d0000000-0001-4000-8000-000000000006', 'Matricular 60 crianças de escolas públicas no contraturno escolar.', NOW() - INTERVAL '90 days'),
-  ('d0000000-0001-4000-8000-000000000006', 'Realizar 24 aulas práticas de surf com instrutores credenciados.', NOW() - INTERVAL '90 days'),
-  ('d0000000-0001-4000-8000-000000000006', 'Promover 6 palestras de biologia marinha e conservação das praias.', NOW() - INTERVAL '90 days'),
-  ('d0000000-0001-4000-8000-000000000009', 'Mobilizar no mínimo 30 voluntários em cada mutirão de sábado.', NOW() - INTERVAL '120 days'),
-  ('d0000000-0001-4000-8000-000000000009', 'Triar e pesar 100% dos resíduos recicláveis recolhidos.', NOW() - INTERVAL '120 days'),
-  ('d0000000-0001-4000-8000-000000000010', 'Construir 12 canteiros elevados e composteira aerada.', NOW() - INTERVAL '80 days'),
-  ('d0000000-0001-4000-8000-000000000010', 'Colheita semanal distribuída para famílias cadastradas.', NOW() - INTERVAL '80 days'),
-  ('d0000000-0001-4000-8000-000000000011', 'Instalar 20 paraciclos em pontos estratégicos dos Postos 9 a 12.', NOW() - INTERVAL '150 days'),
-  ('d0000000-0001-4000-8000-000000000013', 'Instalação completa de postes solares LED e bancos reformados.', NOW() - INTERVAL '180 days'),
-  ('d0000000-0001-4000-8000-000000000024', 'Recuperação de 100% dos brinquedos infantis da praça.', NOW() - INTERVAL '55 days'),
-  ('d0000000-0001-4000-8000-000000000026', 'Atender 50 jovens com aulas semanais e fornecer uniformes de capoeira.', NOW() - INTERVAL '65 days'),
-  ('d0000000-0001-4000-8000-000000000027', 'Instalar 18 placas interpretativas e monitorar 5 ninhos de jacaré.', NOW() - INTERVAL '48 days')
+INSERT INTO demand_goals (demand_id, position, goal, expected_result, indicator, measurement_method, created_at) VALUES
+  ('d0000000-0001-4000-8000-000000000006', 0, 'Matricular 60 crianças de escolas públicas no contraturno escolar.', '60 alunos participando das atividades aos sábados', 'Número de matrículas ativas', 'Chamada e formulários de presença', NOW() - INTERVAL '90 days'),
+  ('d0000000-0001-4000-8000-000000000006', 1, 'Realizar 24 aulas práticas de surf com instrutores credenciados.', 'Aulas teóricas e práticas finalizadas', 'Relatórios de aula do instrutor', 'Registro de presença e fotos', NOW() - INTERVAL '90 days'),
+  ('d0000000-0001-4000-8000-000000000009', 0, 'Mobilizar no mínimo 30 voluntários em cada mutirão de sábado.', 'Presença comunitária consistente na orla', 'Lista de voluntários assinada', 'Assinatura no ponto de encontro', NOW() - INTERVAL '120 days'),
+  ('d0000000-0001-4000-8000-000000000009', 1, 'Triar e pesar 100% dos resíduos recicláveis recolhidos.', '3 toneladas de lixo recolhidas e destinadas', 'Planilha de pesagem semanal', 'Balança digital portátil', NOW() - INTERVAL '120 days'),
+  ('d0000000-0001-4000-8000-000000000010', 0, 'Construir 12 canteiros elevados e composteira aerada.', 'Canteiros produtivos prontos para plantio', 'Área cultivada em metros quadrados', 'Vistoria fotográfica', NOW() - INTERVAL '80 days'),
+  ('d0000000-0001-4000-8000-000000000011', 0, 'Instalar 20 paraciclos em pontos estratégicos dos Postos 9 a 12.', 'Vagas seguras de bicicleta instaladas', 'Contagem de paraciclos fixados', 'Vistoria técnica da diretoria', NOW() - INTERVAL '150 days'),
+  ('d0000000-0001-4000-8000-000000000013', 0, 'Instalação completa de postes solares LED e bancos reformados.', 'Praça e mirante totalmente iluminados e seguros', 'Laudo de entrega e funcionamento', 'Inspeção noturna', NOW() - INTERVAL '180 days'),
+  ('d0000000-0001-4000-8000-000000000024', 0, 'Recuperação de 100% dos brinquedos infantis da praça.', 'Brinquedos seguros instalados para as crianças', 'Termo de entrega da obra', 'Laudo de conformidade ABNT', NOW() - INTERVAL '55 days')
 ON CONFLICT DO NOTHING;
 
 -- ── 4. Itens Orçamentários das Demandas (demand_budget_items) ────────────────────
-INSERT INTO demand_budget_items (demand_id, item, description, amount_cents, supplier_reference, created_at) VALUES
-  ('d0000000-0001-4000-8000-000000000001', 'Massa asfáltica e fresagem', 'CBUQ quente e emulsão para 30m² de pista', 550000, 'Usina Asfalto Rio Ltda', NOW() - INTERVAL '30 days'),
-  ('d0000000-0001-4000-8000-000000000001', 'Nivelamento e gradeamento de ferro', 'Peça de bueiro articulado reforçado classe D400', 300000, 'Fundição Carioca', NOW() - INTERVAL '30 days'),
-  ('d0000000-0001-4000-8000-000000000006', 'Pranchas Softboard', '15 pranchas de surf para iniciantes 7.0 pés', 1500000, 'Shaper Local Recreio', NOW() - INTERVAL '90 days'),
-  ('d0000000-0001-4000-8000-000000000006', 'Lycras e coletes salva-vidas', '60 coletes infantis e uniformes UV50+', 600000, 'Confecção Esportiva Rio', NOW() - INTERVAL '90 days'),
-  ('d0000000-0001-4000-8000-000000000006', 'Lanches comunitários saudáveis', 'Frutas, sucos e barras de cereais para os treinos', 400000, 'Padaria Pão Quente do Recreio', NOW() - INTERVAL '90 days'),
-  ('d0000000-0001-4000-8000-000000000009', 'Luvas de proteção e sacos reforçados', 'Luvas nitrílicas e 500 sacos biodegradáveis', 350000, 'Distribuidora Recreio Eco', NOW() - INTERVAL '120 days'),
-  ('d0000000-0001-4000-8000-000000000009', 'Tendas de apoio e hidratação', '2 gazebos sanfonados e galões de água mineral', 450000, 'Comércio do Bairro', NOW() - INTERVAL '120 days'),
-  ('d0000000-0001-4000-8000-000000000009', 'Material educativo e balanças', 'Balança digital portátil e folhetos informativos', 200000, 'Gráfica Express Recreio', NOW() - INTERVAL '120 days'),
-  ('d0000000-0001-4000-8000-000000000011', 'Paraciclos de Aço Galvanizado', '20 unidades modelo invertido U', 1200000, 'Serralheria Industrial Barra', NOW() - INTERVAL '150 days'),
-  ('d0000000-0001-4000-8000-000000000011', 'Tinta termoplástica e fixação', 'Resina e parafusos de chumbamento químico', 450000, 'Tintas Rio Express', NOW() - INTERVAL '150 days'),
-  ('d0000000-0001-4000-8000-000000000024', 'Brinquedos modulares de eucalipto tratado', 'Balanço duplo, escorregador e gangorra', 1400000, 'Playgrounds Rio', NOW() - INTERVAL '55 days'),
-  ('d0000000-0001-4000-8000-000000000024', 'Pintura emborrachada e areia higienizada', 'Revitalização da pista e troca de areia', 700000, 'Materiais Recreio', NOW() - INTERVAL '55 days')
+INSERT INTO demand_budget_items (demand_id, position, description, quantity, unit, unit_price_cents, total_cents, created_at) VALUES
+  ('d0000000-0001-4000-8000-000000000001', 0, 'Massa asfáltica e fresagem de pista', 1, 'servico', 550000, 550000, NOW() - INTERVAL '30 days'),
+  ('d0000000-0001-4000-8000-000000000001', 1, 'Nivelamento e gradeamento de ferro fundido', 1, 'servico', 300000, 300000, NOW() - INTERVAL '30 days'),
+  ('d0000000-0001-4000-8000-000000000006', 0, 'Pranchas Softboard para iniciantes 7.0 pés', 15, 'unidade', 100000, 1500000, NOW() - INTERVAL '90 days'),
+  ('d0000000-0001-4000-8000-000000000006', 1, 'Coletes salva-vidas infantis e lycras UV50+', 60, 'kit', 10000, 600000, NOW() - INTERVAL '90 days'),
+  ('d0000000-0001-4000-8000-000000000006', 2, 'Lanches comunitários saudáveis (frutas e sucos)', 1, 'lote', 400000, 400000, NOW() - INTERVAL '90 days'),
+  ('d0000000-0001-4000-8000-000000000009', 0, 'Luvas nitrílicas e sacos biodegradáveis reforçados', 1, 'lote', 350000, 350000, NOW() - INTERVAL '120 days'),
+  ('d0000000-0001-4000-8000-000000000009', 1, 'Tendas de apoio e galões de água mineral', 1, 'lote', 450000, 450000, NOW() - INTERVAL '120 days'),
+  ('d0000000-0001-4000-8000-000000000011', 0, 'Paraciclos de Aço Galvanizado modelo invertido U', 20, 'unidade', 60000, 1200000, NOW() - INTERVAL '150 days'),
+  ('d0000000-0001-4000-8000-000000000011', 1, 'Tinta termoplástica e fixadores químicos', 1, 'servico', 450000, 450000, NOW() - INTERVAL '150 days'),
+  ('d0000000-0001-4000-8000-000000000024', 0, 'Módulos de playground em eucalipto tratado', 1, 'conjunto', 1400000, 1400000, NOW() - INTERVAL '55 days'),
+  ('d0000000-0001-4000-8000-000000000024', 1, 'Pintura emborrachada de pista e substituição de areia', 1, 'servico', 700000, 700000, NOW() - INTERVAL '55 days')
 ON CONFLICT DO NOTHING;
 
 -- ── 5. Cronograma das Demandas (demand_schedule_items) ───────────────────────────
-INSERT INTO demand_schedule_items (demand_id, title, starts_on, ends_on, resources_needed, amount_cents, created_at) VALUES
-  ('d0000000-0001-4000-8000-000000000006', 'Inscrições e seleção dos participantes', '2026-07-01', '2026-07-15', 'Fichas, divulgação nas escolas e reuniões de pais', 200000, NOW() - INTERVAL '90 days'),
-  ('d0000000-0001-4000-8000-000000000006', 'Módulo 1: Segurança na praia e no mar', '2026-07-20', '2026-08-31', 'Instrutores de surf e guarda-vidas convidados', 800000, NOW() - INTERVAL '90 days'),
-  ('d0000000-0001-4000-8000-000000000006', 'Módulo 2: Prática nas ondas e campeonato', '2026-09-01', '2026-11-30', 'Pranchas, medalhas e confraternização', 1500000, NOW() - INTERVAL '90 days'),
-  ('d0000000-0001-4000-8000-000000000009', 'Ciclo 1: Mutirões de Inverno', '2026-06-01', '2026-08-31', 'Voluntários, luvas e sacos', 500000, NOW() - INTERVAL '120 days'),
-  ('d0000000-0001-4000-8000-000000000009', 'Ciclo 2: Mutirões de Primavera e Verão', '2026-09-01', '2026-12-15', 'Voluntários, palestras e premiação simbólica', 500000, NOW() - INTERVAL '120 days'),
-  ('d0000000-0001-4000-8000-000000000024', 'Fase 1: Desmontagem e preparo do solo', '2026-08-15', '2026-08-31', 'Equipe de manutenção e caçambas', 500000, NOW() - INTERVAL '55 days'),
-  ('d0000000-0001-4000-8000-000000000024', 'Fase 2: Instalação dos brinquedos e pintura', '2026-09-01', '2026-10-30', 'Brinquedos, tintas e piso', 1600000, NOW() - INTERVAL '55 days')
+INSERT INTO demand_schedule_items (demand_id, position, stage, activities, starts_on, ends_on, responsible, created_at) VALUES
+  ('d0000000-0001-4000-8000-000000000006', 0, 'Inscrições e seleção dos participantes', 'Fichas, divulgação nas escolas e reuniões de pais', '2026-07-01', '2026-07-15', 'Coordenação Pedagógica', NOW() - INTERVAL '90 days'),
+  ('d0000000-0001-4000-8000-000000000006', 1, 'Módulo 1: Segurança na praia e no mar', 'Instrutores de surf e guarda-vidas convidados', '2026-07-20', '2026-08-31', 'Instrutor Chefe de Surf', NOW() - INTERVAL '90 days'),
+  ('d0000000-0001-4000-8000-000000000006', 2, 'Módulo 2: Prática nas ondas e campeonato', 'Pranchas, medalhas e confraternização comunitária', '2026-09-01', '2026-11-30', 'Equipe Técnica Onda Limpa', NOW() - INTERVAL '90 days'),
+  ('d0000000-0001-4000-8000-000000000009', 0, 'Ciclo 1: Mutirões de Inverno', 'Voluntários, luvas e sacos na areia', '2026-06-01', '2026-08-31', 'Associação Recreio Verde', NOW() - INTERVAL '120 days'),
+  ('d0000000-0001-4000-8000-000000000009', 1, 'Ciclo 2: Mutirões de Primavera e Verão', 'Voluntários, palestras e premiação simbólica', '2026-09-01', '2026-12-15', 'Associação Recreio Verde', NOW() - INTERVAL '120 days'),
+  ('d0000000-0001-4000-8000-000000000024', 0, 'Fase 1: Desmontagem e preparo do solo', 'Equipe de manutenção e remoção de ferros velhos', '2026-08-15', '2026-08-31', 'Mestre de Obras Parceiro', NOW() - INTERVAL '55 days'),
+  ('d0000000-0001-4000-8000-000000000024', 1, 'Fase 2: Instalação dos brinquedos e pintura', 'Brinquedos ecológicos, tintas e piso novo', '2026-09-01', '2026-10-30', 'Equipe de Montagem Recreio', NOW() - INTERVAL '55 days')
 ON CONFLICT DO NOTHING;
 
 -- ── 6. Linha do Tempo das Demandas (demand_events) ───────────────────────────────
@@ -778,7 +773,7 @@ INSERT INTO posts (
   status, latitude, longitude, neighborhood, city, state, zipcode, images, videos, tags,
   reactions_count, comments_count, views_count, shares_count, visibility, created_at, updated_at
 ) VALUES
-  ('p0000000-0001-4000-8000-000000000001', 'd0000000-0001-4000-8000-000000000001',
+  ('ba000000-0001-4000-8000-000000000001', 'd0000000-0001-4000-8000-000000000001',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'problem', 'Cratera no asfalto e bueiro afundado na Av. das Américas',
    'Buraco de grande profundidade na pista lateral da Av. das Américas, na altura do Recreio Shopping. Risco constante de acidentes graves para ciclistas, motociclistas e danos a pedestres.',
@@ -786,7 +781,7 @@ INSERT INTO posts (
    ARRAY['/images/buraco.jpeg'], '{}', ARRAY['problema_urbano', 'mobilidade', 'seguranca'],
    23, 4, 175, 4, 'visible', NOW() - INTERVAL '30 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000002', 'd0000000-0001-4000-8000-000000000002',
+  ('ba000000-0001-4000-8000-000000000002', 'd0000000-0001-4000-8000-000000000002',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'problem', 'Alagamento crítico na Rua Guignard com retorno de águas pluviais',
    'Após chuvas moderadas e fortes, a Rua Guignard no cruzamento com a Av. Genaro de Carvalho acumula lâmina de água superior a 50cm, invadindo calçadas e garagens.',
@@ -794,7 +789,7 @@ INSERT INTO posts (
    ARRAY['/images/alagamento.jpeg'], '{}', ARRAY['problema_urgente', 'saneamento', 'seguranca'],
    26, 6, 200, 5, 'visible', NOW() - INTERVAL '40 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000003', 'd0000000-0001-4000-8000-000000000003',
+  ('ba000000-0001-4000-8000-000000000003', 'd0000000-0001-4000-8000-000000000003',
    '11111111-0001-4000-8000-000000000004', 'Associação de Moradores do Terreirão', '/images/stock/avatar-lider.jpg',
    'problem', 'Iluminação pública apagada e postes escuros na Av. Genaro de Carvalho',
    'Extensão de 600 metros na Av. Genaro de Carvalho com mais de 8 postes totalmente apagados há três semanas, gerando sensação de insegurança noturna.',
@@ -802,7 +797,7 @@ INSERT INTO posts (
    ARRAY['/images/iluminacao.jpeg'], '{}', ARRAY['problema_urbano', 'iluminacao', 'seguranca'],
    29, 8, 225, 6, 'visible', NOW() - INTERVAL '25 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000004', 'd0000000-0001-4000-8000-000000000004',
+  ('ba000000-0001-4000-8000-000000000004', 'd0000000-0001-4000-8000-000000000004',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'problem', 'Calçadas esburacadas e guias danificadas na Av. Glaucio Gil',
    'Passeio público deteriorado com pedras soltas, raízes expostas e guias quebradas, impedindo a passagem de cadeirantes e carrinhos de bebê.',
@@ -810,7 +805,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['problema_urbano', 'mobilidade'],
    32, 10, 250, 7, 'visible', NOW() - INTERVAL '35 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000005', 'd0000000-0001-4000-8000-000000000005',
+  ('ba000000-0001-4000-8000-000000000005', 'd0000000-0001-4000-8000-000000000005',
    '11111111-0001-4000-8000-000000000004', 'Associação de Moradores do Terreirão', '/images/stock/avatar-lider.jpg',
    'problem', 'Vazamento contínuo de esgoto a céu aberto na Rua DW (Terreirão)',
    'Ruptura de tubulação de esgoto sanitário com transbordamento contínuo na via pública, odor insuportável e risco sanitário para crianças.',
@@ -818,7 +813,7 @@ INSERT INTO posts (
    ARRAY['/images/alagamento.jpeg'], '{}', ARRAY['problema_urgente', 'saneamento', 'limpeza'],
    35, 12, 275, 8, 'visible', NOW() - INTERVAL '12 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000006', 'd0000000-0001-4000-8000-000000000006',
+  ('ba000000-0001-4000-8000-000000000006', 'd0000000-0001-4000-8000-000000000006',
    '11111111-0001-4000-8000-000000000005', 'Projeto Onda Limpa Recreio', '/images/stock/avatar-lider.jpg',
    'project', 'Escolinha Comunitária de Surf Ondas do Futuro - Posto 12',
    'Aulas gratuitas de surf, condicionamento físico e palestras de conservação marinha para 60 crianças da rede pública e comunidades do Recreio.',
@@ -826,7 +821,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['projeto_social', 'esporte', 'educacao'],
    38, 14, 300, 9, 'visible', NOW() - INTERVAL '90 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000007', 'd0000000-0001-4000-8000-000000000007',
+  ('ba000000-0001-4000-8000-000000000007', 'd0000000-0001-4000-8000-000000000007',
    '11111111-0001-4000-8000-000000000003', 'Instituto Criança Feliz Recreio', '/images/stock/avatar-lider.jpg',
    'project', 'Reforço Escolar e Inclusão Digital no Terreirão',
    'Espaço de aprendizagem para suporte em matemática, língua portuguesa e alfabetização digital com 10 computadores doados.',
@@ -834,7 +829,7 @@ INSERT INTO posts (
    ARRAY['/images/voluntario-refoco-escolar.jpeg'], '{}', ARRAY['projeto_social', 'educacao', 'cultura'],
    41, 16, 325, 10, 'visible', NOW() - INTERVAL '60 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000008', 'd0000000-0001-4000-8000-000000000008',
+  ('ba000000-0001-4000-8000-000000000008', 'd0000000-0001-4000-8000-000000000008',
    '11111111-0001-4000-8000-000000000002', 'Coletivo Cultural Recreio', '/images/stock/avatar-lider.jpg',
    'project', 'Oficina Cultural de Roda de Rima e Música para Jovens do Recreio',
    'Encontros quinzenais na praça com oficinas de escrita criativa, produção musical e expressão artística para jovens da região.',
@@ -842,7 +837,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['projeto_social', 'cultura', 'educacao'],
    44, 3, 350, 11, 'visible', NOW() - INTERVAL '20 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000009', 'd0000000-0001-4000-8000-000000000009',
+  ('ba000000-0001-4000-8000-000000000009', 'd0000000-0001-4000-8000-000000000009',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Mutirão Permanente de Limpeza da Praia do Recreio e Restinga',
    'Ação semanal aos sábados reunindo voluntários, banhistas e comerciantes para remoção de microplásticos, bitucas e conscientização de frequentadores.',
@@ -850,7 +845,7 @@ INSERT INTO posts (
    ARRAY['/images/uploads/mutirao-praia.jpg'], '{}', ARRAY['projeto_ambiental', 'meio_ambiente', 'limpeza'],
    47, 5, 375, 12, 'visible', NOW() - INTERVAL '120 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000010', 'd0000000-0001-4000-8000-000000000010',
+  ('ba000000-0001-4000-8000-000000000010', 'd0000000-0001-4000-8000-000000000010',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Horta Urbana Agroecológica Comunitária da Praça Guignard',
    'Implantação de canteiros comunitários de hortaliças, ervas medicinais e composteira com manejo voluntário dos moradores.',
@@ -858,7 +853,7 @@ INSERT INTO posts (
    ARRAY['/images/horta.jpeg'], '{}', ARRAY['projeto_ambiental', 'meio_ambiente', 'educacao'],
    50, 7, 400, 13, 'visible', NOW() - INTERVAL '80 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000011', 'd0000000-0001-4000-8000-000000000011',
+  ('ba000000-0001-4000-8000-000000000011', 'd0000000-0001-4000-8000-000000000011',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Instalação de Paraciclos e Manutenção da Ciclovia da Orla',
    'Pintura de sinalização termoplástica, reparo no asfalto liso da ciclovia e instalação de 20 paraciclos de aço galvanizado nos postos de salva-vidas.',
@@ -866,7 +861,7 @@ INSERT INTO posts (
    ARRAY['/images/ciclistas.jpeg'], '{}', ARRAY['obra_ou_melhoria_de_infraestrutura', 'mobilidade', 'esporte'],
    53, 9, 425, 14, 'visible', NOW() - INTERVAL '150 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000012', 'd0000000-0001-4000-8000-000000000012',
+  ('ba000000-0001-4000-8000-000000000012', 'd0000000-0001-4000-8000-000000000012',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Recuperação do Píer e Ponte de Pedestres do Canal das Taxas',
    'Reforma estrutural das vigas de sustentação e assoalho de madeira da passarela que conecta a Av. das Américas ao interior do Parque Chico Mendes.',
@@ -874,7 +869,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['obra_ou_melhoria_de_infraestrutura', 'mobilidade', 'meio_ambiente'],
    56, 11, 450, 15, 'visible', NOW() - INTERVAL '45 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000013', 'd0000000-0001-4000-8000-000000000013',
+  ('ba000000-0001-4000-8000-000000000013', 'd0000000-0001-4000-8000-000000000013',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Revitalização e Iluminação LED da Praça Tim Maia (Pontal)',
    'Reforma do piso, bancos públicos, paisagismo com espécies nativas da orla e nova iluminação em LED no mirante do Pontal.',
@@ -882,7 +877,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['revitalizacao_de_espaco', 'iluminacao', 'cultura'],
    59, 13, 475, 16, 'visible', NOW() - INTERVAL '180 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000014', 'd0000000-0001-4000-8000-000000000014',
+  ('ba000000-0001-4000-8000-000000000014', 'd0000000-0001-4000-8000-000000000014',
    '11111111-0001-4000-8000-000000000004', 'Associação de Moradores do Terreirão', '/images/stock/avatar-lider.jpg',
    'project', 'Reforma da Quadra Poliesportiva da Escola Municipal no Recreio',
    'Pintura epóxi na quadra poliesportiva, troca de traves de futebol de salão, tabela de basquete e alambrados de proteção.',
@@ -890,7 +885,7 @@ INSERT INTO posts (
    ARRAY['/images/uploads/futebol-comunitario.jpg'], '{}', ARRAY['revitalizacao_de_espaco', 'esporte', 'educacao'],
    62, 15, 500, 17, 'visible', NOW() - INTERVAL '70 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000015', 'd0000000-0001-4000-8000-000000000015',
+  ('ba000000-0001-4000-8000-000000000015', 'd0000000-0001-4000-8000-000000000015',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Recuperação Florestal da Restinga Nativa na Praia da Macumba',
    'Cercamento de proteção e plantio de 800 mudas nativas da flora fixadora de dunas para conter a erosão costeira.',
@@ -898,7 +893,7 @@ INSERT INTO posts (
    ARRAY['/images/horta.jpeg'], '{}', ARRAY['recuperacao_ambiental', 'meio_ambiente'],
    65, 2, 525, 18, 'visible', NOW() - INTERVAL '50 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000016', 'd0000000-0001-4000-8000-000000000016',
+  ('ba000000-0001-4000-8000-000000000016', 'd0000000-0001-4000-8000-000000000016',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Desassoreamento e Limpeza Ecológica das Margens do Canal das Taxas',
    'Remoção manual de resíduos flutuantes e barreira de contenção de lixo para proteger os jacarés-de-papo-amarelo e capivaras do Parque Chico Mendes.',
@@ -906,7 +901,7 @@ INSERT INTO posts (
    ARRAY['/images/alagamento.jpeg'], '{}', ARRAY['recuperacao_ambiental', 'meio_ambiente', 'saneamento'],
    68, 4, 550, 19, 'visible', NOW() - INTERVAL '15 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000017', 'd0000000-0001-4000-8000-000000000017',
+  ('ba000000-0001-4000-8000-000000000017', 'd0000000-0001-4000-8000-000000000017',
    '11111111-0001-4000-8000-000000000005', 'Projeto Onda Limpa Recreio', '/images/stock/avatar-lider.jpg',
    'project', 'Patrocínio de Coletes, Pranchas e Equipamentos para Jovens Atletas',
    'Busca de patrocinador corporativo para aquisição de 15 pranchas softboard, 30 leashes e coletes de segurança para atletas mirins da escolinha.',
@@ -914,7 +909,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['necessidade_de_patrocinio', 'esporte', 'educacao'],
    71, 6, 575, 20, 'visible', NOW() - INTERVAL '22 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000018', 'd0000000-0001-4000-8000-000000000018',
+  ('ba000000-0001-4000-8000-000000000018', 'd0000000-0001-4000-8000-000000000018',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Consultoria Técnica em Engenharia Ambiental para Compostagem Comunitária',
    'Necessidade de apoio de especialista ou universidade para laudo agronômico e dimensionamento térmico das leiras de compostagem da horta.',
@@ -922,7 +917,7 @@ INSERT INTO posts (
    ARRAY['/images/horta.jpeg'], '{}', ARRAY['apoio_tecnico', 'meio_ambiente'],
    74, 8, 600, 21, 'visible', NOW() - INTERVAL '18 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000019', 'd0000000-0001-4000-8000-000000000019',
+  ('ba000000-0001-4000-8000-000000000019', 'd0000000-0001-4000-8000-000000000019',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Serviço de Coleta Seletiva e Logística Reversa de Plásticos na Orla',
    'Parceria com empresa de logística ou cooperativa para transporte e destinação correta de recicláveis recolhidos em mutirões de praia.',
@@ -930,7 +925,7 @@ INSERT INTO posts (
    ARRAY['/images/uploads/mutirao-praia.jpg'], '{}', ARRAY['apoio_com_servicos', 'limpeza', 'meio_ambiente'],
    77, 10, 625, 22, 'visible', NOW() - INTERVAL '16 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000020', 'd0000000-0001-4000-8000-000000000020',
+  ('ba000000-0001-4000-8000-000000000020', 'd0000000-0001-4000-8000-000000000020',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Doação de Madeiras Ecológicas, Ferramentas e Terra Vegetal para Horta',
    'Solicitação de doação de paletes de reflorestamento, 50 sacos de terra adubada e ferramentas agrícolas básicas (enxadas, pás e regadores).',
@@ -938,7 +933,7 @@ INSERT INTO posts (
    ARRAY['/images/horta.jpeg'], '{}', ARRAY['apoio_com_materiais', 'meio_ambiente'],
    80, 12, 150, 23, 'visible', NOW() - INTERVAL '28 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000021', 'd0000000-0001-4000-8000-000000000021',
+  ('ba000000-0001-4000-8000-000000000021', 'd0000000-0001-4000-8000-000000000021',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Instalação de Coletores Ecológicos de Bitucas e Lixeiras na Orla',
    'Instalação de 15 bituqueiras feitas de bambu tratado e placas educativas contra o descarte de cigarros e canudos plásticos na areia.',
@@ -946,7 +941,7 @@ INSERT INTO posts (
    ARRAY['/images/uploads/mutirao-praia.jpg'], '{}', ARRAY['outras_demandas_territoriais', 'limpeza', 'meio_ambiente'],
    83, 14, 175, 24, 'visible', NOW() - INTERVAL '14 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000022', 'd0000000-0001-4000-8000-000000000022',
+  ('ba000000-0001-4000-8000-000000000022', 'd0000000-0001-4000-8000-000000000022',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'problem', 'Alagamento crônico no cruzamento da Av. das Américas com Benvindo de Novaes',
    'Acúmulo de lâmina d''água de grande porte travando a passagem de pedestres e veículos leves na pista sentido Barra em dias de chuva torrencial.',
@@ -954,7 +949,7 @@ INSERT INTO posts (
    ARRAY['/images/alagamento.jpeg'], '{}', ARRAY['problema_urgente', 'saneamento', 'mobilidade'],
    86, 16, 200, 25, 'visible', NOW() - INTERVAL '11 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000023', 'd0000000-0001-4000-8000-000000000023',
+  ('ba000000-0001-4000-8000-000000000023', 'd0000000-0001-4000-8000-000000000023',
    '11111111-0001-4000-8000-000000000004', 'Associação de Moradores do Terreirão', '/images/stock/avatar-lider.jpg',
    'problem', 'Ponto crítico de acúmulo de entulho e lixo na Av. Guiomar Novaes',
    'Descarte clandestino frequente de móveis velhos, restos de obras e lixo doméstico no canteiro da Av. Guiomar Novaes, atraindo roedores.',
@@ -962,7 +957,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['problema_urbano', 'limpeza', 'meio_ambiente'],
    89, 3, 225, 26, 'visible', NOW() - INTERVAL '19 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000024', 'd0000000-0001-4000-8000-000000000024',
+  ('ba000000-0001-4000-8000-000000000024', 'd0000000-0001-4000-8000-000000000024',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Revitalização do Parque Infantil e Pista de Caminhada em Barra Bonita',
    'Troca de brinquedos de madeira danificados por estruturas ecológicas seguras, pintura da pista de caminhada e reparo no gramado da praça.',
@@ -970,7 +965,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['revitalizacao_de_espaco', 'esporte', 'cultura'],
    92, 5, 250, 27, 'visible', NOW() - INTERVAL '55 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000025', 'd0000000-0001-4000-8000-000000000025',
+  ('ba000000-0001-4000-8000-000000000025', 'd0000000-0001-4000-8000-000000000025',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'problem', 'Sinalização de travessia e redutor de velocidade na Av. Lúcio Costa - Posto 9',
    'Falta de faixa de pedestres visível e lombofaixa na altura do Posto 9, onde veículos transitam em alta velocidade rente ao calçadão da praia.',
@@ -978,7 +973,7 @@ INSERT INTO posts (
    ARRAY['/images/ciclistas.jpeg'], '{}', ARRAY['problema_urbano', 'mobilidade', 'seguranca'],
    95, 7, 275, 28, 'visible', NOW() - INTERVAL '26 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000026', 'd0000000-0001-4000-8000-000000000026',
+  ('ba000000-0001-4000-8000-000000000026', 'd0000000-0001-4000-8000-000000000026',
    '11111111-0001-4000-8000-000000000004', 'Associação de Moradores do Terreirão', '/images/stock/avatar-lider.jpg',
    'project', 'Roda de Capoeira e Cidadania para Jovens na Praça do Terreirão',
    'Aulas semanais de capoeira angola, percussão com berimbau e rodas formativas de história afro-brasileira para crianças e adolescentes.',
@@ -986,7 +981,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['projeto_social', 'cultura', 'esporte'],
    98, 9, 300, 29, 'visible', NOW() - INTERVAL '65 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000027', 'd0000000-0001-4000-8000-000000000027',
+  ('ba000000-0001-4000-8000-000000000027', 'd0000000-0001-4000-8000-000000000027',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Trilha Interpretativa e Proteção de Ninhos no Parque Natural Chico Mendes',
    'Instalação de placas com QR Code informativo sobre fauna lagunar, recuperação de pontes de madeira e monitoramento de ninhos de jacaré.',
@@ -994,7 +989,7 @@ INSERT INTO posts (
    ARRAY['/images/horta.jpeg'], '{}', ARRAY['projeto_ambiental', 'meio_ambiente', 'educacao'],
    21, 11, 325, 30, 'visible', NOW() - INTERVAL '48 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000028', 'd0000000-0001-4000-8000-000000000028',
+  ('ba000000-0001-4000-8000-000000000028', 'd0000000-0001-4000-8000-000000000028',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'problem', 'Manutenção da iluminação e segurança na passarela do BRT Salvador Allende',
    'Passarela metálica de pedestres com lâmpadas quebradas gerando escuridão completa à noite, causando assaltos e insegurança para quem usa o BRT.',
@@ -1002,7 +997,7 @@ INSERT INTO posts (
    ARRAY['/images/iluminacao.jpeg'], '{}', ARRAY['problema_urgente', 'iluminacao', 'seguranca'],
    24, 13, 350, 31, 'visible', NOW() - INTERVAL '9 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000029', 'd0000000-0001-4000-8000-000000000029',
+  ('ba000000-0001-4000-8000-000000000029', 'd0000000-0001-4000-8000-000000000029',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'project', 'Recomposição da mureta e calçadão danificado por ressacas na Praia da Macumba',
    'Ressacas marítimas destruíram trecho de 80m do calçadão na altura do Rico Point, expondo tubulações e impedindo a circulação de pedestres.',
@@ -1010,7 +1005,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['obra_ou_melhoria_de_infraestrutura', 'mobilidade', 'seguranca'],
    27, 15, 375, 32, 'visible', NOW() - INTERVAL '38 days', NOW()),
 
-  ('p0000000-0001-4000-8000-000000000030', 'd0000000-0001-4000-8000-000000000030',
+  ('ba000000-0001-4000-8000-000000000030', 'd0000000-0001-4000-8000-000000000030',
    '11111111-0001-4000-8000-000000000002', 'Coletivo Cultural Recreio', '/images/stock/avatar-lider.jpg',
    'project', 'Patrocínio para uniformes e instrumentos da Fanfarra Estudantil do Recreio',
    'Captação de patrocinador para compra de trompetes, bumbos, pratos e 40 fardamentos para a banda marcial de jovens estudantes do bairro.',
@@ -1018,7 +1013,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['necessidade_de_patrocinio', 'cultura', 'educacao'],
    30, 2, 400, 3, 'visible', NOW() - INTERVAL '17 days', NOW()),
 
-  ('p0000000-0002-4000-8000-000000000001', NULL,
+  ('ba000000-0002-4000-8000-000000000001', NULL,
    '22222222-0001-4000-8000-000000000001', 'Maria Silva', '/images/stock/avatar-moradora.jpg',
    'message', 'Atenção moradores: sinalização reforçada na orla',
    'Com as obras de paraciclos e manutenção da ciclovia, notamos melhora no respeito dos carros nas travessias. Vamos continuar fiscalizando!',
@@ -1026,7 +1021,7 @@ INSERT INTO posts (
    ARRAY['/images/comunidade.jpeg'], '{}', ARRAY['zeladoria', 'moradores', 'recreio'],
    31, 5, 190, 4, 'visible', NOW() - INTERVAL '10 days', NOW()),
 
-  ('p0000000-0002-4000-8000-000000000002', NULL,
+  ('ba000000-0002-4000-8000-000000000002', NULL,
    '44444444-0001-4000-8000-000000000001', 'Subprefeitura da Barra, Recreio e Vargens', '/images/stock/avatar-governo.jpg',
    'action', 'Operação Tapa-Buraco e Desobstrução de Galerias no Recreio',
    'Equipes da conservação municipal atuando esta semana nas vias principais do Recreio, incluindo Av. das Américas e acessos ao Pontal.',
@@ -1034,7 +1029,7 @@ INSERT INTO posts (
    ARRAY['/images/buraco.jpeg'], '{}', ARRAY['prefeitura', 'zeladoria', 'obras', 'servicos'],
    54, 8, 430, 15, 'visible', NOW() - INTERVAL '8 days', NOW()),
 
-  ('p0000000-0002-4000-8000-000000000003', NULL,
+  ('ba000000-0002-4000-8000-000000000003', NULL,
    '33333333-0001-4000-8000-000000000001', 'Construtora Recreio Novo Ltda', '/images/stock/avatar-empresa.jpg',
    'action', 'Doação de ferramentas e apoio comunitário à Horta da Guignard',
    'Tivemos a satisfação de entregar hoje enxadas, regadores e pallets de madeira para apoiar a expansão da horta comunitária!',
@@ -1053,43 +1048,43 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO supports (
   id, post_id, user_id, user_name, type, message, amount, payment_method, details, status, created_at, updated_at
 ) VALUES
-  ('s0000000-0001-4000-8000-000000000001', 'p0000000-0001-4000-8000-000000000009',
+  ('50000000-0001-4000-8000-000000000001', 'ba000000-0001-4000-8000-000000000009',
    '33333333-0001-4000-8000-000000000001', 'Construtora Recreio Novo Ltda',
    'financial', 'Apoiamos com recursos para aquisição de equipamentos de proteção e sacos biodegradáveis.',
    3500.00, 'transfer', '{"categoria": "ambiental", "empresa": "Construtora Recreio Novo"}', 'confirmed',
    NOW() - INTERVAL '100 days', NOW()),
 
-  ('s0000000-0001-4000-8000-000000000002', 'p0000000-0001-4000-8000-000000000009',
+  ('50000000-0001-4000-8000-000000000002', 'ba000000-0001-4000-8000-000000000009',
    '33333333-0001-4000-8000-000000000002', 'Padaria Pão Quente do Recreio',
    'food', 'Fornecemos café da manhã, pães e água para os voluntários dos mutirões de sábado.',
    NULL, NULL, '{"itens": "Café, água mineral, sucos e pães para 40 voluntários"}', 'confirmed',
    NOW() - INTERVAL '95 days', NOW()),
 
-  ('s0000000-0001-4000-8000-000000000003', 'p0000000-0001-4000-8000-000000000009',
+  ('50000000-0001-4000-8000-000000000003', 'ba000000-0001-4000-8000-000000000009',
    '22222222-0001-4000-8000-000000000002', 'João Pereira',
    'volunteering', 'Presente todo sábado na triagem de resíduos na areia.',
    NULL, NULL, '{"disponibilidade": "Sábados de manhã"}', 'confirmed',
    NOW() - INTERVAL '90 days', NOW()),
 
-  ('s0000000-0001-4000-8000-000000000004', 'p0000000-0001-4000-8000-000000000006',
+  ('50000000-0001-4000-8000-000000000004', 'ba000000-0001-4000-8000-000000000006',
    '33333333-0001-4000-8000-000000000004', 'Studio Fitness Recreio',
    'financial', 'Patrocínio mensal para aquisição e manutenção das pranchas da escolinha comunitária.',
    4200.00, 'transfer', '{"projeto": "Ondas do Futuro"}', 'confirmed',
    NOW() - INTERVAL '70 days', NOW()),
 
-  ('s0000000-0001-4000-8000-000000000005', 'p0000000-0001-4000-8000-000000000006',
+  ('50000000-0001-4000-8000-000000000005', 'ba000000-0001-4000-8000-000000000006',
    '22222222-0001-4000-8000-000000000005', 'Ana Beatriz Souza',
    'knowledge', 'Ofereço acompanhamento pedagógico voluntário para as crianças inscritas no surf.',
    NULL, NULL, '{"area": "Pedagogia e apoio escolar"}', 'confirmed',
    NOW() - INTERVAL '65 days', NOW()),
 
-  ('s0000000-0001-4000-8000-000000000006', 'p0000000-0001-4000-8000-000000000010',
+  ('50000000-0001-4000-8000-000000000006', 'ba000000-0001-4000-8000-000000000010',
    '33333333-0001-4000-8000-000000000001', 'Construtora Recreio Novo Ltda',
    'materials', 'Doação de madeira tratada para cercamento e 50 sacos de terra adubada.',
    NULL, NULL, '{"materiais": "Pallets, tábuas de reflorestamento e terra vegetal"}', 'confirmed',
    NOW() - INTERVAL '75 days', NOW()),
 
-  ('s0000000-0001-4000-8000-000000000007', 'p0000000-0001-4000-8000-000000000007',
+  ('50000000-0001-4000-8000-000000000007', 'ba000000-0001-4000-8000-000000000007',
    '33333333-0001-4000-8000-000000000003', 'Supermercado Bom Preço Recreio',
    'materials', 'Doação de kits de material escolar e cadernos para os alunos do Terreirão.',
    NULL, NULL, '{"itens": "80 kits escolares completos"}', 'confirmed',
@@ -1098,55 +1093,55 @@ ON CONFLICT DO NOTHING;
 
 -- ── 9. Comentários (comments) ──────────────────────────────────────────────────────
 INSERT INTO comments (id, post_id, author_id, author_name, content, created_at) VALUES
-  ('c0000000-0001-4000-8000-000000000001', 'p0000000-0001-4000-8000-000000000001',
+  ('ca000000-0001-4000-8000-000000000001', 'ba000000-0001-4000-8000-000000000001',
    '22222222-0001-4000-8000-000000000001', 'Maria Silva',
    'Esse buraco já furou o pneu de uma vizinha aqui perto do shopping. Urgente mesmo o reparo!', NOW() - INTERVAL '28 days'),
 
-  ('c0000000-0001-4000-8000-000000000002', 'p0000000-0001-4000-8000-000000000001',
+  ('ca000000-0001-4000-8000-000000000002', 'ba000000-0001-4000-8000-000000000001',
    '22222222-0001-4000-8000-000000000003', 'Carlos Mendes',
    'Como ciclista que passa ali todo dia, confirmo que é perigosíssimo. Quem puder apoiar a demanda, ajude!', NOW() - INTERVAL '27 days'),
 
-  ('c0000000-0001-4000-8000-000000000003', 'p0000000-0001-4000-8000-000000000009',
+  ('ca000000-0001-4000-8000-000000000003', 'ba000000-0001-4000-8000-000000000009',
    '22222222-0001-4000-8000-000000000002', 'João Pereira',
    'No último mutirão recolhemos mais de 4.000 bitucas de cigarro só no Posto 10. Trabalho essencial!', NOW() - INTERVAL '115 days'),
 
-  ('c0000000-0001-4000-8000-000000000004', 'p0000000-0001-4000-8000-000000000009',
+  ('ca000000-0001-4000-8000-000000000004', 'ba000000-0001-4000-8000-000000000009',
    '22222222-0001-4000-8000-000000000004', 'Fernanda Lima',
    'Estarei presente no próximo sábado levando luvas e sacolas extras!', NOW() - INTERVAL '110 days'),
 
-  ('c0000000-0001-4000-8000-000000000005', 'p0000000-0001-4000-8000-000000000006',
+  ('ca000000-0001-4000-8000-000000000005', 'ba000000-0001-4000-8000-000000000006',
    '22222222-0001-4000-8000-000000000001', 'Maria Silva',
    'Que projeto lindo! Meu sobrinho está participando e super empolgado com as aulas de surf no Posto 12.', NOW() - INTERVAL '85 days'),
 
-  ('c0000000-0001-4000-8000-000000000006', 'p0000000-0001-4000-8000-000000000010',
+  ('ca000000-0001-4000-8000-000000000006', 'ba000000-0001-4000-8000-000000000010',
    '22222222-0001-4000-8000-000000000001', 'Maria Silva',
    'Os tomates da horta estão crescendo lindos! A praça virou outro lugar depois da horta comunitária.', NOW() - INTERVAL '75 days'),
 
-  ('c0000000-0001-4000-8000-000000000007', 'p0000000-0001-4000-8000-000000000024',
+  ('ca000000-0001-4000-8000-000000000007', 'ba000000-0001-4000-8000-000000000024',
    '22222222-0001-4000-8000-000000000001', 'Maria Silva',
    'Nossas crianças mereciam essa praça de Barra Bonita bem cuidada. Parabéns pela iniciativa!', NOW() - INTERVAL '40 days'),
 
-  ('c0000000-0001-4000-8000-000000000008', 'p0000000-0001-4000-8000-000000000028',
+  ('ca000000-0001-4000-8000-000000000008', 'ba000000-0001-4000-8000-000000000028',
    '22222222-0001-4000-8000-000000000003', 'Carlos Mendes',
    'Essa passarela do BRT é um perigo à noite. A iluminação de LED precisa voltar logo.', NOW() - INTERVAL '7 days')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 10. Reações (reactions) ────────────────────────────────────────────────────────
 INSERT INTO reactions (post_id, user_id, created_at) VALUES
-  ('p0000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '29 days'),
-  ('p0000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000002', NOW() - INTERVAL '29 days'),
-  ('p0000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000003', NOW() - INTERVAL '28 days'),
-  ('p0000000-0001-4000-8000-000000000002', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '39 days'),
-  ('p0000000-0001-4000-8000-000000000002', '22222222-0001-4000-8000-000000000004', NOW() - INTERVAL '38 days'),
-  ('p0000000-0001-4000-8000-000000000006', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '88 days'),
-  ('p0000000-0001-4000-8000-000000000006', '22222222-0001-4000-8000-000000000002', NOW() - INTERVAL '87 days'),
-  ('p0000000-0001-4000-8000-000000000009', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '118 days'),
-  ('p0000000-0001-4000-8000-000000000009', '22222222-0001-4000-8000-000000000003', NOW() - INTERVAL '117 days'),
-  ('p0000000-0001-4000-8000-000000000010', '22222222-0001-4000-8000-000000000002', NOW() - INTERVAL '78 days'),
-  ('p0000000-0001-4000-8000-000000000013', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '170 days'),
-  ('p0000000-0001-4000-8000-000000000013', '22222222-0001-4000-8000-000000000003', NOW() - INTERVAL '169 days'),
-  ('p0000000-0001-4000-8000-000000000024', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '50 days'),
-  ('p0000000-0001-4000-8000-000000000026', '22222222-0001-4000-8000-000000000004', NOW() - INTERVAL '60 days')
+  ('ba000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '29 days'),
+  ('ba000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000002', NOW() - INTERVAL '29 days'),
+  ('ba000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000003', NOW() - INTERVAL '28 days'),
+  ('ba000000-0001-4000-8000-000000000002', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '39 days'),
+  ('ba000000-0001-4000-8000-000000000002', '22222222-0001-4000-8000-000000000004', NOW() - INTERVAL '38 days'),
+  ('ba000000-0001-4000-8000-000000000006', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '88 days'),
+  ('ba000000-0001-4000-8000-000000000006', '22222222-0001-4000-8000-000000000002', NOW() - INTERVAL '87 days'),
+  ('ba000000-0001-4000-8000-000000000009', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '118 days'),
+  ('ba000000-0001-4000-8000-000000000009', '22222222-0001-4000-8000-000000000003', NOW() - INTERVAL '117 days'),
+  ('ba000000-0001-4000-8000-000000000010', '22222222-0001-4000-8000-000000000002', NOW() - INTERVAL '78 days'),
+  ('ba000000-0001-4000-8000-000000000013', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '170 days'),
+  ('ba000000-0001-4000-8000-000000000013', '22222222-0001-4000-8000-000000000003', NOW() - INTERVAL '169 days'),
+  ('ba000000-0001-4000-8000-000000000024', '22222222-0001-4000-8000-000000000001', NOW() - INTERVAL '50 days'),
+  ('ba000000-0001-4000-8000-000000000026', '22222222-0001-4000-8000-000000000004', NOW() - INTERVAL '60 days')
 ON CONFLICT (post_id, user_id) DO NOTHING;
 
 -- ── 11. Eventos Territoriais (events) ─────────────────────────────────────────────
@@ -1157,7 +1152,7 @@ INSERT INTO events (
   location_name, cep, street, address_number, district, municipality, uf, territory,
   latitude, longitude, audience, capacity, pricing, accessibility, status, published_at, created_at
 ) VALUES
-  ('e0000000-0001-4000-8000-000000000001', 'd0000000-0001-4000-8000-000000000009',
+  ('ea000000-0001-4000-8000-000000000001', 'd0000000-0001-4000-8000-000000000009',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'agente', 'associacao', 'aaaaaaaa-0001-4000-8000-000000000001',
    'mutirao', 'Grande Mutirão de Limpeza da Orla do Recreio - Posto 10',
@@ -1167,7 +1162,7 @@ INSERT INTO events (
    -23.0290000, -43.4650000, 'Moradores, surfistas, banhistas e voluntários de todas as idades',
    120, 'gratuito', ARRAY['acesso_para_cadeirantes'::event_accessibility], 'publicado', NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
 
-  ('e0000000-0001-4000-8000-000000000002', 'd0000000-0001-4000-8000-000000000010',
+  ('ea000000-0001-4000-8000-000000000002', 'd0000000-0001-4000-8000-000000000010',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
    'oficina_cultural', 'Oficina Prática de Compostagem Doméstica e Horta Urbana',
    'Aprenda na prática a transformar resíduos orgânicos da sua cozinha em adubo rico para plantas e hortaliças.',
@@ -1176,7 +1171,7 @@ INSERT INTO events (
    -23.0255000, -43.4540000, 'Moradores interessados em sustentabilidade e cultivo caseiro',
    35, 'gratuito', ARRAY['banheiro_acessivel'::event_accessibility], 'publicado', NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days'),
 
-  ('e0000000-0001-4000-8000-000000000003', 'd0000000-0001-4000-8000-000000000006',
+  ('ea000000-0001-4000-8000-000000000003', 'd0000000-0001-4000-8000-000000000006',
    '11111111-0001-4000-8000-000000000005', 'Projeto Onda Limpa Recreio', '/images/stock/avatar-lider.jpg',
    'aula_esportiva', 'Festival Comunitário de Surf Amador no Pontal',
    'Competição de confraternização e clínicas gratuitas de surf para iniciantes nas ondas do Pontal do Recreio.',
@@ -1185,7 +1180,7 @@ INSERT INTO events (
    -23.0312000, -43.4735000, 'Crianças, jovens e desportistas da região',
    80, 'gratuito', ARRAY['acesso_para_cadeirantes'::event_accessibility], 'publicado', NOW() - INTERVAL '8 days', NOW() - INTERVAL '8 days'),
 
-  ('e0000000-0001-4000-8000-000000000004', 'd0000000-0001-4000-8000-000000000013',
+  ('ea000000-0001-4000-8000-000000000004', 'd0000000-0001-4000-8000-000000000013',
    '11111111-0001-4000-8000-000000000002', 'Coletivo Cultural Recreio', '/images/stock/avatar-lider.jpg',
    'oficina_cultural', 'Sarau Comunitário e Feira de Troca de Livros - Praça Tim Maia',
    'Tarde de poesia, música acústica e troca de livros usados ao ar livre no mirante do Pontal.',
@@ -1202,11 +1197,11 @@ ON CONFLICT (id) DO UPDATE SET
   capacity = EXCLUDED.capacity;
 
 -- ── 12. Inscrições nos Eventos (event_signups) ────────────────────────────────────
-INSERT INTO event_signups (event_id, user_id, user_name, user_email, status, attended, created_at) VALUES
-  ('e0000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000002', 'João Pereira', 'joao.pereira@recreio.conecta', 'inscrito', false, NOW() - INTERVAL '5 days'),
-  ('e0000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000004', 'Fernanda Lima', 'fernanda.lima@recreio.conecta', 'inscrito', false, NOW() - INTERVAL '4 days'),
-  ('e0000000-0001-4000-8000-000000000002', '22222222-0001-4000-8000-000000000001', 'Maria Silva', 'maria.silva@recreio.conecta', 'inscrito', false, NOW() - INTERVAL '3 days'),
-  ('e0000000-0001-4000-8000-000000000004', '22222222-0001-4000-8000-000000000005', 'Ana Beatriz Souza', 'ana.beatriz@recreio.conecta', 'inscrito', false, NOW() - INTERVAL '2 days')
+INSERT INTO event_signups (event_id, user_id, user_name, user_category, status, attended, created_at) VALUES
+  ('ea000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000002', 'João Pereira', 'comunidade', 'inscrito', false, NOW() - INTERVAL '5 days'),
+  ('ea000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000004', 'Fernanda Lima', 'comunidade', 'inscrito', false, NOW() - INTERVAL '4 days'),
+  ('ea000000-0001-4000-8000-000000000002', '22222222-0001-4000-8000-000000000001', 'Maria Silva', 'comunidade', 'inscrito', false, NOW() - INTERVAL '3 days'),
+  ('ea000000-0001-4000-8000-000000000004', '22222222-0001-4000-8000-000000000005', 'Ana Beatriz Souza', 'comunidade', 'inscrito', false, NOW() - INTERVAL '2 days')
 ON CONFLICT DO NOTHING;
 
 SET session_replication_role = DEFAULT;
