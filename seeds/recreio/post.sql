@@ -1164,6 +1164,7 @@ INSERT INTO events (
 
   ('ea000000-0001-4000-8000-000000000002', 'd0000000-0001-4000-8000-000000000010',
    '11111111-0001-4000-8000-000000000001', 'Associação Recreio Verde', '/images/stock/avatar-lider.jpg',
+   'agente', 'associacao', 'aaaaaaaa-0001-4000-8000-000000000001',
    'oficina_cultural', 'Oficina Prática de Compostagem Doméstica e Horta Urbana',
    'Aprenda na prática a transformar resíduos orgânicos da sua cozinha em adubo rico para plantas e hortaliças.',
    NOW() + INTERVAL '12 days', NOW() + INTERVAL '12 days 3 hours',
@@ -1173,6 +1174,7 @@ INSERT INTO events (
 
   ('ea000000-0001-4000-8000-000000000003', 'd0000000-0001-4000-8000-000000000006',
    '11111111-0001-4000-8000-000000000005', 'Projeto Onda Limpa Recreio', '/images/stock/avatar-lider.jpg',
+   'agente', 'projeto_social', NULL,
    'aula_esportiva', 'Festival Comunitário de Surf Amador no Pontal',
    'Competição de confraternização e clínicas gratuitas de surf para iniciantes nas ondas do Pontal do Recreio.',
    NOW() + INTERVAL '20 days', NOW() + INTERVAL '20 days 6 hours',
@@ -1182,6 +1184,7 @@ INSERT INTO events (
 
   ('ea000000-0001-4000-8000-000000000004', 'd0000000-0001-4000-8000-000000000013',
    '11111111-0001-4000-8000-000000000002', 'Coletivo Cultural Recreio', '/images/stock/avatar-lider.jpg',
+   'agente', 'coletivo', 'aaaaaaaa-0001-4000-8000-000000000002',
    'oficina_cultural', 'Sarau Comunitário e Feira de Troca de Livros - Praça Tim Maia',
    'Tarde de poesia, música acústica e troca de livros usados ao ar livre no mirante do Pontal.',
    NOW() + INTERVAL '15 days', NOW() + INTERVAL '15 days 4 hours',
@@ -1202,6 +1205,7 @@ INSERT INTO event_signups (event_id, user_id, user_name, user_category, status, 
   ('ea000000-0001-4000-8000-000000000001', '22222222-0001-4000-8000-000000000004', 'Fernanda Lima', 'comunidade', 'inscrito', false, NOW() - INTERVAL '4 days'),
   ('ea000000-0001-4000-8000-000000000002', '22222222-0001-4000-8000-000000000001', 'Maria Silva', 'comunidade', 'inscrito', false, NOW() - INTERVAL '3 days'),
   ('ea000000-0001-4000-8000-000000000004', '22222222-0001-4000-8000-000000000005', 'Ana Beatriz Souza', 'comunidade', 'inscrito', false, NOW() - INTERVAL '2 days')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (event_id, user_id) WHERE canceled_at IS NULL DO NOTHING;
 
 SET session_replication_role = DEFAULT;
+
