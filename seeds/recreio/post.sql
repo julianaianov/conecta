@@ -1062,7 +1062,7 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO supports (
   id, post_id, demand_id, user_id, user_name, type, modality,
   supporter_category, profile_type, organization_id,
-  message, amount, payment_method, details, status, receipt_status,
+  message, description, amount, payment_method, details, status, receipt_status,
   receipt_answered_at, display_consent, public_name, amount_public,
   occurred_on, created_at, updated_at
 ) VALUES
@@ -1070,6 +1070,7 @@ INSERT INTO supports (
    '33333333-0001-4000-8000-000000000001', 'Construtora Recreio Novo Ltda', 'financial', 'patrocinar_projeto',
    'parceiro', 'empresa', 'bbbbbbbb-0001-4000-8000-000000000001',
    'Apoiamos com recursos para aquisição de equipamentos de proteção e sacos biodegradáveis.',
+   'Patrocínio financeiro direto para aquisição de 100 kits de EPIs e sacos biodegradáveis para a limpeza da orla.',
    3500.00, 'transfer', '{"categoria": "ambiental", "empresa": "Construtora Recreio Novo"}',
    'confirmed', 'confirmado', NOW() - INTERVAL '98 days', true, 'Construtora Recreio Novo', true,
    CURRENT_DATE - INTERVAL '98 days', NOW() - INTERVAL '100 days', NOW()),
@@ -1078,14 +1079,16 @@ INSERT INTO supports (
    '33333333-0001-4000-8000-000000000002', 'Padaria Pão Quente do Recreio', 'food', 'doar_recursos',
    'parceiro', 'comercio_local', 'bbbbbbbb-0001-4000-8000-000000000002',
    'Fornecemos café da manhã, pães e água para os voluntários dos mutirões de sábado.',
+   'Fornecimento de lanches saudáveis, frutas, sucos e pães frescos aos 40 voluntários em cada etapa.',
    NULL, NULL, '{"itens": "Café, água mineral, sucos e pães para 40 voluntários"}',
    'confirmed', 'confirmado', NOW() - INTERVAL '94 days', true, 'Padaria Pão Quente do Recreio', false,
    CURRENT_DATE - INTERVAL '94 days', NOW() - INTERVAL '95 days', NOW()),
 
   ('50000000-0001-4000-8000-000000000003', 'ba000000-0001-4000-8000-000000000009', 'd0000000-0001-4000-8000-000000000009',
-   '22222222-0001-4000-8000-000000000002', 'João Pereira', 'volunteering', 'doar_recursos',
+   '22222222-0001-4000-8000-000000000002', 'João Pereira', 'labor', 'doar_recursos',
    'comunidade', 'morador', NULL,
    'Presente todo sábado na triagem de resíduos na areia.',
+   'Atuação direta na triagem e pesagem de microlixo e descarte nos ecopontos.',
    NULL, NULL, '{"disponibilidade": "Sábados de manhã"}',
    'confirmed', 'confirmado', NOW() - INTERVAL '89 days', true, 'João Pereira', false,
    CURRENT_DATE - INTERVAL '89 days', NOW() - INTERVAL '90 days', NOW()),
@@ -1094,14 +1097,16 @@ INSERT INTO supports (
    '33333333-0001-4000-8000-000000000004', 'Studio Fitness Recreio', 'financial', 'patrocinar_projeto',
    'parceiro', 'empresa', NULL,
    'Patrocínio mensal para aquisição e manutenção das pranchas da escolinha comunitária.',
+   'Recursos transferidos para manutenção preventiva de 15 pranchas softboards e lycras de proteção solar.',
    4200.00, 'transfer', '{"projeto": "Ondas do Futuro"}',
    'confirmed', 'confirmado', NOW() - INTERVAL '68 days', true, 'Studio Fitness Recreio', true,
    CURRENT_DATE - INTERVAL '68 days', NOW() - INTERVAL '70 days', NOW()),
 
   ('50000000-0001-4000-8000-000000000005', 'ba000000-0001-4000-8000-000000000006', 'd0000000-0001-4000-8000-000000000006',
-   '22222222-0001-4000-8000-000000000005', 'Ana Beatriz Souza', 'knowledge', 'contratar_servicos_locais',
+   '22222222-0001-4000-8000-000000000005', 'Ana Beatriz Souza', 'knowledge', 'doar_recursos',
    'comunidade', 'moradora', NULL,
    'Ofereço acompanhamento pedagógico voluntário para as crianças inscritas no surf.',
+   'Acompanhamento de reforço escolar e orientação pedagógica aos 60 alunos da escolinha.',
    NULL, NULL, '{"area": "Pedagogia e apoio escolar"}',
    'confirmed', 'confirmado', NOW() - INTERVAL '64 days', true, 'Ana Beatriz Souza', false,
    CURRENT_DATE - INTERVAL '64 days', NOW() - INTERVAL '65 days', NOW()),
@@ -1110,6 +1115,7 @@ INSERT INTO supports (
    '33333333-0001-4000-8000-000000000001', 'Construtora Recreio Novo Ltda', 'materials', 'doar_recursos',
    'parceiro', 'empresa', 'bbbbbbbb-0001-4000-8000-000000000001',
    'Doação de madeira tratada para cercamento e 50 sacos de terra adubada.',
+   'Fornecimento de 50 metros de mourões ecológicos de eucalipto tratado e terra vegetal.',
    NULL, NULL, '{"materiais": "Pallets, tábuas de reflorestamento e terra vegetal"}',
    'confirmed', 'confirmado', NOW() - INTERVAL '74 days', true, 'Construtora Recreio Novo', false,
    CURRENT_DATE - INTERVAL '74 days', NOW() - INTERVAL '75 days', NOW()),
@@ -1118,6 +1124,7 @@ INSERT INTO supports (
    '33333333-0001-4000-8000-000000000003', 'Supermercado Bom Preço Recreio', 'materials', 'doar_recursos',
    'parceiro', 'comercio_local', 'bbbbbbbb-0001-4000-8000-000000000003',
    'Doação de kits de material escolar e cadernos para os alunos do Terreirão.',
+   'Entrega de 80 kits escolares contendo mochilas, estojos, cadernos e lápis de cor.',
    NULL, NULL, '{"itens": "80 kits escolares completos"}',
    'confirmed', 'confirmado', NOW() - INTERVAL '54 days', true, 'Supermercado Bom Preço', false,
    CURRENT_DATE - INTERVAL '54 days', NOW() - INTERVAL '55 days', NOW()),
@@ -1126,6 +1133,7 @@ INSERT INTO supports (
    '33333333-0001-4000-8000-000000000001', 'Construtora Recreio Novo Ltda', 'financial', 'adotar_espaco_publico',
    'parceiro', 'empresa', 'bbbbbbbb-0001-4000-8000-000000000001',
    'Adoção da Praça Tim Maia e instalação de postes solares com iluminação LED de alta eficiência.',
+   'Investimento financeiro integral em 6 postes com painéis solares bifaciais e baterias de lítio.',
    12500.00, 'transfer', '{"projeto": "Praça Segura Tim Maia"}',
    'confirmed', 'confirmado', NOW() - INTERVAL '150 days', true, 'Construtora Recreio Novo', true,
    CURRENT_DATE - INTERVAL '150 days', NOW() - INTERVAL '160 days', NOW()),
@@ -1134,6 +1142,7 @@ INSERT INTO supports (
    '33333333-0001-4000-8000-000000000003', 'Supermercado Bom Preço Recreio', 'financial', 'patrocinar_projeto',
    'parceiro', 'comercio_local', 'bbbbbbbb-0001-4000-8000-000000000003',
    'Patrocínio para revitalização do parquinho infantil de Barra Bonita.',
+   'Aporte financeiro para aquisição do parquinho modular de madeira plástica e piso emborrachado.',
    15000.00, 'transfer', '{"reforma": "Playground Barra Bonita"}',
    'confirmed', 'confirmado', NOW() - INTERVAL '45 days', true, 'Supermercado Bom Preço', true,
    CURRENT_DATE - INTERVAL '45 days', NOW() - INTERVAL '50 days', NOW())
@@ -1143,6 +1152,7 @@ ON CONFLICT (id) DO UPDATE SET
   supporter_category = EXCLUDED.supporter_category,
   profile_type = EXCLUDED.profile_type,
   organization_id = EXCLUDED.organization_id,
+  description = EXCLUDED.description,
   amount = EXCLUDED.amount,
   status = EXCLUDED.status,
   receipt_status = EXCLUDED.receipt_status,
@@ -1274,7 +1284,8 @@ INSERT INTO demand_accountability (
   execution_report, actions_record, schedule_summary,
   beneficiaries_reached, beneficiaries_estimate, beneficiaries_note,
   impact_indicators, financial_support, financial_summary,
-  executed_amount_cents, concluded_at, created_at, updated_at
+  executed_amount_cents, participants, final_result,
+  concluded_at, created_at, updated_at
 ) VALUES
   -- Demanda 9: Mutirão Permanente de Limpeza da Orla (Concluída com dossiê)
   ('da000000-0001-4000-8000-000000000009', 'd0000000-0001-4000-8000-000000000009',
@@ -1285,7 +1296,9 @@ INSERT INTO demand_accountability (
    10000, 10000, 'Estimativa baseada no fluxo de banhistas impactados e 480 voluntários ativos nos mutirões.',
    '3,4 toneladas de lixo recolhidas; 85% de plástico e microlixo destinados à reciclagem.',
    true, 'Recursos de R$ 3.500 utilizados na íntegra para EPIs, balança e sacolas ecológicas.',
-   350000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '30 days', NOW() - INTERVAL '20 days'),
+   350000, '480 voluntários cadastrados, 8 comerciantes parceiros da orla e equipe técnica da Recreio Verde.',
+   'Orla limpa com conscientização de milhares de banhistas e destinação correta de recicláveis.',
+   NOW() - INTERVAL '20 days', NOW() - INTERVAL '30 days', NOW() - INTERVAL '20 days'),
 
   -- Demanda 6: Escolinha Comunitária de Surf (Concluída)
   ('da000000-0001-4000-8000-000000000006', 'd0000000-0001-4000-8000-000000000006',
@@ -1296,7 +1309,9 @@ INSERT INTO demand_accountability (
    180, 100, '60 crianças diretamente atendidas e 120 familiares envolvidos nas ações.',
    'Redução de evasão escolar comprovada pelos boletins escolares dos alunos participantes.',
    true, 'Patrocínio de R$ 4.200 aplicado em pranchas softboards e coletes.',
-   420000, NOW() - INTERVAL '15 days', NOW() - INTERVAL '25 days', NOW() - INTERVAL '15 days'),
+   420000, '60 alunos da rede pública, 4 instrutores de surf voluntários e equipe pedagógica.',
+   'Festival comunitário de encerramento com entrega de certificados e kits aos alunos formados.',
+   NOW() - INTERVAL '15 days', NOW() - INTERVAL '25 days', NOW() - INTERVAL '15 days'),
 
   -- Demanda 13: Iluminação e Revitalização do Mirante Tim Maia (Concluída)
   ('da000000-0001-4000-8000-000000000013', 'd0000000-0001-4000-8000-000000000013',
@@ -1307,11 +1322,15 @@ INSERT INTO demand_accountability (
    3500, 3000, 'Moradores do entorno e visitantes noturnos que voltaram a frequentar o mirante com segurança.',
    'Eliminação de pontos escuros e zero ocorrências de furto registradas nos 60 dias pós-instalação.',
    true, 'R$ 12.500 executados em materiais fotovoltaicos e tintas antipichação.',
-   1250000, NOW() - INTERVAL '60 days', NOW() - INTERVAL '75 days', NOW() - INTERVAL '60 days')
+   1250000, 'Coletivo Cultural, artistas locais do Recreio, instaladores e moradores do Pontal.',
+   'Praça e mirante totalmente iluminados e seguros para lazer noturno e eventos culturais comunitários.',
+   NOW() - INTERVAL '60 days', NOW() - INTERVAL '75 days', NOW() - INTERVAL '60 days')
 ON CONFLICT (demand_id) DO UPDATE SET
   status = EXCLUDED.status,
   beneficiaries_reached = EXCLUDED.beneficiaries_reached,
   executed_amount_cents = EXCLUDED.executed_amount_cents,
+  participants = EXCLUDED.participants,
+  final_result = EXCLUDED.final_result,
   updated_at = NOW();
 
 -- ── 14. Consentimentos de Exibição no Ranking (ranking_consents) ────────────────────
@@ -1359,13 +1378,13 @@ INSERT INTO demand_interests (
   ('ea000000-0001-4000-8000-000000000013', 'd0000000-0001-4000-8000-000000000001',
    '33333333-0001-4000-8000-000000000001', 'Construtora Recreio Novo Ltda', '/images/stock/avatar-empresa.jpg',
    'parceiro', 'empresa', 'bbbbbbbb-0001-4000-8000-000000000001',
-   'apoio', ARRAY['recursos_financeiros'::demand_interest_offer, 'execucao_de_servicos'::demand_interest_offer],
+   'apoio', ARRAY['recursos'::demand_interest_offer, 'servicos'::demand_interest_offer],
    'Podemos fornecer maquinário para nivelamento da pista asfáltica e doação do asfalto.', NOW() - INTERVAL '25 days'),
 
   ('ea000000-0001-4000-8000-000000000014', 'd0000000-0001-4000-8000-000000000010',
    '33333333-0001-4000-8000-000000000003', 'Supermercado Bom Preço Recreio', '/images/stock/avatar-comercio.jpg',
    'parceiro', 'comercio_local', 'bbbbbbbb-0001-4000-8000-000000000003',
-   'apoio', ARRAY['doacao_de_materiais'::demand_interest_offer],
+   'apoio', ARRAY['materiais'::demand_interest_offer],
    'Oferecemos sementes, adubo orgânico e ferramentas para os canteiros da praça.', NOW() - INTERVAL '70 days')
 ON CONFLICT (id) DO NOTHING;
 
