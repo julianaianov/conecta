@@ -4,6 +4,11 @@
 
 SET session_replication_role = replica;
 
+-- Limpar registros com UUIDs legados duplicados para manter apenas os itens oficiais determinísticos
+DELETE FROM demand_goals WHERE id::text NOT LIKE '90000000-%';
+DELETE FROM demand_budget_items WHERE id::text NOT LIKE '80000000-%';
+DELETE FROM demand_schedule_items WHERE id::text NOT LIKE '70000000-%';
+
 -- ── 1. Demandas Canônicas (demands) ───────────────────────────────────────────────
 INSERT INTO demands (
   id, author_id, organization_id, author_name, author_avatar,
@@ -1149,13 +1154,17 @@ INSERT INTO supports (
 ON CONFLICT (id) DO UPDATE SET
   demand_id = EXCLUDED.demand_id,
   modality = EXCLUDED.modality,
+  type = EXCLUDED.type,
   supporter_category = EXCLUDED.supporter_category,
   profile_type = EXCLUDED.profile_type,
   organization_id = EXCLUDED.organization_id,
+  message = EXCLUDED.message,
   description = EXCLUDED.description,
+  details = EXCLUDED.details,
   amount = EXCLUDED.amount,
   status = EXCLUDED.status,
   receipt_status = EXCLUDED.receipt_status,
+  receipt_answered_at = EXCLUDED.receipt_answered_at,
   display_consent = EXCLUDED.display_consent,
   public_name = EXCLUDED.public_name,
   amount_public = EXCLUDED.amount_public,
