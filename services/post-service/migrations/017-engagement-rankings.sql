@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS ranking_snapshots (
   identified    BOOLEAN NOT NULL DEFAULT false,
   display_name  VARCHAR(200),
   avatar_url    VARCHAR(500),
-  category      VARCHAR(20),
+  category      VARCHAR(60),
   profile_type  VARCHAR(50),
   place         VARCHAR(200),
   points        BIGINT NOT NULL CHECK (points >= 0),
@@ -211,6 +211,8 @@ CREATE TABLE IF NOT EXISTS ranking_snapshots (
   ),
   CONSTRAINT ranking_snapshots_unique UNIQUE (board, period, subject_id)
 );
+
+ALTER TABLE ranking_snapshots ALTER COLUMN category TYPE VARCHAR(60);
 
 CREATE INDEX IF NOT EXISTS idx_ranking_snapshots_board
   ON ranking_snapshots(board, period, position);
@@ -228,10 +230,12 @@ CREATE TABLE IF NOT EXISTS profile_badges (
 
 CREATE TABLE IF NOT EXISTS profile_engagement (
   user_id      UUID PRIMARY KEY,
-  category     VARCHAR(20),
+  category     VARCHAR(60),
   metrics      JSONB NOT NULL DEFAULT '{}'::jsonb,
   computed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE profile_engagement ALTER COLUMN category TYPE VARCHAR(60);
 
 -- ── Índices da agregação ────────────────────────────────────────────────────
 -- O laço roda poucas vezes por hora, mas sem estes índices cada passada varre
